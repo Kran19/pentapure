@@ -409,26 +409,28 @@ const app = {
   // --- PROFILE VIEW ---
   renderProfile(container) {
     container.innerHTML = `
-      <div class="card" style="text-align: center; padding: 2rem 1rem;">
-        <div style="width:80px; height:80px; background:var(--primary); border-radius:50%; margin:0 auto 1rem; display:flex; align-items:center; justify-content:center; font-size:2rem; font-weight:bold;">
-          ${this.currentUser.name.charAt(0)}
-        </div>
-        <h2 style="margin-bottom: 0.5rem;">${this.currentUser.name}</h2>
-        <span class="badge" style="background:var(--primary-light); color:var(--dark); margin-bottom: 2rem;">${this.currentUser.role}</span>
-        
-        <div class="form-group" style="text-align:left; margin-bottom: 2rem;">
-          <label>Language Preference</label>
-          <select onchange="app.setLanguage(this.value)">
-            <option value="en" ${this.currentLang==='en'?'selected':''}>English</option>
-            <option value="hi" ${this.currentLang==='hi'?'selected':''}>हिंदी (Hindi)</option>
-            <option value="gu" ${this.currentLang==='gu'?'selected':''}>ગુજરાતી (Gujarati)</option>
-          </select>
-        </div>
+      <div style="max-width: 600px; margin: 0 auto;">
+        <div class="card" style="text-align: center; padding: 3rem 1.5rem;">
+          <div style="width:100px; height:100px; background:var(--primary); border-radius:50%; margin:0 auto 1.5rem; display:flex; align-items:center; justify-content:center; font-size:2.5rem; font-weight:bold; box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);">
+            ${this.currentUser.name.charAt(0)}
+          </div>
+          <h2 style="margin-bottom: 0.5rem; font-size: 1.8rem;">${this.currentUser.name}</h2>
+          <span class="badge" style="background:rgba(79, 70, 229, 0.2); color:var(--primary-light); margin-bottom: 2.5rem; padding: 0.4rem 1rem; font-size: 0.9rem;">${this.currentUser.role}</span>
+          
+          <div class="form-group" style="text-align:left; margin-bottom: 2.5rem; background:rgba(255,255,255,0.03); padding:1.5rem; border-radius:12px;">
+            <label style="color:var(--primary-light); font-weight:600; margin-bottom:0.8rem;">Language Preference</label>
+            <select onchange="app.setLanguage(this.value)" style="background:rgba(0,0,0,0.3); border-color:rgba(255,255,255,0.1);">
+              <option value="en" ${this.currentLang==='en'?'selected':''}>English</option>
+              <option value="hi" ${this.currentLang==='hi'?'selected':''}>हिंदी (Hindi)</option>
+              <option value="gu" ${this.currentLang==='gu'?'selected':''}>ગુજરાતી (Gujarati)</option>
+            </select>
+          </div>
 
-        <button class="btn btn-danger" onclick="app.logout()">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-          Logout Securely
-        </button>
+          <button class="btn btn-danger" onclick="app.logout()" style="padding:1rem;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            Logout Securely
+          </button>
+        </div>
       </div>
     `;
   },
@@ -511,8 +513,9 @@ const app = {
 
     if (tab === 'stock') {
       const stock = this.getAggregatedStock('rawStock').filter(s => s.quantity > 0);
+      html += `<div class="responsive-grid">`;
       html += stock.map(s => `
-        <div class="card" style="padding: 1rem;">
+        <div class="card" style="padding: 1rem; margin-bottom: 0;">
           <div class="flex-between">
             <div>
               <div style="font-weight:600; font-size:1.1rem;">${s.name}</div>
@@ -523,7 +526,8 @@ const app = {
             </div>
           </div>
         </div>
-      `).join('') || '<div class="card"><p class="text-center text-muted">No raw stock available.</p></div>';
+      `).join('') || '<div class="card" style="grid-column: 1/-1;"><p class="text-center text-muted">No raw stock available.</p></div>';
+      html += `</div>`;
     } else {
       html += this.renderDateFilterControls("app.refreshCurrentView");
       let filtered = this.filterByDateRange(DB.get('rawLedger') || [], window.currentDateRange, window.customStart, window.customEnd);
@@ -589,12 +593,12 @@ const app = {
             oninput="window._rawSearch=this.value; window._rawShowAll=false; app.renderRawAdd(document.getElementById('content-area'))" 
             style="padding:0.6rem 0.8rem; font-size:0.85rem;">
         </div>
-        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:1rem;">
+        <div class="responsive-grid" style="grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); margin-bottom:1rem;">
           ${displayList.map(rm => `
             <div class="rm-card" onclick="app.selectRawMaterial('${rm.id}', this)" 
               style="border:2px solid transparent; border-radius:10px; overflow:hidden; cursor:pointer; background:rgba(255,255,255,0.05); text-align:center; padding-bottom:4px; transition:0.2s;">
-              <img src="${rm.image_url}" style="width:100%; height:60px; object-fit:cover;" onerror="this.src='https://via.placeholder.com/100x60?text=IMG'">
-              <div style="font-size:0.7rem; font-weight:600; padding:2px 3px; line-height:1.2;">${rm.name}</div>
+              <img src="${rm.image_url}" style="width:100%; height:80px; object-fit:cover;" onerror="this.src='https://via.placeholder.com/100x60?text=IMG'">
+              <div style="font-size:0.75rem; font-weight:600; padding:4px 3px; line-height:1.2;">${rm.name}</div>
             </div>
           `).join('')}
         </div>
@@ -669,8 +673,9 @@ const app = {
 
     if (tab === 'stock') {
       const stock = this.getAggregatedStock(stockKey).filter(s => s.quantity > 0);
+      html += `<div class="responsive-grid">`;
       html += stock.map(s => `
-        <div class="list-item">
+        <div class="list-item" style="margin-bottom: 0;">
           <div class="list-item-content">
             <div class="list-item-title">${s.name}</div>
             <div class="list-item-meta">Grade: ${s.grade}</div>
@@ -680,7 +685,8 @@ const app = {
             <div style="font-size:0.75rem; color:var(--text-muted);">${s.unit}</div>
           </div>
         </div>
-      `).join('') || '<p class="text-center">No stock available.</p>';
+      `).join('') || '<p class="text-center" style="grid-column: 1/-1;">No stock available.</p>';
+      html += `</div>`;
     } else {
       // Inward (production of this type) and Outward (usage of this type or dispatch)
       html += this.renderDateFilterControls("app.refreshCurrentView");
@@ -1746,7 +1752,7 @@ const app = {
         <input type="text" placeholder="${this.t('Search history...')}" value="${window.historySearchQuery||''}" oninput="window.historySearchQuery=this.value; app.refreshCurrentView()">
       </div>
       
-      <div class="card">
+      <div class="responsive-grid">
     `;
     
     if (logs.length > 0 && renderFn) {
@@ -1754,9 +1760,9 @@ const app = {
       html += paginated.map((item, idx) => renderFn(item, (page-1)*10 + idx)).join('');
       html += `</div>` + this.renderPaginationControls(page, totalPages);
     } else if (!renderFn) {
-      html += `<p class="text-muted text-center" style="padding:2rem;">Full historical audit logs are available in the Admin Panel.</p></div>`;
+      html += `<p class="text-muted text-center card" style="padding:2rem; grid-column: 1/-1;">Full historical audit logs are available in the Admin Panel.</p></div>`;
     } else {
-      html += `<p>No history found for current filters.</p></div>`;
+      html += `<p class="card text-center text-muted" style="padding:2rem; grid-column: 1/-1;">No history found for current filters.</p></div>`;
     }
     
     container.innerHTML = html;

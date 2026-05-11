@@ -28,46 +28,20 @@
   </div>
 
   <div class="app-container" id="app-root">
-    <div id="main-app" style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+    <div id="main-app" class="app-main-layout">
       
-      <!-- Standard Header (Except Admin) -->
-      <header id="app-header">
-        <div class="user-info">
-          @php
-              $prefix = request()->segment(1) ?? 'user';
-              $segments = [
-                  'raw' => ['Amit (Raw)', 'RAW'],
-                  'semi' => ['Rahul (Semi)', 'SEMI'],
-                  'finished' => ['Vikram (Finished)', 'FINISHED'],
-                  'cashier' => ['Sneha (Cashier)', 'CASHIER'],
-                  'sales' => ['Raj (Sales)', 'SALES'],
-                  'dispatch' => ['Ravi (Dispatch)', 'DISPATCH'],
-                  'attendance' => ['Manager (Attendance)', 'ATTENDANCE'],
-              ];
-              $userName = $segments[$prefix][0] ?? 'User';
-              $userRole = $segments[$prefix][1] ?? strtoupper($prefix);
-          @endphp
-          <span class="user-name" id="current-user-name">{{ $userName }}</span>
-          <span class="role-badge" id="current-user-role">{{ $userRole }}</span>
-        </div>
-        <div>
-          <a href="{{ url($prefix . '/profile') }}" style="color:var(--text-muted);">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-          </a>
-        </div>
-      </header>
-
-      <div class="main-content" id="content-area">
-        @yield('content')
-      </div>
-
-      <!-- Bottom Navigation -->
+      <!-- Navigation (Sidebar on Desktop, Bottom on Mobile) -->
       <div class="bottom-nav" id="bottom-nav">
-        @php $currentRoute = request()->segment(2) ?? 'home'; @endphp
+        @php 
+          $prefix = request()->segment(1) ?? 'user';
+          $currentRoute = request()->segment(2) ?? 'home'; 
+        @endphp
         
+        <div class="nav-logo desktop-only">
+          <img src="https://pentapurefoods.com/wp-content/uploads/2025/11/logo.png" alt="Logo">
+          <span>Penta<span class="text-primary">Pure</span></span>
+        </div>
+
         <a href="{{ url($prefix . '/home') }}" class="nav-item {{ $currentRoute == 'home' ? 'active' : '' }}" style="text-decoration:none;">
           <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
           <span>Home</span>
@@ -90,6 +64,48 @@
           <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
           <span>Profile</span>
         </a>
+
+        <div class="nav-footer desktop-only">
+          <button class="logout-btn" onclick="app.logout()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            <span>Logout</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="content-wrapper">
+        <!-- Standard Header (Except Admin) -->
+        <header id="app-header">
+          <div class="user-info">
+            @php
+                $segments = [
+                    'raw' => ['Amit (Raw)', 'RAW'],
+                    'semi' => ['Rahul (Semi)', 'SEMI'],
+                    'finished' => ['Vikram (Finished)', 'FINISHED'],
+                    'cashier' => ['Sneha (Cashier)', 'CASHIER'],
+                    'sales' => ['Raj (Sales)', 'SALES'],
+                    'dispatch' => ['Ravi (Dispatch)', 'DISPATCH'],
+                    'attendance' => ['Manager (Attendance)', 'ATTENDANCE'],
+                ];
+                $userName = $segments[$prefix][0] ?? 'User';
+                $userRole = $segments[$prefix][1] ?? strtoupper($prefix);
+            @endphp
+            <span class="user-name" id="current-user-name">{{ $userName }}</span>
+            <span class="role-badge" id="current-user-role">{{ $userRole }}</span>
+          </div>
+          <div class="header-actions">
+            <a href="{{ url($prefix . '/profile') }}" class="profile-link">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </a>
+          </div>
+        </header>
+
+        <div class="main-content" id="content-area">
+          @yield('content')
+        </div>
       </div>
       
     </div>
