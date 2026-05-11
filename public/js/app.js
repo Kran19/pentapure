@@ -1066,19 +1066,19 @@ const app = {
       <h2 class="mb-1">Sales Dashboard</h2>
       ${this.renderRecentPOs()}
       <div class="dashboard-grid">
-        <div class="stat-card">
+        <div class="stat-card clickable-card" role="button" tabindex="0" onclick="app.navigate('history')">
           <div style="color:var(--primary-light)">Total Orders</div>
           <div class="stat-value">${totalOrders}</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card clickable-card" role="button" tabindex="0" onclick="app.navigate('history')">
           <div style="color:var(--warning)">Open Orders</div>
           <div class="stat-value">${openOrders}</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card clickable-card" role="button" tabindex="0" onclick="app.navigate('history')">
           <div style="color:var(--info)">Pending Dispatch</div>
           <div class="stat-value">${pendingDispatch}</div>
         </div>
-        <div class="stat-card" style="grid-column: 1 / -1; background:var(--dark-panel);">
+        <div class="stat-card clickable-card" role="button" tabindex="0" onclick="app.navigate('history')" style="grid-column: 1 / -1; background:var(--dark-panel);">
           <div style="color:var(--text-muted)">Total Sales Value</div>
           <div class="stat-value" style="color:var(--secondary)">₹${totalValue.toLocaleString()}</div>
         </div>
@@ -2586,11 +2586,11 @@ const app = {
           </div>
           
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1.5rem;">
-            <div class="card" style="padding:1rem; text-align:center;">
+            <div class="card clickable-card" role="button" tabindex="0" onclick="app.navigate('action')" style="padding:1rem; text-align:center;">
               <div style="font-size:0.8rem; color:var(--text-muted);">Present Today</div>
               <div style="font-size:1.5rem; font-weight:bold; color:var(--secondary);">${present} / ${total}</div>
             </div>
-            <div class="card" style="padding:1rem; text-align:center;">
+            <div class="card clickable-card" role="button" tabindex="0" onclick="app.navigate('history')" style="padding:1rem; text-align:center;">
               <div style="font-size:0.8rem; color:var(--text-muted);">Overtime (Hrs)</div>
               <div style="font-size:1.5rem; font-weight:bold; color:var(--warning);">${ot.toFixed(1)}</div>
             </div>

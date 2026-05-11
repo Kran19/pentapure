@@ -6,28 +6,28 @@
 
   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
     <!-- Total Workers -->
-    <div class="card" style="padding:1.5rem; text-align:center;">
+    <a href="{{ route('admin.attendance.workers') }}" class="card clickable-card" style="padding:1.5rem; text-align:center;">
       <div style="font-size:2rem; font-weight:bold; color:var(--primary-light);">{{ $totalWorkers }}</div>
       <div style="color:var(--text-muted); font-size:0.9rem; margin-top:0.5rem;">Total Employees</div>
-    </div>
+    </a>
 
     <!-- Present Today -->
-    <div class="card" style="padding:1.5rem; text-align:center;">
+    <a href="{{ route('admin.attendance.daily') }}" class="card clickable-card" style="padding:1.5rem; text-align:center;">
       <div style="font-size:2rem; font-weight:bold; color:var(--secondary);">{{ $presentToday }}</div>
       <div style="color:var(--text-muted); font-size:0.9rem; margin-top:0.5rem;">Present Today</div>
-    </div>
+    </a>
 
     <!-- Absent Today -->
-    <div class="card" style="padding:1.5rem; text-align:center;">
+    <a href="{{ route('admin.attendance.daily') }}" class="card clickable-card" style="padding:1.5rem; text-align:center;">
       <div style="font-size:2rem; font-weight:bold; color:var(--danger);">{{ $absentToday }}</div>
       <div style="color:var(--text-muted); font-size:0.9rem; margin-top:0.5rem;">Absent Today</div>
-    </div>
+    </a>
 
     <!-- Total OT -->
-    <div class="card" style="padding:1.5rem; text-align:center;">
+    <a href="{{ route('admin.attendance.reports') }}" class="card clickable-card" style="padding:1.5rem; text-align:center;">
       <div style="font-size:2rem; font-weight:bold; color:var(--info);">{{ number_format($totalOT, 1) }}</div>
       <div style="color:var(--text-muted); font-size:0.9rem; margin-top:0.5rem;">Total OT Hours Today</div>
-    </div>
+    </a>
   </div>
 
   <div style="margin-top:2rem;">
