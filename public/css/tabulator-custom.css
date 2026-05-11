@@ -167,3 +167,26 @@
 .tabulator .tabulator-cell select {
   font: inherit !important;
 }
+
+table thead th.sortable {
+  cursor: pointer !important;
+}
+
+table thead th.sortable.sorted-asc::after,
+table thead th.sortable.sorted-desc::after {
+  display: inline-block !important;
+  content: '' !important;
+  margin-left: 0.4rem !important;
+  width: 0 !important;
+  height: 0 !important;
+  border-left: 5px solid transparent !important;
+  border-right: 5px solid transparent !important;
+}
+
+table thead th.sortable.sorted-asc::after {
+  border-bottom: 6px solid currentColor !important;
+}
+
+table thead th.sortable.sorted-desc::after {
+  border-top: 6px solid currentColor !important;
+}
