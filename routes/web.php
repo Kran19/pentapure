@@ -20,8 +20,30 @@ Route::post('/notifications/unsubscribe', [\App\Http\Controllers\PushSubscriptio
 Route::get('/notifications/test', function() {
     $user = session('auth_user') ? \App\Models\User::find(session('auth_user')['id']) : auth()->user();
     if (!$user) return "Not logged in";
-    $user->notify(new \App\Notifications\UserActivityNotification('Test Notification', 'If you see this, notifications are working!'));
-    return "Notification sent to " . $user->name;
+    \Log::info('Triggering Test Notification for: ' . $user->name);
+    try {
+        $user->notify(new \App\Notifications\UserActivityNotification('Test Notification', 'If you see this, notifications are working!'));
+        \Log::info('Test Notification handoff successful');
+        return "Notification sent to " . $user->name;
+    } catch (\Exception $e) {
+        \Log::error('Test Notification failed: ' . $e->getMessage());
+        return "Error: " . $e->getMessage();
+    }
+});
+
+Route::get('/admin/debug-notifications', function() {
+    return view('admin.debug_notifications');
+});
+
+Route::get('/admin/debug-check-sub', function() {
+    $user = session('auth_user') ? \App\Models\User::find(session('auth_user')['id']) : auth()->user();
+    if (!$user) return response()->json(['exists' => false]);
+    $subs = $user->pushSubscriptions;
+    return response()->json([
+        'exists' => $subs->count() > 0,
+        'count' => $subs->count(),
+        'endpoint' => $subs->first() ? $subs->first()->endpoint : null
+    ]);
 });
 
 // ── Auth Routes (No Auth Required) ────────────────────────────────────────

@@ -68,6 +68,7 @@
       <a href="{{ url('admin/stock') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">📦 Live Stock</a>
       <a href="{{ url('admin/po') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">📋 Purchase Orders</a>
       <a href="{{ url('admin/logs') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">🕐 Activity Logs</a>
+      <a href="{{ url('admin/debug-notifications') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none; background: var(--danger); border:none;">🔔 Notifications Debug</a>
     </div>
   </div>
 

@@ -29,6 +29,19 @@ self.addEventListener('push', function (event) {
     );
 });
 
+self.addEventListener('message', function (event) {
+    if (event.data && event.data.type === 'SIMULATE_PUSH') {
+        const title = event.data.title || 'Simulated Notification';
+        const options = {
+            body: event.data.body || '',
+            icon: 'https://pentapurefoods.com/wp-content/uploads/2025/11/logo.png',
+            badge: 'https://pentapurefoods.com/wp-content/uploads/2025/11/logo.png',
+            data: { url: '/' }
+        };
+        self.registration.showNotification(title, options);
+    }
+});
+
 self.addEventListener('notificationclick', function (event) {
     event.notification.close();
     const url = event.notification.data.url;
