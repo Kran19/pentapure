@@ -27,6 +27,7 @@
   <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
   <script src="{{ asset('js/tabulator-init.js') }}"></script>
   <script src="{{ asset('js/table-sorter.js') }}"></script>
+  <script src="{{ asset('js/table-filter.js') }}"></script>
   <script src="{{ asset('js/mockData.js') }}"></script>
   <script src="{{ asset('js/app.js') }}"></script>
   <script>
