@@ -6,6 +6,7 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>Pentapure Factory Operations - Admin</title>
   <link rel="stylesheet" href="{{ asset('css/style.css') }}">
+  <link rel="stylesheet" href="{{ asset('css/tabulator-custom.css') }}">
   <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
@@ -120,6 +121,8 @@
     </div>
   </div>
 
+  <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
+  <script src="{{ asset('js/tabulator-init.js') }}"></script>
   <script src="{{ asset('js/mockData.js') }}"></script>
   <script src="{{ asset('js/app.js') }}"></script>
   <script>

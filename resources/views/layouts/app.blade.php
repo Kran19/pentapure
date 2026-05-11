@@ -6,6 +6,7 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>Pentapure Factory Operations</title>
   <link rel="stylesheet" href="{{ asset('css/style.css') }}">
+  <link rel="stylesheet" href="{{ asset('css/tabulator-custom.css') }}">
   <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
@@ -29,14 +30,14 @@
 
   <div class="app-container" id="app-root">
     <div id="main-app" class="app-main-layout">
-      
+
       <!-- Navigation (Sidebar on Desktop, Bottom on Mobile) -->
       <div class="bottom-nav" id="bottom-nav">
-        @php 
+        @php
           $prefix = request()->segment(1) ?? 'user';
-          $currentRoute = request()->segment(2) ?? 'home'; 
+          $currentRoute = request()->segment(2) ?? 'home';
         @endphp
-        
+
         <div class="nav-logo desktop-only">
           <img src="https://pentapurefoods.com/wp-content/uploads/2025/11/logo.png" alt="Logo">
           <span>Penta<span class="text-primary">Pure</span></span>
@@ -107,10 +108,12 @@
           @yield('content')
         </div>
       </div>
-      
+
     </div>
   </div>
 
+  <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
+  <script src="{{ asset('js/tabulator-init.js') }}"></script>
   <script src="{{ asset('js/mockData.js') }}"></script>
   <script src="{{ asset('js/app.js') }}"></script>
   <script>
@@ -137,7 +140,7 @@
       };
     })();
     @endif
-    
+
     // Inject Server Data
     const serverData = {!! json_encode($pageData ?? []) !!};
     Object.keys(serverData).forEach(k => DB.set(k, serverData[k]));

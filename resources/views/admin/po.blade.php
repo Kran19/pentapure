@@ -11,7 +11,7 @@
   @else
   <div class="card" style="padding:1.2rem;">
     <div class="table-container">
-      <table>
+      <table id="po-table">
         <thead>
           <tr>
             <th>Date</th>
@@ -83,9 +83,9 @@ function adminDeletePO(id) {
         method: 'DELETE',
         headers: { 'X-CSRF-TOKEN': csrfToken }
       }).then(r => r.json()).then(d => {
-        if (d.success) { 
+        if (d.success) {
           Swal.fire('Deleted!', d.message, 'success');
-          setTimeout(() => location.reload(), 800); 
+          setTimeout(() => location.reload(), 800);
         } else {
           Swal.fire('Error!', d.message || 'Error', 'error');
         }
@@ -122,5 +122,69 @@ function adminApprovePO(id, btn) {
     }
   });
 }
+
+function sortPOTable(columnIndex, order) {
+  const table = document.getElementById('po-table');
+  if (!table) return;
+  const tbody = table.tBodies[0];
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+
+  const getCellValue = (row) => {
+    const cell = row.children[columnIndex];
+    if (!cell) return '';
+    return cell.textContent.trim();
+  };
+
+  const parseValue = (value) => {
+    if (!value) return '';
+    const number = parseFloat(value.replace(/,/g, ''));
+    if (!Number.isNaN(number) && /[0-9]/.test(value)) {
+      return number;
+    }
+
+    const dateMatch = value.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
+    if (dateMatch) {
+      const [ , day, month, year ] = dateMatch;
+      const monthNames = {
+        Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+        Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+      };
+      const monthIndex = monthNames[month.substring(0,3)] ?? 0;
+      return new Date(year, monthIndex, Number(day)).getTime();
+    }
+
+    return value.toLowerCase();
+  };
+
+  rows.sort((a, b) => {
+    const aValue = parseValue(getCellValue(a));
+    const bValue = parseValue(getCellValue(b));
+
+    if (aValue < bValue) return order === 'asc' ? -1 : 1;
+    if (aValue > bValue) return order === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  rows.forEach((row) => tbody.appendChild(row));
+}
+
+(function() {
+  const table = document.getElementById('po-table');
+  if (!table) return;
+  const headers = Array.from(table.querySelectorAll('thead th'));
+  headers.forEach((th, index) => {
+    th.style.cursor = 'pointer';
+    th.dataset.sortOrder = 'asc';
+    th.addEventListener('click', () => {
+      const nextOrder = th.dataset.sortOrder === 'asc' ? 'desc' : 'asc';
+      sortPOTable(index, nextOrder);
+      headers.forEach(header => {
+        header.classList.remove('sorted-asc', 'sorted-desc');
+      });
+      th.classList.add(nextOrder === 'asc' ? 'sorted-asc' : 'sorted-desc');
+      th.dataset.sortOrder = nextOrder;
+    });
+  });
+})();
 </script>
 @endsection
