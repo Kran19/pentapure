@@ -99,14 +99,16 @@ class AttendanceController extends Controller
     public function workersJson()
     {
         $workers = Worker::with('department')->orderBy('name')->get()->map(fn($w) => [
-            'id'           => $w->id,
-            'name'         => $w->name,
-            'department'   => $w->department->name ?? '—',
-            'department_id'=> $w->department_id,
-            'role'         => $w->role,
-            'shift_type'   => $w->shift_type,
-            'daily_salary' => (float)$w->daily_salary,
-            'status'       => $w->status,
+            'id'             => $w->id,
+            'name'           => $w->name,
+            'department'     => $w->department->name ?? '—',
+            'department_id'  => $w->department_id,
+            'role'           => $w->role,
+            'shift_type'     => $w->shift_type,
+            'salary_type'    => $w->salary_type,
+            'salary_amount'  => (float)$w->salary_amount,
+            'daily_salary'   => (float)$w->daily_salary,
+            'status'         => $w->status,
         ]);
         return response()->json(['success' => true, 'workers' => $workers]);
     }
@@ -124,15 +126,25 @@ class AttendanceController extends Controller
             'department_id' => 'required|exists:departments,id',
             'role'          => 'nullable|string',
             'shift_type'    => 'required|in:DAY,NIGHT,CUSTOM',
-            'daily_salary'  => 'required|numeric|min:0',
+            'salary_type'   => 'required|in:DAILY,MONTHLY',
+            'salary_amount' => 'required|numeric|min:0',
             'status'        => 'required|in:ACTIVE,INACTIVE'
         ]);
 
+        $data = $request->all();
+        
+        // Auto-calculate daily_salary for backward compatibility and internal logic
+        if ($request->salary_type === 'MONTHLY') {
+            $data['daily_salary'] = $request->salary_amount / 30;
+        } else {
+            $data['daily_salary'] = $request->salary_amount;
+        }
+
         if ($request->worker_id) {
-            Worker::findOrFail($request->worker_id)->update($request->all());
+            Worker::findOrFail($request->worker_id)->update($data);
             return response()->json(['success' => true, 'message' => 'Worker updated']);
         }
-        Worker::create($request->all());
+        Worker::create($data);
         return response()->json(['success' => true, 'message' => 'Worker created']);
     }
 
@@ -267,24 +279,45 @@ class AttendanceController extends Controller
         $startDate = Carbon::parse($month)->startOfMonth()->toDateString();
         $endDate   = Carbon::parse($month)->endOfMonth()->toDateString();
 
-        $attendances = Attendance::with(['worker', 'worker.department'])
-            ->whereBetween('date', [$startDate, $endDate])->get();
+        // Get workers and their attendance for the month
+        $workers = Worker::with(['department', 'attendances' => function($q) use ($startDate, $endDate) {
+            $q->whereBetween('date', [$startDate, $endDate]);
+        }])->where('status', 'ACTIVE')->orderBy('name')->get();
 
         $reportData = [];
-        foreach ($attendances as $att) {
-            $wid = $att->worker_id;
-            if (!isset($reportData[$wid])) {
-                $reportData[$wid] = [
-                    'worker'     => $att->worker,
-                    'present'    => 0, 'absent' => 0, 'half' => 0,
-                    'total_ot'   => 0, 'total_wage' => 0
-                ];
+        foreach ($workers as $w) {
+            $present = 0; $absent = 0; $half = 0;
+            $totalOT = 0; $totalWage = 0;
+
+            foreach ($w->attendances as $att) {
+                if ($att->status == 'PRESENT')       $present++;
+                elseif ($att->status == 'ABSENT')    $absent++;
+                elseif ($att->status == 'HALF_DAY')  $half++;
+                $totalOT += $att->overtime_hours;
+
+                if ($w->salary_type === 'DAILY') {
+                    $totalWage += $att->calculated_wage;
+                } else {
+                    // For Monthly, we only sum the OT portion here. 
+                    // Base salary is added once at the end.
+                    $hourly = ($w->daily_salary ?? 0) / 9;
+                    $otPay = $att->overtime_hours * ($hourly * 1.5);
+                    $totalWage += $otPay;
+                }
             }
-            if ($att->status == 'PRESENT')       $reportData[$wid]['present']++;
-            elseif ($att->status == 'ABSENT')    $reportData[$wid]['absent']++;
-            elseif ($att->status == 'HALF_DAY')  $reportData[$wid]['half']++;
-            $reportData[$wid]['total_ot']   += $att->overtime_hours;
-            $reportData[$wid]['total_wage'] += $att->calculated_wage;
+
+            if ($w->salary_type === 'MONTHLY') {
+                $totalWage += $w->salary_amount;
+            }
+
+            $reportData[$w->id] = [
+                'worker'     => $w,
+                'present'    => $present,
+                'absent'     => $absent,
+                'half'       => $half,
+                'total_ot'   => $totalOT,
+                'total_wage' => $totalWage
+            ];
         }
 
         return view('attendance.reports', [
@@ -306,10 +339,33 @@ class AttendanceController extends Controller
             ->get()
             ->keyBy('date');
 
+        // Calculate totals for the report
+        $totalOT = 0;
+        $totalWage = 0;
+        $presentDays = 0;
+
+        foreach ($attendances as $att) {
+            $totalOT += $att->overtime_hours;
+            if ($worker->salary_type === 'DAILY') {
+                $totalWage += $att->calculated_wage;
+            } else {
+                // For Monthly, we only sum the OT part for the "totalW" variable used in loop
+                $hourly = ($worker->daily_salary ?? 0) / 9;
+                $totalWage += ($att->overtime_hours * ($hourly * 1.5));
+            }
+            if ($att->status === 'PRESENT') $presentDays++;
+        }
+
+        if ($worker->salary_type === 'MONTHLY') {
+            $totalWage += $worker->salary_amount;
+        }
+
         return view('attendance.worker_report', [
             'worker'      => $worker,
             'attendances' => $attendances,
             'month'       => $month,
+            'totalWage'   => $totalWage,
+            'totalOT'     => $totalOT,
             'layout'      => $this->authUser()['role'] === 'ADMIN' ? 'layouts.admin' : 'layouts.app'
         ]);
     }

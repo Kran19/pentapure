@@ -292,32 +292,41 @@ const app = {
 
   // --- DATA HELPERS ---
   getAggregatedStock(stockType) {
-    const items = DB.get(stockType);
-    const products = DB.get('products');
+    const items = DB.get(stockType) || [];
+    const products = DB.get('products') || [];
     const rmList = DB.get('rawMaterialsList') || [];
     const agg = {};
     const gradeMap = {};
+    const boxesMap = {};
+    const weightMap = {};
 
     items.forEach(i => {
-      // Aggregate by product ID AND grade
-      const key = `${i.productId}_${i.grade || 'NONE'}`;
+      const wpb = Number(i.weight_per_box) || 0;
+      // For finished goods, we differentiate by weight per box too
+      const key = `${i.productId}_${i.grade || 'NONE'}${wpb > 0 ? '_'+wpb : ''}`;
+      
       agg[key] = (agg[key] || 0) + Number(i.quantity);
       gradeMap[key] = i.grade || 'NONE';
+      boxesMap[key] = (boxesMap[key] || 0) + (Number(i.boxes) || 0);
+      weightMap[key] = wpb;
     });
 
     return Object.keys(agg).map(key => {
-      const [id, _] = key.split('_');
+      const parts = key.split('_');
+      const id = parts[0];
       let p = rmList.find(prod => prod.id == id);
       if (!p) p = products.find(prod => prod.id == id);
       
-      if (!p) return { id, name: 'Unknown Product', quantity: agg[key], unit: '?', grade: gradeMap[key] };
+      if (!p) return { id, name: 'Unknown Product', quantity: agg[key], unit: '?', grade: gradeMap[key], boxes: boxesMap[key], weightPerBox: weightMap[key] };
       
       return { 
         id: p.id, 
         name: p.name, 
         quantity: agg[key], 
         unit: p.unit || 'kg', 
-        grade: gradeMap[key] !== 'NONE' ? gradeMap[key] : (p.grade || 'NONE') 
+        grade: gradeMap[key] !== 'NONE' ? gradeMap[key] : (p.grade || 'NONE'),
+        boxes: boxesMap[key],
+        weightPerBox: weightMap[key]
       };
     });
   },
@@ -664,6 +673,45 @@ const app = {
         <button class="btn btn-sm btn-secondary" style="width:auto;" onclick="app.navigate('po')">${this.t('Purchase Orders')}</button>
       </div>
       ${this.renderRecentPOs()}
+    `;
+
+    if (outputType === 'SEMI') {
+      const rawStock = this.getAggregatedStock('rawStock').filter(s => s.quantity > 0);
+      html += `
+        <div class="card mb-2" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:1rem;">
+          <div class="card-title" style="font-size:0.85rem; color:var(--primary-light); display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--secondary);"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+              Available Raw Materials
+            </div>
+            <div style="font-size:0.7rem; color:var(--text-muted); font-weight:normal;">Scroll &rarr;</div>
+          </div>
+          <div style="display:flex; overflow-x:auto; gap:12px; padding-bottom:10px; scrollbar-width:none; -ms-overflow-style:none;">
+            <style>div::-webkit-scrollbar { display: none; }</style>
+            ${rawStock.map(s => {
+              const lowStock = s.quantity < 500;
+              return `
+                <div class="animation-fadeIn" style="flex:0 0 200px; background:rgba(255,255,255,0.04); padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.05); position:relative; overflow:hidden;">
+                  <div style="font-size:0.8rem; font-weight:700; color:var(--text-main); margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</div>
+                  <div style="font-size:0.65rem; color:var(--text-muted); margin-bottom:6px;">Grade: <span class="badge badge-info" style="font-size:0.55rem; padding:2px 5px;">${s.grade}</span></div>
+                  <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                    <div style="font-weight:800; color:${lowStock ? 'var(--warning)' : 'var(--secondary)'}; font-size:1rem;">
+                      ${s.quantity.toLocaleString()} <span style="font-size:0.7rem; font-weight:400; color:var(--text-muted);">${s.unit}</span>
+                    </div>
+                  </div>
+                  ${lowStock ? `<div style="font-size:0.55rem; color:var(--warning); margin-top:5px; display:flex; align-items:center; gap:2px;"><span style="font-size:0.7rem;">⚠</span> Low</div>` : ''}
+                  <div style="position:absolute; top:0; right:0; width:3px; height:100%; background:${lowStock ? 'var(--warning)' : 'var(--secondary)'}; opacity:0.6;"></div>
+                </div>
+              `;
+            }).join('') || `<div style="width:100%; padding:20px; text-align:center; background:rgba(0,0,0,0.1); border-radius:10px;">
+                <div style="color:var(--text-muted); font-size:0.85rem;">No raw material stock available.</div>
+              </div>`}
+          </div>
+        </div>
+      `;
+    }
+
+    html += `
       <div class="tabs">
         <div class="tab-btn ${tab==='stock'?'active':''}" onclick="window.prodHomeTab='stock'; window.currentPage=1; app.refreshCurrentView()">${this.t('Stock')}</div>
         <div class="tab-btn ${tab==='inward'?'active':''}" onclick="window.prodHomeTab='inward'; window.currentPage=1; app.refreshCurrentView()">${this.t('Inward')}</div>
@@ -678,7 +726,10 @@ const app = {
         <div class="list-item" style="margin-bottom: 0;">
           <div class="list-item-content">
             <div class="list-item-title">${s.name}</div>
-            <div class="list-item-meta">Grade: ${s.grade}</div>
+            <div class="list-item-meta">
+              Grade: ${s.grade}
+              ${s.boxes > 0 ? `<br><span style="font-size:0.75rem; color:var(--text-accent); font-weight:500;">${s.boxes} Boxes (${s.weightPerBox}kg each)</span>` : ''}
+            </div>
           </div>
           <div class="list-item-right">
             <div style="font-weight:bold; font-size:1.1rem; color:var(--text-main);">${s.quantity.toLocaleString()}</div>
@@ -764,9 +815,20 @@ const app = {
             <input type="number" id="finished-in-qty" placeholder="Quantity consumed">
           </div>
           
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;" class="mt-1">
+            <div class="form-group">
+              <label>Number of Boxes</label>
+              <input type="number" id="finished-boxes" placeholder="e.g. 10" oninput="app.calculateFinishedTotal()">
+            </div>
+            <div class="form-group">
+              <label>Weight Per Box (kg)</label>
+              <input type="number" id="finished-weight-per-box" placeholder="e.g. 25" oninput="app.calculateFinishedTotal()">
+            </div>
+          </div>
+          
           <div class="form-group mt-1">
-            <label>Expected Output Quantity (kg)</label>
-            <input type="number" id="finished-out-qty" placeholder="Quantity produced">
+            <label>Total Expected Output (kg)</label>
+            <input type="number" id="finished-out-qty" placeholder="Calculated total" readonly style="background:rgba(255,255,255,0.05); font-weight:bold; color:var(--secondary);">
           </div>
           
           <button class="btn mt-2" onclick="app.submitFinishedProduction()">
@@ -831,14 +893,25 @@ const app = {
     else hint.style.color = 'var(--secondary)';
   },
 
+  calculateFinishedTotal() {
+    const boxes = Number(document.getElementById('finished-boxes').value) || 0;
+    const weight = Number(document.getElementById('finished-weight-per-box').value) || 0;
+    const total = boxes * weight;
+    document.getElementById('finished-out-qty').value = total > 0 ? total.toFixed(3) : '';
+  },
+
   submitFinishedProduction() {
     const val = document.getElementById('finished-input-id').value;
     const inQty = Number(document.getElementById('finished-in-qty').value);
+    const boxes = Number(document.getElementById('finished-boxes').value);
+    const weightPerBox = Number(document.getElementById('finished-weight-per-box').value);
     const outQty = Number(document.getElementById('finished-out-qty').value);
     
     if (!val) return this.toast('Select a semi-finished material', 'error');
     if (!inQty || inQty <= 0) return this.toast('Enter valid consumed quantity', 'error');
-    if (!outQty || outQty <= 0) return this.toast('Enter valid output quantity', 'error');
+    if (!boxes || boxes <= 0) return this.toast('Enter valid number of boxes', 'error');
+    if (!weightPerBox || weightPerBox <= 0) return this.toast('Enter valid weight per box', 'error');
+    if (!outQty || outQty <= 0) return this.toast('Output quantity must be calculated', 'error');
 
     const [id, grade] = val.split('|');
     const selectEl = document.getElementById('finished-input-id');
@@ -851,6 +924,8 @@ const app = {
       output_product_id: id,
       output_grade:      grade,
       output_qty:        outQty,
+      boxes:             boxes,
+      weight_per_box:    weightPerBox,
       inputs: [
         { product_id: id, grade: grade, quantity: inQty }
       ]
@@ -1078,6 +1153,30 @@ const app = {
           <div style="color:var(--info)">Pending Dispatch</div>
           <div class="stat-value">${pendingDispatch}</div>
         </div>
+        
+        <!-- Type Breakdown -->
+        <div class="stat-card" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);">
+          <div style="color:var(--secondary); font-size:0.8rem;">Raw Sales</div>
+          <div style="font-size:1.2rem; font-weight:700;">${orders.filter(o => o.products && o.products.some(p => {
+            const pr = DB.get('products').find(x => x.id == p.productId);
+            return pr && pr.type === 'RAW';
+          })).length}</div>
+        </div>
+        <div class="stat-card" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);">
+          <div style="color:var(--warning); font-size:0.8rem;">Semi Sales</div>
+          <div style="font-size:1.2rem; font-weight:700;">${orders.filter(o => o.products && o.products.some(p => {
+            const pr = DB.get('products').find(x => x.id == p.productId);
+            return pr && pr.type === 'SEMI';
+          })).length}</div>
+        </div>
+        <div class="stat-card" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);">
+          <div style="color:var(--primary-light); font-size:0.8rem;">Finished Sales</div>
+          <div style="font-size:1.2rem; font-weight:700;">${orders.filter(o => o.products && o.products.some(p => {
+            const pr = DB.get('products').find(x => x.id == p.productId);
+            return pr && pr.type === 'FINISHED';
+          })).length}</div>
+        </div>
+
         <div class="stat-card clickable-card" role="button" tabindex="0" onclick="app.navigate('history')" style="grid-column: 1 / -1; background:var(--dark-panel);">
           <div style="color:var(--text-muted)">Total Sales Value</div>
           <div class="stat-value" style="color:var(--secondary)">₹${totalValue.toLocaleString()}</div>
@@ -1114,7 +1213,7 @@ const app = {
     if(tab === 'order') {
       const companies = DB.get('companies');
       const transports = DB.get('transportCompanies');
-      window.currentFinProds = DB.get('products').filter(p => p.type !== 'RAW');
+      window.currentFinProds = [];
       
       container.innerHTML = `
         <div class="card animation-fadeIn">
@@ -1126,10 +1225,22 @@ const app = {
             </select>
             <div id="company-details" style="font-size:0.8rem; color:var(--text-muted); margin-top:8px; display:none; background:rgba(0,0,0,0.2); padding:8px; border-radius:6px;"></div>
           </div>
+
+          <div class="form-group">
+            <label>Order Type</label>
+            <select id="order-type" onchange="app.onOrderTypeSelect(this.value)">
+              <option value="" disabled selected>-- Select Type --</option>
+              <option value="RAW">Raw Material Sales</option>
+              <option value="SEMI">Semi-Finished Sales</option>
+              <option value="FINISHED">Finished Goods Sales</option>
+            </select>
+          </div>
           
-          <label style="display:block; margin-top:1.5rem; font-size:0.85rem; color:var(--text-muted); margin-bottom:0.4rem;">Products</label>
-          <div id="order-products"></div>
-          <button class="btn btn-sm btn-secondary mb-1" onclick="app.addOrderProductRow()" style="padding:0.6rem;">+ Add Product</button>
+          <div id="order-products-section" style="display:none;">
+            <label style="display:block; margin-top:1.5rem; font-size:0.85rem; color:var(--text-muted); margin-bottom:0.4rem;">Products</label>
+            <div id="order-products"></div>
+            <button class="btn btn-sm btn-secondary mb-1" onclick="app.addOrderProductRow()" style="padding:0.6rem;">+ Add Product</button>
+          </div>
           
           <div class="form-group mt-1">
             <label>Transport Partner</label>
@@ -1147,7 +1258,6 @@ const app = {
           <button class="btn mt-1" onclick="app.submitOrder()" style="padding:1rem; font-size:1.1rem;">Generate Order</button>
         </div>
       `;
-      this.addOrderProductRow();
     } else if (tab === 'company') {
       container.innerHTML = `
         <div class="card animation-fadeIn">
@@ -1207,6 +1317,21 @@ const app = {
     }
   },
 
+  onOrderTypeSelect(type) {
+    window.currentOrderType = type;
+    window.currentFinProds = (DB.get('products') || []).filter(p => p.type === type);
+    
+    const section = document.getElementById('order-products-section');
+    section.style.display = 'block';
+    section.classList.add('animation-fadeIn');
+    
+    const prodList = document.getElementById('order-products');
+    if(prodList.children.length > 0) {
+      prodList.innerHTML = '';
+    }
+    this.addOrderProductRow();
+  },
+
   addOrderProductRow() {
     const finProds = window.currentFinProds || [];
     const allGrades = DB.get('grades');
@@ -1216,7 +1341,7 @@ const app = {
       <div class="form-group" style="flex:1 1 100%;">
         <select class="o-prod-id" style="width:100%;">
           <option value="" disabled selected>Product</option>
-          ${finProds.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+          ${finProds.map(p => `<option value="${p.id}">${p.name} (${p.type})</option>`).join('')}
         </select>
       </div>
       <div class="form-group" style="flex:1 1 30%;">
@@ -1391,7 +1516,7 @@ const app = {
         <div id="order-preview" style="display:none; background:rgba(0,0,0,0.1); padding:1rem; border-radius:8px; margin-bottom:1.5rem; font-size:0.9rem;"></div>
         
         <div class="form-group mt-1">
-          <label>Upload Lorry Receipt (LR) Copy</label>
+          <label>Upload Lorry Receipt (LR) Copy <span style="font-weight:normal; color:var(--text-muted); font-size:0.75rem;">(Optional - Upload Later Allowed)</span></label>
           <div class="image-upload-wrapper" onclick="document.getElementById('dispatch-lr').click()">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-muted); margin-bottom:10px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
             <div style="font-size:0.9rem; color:var(--text-muted);">Click to upload LR Image</div>
@@ -1488,7 +1613,6 @@ const app = {
   submitDispatch() {
     const orderId = document.getElementById('dispatch-order').value;
     if (!orderId) return this.toast('Select an order', 'error');
-    if (!window.currentLRImage) return this.toast('Please upload LR copy', 'error');
 
     fetch('/dispatch/action', {
       method: 'POST',
@@ -1510,6 +1634,31 @@ const app = {
       }
     })
     .catch(() => this.toast('Network error.', 'error'));
+  },
+
+  handleLateLRUpload(event, logId, idx) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const payload = { log_id: logId, lr_image: reader.result };
+      fetch('/dispatch/update-lr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify(payload)
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          this.toast(d.message);
+          // Update local data
+          const log = window._historyLogs[idx];
+          if (log) log.lrImage = d.lr_url;
+          this.openDispatchDrawer(idx);
+        } else {
+          this.toast(d.message, 'error');
+        }
+      });
+    };
+    if (event.target.files[0]) reader.readAsDataURL(event.target.files[0]);
   },
 
   // --- ROLE: CASHIER ---
@@ -1669,7 +1818,7 @@ const app = {
 
         return `<div class="list-item" onclick="app.openProductionDrawer(${idx})" style="cursor:pointer;">
           <div class="list-item-content">
-            <div class="list-item-title">Produced ${l.outputQty || 0}kg ${pName} (${l.outputGrade})</div>
+            <div class="list-item-title">Produced ${l.outputQty || 0}kg ${pName} (${l.outputGrade}) ${l.boxes ? `\u00b7 ${l.boxes} Boxes` : ''}</div>
             <div class="list-item-meta">
               <div style="color:var(--secondary); margin-bottom:4px;">${dateStr}</div>
               <div style="font-size:0.75rem; color:var(--text-muted); line-height:1.2;">Using: ${inputList}</div>
@@ -1683,6 +1832,16 @@ const app = {
       const companies = (DB.get('companies') || []).filter(c=>c.date).map(c => ({...c, _type: 'COMPANY', date: c.date}));
       const transports = (DB.get('transportCompanies') || []).filter(t=>t.date).map(t => ({...t, _type: 'TRANSPORT', date: t.date}));
       logs = [...orders, ...companies, ...transports].sort((a,b) => new Date(b.date) - new Date(a.date));
+      
+      if (window.salesCategoryFilter) {
+        logs = logs.filter(item => {
+          if (item._type !== 'ORDER') return false;
+          return item.products && item.products.some(p => {
+            const prod = DB.get('products').find(x => x.id == p.productId);
+            return prod && prod.type === window.salesCategoryFilter;
+          });
+        });
+      }
       window._historyLogs = logs;
       renderFn = (item, idx) => {
         if (item._type === 'ORDER') {
@@ -1716,10 +1875,11 @@ const app = {
       logs = (DB.get('dispatchLogs') || []).sort((a,b)=>new Date(b.date)-new Date(a.date));
       window._historyLogs = logs;
       renderFn = (d, idx) => {
+        const lrStatus = d.lrImage ? '<span class="badge badge-done" style="font-size:0.6rem;">LR UPLOADED</span>' : '<span class="badge badge-pending" style="font-size:0.6rem;">LR PENDING</span>';
         return `<div class="list-item" onclick="app.openDispatchDrawer(${idx})" style="cursor:pointer;">
           <div class="list-item-content">
             <div class="list-item-title">Order #${String(d.orderId || '').toUpperCase()}</div>
-            <div class="list-item-meta">${new Date(d.date).toLocaleString()}</div>
+            <div class="list-item-meta">${lrStatus} · ${new Date(d.date).toLocaleString()}</div>
           </div>
         </div>`;
       };
@@ -1748,8 +1908,20 @@ const app = {
       </div>
       
       ${this.renderDateFilterControls("app.refreshCurrentView")}
-      <div class="form-group">
-        <input type="text" placeholder="${this.t('Search history...')}" value="${window.historySearchQuery||''}" oninput="window.historySearchQuery=this.value; app.refreshCurrentView()">
+      <div style="display:flex; gap:10px; margin-bottom:1rem;">
+        <div class="form-group" style="flex:2; margin:0;">
+          <input type="text" placeholder="${this.t('Search history...')}" value="${window.historySearchQuery||''}" oninput="window.historySearchQuery=this.value; app.refreshCurrentView()">
+        </div>
+        ${role === 'SALES' ? `
+          <div class="form-group" style="flex:1; margin:0;">
+            <select onchange="window.salesCategoryFilter=this.value; window.currentPage=1; app.refreshCurrentView()" style="padding:0.7rem;">
+              <option value="">All Types</option>
+              <option value="RAW" ${window.salesCategoryFilter==='RAW'?'selected':''}>Raw</option>
+              <option value="SEMI" ${window.salesCategoryFilter==='SEMI'?'selected':''}>Semi</option>
+              <option value="FINISHED" ${window.salesCategoryFilter==='FINISHED'?'selected':''}>Finished</option>
+            </select>
+          </div>
+        ` : ''}
       </div>
       
       <div class="responsive-grid">
@@ -1810,8 +1982,12 @@ const app = {
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem;">
         <div><div style="color:var(--text-muted); font-size:0.8rem;">Product</div><div style="font-weight:600;">${pName}</div></div>
         <div><div style="color:var(--text-muted); font-size:0.8rem;">Grade</div><div>${l.outputGrade}</div></div>
-        <div><div style="color:var(--text-muted); font-size:0.8rem;">Quantity</div><div style="font-weight:700; font-size:1.2rem; color:var(--secondary);">${l.outputQty} kg</div></div>
+        <div><div style="color:var(--text-muted); font-size:0.8rem;">Total Quantity</div><div style="font-weight:700; font-size:1.2rem; color:var(--secondary);">${l.outputQty} kg</div></div>
         <div><div style="color:var(--text-muted); font-size:0.8rem;">Date</div><div>${new Date(l.date).toLocaleString()}</div></div>
+        ${l.boxes ? `
+          <div><div style="color:var(--text-muted); font-size:0.8rem;">No. of Boxes</div><div style="font-weight:600;">${l.boxes}</div></div>
+          <div><div style="color:var(--text-muted); font-size:0.8rem;">Weight/Box</div><div style="font-weight:600;">${l.weightPerBox} kg</div></div>
+        ` : ''}
       </div>
       <div style="margin-top:1.5rem; margin-bottom:1rem;">
         <div style="font-size:0.9rem; font-weight:600; color:var(--primary-light); margin-bottom:0.5rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:4px;">Consumed Materials</div>
@@ -1844,7 +2020,9 @@ const app = {
     const rmList = DB.get('rawMaterialsList') || [];
     
     const prodRows = (o.items || []).map(p => {
-      return `<tr><td>${p.productName || 'Unknown'}</td><td>${p.grade}</td><td>${p.quantity} kg</td><td>\u20b9${(p.price||0).toLocaleString()}</td></tr>`;
+      const prod = DB.get('products').find(x => x.id == p.productId);
+      const typeStr = prod ? ` <span style="font-size:0.7rem; color:var(--text-muted);">(${prod.type})</span>` : '';
+      return `<tr><td>${p.productName || 'Unknown'}${typeStr}</td><td>${p.grade}</td><td>${p.quantity} kg</td><td>\u20b9${(p.price||0).toLocaleString()}</td></tr>`;
     }).join('');
     
     this.openDrawer(`
@@ -1917,8 +2095,21 @@ const app = {
         <div><div style="color:var(--text-muted); font-size:0.8rem;">Transport</div><div>${trans.name||'N/A'}</div></div>
         <div><div style="color:var(--text-muted); font-size:0.8rem;">Dispatched By</div><div>${user.name||'System'}</div></div>
         <div><div style="color:var(--text-muted); font-size:0.8rem;">Order Value</div><div style="font-weight:700; color:var(--secondary);">\u20b9${(order.total||0).toLocaleString()}</div></div>
+        <div><div style="color:var(--text-muted); font-size:0.8rem;">LR Status</div><div>${d.lrImage ? '<span class="badge badge-done">UPLOADED</span>' : '<span class="badge badge-pending">PENDING</span>'}</div></div>
       </div>
-      ${d.lrImage ? '<div style="margin-bottom:1rem;"><div style="color:var(--text-muted); font-size:0.8rem; margin-bottom:0.5rem;">LR Copy</div><img src="'+d.lrImage+'" style="width:100%; border-radius:10px; max-height:200px; object-fit:contain;"></div>' : ''}
+      ${d.lrImage ? `
+        <div style="margin-bottom:1rem;">
+          <div style="color:var(--text-muted); font-size:0.8rem; margin-bottom:0.5rem;">LR Copy</div>
+          <img src="${d.lrImage}" style="width:100%; border-radius:10px; max-height:200px; object-fit:contain; cursor:pointer;" onclick="app.viewImage(this.src)">
+          <button class="btn btn-sm btn-secondary mt-1" style="width:100%; font-size:0.7rem;" onclick="document.getElementById('late-lr-input').click()">Update LR Copy</button>
+        </div>
+      ` : `
+        <div style="margin-bottom:1rem; padding:1.5rem; background:rgba(255,165,0,0.05); border:1px dashed rgba(255,165,0,0.3); border-radius:12px; text-align:center;">
+          <div style="color:var(--warning); font-weight:600; font-size:0.9rem; margin-bottom:10px;">LR Copy Pending</div>
+          <button class="btn btn-secondary" style="width:100%;" onclick="document.getElementById('late-lr-input').click()">Upload LR Now</button>
+        </div>
+      `}
+      <input type="file" id="late-lr-input" accept="image/*" style="display:none;" onchange="app.handleLateLRUpload(event, ${d.id}, ${idx})">
       <button class="btn btn-secondary" onclick="app.closeDrawer()" style="width:100%;">Close</button>
     `);
   },

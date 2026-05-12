@@ -16,9 +16,15 @@ class SemiController extends Controller
 
     private function getLiveStock(string $stage): array
     {
+        $userRole = $this->authUser()['role'];
         return DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
             ->where('stocks.stage', $stage)
+            ->where(function($q) use ($userRole) {
+                if ($userRole === 'ADMIN') return $q;
+                $q->whereNull('products.allowed_roles')
+                  ->orWhereJsonContains('products.allowed_roles', $userRole);
+            })
             ->groupBy('stocks.product_id', 'stocks.grade', 'products.name', 'products.unit', 'products.id')
             ->selectRaw("
                 stocks.product_id as productId,
@@ -68,10 +74,11 @@ class SemiController extends Controller
 
         $pageData = [
             'semiStock'      => $semiStock,
+            'rawStock'       => $this->getLiveStock('RAW'),
             'semiLedger'     => $ledger,
             'purchaseOrders' => $myPOs,
-            'rawMaterialsList' => Product::raw()->active()->get(['id', 'name', 'unit']),
-            'products'       => Product::with('grades')->get()->map(fn($p)=>[
+            'rawMaterialsList' => Product::raw()->active()->visibleTo($user['role'])->get(['id', 'name', 'unit']),
+            'products'       => Product::with('grades')->active()->visibleTo($user['role'])->get()->map(fn($p)=>[
                 'id'=>$p->id,'name'=>$p->name,'type'=>$p->type,'unit'=>$p->unit,
                 'gradeNames'=>$p->grades->pluck('name')
             ]),
@@ -87,7 +94,7 @@ class SemiController extends Controller
         $pageData = [
             'rawStock' => $rawStock,
             'grades'   => $grades,
-            'products' => Product::with('grades')->get()->map(fn($p)=>[
+            'products' => Product::with('grades')->active()->visibleTo($this->authUser()['role'])->get()->map(fn($p)=>[
                 'id'=>$p->id,'name'=>$p->name,'type'=>$p->type,'unit'=>$p->unit,
                 'gradeNames'=>$p->grades->pluck('name')
             ]),
@@ -109,6 +116,18 @@ class SemiController extends Controller
         ]);
 
         $user = $this->authUser();
+
+        // Security check: Ensure products are visible to this user role
+        $visibleProductIds = Product::visibleTo($user['role'])->pluck('id')->toArray();
+        if (!in_array($request->output_product_id, $visibleProductIds)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized product access (Output).'], 403);
+        }
+
+        foreach ($request->inputs as $inp) {
+            if (!in_array($inp['product_id'], $visibleProductIds)) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized product access (Input).'], 403);
+            }
+        }
 
         // Validate stock availability for all inputs BEFORE saving anything
         foreach ($request->inputs as $inp) {

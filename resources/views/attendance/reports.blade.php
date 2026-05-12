@@ -27,7 +27,7 @@
           <tr>
             <th>Employee Name</th>
             <th>Department</th>
-            <th>Base Salary/Day</th>
+            <th>Salary</th>
             <th>Present</th>
             <th>Half Days</th>
             <th>Absent</th>
@@ -56,7 +56,10 @@
               <tr class="report-row">
                 <td style="padding-left:1.5rem; font-weight:600;">{{ $data['worker']->name }}</td>
                 <td>{{ $data['worker']->department->name }}</td>
-                <td>₹{{ number_format($data['worker']->daily_salary, 2) }}</td>
+                <td>
+                    <div style="font-weight:bold;">₹{{ number_format($data['worker']->salary_amount, 0) }}</div>
+                    <div style="font-size:0.65rem; opacity:0.7;">{{ $data['worker']->salary_type }}</div>
+                </td>
                 <td style="color:var(--secondary); font-weight:bold;">{{ $data['present'] }}</td>
                 <td style="color:var(--info);">{{ $data['half'] }}</td>
                 <td style="color:var(--danger);">{{ $data['absent'] }}</td>

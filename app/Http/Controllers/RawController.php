@@ -39,7 +39,7 @@ class RawController extends Controller
                 'unit'             => $s->product?->unit ?? 'kg',
             ]);
 
-        $rawMaterials = Product::raw()->active()->get(['id', 'name', 'unit', 'image_url']);
+        $rawMaterials = Product::raw()->active()->visibleTo($user['role'])->get(['id', 'name', 'unit', 'image_url']);
 
         $myPOs = PurchaseOrder::with('product')
             ->where('user_id', $user['id'])
@@ -70,7 +70,7 @@ class RawController extends Controller
     // ── ACTION: Inward form ────────────────────────────────────────────────
     public function action()
     {
-        $rawMaterials = Product::raw()->active()->get(['id', 'name', 'unit', 'image_url']);
+        $rawMaterials = Product::raw()->active()->visibleTo($this->authUser()['role'])->get(['id', 'name', 'unit', 'image_url']);
         $pageData = ['rawMaterialsList' => $rawMaterials];
         return view('raw.action', compact('pageData'));
     }
@@ -85,6 +85,11 @@ class RawController extends Controller
         ]);
 
         $user = $this->authUser();
+
+        // Security check
+        if (!Product::visibleTo($user['role'])->where('id', $request->product_id)->exists()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized product access.'], 403);
+        }
 
         Stock::create([
             'product_id'       => $request->product_id,
@@ -112,6 +117,11 @@ class RawController extends Controller
         ]);
 
         $user = $this->authUser();
+
+        // Security check
+        if (!Product::visibleTo($user['role'])->where('id', $request->product_id)->exists()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized product access.'], 403);
+        }
 
         PurchaseOrder::create([
             'user_id'    => $user['id'],
@@ -160,9 +170,15 @@ class RawController extends Controller
     // ── HELPER: Compute live net stock per product+grade ───────────────────
     private function getLiveStock(string $stage): array
     {
+        $userRole = $this->authUser()['role'];
         return DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
             ->where('stocks.stage', $stage)
+            ->where(function($q) use ($userRole) {
+                if ($userRole === 'ADMIN') return $q;
+                $q->whereNull('products.allowed_roles')
+                  ->orWhereJsonContains('products.allowed_roles', $userRole);
+            })
             ->groupBy('stocks.product_id', 'stocks.grade', 'products.name', 'products.unit')
             ->selectRaw("
                 stocks.product_id as productId,

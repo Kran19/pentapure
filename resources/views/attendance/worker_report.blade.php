@@ -34,8 +34,8 @@
         <div style="font-weight:bold; font-size:0.95rem;">{{ strtoupper(\Carbon\Carbon::parse($month)->format('F Y')) }}</div>
       </div>
       <div class="info-box" style="background:#fff8f8;">
-        <div style="font-size:0.6rem; font-weight:bold; color:#666;">DAILY RATE (₹)</div>
-        <div style="font-weight:bold; font-size:0.95rem; color:#d00;">{{ number_format($worker->daily_salary, 0) }} / DAY</div>
+        <div style="font-size:0.6rem; font-weight:bold; color:#666;">{{ $worker->salary_type === 'MONTHLY' ? 'MONTHLY SALARY' : 'DAILY RATE' }} (₹)</div>
+        <div style="font-weight:bold; font-size:0.95rem; color:#d00;">₹{{ number_format($worker->salary_amount, 0) }} / {{ $worker->salary_type === 'MONTHLY' ? 'MONTH' : 'DAY' }}</div>
       </div>
     </div>
 
@@ -61,15 +61,24 @@
             $endDate = \Carbon\Carbon::parse($month)->endOfMonth();
             $totalW = 0;
             $totalH = 0;
-            $totalOT = 0;
+            // $totalOT = 0; // Using pre-calculated $totalOT from controller
           @endphp
           @for($date = $startDate; $date->lte($endDate); $date->addDay())
             @php 
                 $dStr = $date->toDateString();
                 $att = $attendances->get($dStr);
-                $totalW += $att?->calculated_wage ?? 0;
                 $totalH += $att?->total_hours ?? 0;
-                $totalOT += $att?->overtime_hours ?? 0;
+                // For daily wages in table, we show the actual wage for that day
+                $displayWage = 0;
+                if ($att) {
+                    if ($worker->salary_type === 'DAILY') {
+                        $displayWage = $att->calculated_wage;
+                    } else {
+                        // For Monthly, we show the OT portion as the extra daily earning
+                        $hourly = ($worker->daily_salary ?? 0) / 9;
+                        $displayWage = $att->overtime_hours * ($hourly * 1.5);
+                    }
+                }
                 $isSunday = $date->isSunday();
             @endphp
             <tr style="border-bottom:1px solid #000; {{ $isSunday ? 'background:#fff8f8;' : '' }}">
@@ -92,8 +101,8 @@
               </td>
               <td style="border:1px solid #000; padding:5px; text-align:center;">{{ $att?->total_hours > 0 ? number_format($att->total_hours, 1) : '0.0' }}</td>
               <td style="border:1px solid #000; padding:5px; text-align:center;">{{ $att?->overtime_hours > 0 ? number_format($att->overtime_hours, 1) : '0.0' }}</td>
-              <td style="border:1px solid #000; padding:5px; text-align:center; font-weight:900; color: {{ $att?->calculated_wage > 0 ? '#d00' : '#888' }}; font-size:1rem;">
-                {{ $att?->calculated_wage > 0 ? number_format($att->calculated_wage, 0) : '0' }}
+              <td style="border:1px solid #000; padding:5px; text-align:center; font-weight:900; color: {{ $displayWage > 0 ? '#d00' : '#888' }}; font-size:1rem;">
+                {{ $displayWage > 0 ? number_format($displayWage, 0) : '0' }}
               </td>
               <td style="border:1px solid #000; padding:5px; width:100px;"></td>
             </tr>
@@ -101,10 +110,16 @@
         </tbody>
         <tfoot>
           <tr style="background:#fff2f2; font-weight:bold; border-top:2px solid #000;">
-            <td colspan="5" style="border:1px solid #000; padding:10px; text-align:right; letter-spacing:1px; font-size:1rem;">TOTAL MONTHLY EARNINGS:</td>
+            <td colspan="5" style="border:1px solid #000; padding:10px; text-align:right; letter-spacing:1px; font-size:1rem;">
+              @if($worker->salary_type === 'MONTHLY')
+                BASE SALARY ({{ number_format($worker->salary_amount, 0) }}) + TOTAL OT EARNINGS:
+              @else
+                TOTAL MONTHLY EARNINGS:
+              @endif
+            </td>
             <td style="border:1px solid #000; padding:10px; text-align:center; font-size:1.1rem;">{{ number_format($totalH, 1) }}h</td>
             <td style="border:1px solid #000; padding:10px; text-align:center; font-size:1.1rem; color:#555;">{{ number_format($totalOT, 1) }}h</td>
-            <td style="border:1px solid #000; padding:10px; text-align:center; font-size:1.5rem; color:#d00; border:2px solid #d00;">₹{{ number_format($totalW, 2) }}</td>
+            <td style="border:1px solid #000; padding:10px; text-align:center; font-size:1.5rem; color:#d00; border:2px solid #d00;">₹{{ number_format($totalWage, 2) }}</td>
             <td style="border:1px solid #000;"></td>
           </tr>
         </tfoot>

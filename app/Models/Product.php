@@ -7,13 +7,26 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
 {
-    protected $fillable = ['name', 'type', 'unit', 'image_url', 'is_active'];
+    protected $fillable = ['name', 'type', 'unit', 'image_url', 'is_active', 'allowed_roles'];
 
-    protected $casts = ['is_active' => 'boolean'];
+    protected $casts = [
+        'is_active' => 'boolean',
+        'allowed_roles' => 'array'
+    ];
 
     public function scopeRaw($query)   { return $query->where('type', 'RAW'); }
-    public function scopeTarget($query){ return $query->whereIn('type', ['SEMI', 'FINISHED']); }
+    public function scopeTarget($query){ return $query; }
     public function scopeActive($query){ return $query->where('is_active', true); }
+
+    public function scopeVisibleTo($query, $role)
+    {
+        if ($role === 'ADMIN') return $query;
+        
+        return $query->where(function($q) use ($role) {
+            $q->whereNull('allowed_roles')
+              ->orWhereJsonContains('allowed_roles', $role);
+        });
+    }
 
     public function grades()
     {

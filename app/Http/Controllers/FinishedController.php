@@ -15,9 +15,15 @@ class FinishedController extends Controller
 
     private function getLiveStock(string $stage): array
     {
+        $userRole = $this->authUser()['role'];
         return DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
             ->where('stocks.stage', $stage)
+            ->where(function($q) use ($userRole) {
+                if ($userRole === 'ADMIN') return $q;
+                $q->whereNull('products.allowed_roles')
+                  ->orWhereJsonContains('products.allowed_roles', $userRole);
+            })
             ->groupBy('stocks.product_id', 'stocks.grade', 'products.name', 'products.unit', 'products.id')
             ->selectRaw("
                 stocks.product_id as productId,
@@ -69,8 +75,8 @@ class FinishedController extends Controller
             'finishedStock'  => $finishedStock,
             'finishedLedger' => $ledger,
             'purchaseOrders' => $myPOs,
-            'rawMaterialsList' => Product::raw()->active()->get(['id', 'name', 'unit']),
-            'products'       => Product::with('grades')->get()->map(fn($p)=>[
+            'rawMaterialsList' => Product::raw()->active()->visibleTo($user['role'])->get(['id', 'name', 'unit']),
+            'products'       => Product::with('grades')->active()->visibleTo($user['role'])->get()->map(fn($p)=>[
                 'id'=>$p->id,'name'=>$p->name,'type'=>$p->type,'unit'=>$p->unit,
                 'gradeNames'=>$p->grades->pluck('name')
             ]),
@@ -86,7 +92,7 @@ class FinishedController extends Controller
         $pageData = [
             'semiStock' => $semiStock,
             'grades'    => $grades,
-            'products'  => Product::with('grades')->get()->map(fn($p)=>[
+            'products'  => Product::with('grades')->active()->visibleTo($this->authUser()['role'])->get()->map(fn($p)=>[
                 'id'=>$p->id,'name'=>$p->name,'type'=>$p->type,'unit'=>$p->unit,
                 'gradeNames'=>$p->grades->pluck('name')
             ]),
@@ -101,6 +107,8 @@ class FinishedController extends Controller
             'output_product_id' => 'required|exists:products,id',
             'output_grade'      => 'required|string',
             'output_qty'        => 'required|numeric|min:0.001',
+            'boxes'             => 'nullable|integer|min:1',
+            'weight_per_box'    => 'nullable|numeric|min:0.001',
             'inputs'            => 'required|array|min:1',
             'inputs.*.product_id' => 'required|exists:products,id',
             'inputs.*.grade'      => 'required|string',
@@ -108,6 +116,18 @@ class FinishedController extends Controller
         ]);
 
         $user = $this->authUser();
+
+        // Security check: Ensure products are visible to this user role
+        $visibleProductIds = Product::visibleTo($user['role'])->pluck('id')->toArray();
+        if (!in_array($request->output_product_id, $visibleProductIds)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized product access (Output).'], 403);
+        }
+
+        foreach ($request->inputs as $inp) {
+            if (!in_array($inp['product_id'], $visibleProductIds)) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized product access (Input).'], 403);
+            }
+        }
 
         // Validate SEMI stock availability
         foreach ($request->inputs as $inp) {
@@ -134,6 +154,8 @@ class FinishedController extends Controller
                 'output_product_id' => $request->output_product_id,
                 'output_grade'      => $request->output_grade,
                 'output_qty'        => $request->output_qty,
+                'boxes'             => $request->boxes,
+                'weight_per_box'    => $request->weight_per_box,
             ]);
 
             foreach ($request->inputs as $inp) {
@@ -165,6 +187,8 @@ class FinishedController extends Controller
                 'quantity'         => $request->output_qty,
                 'transaction_type' => 'IN',
                 'notes'            => "Produced: Production log #{$log->id}",
+                'boxes'            => $request->boxes,
+                'weight_per_box'   => $request->weight_per_box,
             ]);
         });
 
@@ -183,6 +207,8 @@ class FinishedController extends Controller
                 'outputName'      => $l->outputProduct?->name,
                 'outputGrade'     => $l->output_grade,
                 'outputQty'       => $l->output_qty,
+                'boxes'           => $l->boxes,
+                'weightPerBox'    => $l->weight_per_box,
                 'date'            => $l->created_at->toISOString(),
                 'consumedInputs'  => $l->inputs->map(fn($i) => [
                     'productId' => $i->input_product_id,

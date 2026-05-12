@@ -40,6 +40,18 @@
         </div>
     </div>
 
+    <div style="margin-top:1rem; border-top:1px solid var(--glass-border); padding-top:1rem;">
+        <label style="font-size:0.9rem; color:var(--primary-light); margin-bottom:0.5rem; display:block;">Visible To / Allowed User Types</label>
+        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px;">
+            @foreach(['ADMIN', 'RAW', 'SEMI', 'FINISHED', 'SALES', 'DISPATCH', 'CASHIER', 'ATTENDANCE'] as $role)
+            <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; background:rgba(255,255,255,0.05); padding:6px 10px; border-radius:6px; cursor:pointer;">
+                <input type="checkbox" name="p-roles" value="{{ $role }}" style="width:auto;"> {{ $role }}
+            </label>
+            @endforeach
+        </div>
+        <small style="color:var(--text-muted); font-size:0.75rem; margin-top:8px; display:block;">If none selected, it will be visible to all users by default.</small>
+    </div>
+
     <div style="display:flex; gap:1rem; margin-top:1.5rem;">
       <button class="btn" onclick="adminSaveProduct()" style="width:auto; padding:0.6rem 1.5rem;">Save Product</button>
       <button class="btn btn-secondary" onclick="document.getElementById('prod-form').style.display='none'" style="width:auto; padding:0.6rem 1.5rem;">Cancel</button>
@@ -48,9 +60,10 @@
   </div>
 
   @php 
-    $items = collect($pageData['products']->items());
+    $items = collect($pageData['products']);
     $rawProds = $items->where('type','RAW');
     $semiProds = $items->where('type','SEMI');
+    $finishedProds = $items->where('type','FINISHED');
   @endphp
 
   <!-- RAW Products -->
@@ -64,6 +77,46 @@
           <tr>
             <td>{{ $loop->iteration }}</td>
             <td style="font-weight:600;">{{ $p['name'] }}</td>
+            <td>{{ $p['unit'] }}</td>
+            <td>
+              <label class="switch">
+                <input type="checkbox" {{ $p['is_active'] ? 'checked' : '' }} onchange="adminToggleProduct({{ $p['id'] }})">
+                <span class="slider"></span>
+              </label>
+            </td>
+            <td>
+              <div class="action-btns">
+                <button class="btn-icon edit" onclick="adminEditProduct({{ json_encode($p) }})" title="Edit">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+                </button>
+                <button class="btn-icon delete" onclick="adminDeleteProduct({{ $p['id'] }})" title="Delete">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+          @endforeach
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- FINISHED Products -->
+  <div class="card" style="padding:1.2rem; margin-bottom:1.5rem;">
+    <div class="card-title" style="color:var(--secondary);">📦 FINISHED Products ({{ $finishedProds->count() }})</div>
+    <div class="table-container">
+      <table>
+        <thead><tr><th>#</th><th>Name</th><th>Grades</th><th>Unit</th><th>Active</th><th>Actions</th></tr></thead>
+        <tbody>
+          @foreach($finishedProds as $p)
+          <tr>
+            <td>{{ $loop->iteration }}</td>
+            <td style="font-weight:600;">{{ $p['name'] }}</td>
+            <td style="white-space:normal; min-width:200px;">
+                @foreach($p['gradeNames'] as $gn)
+                    <span style="font-size:0.7rem; background:rgba(16,185,129,0.2); padding:2px 6px; border-radius:4px; margin:2px; display:inline-block; border:1px solid var(--secondary);">{{ $gn }}</span>
+                @endforeach
+            </td>
             <td>{{ $p['unit'] }}</td>
             <td>
               <label class="switch">
@@ -129,7 +182,7 @@
 
     <!-- Pagination Links -->
     <div style="margin-top:1.5rem; display:flex; justify-content:center;">
-      {{ $pageData['products']->links() }}
+      {{ $pageData['paginator']->links() }}
     </div>
   </div>
 </div>
@@ -160,12 +213,22 @@ function adminEditProduct(prod) {
     });
   }
 
+  // Reset and set roles
+  document.querySelectorAll('input[name="p-roles"]').forEach(cb => cb.checked = false);
+  if (prod.allowed_roles) {
+    prod.allowed_roles.forEach(role => {
+      const cb = document.querySelector(`input[name="p-roles"][value="${role}"]`);
+      if (cb) cb.checked = true;
+    });
+  }
+
   toggleGradeDisplay();
   document.getElementById('prod-form').scrollIntoView({ behavior: 'smooth' });
 }
 
 function adminSaveProduct() {
   const selectedGrades = Array.from(document.querySelectorAll('input[name="p-grades"]:checked')).map(cb => cb.value);
+  const selectedRoles = Array.from(document.querySelectorAll('input[name="p-roles"]:checked')).map(cb => cb.value);
   
   fetch('/admin/products', {
     method: 'POST',
@@ -175,7 +238,8 @@ function adminSaveProduct() {
       name: document.getElementById('p-name').value,
       type: document.getElementById('p-type').value,
       unit: document.getElementById('p-unit').value || 'kg',
-      grades: selectedGrades
+      grades: selectedGrades,
+      allowed_roles: selectedRoles
     })
   }).then(r => r.json()).then(d => {
     if (d.success) { 

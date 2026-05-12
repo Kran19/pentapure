@@ -16,7 +16,7 @@
             <th>Department</th>
             <th>Role</th>
             <th>Shift</th>
-            <th>Daily Salary</th>
+            <th>Salary</th>
             <th>Status</th>
             <th>Actions</th>
           </tr>
@@ -28,7 +28,10 @@
             <td>{{ $w->department->name }}</td>
             <td style="color:var(--text-muted);">{{ $w->role ?? '—' }}</td>
             <td><span class="badge {{ $w->shift_type=='NIGHT'?'badge-danger':'badge-info' }}">{{ $w->shift_type }}</span></td>
-            <td style="font-weight:bold; color:var(--primary-light);">₹{{ number_format($w->daily_salary, 2) }}</td>
+            <td style="font-weight:bold; color:var(--primary-light);">
+              ₹{{ number_format($w->salary_amount, 2) }}
+              <div style="font-size:0.65rem; opacity:0.7; color:var(--text-muted);">{{ $w->salary_type }}</div>
+            </td>
             <td>
               <span class="badge {{ $w->status=='ACTIVE'?'badge-done':'badge-danger' }}">{{ $w->status }}</span>
             </td>
@@ -82,7 +85,14 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Daily Salary (₹)</label>
+          <label>Salary Type</label>
+          <select id="w-salary-type" onchange="updateSalaryLabel()">
+            <option value="DAILY">Daily (₹ / Day)</option>
+            <option value="MONTHLY">Monthly (₹ / Month)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label id="salary-label">Salary Amount (₹)</label>
           <input type="number" id="w-salary" required min="0" step="1">
         </div>
         <div class="form-group">
@@ -111,9 +121,16 @@ function openWorkerModal() {
   document.getElementById('w-dept').value = '';
   document.getElementById('w-role').value = '';
   document.getElementById('w-shift').value = 'DAY';
+  document.getElementById('w-salary-type').value = 'DAILY';
   document.getElementById('w-salary').value = '';
   document.getElementById('w-status').value = 'ACTIVE';
+  updateSalaryLabel();
   document.getElementById('worker-modal').classList.add('active');
+}
+
+function updateSalaryLabel() {
+  const type = document.getElementById('w-salary-type').value;
+  document.getElementById('salary-label').innerText = (type === 'DAILY') ? 'Daily Salary (₹)' : 'Monthly Salary (₹)';
 }
 
 function editWorker(w) {
@@ -123,8 +140,10 @@ function editWorker(w) {
   document.getElementById('w-dept').value = w.department_id;
   document.getElementById('w-role').value = w.role || '';
   document.getElementById('w-shift').value = w.shift_type;
-  document.getElementById('w-salary').value = parseFloat(w.daily_salary);
+  document.getElementById('w-salary-type').value = w.salary_type || 'DAILY';
+  document.getElementById('w-salary').value = parseFloat(w.salary_amount || w.daily_salary);
   document.getElementById('w-status').value = w.status;
+  updateSalaryLabel();
   document.getElementById('worker-modal').classList.add('active');
 }
 
@@ -143,7 +162,8 @@ document.getElementById('worker-form').onsubmit = function(e) {
       department_id: document.getElementById('w-dept').value,
       role: document.getElementById('w-role').value,
       shift_type: document.getElementById('w-shift').value,
-      daily_salary: document.getElementById('w-salary').value,
+      salary_type: document.getElementById('w-salary-type').value,
+      salary_amount: document.getElementById('w-salary').value,
       status: document.getElementById('w-status').value
     })
   }).then(r=>r.json()).then(d=>{

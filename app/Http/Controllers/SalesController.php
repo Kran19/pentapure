@@ -48,7 +48,7 @@ class SalesController extends Controller
             'transportCompanies' => Transporter::orderBy('name')->get()->map(fn($t)=>[
                 'id'=>$t->id,'name'=>$t->name,'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
             ]),
-            'products'           => Product::target()->active()->get(['id', 'name', 'unit']),
+            'products'           => Product::target()->active()->visibleTo($this->authUser()['role'])->get(['id', 'name', 'unit', 'type']),
             'stats'              => compact('totalOrders', 'openOrders', 'pendingDisp', 'totalValue'),
         ];
         return view('sales.home', compact('pageData'));
@@ -62,7 +62,7 @@ class SalesController extends Controller
         $transportCompanies = Transporter::orderBy('name')->get()->map(fn($t)=>[
             'id'=>$t->id,'name'=>$t->name,'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
         ]);
-        $products = Product::target()->active()->get(['id', 'name', 'unit']);
+        $products = Product::target()->active()->visibleTo($this->authUser()['role'])->get(['id', 'name', 'unit', 'type']);
         $grades = ['PPF', 'TPR', 'TPS', 'GOLD', 'PREMIUM', 'RICH', 'RICH+', 'EXTRA STRONG', 'REGULAR', 'DELUXE', 'PURE'];
 
         $pageData = compact('companies', 'transportCompanies', 'products', 'grades');
@@ -82,6 +82,14 @@ class SalesController extends Controller
         ]);
 
         $user  = $this->authUser();
+
+        // Security check: Ensure products are visible to this user role
+        $visibleProductIds = Product::visibleTo($user['role'])->pluck('id')->toArray();
+        foreach ($request->items as $item) {
+            if (!in_array($item['product_id'], $visibleProductIds)) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized product access.'], 403);
+            }
+        }
         $total = collect($request->items)->sum(fn($i) => $i['quantity'] * $i['price']);
 
         DB::transaction(function () use ($request, $user, $total) {

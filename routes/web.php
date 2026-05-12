@@ -100,6 +100,7 @@ Route::prefix('dispatch')->middleware('auth.role:DISPATCH')->controller(Dispatch
     Route::get('/home',     'home')->name('dispatch.home');
     Route::get('/action',   'action')->name('dispatch.action');
     Route::post('/action',  'storeDispatch');
+    Route::post('/update-lr', 'updateLR');
     Route::get('/history',  'history')->name('dispatch.history');
     Route::get('/profile',  'profile')->name('dispatch.profile');
 });

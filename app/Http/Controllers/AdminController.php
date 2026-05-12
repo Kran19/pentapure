@@ -23,6 +23,30 @@ class AdminController extends Controller
         $finishedQty = DB::table('stocks')->where('stage', 'FINISHED')
             ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")->value('net') ?? 0;
 
+        $lowRawCount = DB::table('stocks')
+            ->select('product_id', 'stage', 'grade')
+            ->where('stage', 'RAW')
+            ->groupBy('product_id', 'stage', 'grade')
+            ->havingRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) < 500")
+            ->get()
+            ->count();
+
+        $lowSemiCount = DB::table('stocks')
+            ->select('product_id', 'stage', 'grade')
+            ->where('stage', 'SEMI')
+            ->groupBy('product_id', 'stage', 'grade')
+            ->havingRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) < 500")
+            ->get()
+            ->count();
+
+        $lowFinishedCount = DB::table('stocks')
+            ->select('product_id', 'stage', 'grade')
+            ->where('stage', 'FINISHED')
+            ->groupBy('product_id', 'stage', 'grade')
+            ->havingRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) < 500")
+            ->get()
+            ->count();
+
         $totalOrders  = \App\Models\Order::count();
         $totalRevenue = \App\Models\Order::sum('total');
         $pendingPOs   = \App\Models\PurchaseOrder::where('status', 'PENDING')->count();
@@ -30,7 +54,7 @@ class AdminController extends Controller
         $totalWorkers = \App\Models\Worker::count();
         $presentToday = \App\Models\Attendance::where('date', \Carbon\Carbon::today()->toDateString())->whereIn('status', ['PRESENT', 'HALF_DAY'])->count();
 
-        $pageData = compact('rawQty', 'semiQty', 'finishedQty', 'totalOrders', 'totalRevenue', 'pendingPOs', 'totalWorkers', 'presentToday');
+        $pageData = compact('rawQty', 'semiQty', 'finishedQty', 'lowRawCount', 'lowSemiCount', 'lowFinishedCount', 'totalOrders', 'totalRevenue', 'pendingPOs', 'totalWorkers', 'presentToday');
         return view('admin.dashboard', compact('pageData'));
     }
 
@@ -104,15 +128,19 @@ class AdminController extends Controller
     public function products()
     {
         $products = Product::with('grades')
-            ->where('type', '!=', 'FINISHED')
             ->orderBy('type')->orderBy('name')
             ->paginate(15);
             
         $allActiveGrades = \App\Models\Grade::where('is_active', true)->orderBy('name')->get();
         
         $pageData = [
-            'products' => $products,
-            'allGrades' => $allActiveGrades
+            'products' => $products->map(function($p) {
+                $p->gradeIds = $p->grades->pluck('id')->toArray();
+                $p->gradeNames = $p->grades->pluck('name')->toArray();
+                return $p;
+            }),
+            'allGrades' => $allActiveGrades,
+            'paginator' => $products
         ];
         return view('admin.products', compact('pageData'));
     }
@@ -122,21 +150,25 @@ class AdminController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|in:RAW,SEMI,FINISHED',
-            'grades' => 'nullable|array'
+            'grades' => 'nullable|array',
+            'allowed_roles' => 'nullable|array'
         ]);
+
+        $data = [
+            'name' => $request->name,
+            'type' => $request->type,
+            'unit' => $request->unit ?? 'kg',
+            'image_url' => $request->image_url,
+            'allowed_roles' => $request->allowed_roles
+        ];
 
         if ($request->product_id) {
             $product = Product::findOrFail($request->product_id);
-            $product->update($request->only('name', 'unit', 'image_url'));
+            $product->update($data);
             $product->grades()->sync($request->grades ?? []);
             $msg = 'Product updated!';
         } else {
-            $product = Product::create([
-                'name'      => $request->name,
-                'type'      => $request->type,
-                'unit'      => $request->unit ?? 'kg',
-                'image_url' => $request->image_url,
-            ]);
+            $product = Product::create($data);
             $product->grades()->sync($request->grades ?? []);
             $msg = 'Product created!';
         }
@@ -163,17 +195,18 @@ class AdminController extends Controller
     {
         $allStock = DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit')
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'stocks.weight_per_box', 'products.name', 'products.unit')
             ->selectRaw("
                 stocks.product_id as productId,
                 products.name,
                 products.unit,
                 stocks.stage,
                 stocks.grade,
-                SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
+                stocks.weight_per_box as weightPerBox,
+                SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity,
+                SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.boxes ELSE -stocks.boxes END) as boxes
             ")
             ->havingRaw("quantity > 0")
-            ->where('products.type', '!=', 'FINISHED')
             ->orderBy('stocks.stage')
             ->orderBy('products.name')
             ->get();
@@ -328,33 +361,64 @@ class AdminController extends Controller
     public function adjustStock(Request $request)
     {
         $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'stage'      => 'required',
-            'grade'      => 'required',
-            'quantity'   => 'required|numeric'
+            'product_id'  => 'required|exists:products,id',
+            'stage'       => 'required',
+            'grade'       => 'required',
+            'quantity'    => 'required|numeric|min:0',
+            'adjust_type' => 'nullable|in:set,add,subtract',
+            'reason'      => 'nullable|string|max:255',
         ]);
 
-        // Current net qty
-        $current = DB::table('stocks')
+        $type   = $request->input('adjust_type', 'set');
+        $qty    = (float) $request->quantity;
+        $reason = trim($request->input('reason', ''));
+        $note   = 'Manual admin adjustment' . ($reason ? " — {$reason}" : '');
+
+        // Current net qty for the product/stage/grade combination
+        $current = (float) (DB::table('stocks')
             ->where('product_id', $request->product_id)
             ->where('stage', $request->stage)
             ->where('grade', $request->grade)
             ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
-            ->value('net') ?? 0;
+            ->value('net') ?? 0);
 
-        $diff = $request->quantity - $current;
-        if ($diff == 0) return response()->json(['success' => true, 'message' => 'No change needed.']);
+        if ($type === 'set') {
+            $diff = $qty - $current;
+            if ($diff == 0) {
+                return response()->json(['success' => true, 'message' => 'Stock is already at that value — no change made.']);
+            }
+            $txnQty  = abs($diff);
+            $txnType = $diff > 0 ? 'IN' : 'OUT';
+            $summary = "Set to {$qty} kg (was {$current} kg)";
+        } elseif ($type === 'add') {
+            if ($qty == 0) {
+                return response()->json(['success' => true, 'message' => 'Nothing to add — quantity is 0.']);
+            }
+            $txnQty  = $qty;
+            $txnType = 'IN';
+            $summary = "Added {$qty} kg (was {$current} kg)";
+        } else { // subtract
+            if ($qty == 0) {
+                return response()->json(['success' => true, 'message' => 'Nothing to subtract — quantity is 0.']);
+            }
+            if ($qty > $current) {
+                return response()->json(['success' => false, 'message' => "Cannot subtract {$qty} kg — only {$current} kg in stock."]);
+            }
+            $txnQty  = $qty;
+            $txnType = 'OUT';
+            $summary = "Subtracted {$qty} kg (was {$current} kg)";
+        }
 
         Stock::create([
             'product_id'       => $request->product_id,
             'user_id'          => session('auth_user')['id'],
             'stage'            => $request->stage,
             'grade'            => $request->grade,
-            'quantity'         => abs($diff),
-            'transaction_type' => $diff > 0 ? 'IN' : 'OUT',
-            'notes'            => 'Manual admin adjustment',
+            'quantity'         => $txnQty,
+            'transaction_type' => $txnType,
+            'notes'            => "{$note} [{$summary}]",
         ]);
 
-        return response()->json(['success' => true, 'message' => 'Stock adjusted successfully!']);
+        return response()->json(['success' => true, 'message' => "Stock updated! {$summary}."]);
     }
 }

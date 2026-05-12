@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\DispatchLog;
 use App\Models\Order;
 use App\Models\Stock;
+use App\Models\Product;
 use App\Models\Transporter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -82,6 +83,14 @@ class DispatchController extends Controller
         $user  = $this->authUser();
         $order = Order::with('items.product')->find($request->order_id);
 
+        // Security check
+        $visibleProductIds = Product::visibleTo($user['role'])->pluck('id')->toArray();
+        foreach ($order->items as $item) {
+            if (!in_array($item->product_id, $visibleProductIds)) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized product access.'], 403);
+            }
+        }
+
         if ($order->dispatch_status === 'DONE') {
             return response()->json(['success' => false, 'message' => 'Order already dispatched.'], 422);
         }
@@ -90,7 +99,7 @@ class DispatchController extends Controller
         foreach ($order->items as $item) {
             $available = DB::table('stocks')
                 ->where('product_id', $item->product_id)
-                ->where('stage', 'FINISHED')
+                ->where('stage', $item->product->type)
                 ->where('grade', $item->grade)
                 ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
                 ->value('net') ?? 0;
@@ -110,7 +119,7 @@ class DispatchController extends Controller
                 Stock::create([
                     'product_id'       => $item->product_id,
                     'user_id'          => $user['id'],
-                    'stage'            => 'FINISHED',
+                    'stage'            => $item->product->type,
                     'grade'            => $item->grade,
                     'quantity'         => $item->quantity,
                     'transaction_type' => 'OUT',
@@ -139,6 +148,34 @@ class DispatchController extends Controller
         });
 
         return response()->json(['success' => true, 'message' => 'Order dispatched successfully!']);
+    }
+
+    public function updateLR(Request $request)
+    {
+        $request->validate([
+            'log_id'   => 'required|exists:dispatch_logs,id',
+            'lr_image' => 'required|string',
+        ]);
+
+        $log = DispatchLog::findOrFail($request->log_id);
+
+        // Handle LR image - save base64 as file
+        $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->lr_image));
+        $lrPath    = 'lr_images/' . uniqid('LR_') . '.jpg';
+        file_put_contents(public_path($lrPath), $imageData);
+
+        // Delete old image if exists
+        if ($log->lr_image_path && file_exists(public_path($log->lr_image_path))) {
+            @unlink(public_path($log->lr_image_path));
+        }
+
+        $log->update(['lr_image_path' => $lrPath]);
+
+        return response()->json([
+            'success' => true, 
+            'message' => 'LR Copy updated successfully!',
+            'lr_url'  => asset($lrPath)
+        ]);
     }
 
     public function history()

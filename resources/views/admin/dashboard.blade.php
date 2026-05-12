@@ -7,6 +7,48 @@
     📊 Dashboard Overview
   </h2>
 
+  <!-- Low Stock Alerts -->
+  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+    <!-- Raw Material Stock -->
+    @if(($pageData['lowRawCount'] ?? 0) > 0)
+    <div style="background-color: #fff3cd; color: #856404; padding: 1rem; border-radius: 8px; border: 1px solid #ffeeba; display: flex; align-items: center; gap: 8px;">
+      <span style="font-size: 1.2rem;">⚠</span>
+      <a href="{{ route('admin.stock') }}" style="font-size: 1.1rem; font-weight: bold; color: inherit; text-decoration: none;">Raw Material Low Stock: {{ $pageData['lowRawCount'] }}</a>
+    </div>
+    @else
+    <div style="background-color: #d4edda; color: #155724; padding: 1rem; border-radius: 8px; border: 1px solid #c3e6cb; display: flex; align-items: center; gap: 8px;">
+      <span style="font-size: 1.2rem;">✅</span>
+      <a href="{{ route('admin.stock') }}" style="font-size: 1.1rem; font-weight: bold; color: inherit; text-decoration: none;">Raw Material Low Stock: 0</a>
+    </div>
+    @endif
+
+    <!-- Semi-Finished Stock -->
+    @if(($pageData['lowSemiCount'] ?? 0) > 0)
+    <div style="background-color: #fff3cd; color: #856404; padding: 1rem; border-radius: 8px; border: 1px solid #ffeeba; display: flex; align-items: center; gap: 8px;">
+      <span style="font-size: 1.2rem;">⚠</span>
+      <a href="{{ route('admin.stock') }}" style="font-size: 1.1rem; font-weight: bold; color: inherit; text-decoration: none;">Semi-Finished Low Stock: {{ $pageData['lowSemiCount'] }}</a>
+    </div>
+    @else
+    <div style="background-color: #d4edda; color: #155724; padding: 1rem; border-radius: 8px; border: 1px solid #c3e6cb; display: flex; align-items: center; gap: 8px;">
+      <span style="font-size: 1.2rem;">✅</span>
+      <a href="{{ route('admin.stock') }}" style="font-size: 1.1rem; font-weight: bold; color: inherit; text-decoration: none;">Semi-Finished Low Stock: 0</a>
+    </div>
+    @endif
+
+    <!-- Finished Goods Stock -->
+    @if(($pageData['lowFinishedCount'] ?? 0) > 0)
+    <div style="background-color: #fff3cd; color: #856404; padding: 1rem; border-radius: 8px; border: 1px solid #ffeeba; display: flex; align-items: center; gap: 8px;">
+      <span style="font-size: 1.2rem;">⚠</span>
+      <a href="{{ route('admin.stock') }}" style="font-size: 1.1rem; font-weight: bold; color: inherit; text-decoration: none;">Finished Goods Low Stock: {{ $pageData['lowFinishedCount'] }}</a>
+    </div>
+    @else
+    <div style="background-color: #d4edda; color: #155724; padding: 1rem; border-radius: 8px; border: 1px solid #c3e6cb; display: flex; align-items: center; gap: 8px;">
+      <span style="font-size: 1.2rem;">✅</span>
+      <a href="{{ route('admin.stock') }}" style="font-size: 1.1rem; font-weight: bold; color: inherit; text-decoration: none;">Finished Goods Low Stock: 0</a>
+    </div>
+    @endif
+  </div>
+
   <!-- KPI Cards -->
   <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:1rem; margin-bottom:2rem;">
     <a href="{{ route('admin.stock') }}" class="card clickable-card" style="text-align:center; padding:1.2rem;">
