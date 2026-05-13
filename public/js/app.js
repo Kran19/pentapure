@@ -144,6 +144,23 @@ const app = {
   },
 
   // --- CORE UTILS ---
+  fetchJson(url, options = {}) {
+    const headers = {
+      'Accept': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+      ...(options.headers || {})
+    };
+
+    return fetch(url, { ...options, headers }).then(async response => {
+      const contentType = response.headers.get('content-type') || '';
+      if (!response.ok) throw new Error(`Request failed (${response.status})`);
+      if (!contentType.includes('application/json')) {
+        throw new Error('Server returned HTML instead of JSON. Please refresh and login again.');
+      }
+      return response.json();
+    });
+  },
+
   toast(message, type = 'success') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
@@ -2954,8 +2971,7 @@ const app = {
   },
   // --- ROLE: ATTENDANCE ---
   renderAttendanceHome(container) {
-    fetch('/attendance/api/daily', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-      .then(r => r.json())
+    this.fetchJson('/attendance/api/daily')
       .then(data => {
         const workers = data.workers || [];
         const present = workers.filter(w => w.status !== 'ABSENT').length;
@@ -2981,11 +2997,14 @@ const app = {
 
           <div class="card">
             <div class="card-title">Quick Actions</div>
-            <button class="btn mb-1" style="background:var(--primary-light); color:var(--dark);" onclick="app.navigate('action')">📝 Daily Punch Sheet</button>
-            <button class="btn mb-1" style="background:rgba(255,255,255,0.05);" onclick="app.navigate('history')">📊 Monthly Reports</button>
-            <button class="btn" style="background:rgba(255,255,255,0.05);" onclick="app.openWorkerDrawer()">👥 Manage Workers</button>
+            <button class="btn mb-1" onclick="app.navigate('action')">Daily Punch Sheet</button>
+            <button class="btn btn-secondary mb-1" onclick="app.navigate('history')">Monthly Reports</button>
+            <button class="btn btn-secondary" onclick="app.navigate('team')">Manage Workers</button>
           </div>
         `;
+      })
+      .catch(error => {
+        container.innerHTML = `<div class="card text-center">${error.message}</div>`;
       });
   },
 
@@ -2996,11 +3015,13 @@ const app = {
 
     if (!window._attWorkers || dateChanged) {
       window._attLastFetchDate = date;
-      fetch(`/attendance/api/daily?date=${date}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-        .then(r => r.json())
+      this.fetchJson(`/attendance/api/daily?date=${date}`)
         .then(data => {
           window._attWorkers = data.workers || [];
           this.renderAttendanceActionUI(container);
+        })
+        .catch(error => {
+          container.innerHTML = `<div class="card text-center">${error.message}</div>`;
         });
     } else {
       this.renderAttendanceActionUI(container);
@@ -3162,7 +3183,7 @@ const app = {
 
   submitAttendance() {
     Swal.fire({ title: 'Saving...', didOpen: () => Swal.showLoading() });
-    fetch('/attendance/daily', {
+    this.fetchJson('/attendance/daily', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
       body: JSON.stringify({
@@ -3176,12 +3197,12 @@ const app = {
           break_out: w.break_out
         }))
       })
-    }).then(r => r.json()).then(d => {
+    }).then(d => {
       if (d.success) {
         Swal.fire('Saved!', d.message, 'success');
         app.refreshCurrentView();
       } else Swal.fire('Error', d.message, 'error');
-    });
+    }).catch(error => Swal.fire('Error', error.message, 'error'));
   },
 
   renderAttendanceHistory(container) {
@@ -3214,8 +3235,8 @@ const app = {
 
   openWorkerDrawer(workerId = null) {
     Promise.all([
-      fetch('/attendance/api/departments', { headers: { 'X-Requested-With': 'XMLHttpRequest' } }).then(r => r.json()),
-      workerId ? fetch(`/attendance/api/workers`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } }).then(r => r.json()) : Promise.resolve({ workers: [] })
+      this.fetchJson('/attendance/api/departments'),
+      workerId ? this.fetchJson(`/attendance/api/workers`) : Promise.resolve({ workers: [] })
     ]).then(([deptData, workerData]) => {
       const depts = deptData.departments || [];
       const worker = workerId ? workerData.workers.find(w => w.id == workerId) : null;
@@ -3234,8 +3255,15 @@ const app = {
           </select>
         </div>
         <div class="form-group">
-          <label>Daily Salary (₹) *</label>
-          <input type="number" id="w-salary" value="${worker?.daily_salary || 500}" placeholder="e.g. 500">
+          <label>Salary Amount *</label>
+          <input type="number" id="w-salary" value="${worker?.salary_amount || worker?.daily_salary || 500}" placeholder="e.g. 500">
+        </div>
+        <div class="form-group">
+          <label>Salary Type</label>
+          <select id="w-salary-type">
+            <option value="DAILY" ${worker?.salary_type === 'DAILY' ? 'selected' : ''}>Daily</option>
+            <option value="MONTHLY" ${worker?.salary_type === 'MONTHLY' ? 'selected' : ''}>Monthly</option>
+          </select>
         </div>
         <div class="form-group">
           <label>Shift Type</label>
@@ -3254,7 +3282,7 @@ const app = {
         </div>
         <button class="btn mt-1" onclick="app.saveWorker(${workerId})">Save Worker Details</button>
       `);
-    });
+    }).catch(error => this.toast(error.message, 'error'));
   },
 
   saveWorker(workerId) {
@@ -3262,19 +3290,19 @@ const app = {
       worker_id: workerId,
       name: document.getElementById('w-name').value,
       department_id: document.getElementById('w-dept').value,
-      daily_salary: document.getElementById('w-salary').value,
+      salary_amount: document.getElementById('w-salary').value,
+      salary_type: document.getElementById('w-salary-type').value,
       shift_type: document.getElementById('w-shift').value,
       status: document.getElementById('w-status').value
     };
 
     if(!data.name || !data.department_id) return this.toast('Name and Department are required', 'error');
 
-    fetch('/attendance/workers', {
+    this.fetchJson('/attendance/workers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
       body: JSON.stringify(data)
     })
-    .then(r => r.json())
     .then(d => {
       if(d.success) {
         this.toast(d.message);
@@ -3283,12 +3311,12 @@ const app = {
       } else {
         this.toast(d.message, 'error');
       }
-    });
+    })
+    .catch(error => this.toast(error.message, 'error'));
   },
 
   renderAttendanceTeam(container) {
-    fetch('/attendance/team', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-      .then(r => r.json())
+    this.fetchJson('/attendance/team')
       .then(data => {
         const workers = data.workers || [];
         const depts = data.departments || [];
@@ -3299,7 +3327,7 @@ const app = {
           </div>
 
           <div style="display:flex; gap:10px; margin-bottom:1.5rem;">
-            <button class="btn btn-sm" style="flex:1; background:var(--primary-light); color:var(--dark);" onclick="app.openWorkerDrawer()">+ Add Worker</button>
+            <button class="btn btn-sm" style="flex:1;" onclick="app.openWorkerDrawer()">+ Add Worker</button>
             <button class="btn btn-sm btn-secondary" style="flex:1;" onclick="app.openDeptDrawer()">+ Add Dept</button>
           </div>
 
@@ -3307,7 +3335,7 @@ const app = {
             <div class="card-title">🏢 Departments (${depts.length})</div>
             <div style="max-height:200px; overflow-y:auto;">
               ${depts.map(d => `
-                <div class="flex-between" style="padding:0.6rem 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+                <div class="flex-between" style="padding:0.6rem 0; border-bottom:1px solid var(--border-soft);">
                   <div>
                     <div style="font-weight:600;">${d.name}</div>
                     <div style="font-size:0.75rem; color:var(--text-muted);">${d.workers_count || 0} Workers</div>
@@ -3321,7 +3349,7 @@ const app = {
             <div class="card-title">👥 Active Workers (${workers.length})</div>
             <div style="max-height:400px; overflow-y:auto;">
               ${workers.map(w => `
-                <div class="flex-between" style="padding:0.8rem 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+                <div class="flex-between" style="padding:0.8rem 0; border-bottom:1px solid var(--border-soft);">
                   <div>
                     <div style="font-weight:600;">${w.name}</div>
                     <div style="font-size:0.75rem; color:var(--text-muted);">${w.department?.name || 'No Dept'} \u00b7 ${w.shift_type}</div>
@@ -3332,6 +3360,9 @@ const app = {
             </div>
           </div>
         `;
+      })
+      .catch(error => {
+        container.innerHTML = `<div class="card text-center">${error.message}</div>`;
       });
   },
 
@@ -3350,14 +3381,14 @@ const app = {
     const name = document.getElementById('new-dept-name').value;
     if (!name) return this.toast('Name is required', 'error');
 
-    fetch('/attendance/departments', {
+    this.fetchJson('/attendance/departments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
       body: JSON.stringify({ name })
-    }).then(r=>r.json()).then(d=>{
+    }).then(d=>{
       if(d.success) { this.toast(d.message); this.closeDrawer(); this.refreshCurrentView(); }
       else this.toast(d.message, 'error');
-    });
+    }).catch(error => this.toast(error.message, 'error'));
   },
 
   renderRecentPOs() {

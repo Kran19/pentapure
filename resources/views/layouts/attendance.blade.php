@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="{{ asset('css/tabulator-custom.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
-<body class="admin-mode">
+<body class="admin-mode attendance-mode">
   <div id="toast-container"></div>
 
   <div class="app-container" id="app-root">

@@ -1180,3 +1180,45 @@ tr:hover td {
 * {
   color: var(--text-main);
 }
+
+body:not(.admin-mode) input,
+body:not(.admin-mode) select,
+body:not(.admin-mode) textarea,
+body:not(.admin-mode) option,
+body.attendance-mode input,
+body.attendance-mode select,
+body.attendance-mode textarea,
+body.attendance-mode option {
+  background: #FFFFFF !important;
+  color: #2A2A2A !important;
+  border-color: #DDCFAF !important;
+}
+
+body:not(.admin-mode) input::placeholder,
+body:not(.admin-mode) textarea::placeholder,
+body.attendance-mode input::placeholder,
+body.attendance-mode textarea::placeholder {
+  color: #6B6B6B !important;
+}
+
+body:not(.admin-mode) [style*="background:rgba(255,255,255"],
+body:not(.admin-mode) [style*="background: rgba(255,255,255"],
+body:not(.admin-mode) [style*="background:rgba(0,0,0"],
+body:not(.admin-mode) [style*="background: rgba(0,0,0"] {
+  background: #FFFFFF !important;
+  color: #2A2A2A !important;
+  border-color: var(--border-soft) !important;
+}
+
+body:not(.admin-mode) [style*="color:#fff"],
+body:not(.admin-mode) [style*="color: #fff"],
+body:not(.admin-mode) [style*="color:white"],
+body:not(.admin-mode) [style*="color: white"] {
+  color: #2A2A2A !important;
+}
+
+body:not(.admin-mode) .btn,
+body:not(.admin-mode) button.btn,
+body:not(.admin-mode) a.btn {
+  color: var(--dark-brand) !important;
+}
