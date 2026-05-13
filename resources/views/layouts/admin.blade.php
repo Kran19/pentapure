@@ -73,6 +73,11 @@
             ✅ Grades Master
           </a>
 
+          <a href="{{ url('admin/categories') }}" class="nav-item {{ $seg=='categories'?'active':'' }}">
+            🏷️ Categories Master
+          </a>
+
+
           <!-- Attendance Accordion -->
           @php $attSegs = ['attendance-dash','attendance-depts','attendance-workers','attendance-daily','attendance-reports']; @endphp
           <div>

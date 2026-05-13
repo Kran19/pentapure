@@ -135,7 +135,15 @@ Route::prefix('admin')->middleware('auth.role:ADMIN')->controller(AdminControlle
     Route::get('/grades',             'grades')->name('admin.grades');
     Route::post('/grades',            'storeGrade');
     Route::delete('/grades/{id}',     'destroyGrade');
+
+    // Categories (Cashier expense categories)
+    Route::get('/categories',        'categories')->name('admin.categories');
+    Route::post('/categories',       'storeCategory');
+    Route::post('/categories/toggle','toggleCategoryStatus');
+    Route::delete('/categories/{id}','destroyCategory');
+
     // Admin Attendance sub-pages (read + full access)
+
     Route::get('/attendance/dashboard',   [AttendanceController::class, 'home'])->name('admin.attendance.dashboard');
     Route::get('/attendance/departments', [AttendanceController::class, 'departments'])->name('admin.attendance.departments');
     Route::post('/attendance/departments',[AttendanceController::class, 'storeDepartment']);

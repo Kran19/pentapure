@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\DispatchLog;
 use App\Models\Product;
 use App\Models\ProductionLog;
@@ -11,6 +12,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+
 
 class AdminController extends Controller
 {
@@ -356,9 +358,60 @@ class AdminController extends Controller
         return response()->json(['success' => true, 'message' => 'Grade deleted!']);
     }
 
+    public function categories()
+    {
+        $categories = Category::orderByDesc('is_active')->orderBy('name')->paginate(15);
+        return view('admin.categories', ['pageData' => ['categories' => $categories]]);
+    }
+
+    public function storeCategory(Request $request)
+    {
+
+        if ($request->toggle) {
+            $category = Category::findOrFail($request->category_id);
+            $category->is_active = !$category->is_active;
+            $category->save();
+            return response()->json(['success' => true]);
+        }
+
+        if ($request->category_id) {
+            $category = Category::findOrFail($request->category_id);
+            $request->validate([
+                'name' => 'required|string|max:255|unique:categories,name,' . $category->id,
+            ]);
+            $category->update(['name' => $request->name]);
+            return response()->json(['success' => true, 'message' => 'Category updated!']);
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:255|unique:categories,name',
+        ]);
+        Category::create([
+            'name' => $request->name,
+        ]);
+        return response()->json(['success' => true, 'message' => 'Category created!']);
+    }
+
+    public function toggleCategoryStatus(Request $request)
+    {
+        $request->validate(['category_id' => 'required|exists:categories,id']);
+        $category = Category::findOrFail($request->category_id);
+        $category->is_active = !$category->is_active;
+        $category->save();
+        return response()->json(['success' => true, 'message' => 'Category status updated!']);
+    }
+
+    public function destroyCategory($id)
+    {
+        Category::destroy($id);
+        return response()->json(['success' => true, 'message' => 'Category deleted!']);
+    }
+
     public function adjustStock(Request $request)
     {
+
         $request->validate([
+
             'product_id'  => 'required|exists:products,id',
             'stage'       => 'required',
             'grade'       => 'required',

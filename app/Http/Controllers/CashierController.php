@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
+
 
 class CashierController extends Controller
 {
@@ -17,6 +19,7 @@ class CashierController extends Controller
         $pageData = [
             'balance'      => $balance,
             'transactions' => $txs->map(fn($t) => [
+
                 'id'        => $t->id,
                 'type'      => $t->type,
                 'amount'    => $t->amount,
@@ -31,8 +34,21 @@ class CashierController extends Controller
 
     public function action()
     {
-        return view('cashier.action');
+        $categories = Category::where('is_active', true)->orderBy('name')->get(['name']);
+        $defaultValue = $categories->pluck('name')->map(function($n){
+            return [
+                'value' => strtolower(preg_replace('/[^a-z0-9]+/i', '_', trim($n))),
+                'label' => $n
+            ];
+        });
+
+        return view('cashier.action', [
+            'pageData' => [
+                'categories' => $defaultValue->values(),
+            ],
+        ]);
     }
+
 
     public function storeTransaction(Request $request)
     {

@@ -1710,7 +1710,7 @@ const app = {
   },
 
   renderCashierAdd(container) {
-    // Default categories + user-added ones from localStorage
+    // Default categories + admin categories (active) + user-added ones from localStorage
     const defaultCats = [
       { value: 'general', label: 'General' },
       { value: 'small', label: 'Small Expense (< ₹5,000)' },
@@ -1721,8 +1721,18 @@ const app = {
       { value: 'raw_material', label: 'Raw Material Purchase' },
       { value: 'utilities', label: 'Utilities (Electricity/Water)' },
     ];
+
+    const adminCats = (window.serverPageData && window.serverPageData.categories) ? window.serverPageData.categories : [];
     const customCats = JSON.parse(localStorage.getItem('cashier_custom_categories') || '[]');
-    const allCats = [...defaultCats, ...customCats];
+
+    const allCats = [...defaultCats, ...adminCats, ...customCats]
+      .reduce((acc, c) => {
+        const key = c.value;
+        if(!key) return acc;
+        if(!acc.find(x => x.value === key)) acc.push({ value: c.value, label: c.label || c.value });
+        return acc;
+      }, []);
+
 
     container.innerHTML = `
       <div class="card">
