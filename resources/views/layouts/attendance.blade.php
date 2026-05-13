@@ -33,7 +33,7 @@
             <img src="https://pentapurefoods.com/wp-content/uploads/2025/11/logo.png" alt="Logo"
               style="width:80px;object-fit:contain;margin-bottom:0.5rem;">
           </div>
-          <div style="padding:0 1rem 1rem;font-size:1.3rem;font-weight:bold;color:white;
+          <div style="padding:0 1rem 1rem;font-size:1.3rem;font-weight:bold;color:var(--dark-brand);
             border-bottom:1px solid var(--glass-border);display:flex;justify-content:space-between;align-items:center;">
             <div>Attendance<span style="color:var(--primary-light)">System</span></div>
             <svg class="admin-close-btn" width="24" height="24" viewBox="0 0 24 24" fill="none"

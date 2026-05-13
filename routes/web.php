@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CashierController;
 use App\Http\Controllers\DispatchController;
 use App\Http\Controllers\FinishedController;
+use App\Http\Controllers\HistoryPdfController;
 use App\Http\Controllers\RawController;
 use App\Http\Controllers\SalesController;
 use App\Http\Controllers\SemiController;
@@ -50,6 +51,10 @@ Route::get('/admin/debug-check-sub', function() {
 Route::get('/login',  [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout',[AuthController::class, 'logout'])->name('logout');
+
+Route::get('/history/{panel}/pdf', [HistoryPdfController::class, 'download'])
+    ->middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE')
+    ->name('history.pdf');
 
 // ── RAW MATERIAL ROUTES ────────────────────────────────────────────────────
 Route::prefix('raw')->middleware('auth.role:RAW')->controller(RawController::class)->group(function () {

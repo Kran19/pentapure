@@ -9,6 +9,11 @@
   <link rel="stylesheet" href="{{ asset('css/tabulator-custom.css') }}">
   <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    if (localStorage.getItem('theme') === 'dark') {
+      document.documentElement.classList.add('dark-mode');
+    }
+  </script>
 </head>
 <body class="admin-mode">
   <div id="toast-container"></div>
@@ -38,7 +43,7 @@
             <img src="https://pentapurefoods.com/wp-content/uploads/2025/11/logo.png" alt="Logo"
               style="width:80px;object-fit:contain;margin-bottom:0.5rem;">
           </div>
-          <div style="padding:0 1rem 1rem;font-size:1.3rem;font-weight:bold;color:white;
+          <div style="padding:0 1rem 1rem;font-size:1.3rem;font-weight:bold;color:var(--dark-brand);
             border-bottom:1px solid var(--glass-border);display:flex;justify-content:space-between;align-items:center;">
             <div>Admin<span style="color:var(--primary-light)">Panel</span></div>
             <svg class="admin-close-btn" width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -108,6 +113,9 @@
 
           <!-- Logout via POST to properly clear session -->
           <div style="margin-top:auto;border-top:1px solid var(--glass-border);padding-top:0.5rem;">
+            <div class="nav-item" style="cursor:pointer; display:flex; align-items:center; gap:0.75rem; padding:0.85rem 1.2rem; font-size:1rem;" onclick="toggleTheme()">
+              <span id="theme-icon">🌙</span> <span id="theme-text">Dark Mode</span>
+            </div>
             <form method="POST" action="/logout" style="margin:0;">
               @csrf
               <button type="submit" class="nav-item"
@@ -133,6 +141,21 @@
   <script src="{{ asset('js/mockData.js') }}"></script>
   <script src="{{ asset('js/app.js') }}"></script>
   <script>
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.toggle('dark-mode');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      updateThemeUI(isDark);
+    }
+    function updateThemeUI(isDark) {
+      const themeIcon = document.getElementById('theme-icon');
+      const themeText = document.getElementById('theme-text');
+      if (themeIcon) themeIcon.textContent = isDark ? '☀️' : '🌙';
+      if (themeText) themeText.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      updateThemeUI(document.documentElement.classList.contains('dark-mode'));
+    });
+
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
     @if(isset($pageData))

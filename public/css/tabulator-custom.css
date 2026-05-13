@@ -1,23 +1,23 @@
 :root {
-  --tabulator-border-color: rgba(255,255,255,0.05);
+  --tabulator-border-color: #ECE4CF;
 }
 
 .tabulator,
 .tabulator * {
   font: inherit !important;
   color: inherit !important;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
   outline: none !important;
-  border-radius: 0 !important;
 }
 
 .tabulator {
   width: 100% !important;
   min-width: 100% !important;
-  overflow: visible !important;
-  background: transparent !important;
+  overflow: hidden !important;
+  background: #FFFFFF !important;
+  border: 1px solid #ECE4CF !important;
+  border-radius: 16px !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04) !important;
+  font-size: 14px !important;
 }
 
 .tabulator .tabulator-tableholder {
@@ -33,8 +33,10 @@
 
 .tabulator .tabulator-row {
   width: 100% !important;
-  border-bottom: 1px solid var(--tabulator-border-color) !important;
-  background: transparent !important;
+  border-bottom: 1px solid #F1E7D0 !important;
+  background: #FFFFFF !important;
+  color: #2A2A2A !important;
+  transition: 0.2s ease !important;
 }
 
 .tabulator .tabulator-row:last-child {
@@ -42,7 +44,7 @@
 }
 
 .tabulator .tabulator-cell {
-  padding: 1rem !important;
+  padding: 14px 10px !important;
   vertical-align: middle !important;
   text-align: left !important;
   white-space: nowrap !important;
@@ -52,22 +54,29 @@
 }
 
 .tabulator .tabulator-cell:first-child {
-  padding-left: 1rem !important;
+  padding-left: 14px !important;
 }
 
 .tabulator .tabulator-cell:last-child {
-  padding-right: 1rem !important;
+  padding-right: 14px !important;
 }
 
 .tabulator .tabulator-row:hover .tabulator-cell {
-  background: rgba(255,255,255,0.02) !important;
+  background: #FFF9EC !important;
+}
+
+.tabulator .tabulator-row.tabulator-selected,
+.tabulator .tabulator-row.tabulator-selected .tabulator-cell {
+  background: #FFE7A8 !important;
+  color: #2B241C !important;
 }
 
 .tabulator .tabulator-header {
   position: sticky !important;
   top: 0 !important;
   z-index: 1 !important;
-  background: rgba(0,0,0,0.4) !important;
+  background: #FFF3D6 !important;
+  border-bottom: 1px solid #E8D7B5 !important;
 }
 
 .tabulator .tabulator-headers {
@@ -77,18 +86,18 @@
 .tabulator .tabulator-col {
   padding: 0 !important;
   vertical-align: middle !important;
-  background: rgba(0,0,0,0.4) !important;
-  color: var(--primary-light) !important;
+  background: transparent !important;
+  color: #5A4300 !important;
   font-weight: 600 !important;
   border-bottom: 1px solid var(--tabulator-border-color) !important;
-  border-right: none !important;
+  border-right: 1px solid #F0E2BF !important;
   position: relative !important;
   display: inline-flex !important;
   align-items: center !important;
 }
 
 .tabulator .tabulator-col-content {
-  padding: 1rem !important;
+  padding: 14px 10px !important;
   width: 100% !important;
   overflow: hidden !important;
   white-space: nowrap !important;
@@ -107,7 +116,7 @@
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  color: var(--primary-light) !important;
+  color: #5A4300 !important;
   opacity: 0.75 !important;
 }
 
@@ -127,7 +136,7 @@
 }
 
 .tabulator .tabulator-resize-handle:hover {
-  background: rgba(255,255,255,0.04) !important;
+  background: rgba(244,180,0,0.12) !important;
 }
 
 .tabulator .tabulator-placeholder {
@@ -136,11 +145,32 @@
 
 .tabulator .tabulator-footer {
   margin-top: 0.75rem !important;
+  background: #FFFFFF !important;
+  border-top: 1px solid #ECE4CF !important;
 }
 
 .tabulator .tabulator-paginator {
   margin-top: 0.5rem !important;
   display: block !important;
+}
+
+.tabulator .tabulator-page {
+  border-radius: 8px !important;
+  border: 1px solid #E7DFC9 !important;
+  background: #FFFFFF !important;
+  color: #5A4300 !important;
+}
+
+.tabulator .tabulator-page.active {
+  background: #F4B400 !important;
+  color: #2B241C !important;
+}
+
+.table-toolbar {
+  background: #FFF8EA;
+  border: 1px solid #ECE4CF;
+  border-radius: 14px;
+  padding: 14px;
 }
 
 .table-container .tabulator {

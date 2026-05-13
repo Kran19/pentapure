@@ -1839,15 +1839,17 @@ const app = {
     .catch(() => this.toast('Network error.', 'error'));
   },
 
-  downloadCashierPdf() {
+  downloadHistoryPdf(panel = null) {
+    panel = panel || this.currentUser?.role || 'cashier';
     // Get today and 30 days ago as defaults
     const today = new Date().toISOString().split('T')[0];
     const monthAgo = new Date(new Date().getFullYear(), new Date().getMonth() - 1, new Date().getDate()).toISOString().split('T')[0];
+    window.currentPdfPanel = panel.toLowerCase();
 
     this.openDrawer(`
       <h3 style="margin-bottom:1.2rem;">Download PDF Report</h3>
       <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1.5rem;">
-        Select a date range to generate your transaction history report.
+        Select a date range to generate your ${panel.toLowerCase()} history report.
       </p>
       <div class="form-group">
         <label>From Date</label>
@@ -1863,12 +1865,16 @@ const app = {
         <button class="btn btn-sm" onclick="app.setPdfRange('year')" style="flex:1; font-size:0.75rem;">Last Year</button>
         <button class="btn btn-sm" onclick="app.setPdfRange('all')" style="flex:1; font-size:0.75rem;">All Time</button>
       </div>
-      <button class="btn mt-2" onclick="app.confirmCashierPdf()" style="width:100%; padding:1rem; font-size:1.1rem; display:flex; align-items:center; justify-content:center; gap:8px;">
+      <button class="btn mt-2" onclick="app.confirmHistoryPdf()" style="width:100%; padding:1rem; font-size:1.1rem; display:flex; align-items:center; justify-content:center; gap:8px;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         Generate & Download PDF
       </button>
       <button class="btn btn-secondary mt-1" onclick="app.closeDrawer()" style="width:100%;">Cancel</button>
     `);
+  },
+
+  downloadCashierPdf() {
+    this.downloadHistoryPdf('cashier');
   },
 
   setPdfRange(preset) {
@@ -1891,17 +1897,22 @@ const app = {
     this.toast(`Range set: ${preset}`, 'success');
   },
 
-  confirmCashierPdf() {
+  confirmHistoryPdf() {
     const from = document.getElementById('pdf-from').value;
     const to = document.getElementById('pdf-to').value;
+    const panel = window.currentPdfPanel || this.currentUser?.role?.toLowerCase() || 'cashier';
 
     if (!from || !to) return this.toast('Please select both dates', 'error');
     if (from > to) return this.toast('From date must be before To date', 'error');
 
-    const url = `/cashier/history/pdf?from=${from}&to=${to}`;
+    const url = `/history/${panel}/pdf?from=${from}&to=${to}`;
     window.open(url, '_blank');
     this.closeDrawer();
     this.toast('PDF is being generated...');
+  },
+
+  confirmCashierPdf() {
+    this.confirmHistoryPdf();
   },
 
   // --- GENERAL HISTORY & ROUTING ---
@@ -2068,8 +2079,8 @@ const app = {
     let html = `
       <div class="flex-between mb-1">
         <h2 style="margin:0;">${this.t('History')}</h2>
-        ${role === 'CASHIER' ? `
-          <button class="btn btn-sm btn-secondary" onclick="app.downloadCashierPdf()" style="width:auto; display:flex; align-items:center; gap:6px;">
+        ${role !== 'ATTENDANCE' ? `
+          <button class="btn btn-sm btn-secondary" onclick="app.downloadHistoryPdf('${role.toLowerCase()}')" style="width:auto; display:flex; align-items:center; gap:6px;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
             Download PDF
           </button>
@@ -3188,7 +3199,10 @@ const app = {
         container.innerHTML = `
           <div class="flex-between mb-1">
             <h2 style="margin:0;">Monthly Reports</h2>
-            <input type="month" value="${month}" onchange="window._attMonth=this.value; app.refreshCurrentView()" style="width:auto; padding:0.4rem; font-size:0.85rem;">
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input type="month" value="${month}" onchange="window._attMonth=this.value; app.refreshCurrentView()" style="width:auto; padding:0.4rem; font-size:0.85rem;">
+              <a class="btn btn-sm btn-secondary" href="/history/attendance/pdf?month=${month}" target="_blank" style="width:auto; text-decoration:none;">Download PDF</a>
+            </div>
           </div>
           <div class="card">
             ${content}
