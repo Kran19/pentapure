@@ -17,7 +17,7 @@ class DispatchController extends Controller
 
     public function home()
     {
-        $pending   = Order::with(['company', 'transporter'])->where('dispatch_status', 'PENDING')->orderByDesc('created_at')->get();
+        $pending   = Order::with(['company', 'transporter', 'items'])->where('dispatch_status', 'PENDING')->orderByDesc('created_at')->get();
         $completed = Order::with(['company', 'transporter'])->where('dispatch_status', 'DONE')->orderByDesc('created_at')->get();
 
         $pageData = [
@@ -27,6 +27,8 @@ class DispatchController extends Controller
                 'transportId'  => $o->transporter_id,
                 'total'        => $o->total,
                 'date'         => $o->created_at->toISOString(),
+                'totalQty'     => $o->items->sum('quantity'),
+                'dispatchedQty'=> $o->items->sum('dispatched_qty'),
             ]),
             'completedOrders' => $completed->map(fn($o) => [
                 'id'           => $o->id,
@@ -43,7 +45,7 @@ class DispatchController extends Controller
 
     public function action()
     {
-        $pendingOrders = Order::with(['company', 'transporter'])
+        $pendingOrders = Order::with(['company', 'transporter', 'items.product'])
             ->where('dispatch_status', 'PENDING')
             ->orderByDesc('created_at')
             ->get();
@@ -64,9 +66,13 @@ class DispatchController extends Controller
                     'vehicles' => $o->transporter?->vehicles,
                 ],
                 'items'       => $o->items->map(fn($i)=>[
-                    'productName' => $i->product?->name,
-                    'quantity'    => $i->quantity,
-                    'grade'       => $i->grade,
+                    'id'            => $i->id,
+                    'productName'   => $i->product?->name,
+                    'productId'     => $i->product_id,
+                    'quantity'      => (float) $i->quantity,
+                    'dispatchedQty' => (float) $i->dispatched_qty,
+                    'remainingQty'  => $i->remainingQty(),
+                    'grade'         => $i->grade,
                 ])
             ])
         ];
@@ -76,58 +82,58 @@ class DispatchController extends Controller
     public function storeDispatch(Request $request)
     {
         $request->validate([
-            'order_id' => 'required|exists:orders,id',
-            'lr_image' => 'nullable|string', // base64 from JS or file path
+            'order_id'              => 'required|exists:orders,id',
+            'items'                 => 'required|array|min:1',
+            'items.*.order_item_id' => 'required|exists:order_items,id',
+            'items.*.quantity'      => 'required|numeric|min:0.001',
+            'lr_image'              => 'nullable|string',
         ]);
 
         $user  = $this->authUser();
         $order = Order::with('items.product')->find($request->order_id);
 
-        // Security check
-        $visibleProductIds = Product::visibleTo($user['role'])->pluck('id')->toArray();
-        foreach ($order->items as $item) {
-            if (!in_array($item->product_id, $visibleProductIds)) {
-                return response()->json(['success' => false, 'message' => 'Unauthorized product access.'], 403);
-            }
-        }
-
         if ($order->dispatch_status === 'DONE') {
-            return response()->json(['success' => false, 'message' => 'Order already dispatched.'], 422);
+            return response()->json(['success' => false, 'message' => 'Order already fully dispatched.'], 422);
         }
 
-        // Check finished stock availability for all order items
-        foreach ($order->items as $item) {
+        // Validate each item
+        foreach ($request->items as $dispatchItem) {
+            $orderItem = $order->items->firstWhere('id', $dispatchItem['order_item_id']);
+            if (!$orderItem) {
+                return response()->json(['success' => false, 'message' => 'Invalid order item.'], 422);
+            }
+
+            $dispatchQty = (float) $dispatchItem['quantity'];
+            $remaining   = $orderItem->remainingQty();
+
+            if ($dispatchQty > $remaining) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Cannot dispatch {$dispatchQty} kg of {$orderItem->product?->name}. Remaining: {$remaining} kg"
+                ], 422);
+            }
+
+            // Check stock availability
             $available = DB::table('stocks')
-                ->where('product_id', $item->product_id)
-                ->where('stage', $item->product->type)
-                ->where('grade', $item->grade)
+                ->where('product_id', $orderItem->product_id)
+                ->where('stage', $orderItem->product->type)
+                ->where('grade', $orderItem->grade)
                 ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
                 ->value('net') ?? 0;
 
-            if ($item->quantity > $available) {
-                $pName = $item->product?->name;
+            if ($dispatchQty > $available) {
+                $pName = $orderItem->product?->name;
                 return response()->json([
                     'success' => false,
-                    'message' => "Insufficient Finished Stock for {$pName} ({$item->grade}). Need: {$item->quantity}, Have: {$available}"
+                    'message' => "Insufficient stock for {$pName} ({$orderItem->grade}). Need: {$dispatchQty} kg, Have: {$available} kg"
                 ], 422);
             }
         }
 
-        DB::transaction(function () use ($request, $user, $order) {
-            // Deduct finished stock
-            foreach ($order->items as $item) {
-                Stock::create([
-                    'product_id'       => $item->product_id,
-                    'user_id'          => $user['id'],
-                    'stage'            => $item->product->type,
-                    'grade'            => $item->grade,
-                    'quantity'         => $item->quantity,
-                    'transaction_type' => 'OUT',
-                    'notes'            => "Dispatched: Order #{$order->id}",
-                ]);
-            }
+        $message = '';
 
-            // Handle LR image - save base64 as file
+        DB::transaction(function () use ($request, $user, $order, &$message) {
+            // Handle LR image
             $lrPath = null;
             if ($request->lr_image) {
                 $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->lr_image));
@@ -135,19 +141,54 @@ class DispatchController extends Controller
                 file_put_contents(public_path($lrPath), $imageData);
             }
 
-            // Dispatch log
-            DispatchLog::create([
+            // Create dispatch log for this round
+            $dispatchLog = DispatchLog::create([
                 'user_id'        => $user['id'],
                 'order_id'       => $order->id,
                 'transporter_id' => $order->transporter_id,
                 'lr_image_path'  => $lrPath,
             ]);
 
-            // Update order status
-            $order->update(['status' => 'CLOSED', 'dispatch_status' => 'DONE']);
+            // Process each item
+            foreach ($request->items as $dispatchItem) {
+                $orderItem   = $order->items->firstWhere('id', $dispatchItem['order_item_id']);
+                $dispatchQty = (float) $dispatchItem['quantity'];
+
+                // Record what was dispatched in this round
+                \App\Models\DispatchLogItem::create([
+                    'dispatch_log_id' => $dispatchLog->id,
+                    'order_item_id'   => $orderItem->id,
+                    'quantity'        => $dispatchQty,
+                ]);
+
+                // Deduct from stock
+                Stock::create([
+                    'product_id'       => $orderItem->product_id,
+                    'user_id'          => $user['id'],
+                    'stage'            => $orderItem->product->type,
+                    'grade'            => $orderItem->grade,
+                    'quantity'         => $dispatchQty,
+                    'transaction_type' => 'OUT',
+                    'notes'            => "Dispatched: Order #{$order->id} (Partial round #{$dispatchLog->id})",
+                ]);
+
+                // Update dispatched_qty on the order item
+                $orderItem->increment('dispatched_qty', $dispatchQty);
+            }
+
+            // Check if ALL items in the order are now fully dispatched
+            $order->refresh();
+            $allDone = $order->items->every(fn($item) => $item->remainingQty() <= 0);
+
+            if ($allDone) {
+                $order->update(['status' => 'CLOSED', 'dispatch_status' => 'DONE']);
+                $message = 'Order fully dispatched! All items delivered.';
+            } else {
+                $message = 'Partial dispatch recorded. Remaining items can be dispatched in the next round.';
+            }
         });
 
-        return response()->json(['success' => true, 'message' => 'Order dispatched successfully!']);
+        return response()->json(['success' => true, 'message' => $message]);
     }
 
     public function updateLR(Request $request)
@@ -180,7 +221,7 @@ class DispatchController extends Controller
 
     public function history()
     {
-        $logs = DispatchLog::with(['order.company', 'order.transporter', 'user'])
+        $logs = DispatchLog::with(['order.company', 'order.transporter', 'user', 'dispatchItems.orderItem.product'])
             ->orderByDesc('created_at')
             ->get()
             ->map(fn($d) => [
@@ -192,6 +233,11 @@ class DispatchController extends Controller
                 'lrImage'       => $d->lr_image_path ? asset($d->lr_image_path) : null,
                 'orderTotal'    => $d->order?->total,
                 'date'          => $d->created_at->toISOString(),
+                'items'         => $d->dispatchItems->map(fn($di) => [
+                    'productName' => $di->orderItem?->product?->name,
+                    'grade'       => $di->orderItem?->grade,
+                    'quantity'    => (float) $di->quantity,
+                ]),
             ]);
 
         $pageData = ['dispatchLogs' => $logs];

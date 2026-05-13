@@ -9,13 +9,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Stock extends Model
 {
     protected $fillable = [
-        'product_id', 'user_id', 'stage', 'grade', 'quantity', 'transaction_type', 'notes', 'boxes', 'weight_per_box'
+        'product_id', 'user_id', 'stage', 'grade', 'quantity', 'transaction_type', 'notes'
     ];
 
     protected $casts = [
-        'quantity' => 'decimal:3',
-        'weight_per_box' => 'decimal:3',
-        'boxes' => 'integer'
+        'quantity' => 'decimal:3'
     ];
 
     public function product(): BelongsTo

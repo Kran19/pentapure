@@ -84,7 +84,7 @@ class ProductSeeder extends Seeder
             Product::create([
                 'name' => $name,
                 'type' => 'FINISHED',
-                'unit' => 'boxes',
+                'unit' => 'kg',
             ]);
         }
     }

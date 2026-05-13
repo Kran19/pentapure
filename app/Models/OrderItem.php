@@ -7,9 +7,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OrderItem extends Model
 {
-    protected $fillable = ['order_id', 'product_id', 'grade', 'quantity', 'price'];
+    protected $fillable = ['order_id', 'product_id', 'grade', 'quantity', 'dispatched_qty', 'price'];
 
-    protected $casts = ['quantity' => 'decimal:3', 'price' => 'decimal:2'];
+    protected $casts = ['quantity' => 'decimal:3', 'dispatched_qty' => 'decimal:3', 'price' => 'decimal:2'];
+
+    public function remainingQty(): float
+    {
+        return (float) $this->quantity - (float) $this->dispatched_qty;
+    }
 
     public function order(): BelongsTo
     {

@@ -297,18 +297,12 @@ const app = {
     const rmList = DB.get('rawMaterialsList') || [];
     const agg = {};
     const gradeMap = {};
-    const boxesMap = {};
-    const weightMap = {};
 
     items.forEach(i => {
-      const wpb = Number(i.weight_per_box) || 0;
-      // For finished goods, we differentiate by weight per box too
-      const key = `${i.productId}_${i.grade || 'NONE'}${wpb > 0 ? '_'+wpb : ''}`;
+      const key = `${i.productId}_${i.grade || 'NONE'}`;
       
       agg[key] = (agg[key] || 0) + Number(i.quantity);
       gradeMap[key] = i.grade || 'NONE';
-      boxesMap[key] = (boxesMap[key] || 0) + (Number(i.boxes) || 0);
-      weightMap[key] = wpb;
     });
 
     return Object.keys(agg).map(key => {
@@ -317,16 +311,14 @@ const app = {
       let p = rmList.find(prod => prod.id == id);
       if (!p) p = products.find(prod => prod.id == id);
       
-      if (!p) return { id, name: 'Unknown Product', quantity: agg[key], unit: '?', grade: gradeMap[key], boxes: boxesMap[key], weightPerBox: weightMap[key] };
+      if (!p) return { id, name: 'Unknown Product', quantity: agg[key], unit: '?', grade: gradeMap[key] };
       
       return { 
         id: p.id, 
         name: p.name, 
         quantity: agg[key], 
         unit: p.unit || 'kg', 
-        grade: gradeMap[key] !== 'NONE' ? gradeMap[key] : (p.grade || 'NONE'),
-        boxes: boxesMap[key],
-        weightPerBox: weightMap[key]
+        grade: gradeMap[key] !== 'NONE' ? gradeMap[key] : (p.grade || 'NONE')
       };
     });
   },
@@ -728,7 +720,6 @@ const app = {
             <div class="list-item-title">${s.name}</div>
             <div class="list-item-meta">
               Grade: ${s.grade}
-              ${s.boxes > 0 ? `<br><span style="font-size:0.75rem; color:var(--text-accent); font-weight:500;">${s.boxes} Boxes (${s.weightPerBox}kg each)</span>` : ''}
             </div>
           </div>
           <div class="list-item-right">
@@ -815,20 +806,14 @@ const app = {
             <input type="number" id="finished-in-qty" placeholder="Quantity consumed">
           </div>
           
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;" class="mt-1">
-            <div class="form-group">
-              <label>Number of Boxes</label>
-              <input type="number" id="finished-boxes" placeholder="e.g. 10" oninput="app.calculateFinishedTotal()">
-            </div>
-            <div class="form-group">
-              <label>Weight Per Box (kg)</label>
-              <input type="number" id="finished-weight-per-box" placeholder="e.g. 25" oninput="app.calculateFinishedTotal()">
-            </div>
+          <div class="form-group mt-1">
+            <label>Notes (Optional)</label>
+            <input type="text" id="finished-notes" placeholder="Enter notes here...">
           </div>
           
           <div class="form-group mt-1">
             <label>Total Expected Output (kg)</label>
-            <input type="number" id="finished-out-qty" placeholder="Calculated total" readonly style="background:rgba(255,255,255,0.05); font-weight:bold; color:var(--secondary);">
+            <input type="number" id="finished-out-qty" placeholder="Enter total output quantity" style="font-weight:bold; color:var(--secondary);">
           </div>
           
           <button class="btn mt-2" onclick="app.submitFinishedProduction()">
@@ -894,24 +879,18 @@ const app = {
   },
 
   calculateFinishedTotal() {
-    const boxes = Number(document.getElementById('finished-boxes').value) || 0;
-    const weight = Number(document.getElementById('finished-weight-per-box').value) || 0;
-    const total = boxes * weight;
-    document.getElementById('finished-out-qty').value = total > 0 ? total.toFixed(3) : '';
+    // Deprecated: No longer auto-calculating as we use direct note entry
   },
 
   submitFinishedProduction() {
     const val = document.getElementById('finished-input-id').value;
     const inQty = Number(document.getElementById('finished-in-qty').value);
-    const boxes = Number(document.getElementById('finished-boxes').value);
-    const weightPerBox = Number(document.getElementById('finished-weight-per-box').value);
+    const notes = document.getElementById('finished-notes').value;
     const outQty = Number(document.getElementById('finished-out-qty').value);
     
     if (!val) return this.toast('Select a semi-finished material', 'error');
     if (!inQty || inQty <= 0) return this.toast('Enter valid consumed quantity', 'error');
-    if (!boxes || boxes <= 0) return this.toast('Enter valid number of boxes', 'error');
-    if (!weightPerBox || weightPerBox <= 0) return this.toast('Enter valid weight per box', 'error');
-    if (!outQty || outQty <= 0) return this.toast('Output quantity must be calculated', 'error');
+    if (!outQty || outQty <= 0) return this.toast('Enter valid output quantity', 'error');
 
     const [id, grade] = val.split('|');
     const selectEl = document.getElementById('finished-input-id');
@@ -924,8 +903,7 @@ const app = {
       output_product_id: id,
       output_grade:      grade,
       output_qty:        outQty,
-      boxes:             boxes,
-      weight_per_box:    weightPerBox,
+      notes:             notes,
       inputs: [
         { product_id: id, grade: grade, quantity: inQty }
       ]
@@ -961,7 +939,8 @@ const app = {
     
     if (p && p.gradeNames && p.gradeNames.length > 0) {
       gradeSelect.innerHTML = `<option value="" disabled selected>-- Select Grade --</option>` + 
-        p.gradeNames.map(g => `<option value="${g}">${g}</option>`).join('');
+        p.gradeNames.map(g => `<option value="${g}">${g}</option>`).join('') + 
+        (p.gradeNames.includes('N/A') ? '' : `<option value="N/A">N/A</option>`);
       gradeGroup.classList.remove('hidden');
       document.getElementById('materials-section').classList.add('hidden');
     } else {
@@ -1348,6 +1327,7 @@ const app = {
         <select class="o-prod-grade" style="width:100%;">
           <option value="" disabled selected>Grade</option>
           ${allGrades.map(g => `<option value="${g}">${g}</option>`).join('')}
+          ${allGrades.includes('N/A') ? '' : `<option value="N/A">N/A</option>`}
         </select>
       </div>
       <div class="form-group" style="flex:1 1 25%;">
@@ -1482,7 +1462,12 @@ const app = {
     if (paginated.length === 0) {
       html += `<p class="text-center text-muted card">No ${tab.toLowerCase()} dispatches available.</p>`;
     } else {
-      html += paginated.map(o => `
+      html += paginated.map(o => {
+          const totalQty = o.totalQty || 0;
+          const dispatchedQty = o.dispatchedQty || 0;
+          const pct = totalQty > 0 ? Math.round((dispatchedQty / totalQty) * 100) : 0;
+          const progressColor = pct === 0 ? 'var(--warning)' : 'var(--secondary)';
+          return `
           <div class="card">
             <div class="flex-between mb-1">
               <span style="font-weight:bold;">Order #${String(o.id).toUpperCase()}</span>
@@ -1492,8 +1477,19 @@ const app = {
               To: ${(DB.get('companies') || []).find(c=>c.id==o.companyId)?.name} <br>
               Via: ${(DB.get('transportCompanies') || []).find(t=>t.id==o.transportId)?.name}
             </div>
+            ${tab === 'PENDING' && totalQty > 0 ? `
+              <div style="margin-top:10px;">
+                <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:4px;">
+                  <span style="color:var(--text-muted);">Dispatch Progress</span>
+                  <span style="color:${progressColor}; font-weight:bold;">${dispatchedQty}/${totalQty} kg (${pct}%)</span>
+                </div>
+                <div style="background:rgba(255,255,255,0.1); border-radius:6px; height:6px; overflow:hidden;">
+                  <div style="background:${progressColor}; height:100%; width:${pct}%; border-radius:6px; transition:width 0.3s;"></div>
+                </div>
+              </div>
+            ` : ''}
           </div>
-        `).join('');
+        `}).join('');
     }
       
     html += this.renderPaginationControls(page, totalPages);
@@ -1525,7 +1521,7 @@ const app = {
           </div>
         </div>
         
-        <button class="btn mt-2" onclick="app.submitDispatch()">Mark as Dispatched</button>
+        <button class="btn mt-2" onclick="app.submitDispatch()">Dispatch Items</button>
       </div>
     `;
 
@@ -1548,12 +1544,27 @@ const app = {
     if(o) {
       div.style.display = 'block';
       div.classList.add('animation-fadeIn');
-      const itemRows = (o.items || []).map(i => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
-          <span style="font-weight:500;">${i.productName} (${i.grade})</span>
-          <span style="color:var(--secondary); font-weight:bold; font-size:1rem;">${i.quantity} kg</span>
+      const itemRows = (o.items || []).map((i, idx) => {
+        const remaining = i.remainingQty ?? (i.quantity - (i.dispatchedQty || 0));
+        const alreadyDispatched = i.dispatchedQty || 0;
+        if (remaining <= 0) return ''; // skip fully dispatched items
+        return `
+        <div style="display:flex; flex-direction:column; gap:6px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-weight:500;">${i.productName} (${i.grade})</span>
+            <span style="color:var(--text-muted); font-size:0.8rem;">
+              Total: ${i.quantity} kg
+              ${alreadyDispatched > 0 ? ` · Already sent: ${alreadyDispatched} kg` : ''}
+            </span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <label style="font-size:0.75rem; color:var(--secondary); white-space:nowrap; margin:0;">Dispatch Qty (max ${remaining} kg):</label>
+            <input type="number" class="dispatch-item-qty" data-item-id="${i.id}" data-max="${remaining}" 
+                   value="${remaining}" max="${remaining}" min="0.001" step="0.001"
+                   style="flex:1; padding:0.6rem; font-size:1rem; font-weight:bold; color:var(--secondary); background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); border-radius:8px;">
+          </div>
         </div>
-      `).join('');
+      `}).join('');
       
       div.innerHTML = `
         <div style="background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:20px; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
@@ -1588,9 +1599,9 @@ const app = {
           <div style="background:rgba(0,0,0,0.2); border-radius:8px; padding:15px; border-left:4px solid var(--secondary);">
             <div style="display:flex; align-items:center; gap:8px; color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; margin-bottom:10px; font-weight:bold;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-              Manifest / Items
+              Items to Dispatch (Edit quantities for partial dispatch)
             </div>
-            ${itemRows || '<div class="text-center py-1">No items recorded</div>'}
+            ${itemRows || '<div class="text-center py-1">All items already dispatched</div>'}
           </div>
         </div>
       `;
@@ -1614,6 +1625,29 @@ const app = {
     const orderId = document.getElementById('dispatch-order').value;
     if (!orderId) return this.toast('Select an order', 'error');
 
+    // Collect per-item dispatch quantities
+    const itemInputs = document.querySelectorAll('.dispatch-item-qty');
+    if (itemInputs.length === 0) return this.toast('No items to dispatch', 'error');
+
+    const items = [];
+    let hasError = false;
+    itemInputs.forEach(input => {
+      const qty = Number(input.value);
+      const max = Number(input.dataset.max);
+      const itemId = input.dataset.itemId;
+      
+      if (qty > 0) {
+        if (qty > max) {
+          this.toast(`Quantity exceeds remaining (max: ${max} kg)`, 'error');
+          hasError = true;
+        }
+        items.push({ order_item_id: itemId, quantity: qty });
+      }
+    });
+
+    if (hasError) return;
+    if (items.length === 0) return this.toast('Enter at least one item quantity to dispatch', 'error');
+
     fetch('/dispatch/action', {
       method: 'POST',
       headers: { 
@@ -1621,13 +1655,13 @@ const app = {
         'Accept': 'application/json',
         'X-CSRF-TOKEN': csrfToken 
       },
-      body: JSON.stringify({ order_id: orderId, lr_image: window.currentLRImage })
+      body: JSON.stringify({ order_id: orderId, items: items, lr_image: window.currentLRImage })
     })
     .then(r => r.json())
     .then(d => {
       if (d.success) {
         window.currentLRImage = null;
-        this.toast(d.message || 'Order dispatched!');
+        this.toast(d.message || 'Dispatch recorded!');
         setTimeout(() => this.navigate('home'), 600);
       } else {
         this.toast(d.message || 'Dispatch failed', 'error');
@@ -1676,6 +1710,20 @@ const app = {
   },
 
   renderCashierAdd(container) {
+    // Default categories + user-added ones from localStorage
+    const defaultCats = [
+      { value: 'general', label: 'General' },
+      { value: 'small', label: 'Small Expense (< ₹5,000)' },
+      { value: 'big', label: 'Big Expense (≥ ₹5,000)' },
+      { value: 'salary', label: 'Salary' },
+      { value: 'transport', label: 'Transport' },
+      { value: 'maintenance', label: 'Maintenance' },
+      { value: 'raw_material', label: 'Raw Material Purchase' },
+      { value: 'utilities', label: 'Utilities (Electricity/Water)' },
+    ];
+    const customCats = JSON.parse(localStorage.getItem('cashier_custom_categories') || '[]');
+    const allCats = [...defaultCats, ...customCats];
+
     container.innerHTML = `
       <div class="card">
         <div class="card-title">New Transaction</div>
@@ -1687,16 +1735,12 @@ const app = {
         
         <div class="form-group mt-1">
           <label>Expense Category</label>
-          <select id="tx-category">
-            <option value="general">General</option>
-            <option value="small">Small Expense (< ₹5,000)</option>
-            <option value="big">Big Expense (≥ ₹5,000)</option>
-            <option value="salary">Salary</option>
-            <option value="transport">Transport</option>
-            <option value="maintenance">Maintenance</option>
-            <option value="raw_material">Raw Material Purchase</option>
-            <option value="utilities">Utilities (Electricity/Water)</option>
-          </select>
+          <div style="display:flex; gap:8px; align-items:stretch;">
+            <select id="tx-category" style="flex:1;">
+              ${allCats.map(c => `<option value="${c.value}">${c.label}</option>`).join('')}
+            </select>
+            <button class="btn btn-secondary" onclick="app.addNewExpenseCategory()" style="width:auto; padding:0.5rem 1rem; white-space:nowrap; font-size:0.8rem;">+ New</button>
+          </div>
         </div>
         
         <div class="form-group">
@@ -1715,6 +1759,50 @@ const app = {
       </div>
     `;
     window.txType = 'IN';
+  },
+
+  addNewExpenseCategory() {
+    this.openDrawer(`
+      <h3 style="margin-bottom:1rem;">Add New Category</h3>
+      <div class="form-group">
+        <label>Category Name</label>
+        <input type="text" id="new-cat-name" placeholder="e.g. Packaging, Office Supplies..." style="font-size:1rem;">
+      </div>
+      <div style="display:flex; gap:10px; margin-top:1rem;">
+        <button class="btn btn-secondary" style="flex:1;" onclick="app.closeDrawer()">Cancel</button>
+        <button class="btn" style="flex:2;" onclick="app.saveNewExpenseCategory()">Save Category</button>
+      </div>
+    `);
+  },
+
+  saveNewExpenseCategory() {
+    const nameInput = document.getElementById('new-cat-name');
+    const name = nameInput.value.trim();
+    if (!name) return this.toast('Enter a category name', 'error');
+    
+    const value = name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    const customCats = JSON.parse(localStorage.getItem('cashier_custom_categories') || '[]');
+    
+    // Check for duplicates
+    if (customCats.some(c => c.value === value)) {
+      return this.toast('This category already exists', 'error');
+    }
+    
+    customCats.push({ value, label: name });
+    localStorage.setItem('cashier_custom_categories', JSON.stringify(customCats));
+    
+    this.closeDrawer();
+    this.toast(`Category "${name}" added!`);
+    
+    // Re-render the form to include the new category
+    const container = document.getElementById('app-content');
+    this.renderCashierAdd(container);
+    
+    // Auto-select the newly added category
+    setTimeout(() => {
+      const select = document.getElementById('tx-category');
+      if (select) select.value = value;
+    }, 100);
   },
 
   submitTransaction() {
@@ -1739,6 +1827,71 @@ const app = {
       else this.toast(d.message || 'Error', 'error');
     })
     .catch(() => this.toast('Network error.', 'error'));
+  },
+
+  downloadCashierPdf() {
+    // Get today and 30 days ago as defaults
+    const today = new Date().toISOString().split('T')[0];
+    const monthAgo = new Date(new Date().getFullYear(), new Date().getMonth() - 1, new Date().getDate()).toISOString().split('T')[0];
+
+    this.openDrawer(`
+      <h3 style="margin-bottom:1.2rem;">Download PDF Report</h3>
+      <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1.5rem;">
+        Select a date range to generate your transaction history report.
+      </p>
+      <div class="form-group">
+        <label>From Date</label>
+        <input type="date" id="pdf-from" value="${monthAgo}" style="font-size:1rem; padding:0.7rem;">
+      </div>
+      <div class="form-group">
+        <label>To Date</label>
+        <input type="date" id="pdf-to" value="${today}" max="${today}" style="font-size:1rem; padding:0.7rem;">
+      </div>
+      <div style="display:flex; gap:8px; margin-top:0.5rem;">
+        <button class="btn btn-sm" onclick="app.setPdfRange('week')" style="flex:1; font-size:0.75rem;">Last 7 Days</button>
+        <button class="btn btn-sm" onclick="app.setPdfRange('month')" style="flex:1; font-size:0.75rem;">Last 30 Days</button>
+        <button class="btn btn-sm" onclick="app.setPdfRange('year')" style="flex:1; font-size:0.75rem;">Last Year</button>
+        <button class="btn btn-sm" onclick="app.setPdfRange('all')" style="flex:1; font-size:0.75rem;">All Time</button>
+      </div>
+      <button class="btn mt-2" onclick="app.confirmCashierPdf()" style="width:100%; padding:1rem; font-size:1.1rem; display:flex; align-items:center; justify-content:center; gap:8px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        Generate & Download PDF
+      </button>
+      <button class="btn btn-secondary mt-1" onclick="app.closeDrawer()" style="width:100%;">Cancel</button>
+    `);
+  },
+
+  setPdfRange(preset) {
+    const today = new Date();
+    const toStr = today.toISOString().split('T')[0];
+    let fromStr = '';
+
+    if (preset === 'week') {
+      fromStr = new Date(today - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    } else if (preset === 'month') {
+      fromStr = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate()).toISOString().split('T')[0];
+    } else if (preset === 'year') {
+      fromStr = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate()).toISOString().split('T')[0];
+    } else if (preset === 'all') {
+      fromStr = '2020-01-01';
+    }
+
+    document.getElementById('pdf-from').value = fromStr;
+    document.getElementById('pdf-to').value = toStr;
+    this.toast(`Range set: ${preset}`, 'success');
+  },
+
+  confirmCashierPdf() {
+    const from = document.getElementById('pdf-from').value;
+    const to = document.getElementById('pdf-to').value;
+
+    if (!from || !to) return this.toast('Please select both dates', 'error');
+    if (from > to) return this.toast('From date must be before To date', 'error');
+
+    const url = `/cashier/history/pdf?from=${from}&to=${to}`;
+    window.open(url, '_blank');
+    this.closeDrawer();
+    this.toast('PDF is being generated...');
   },
 
   // --- GENERAL HISTORY & ROUTING ---
@@ -1818,7 +1971,7 @@ const app = {
 
         return `<div class="list-item" onclick="app.openProductionDrawer(${idx})" style="cursor:pointer;">
           <div class="list-item-content">
-            <div class="list-item-title">Produced ${l.outputQty || 0}kg ${pName} (${l.outputGrade}) ${l.boxes ? `\u00b7 ${l.boxes} Boxes` : ''}</div>
+            <div class="list-item-title">Produced ${l.outputQty || 0}kg ${pName} (${l.outputGrade}) ${l.notes ? `\u00b7 Notes: ${l.notes}` : ''}</div>
             <div class="list-item-meta">
               <div style="color:var(--secondary); margin-bottom:4px;">${dateStr}</div>
               <div style="font-size:0.75rem; color:var(--text-muted); line-height:1.2;">Using: ${inputList}</div>
@@ -1905,6 +2058,12 @@ const app = {
     let html = `
       <div class="flex-between mb-1">
         <h2 style="margin:0;">${this.t('History')}</h2>
+        ${role === 'CASHIER' ? `
+          <button class="btn btn-sm btn-secondary" onclick="app.downloadCashierPdf()" style="width:auto; display:flex; align-items:center; gap:6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Download PDF
+          </button>
+        ` : ''}
       </div>
       
       ${this.renderDateFilterControls("app.refreshCurrentView")}
@@ -1984,9 +2143,8 @@ const app = {
         <div><div style="color:var(--text-muted); font-size:0.8rem;">Grade</div><div>${l.outputGrade}</div></div>
         <div><div style="color:var(--text-muted); font-size:0.8rem;">Total Quantity</div><div style="font-weight:700; font-size:1.2rem; color:var(--secondary);">${l.outputQty} kg</div></div>
         <div><div style="color:var(--text-muted); font-size:0.8rem;">Date</div><div>${new Date(l.date).toLocaleString()}</div></div>
-        ${l.boxes ? `
-          <div><div style="color:var(--text-muted); font-size:0.8rem;">No. of Boxes</div><div style="font-weight:600;">${l.boxes}</div></div>
-          <div><div style="color:var(--text-muted); font-size:0.8rem;">Weight/Box</div><div style="font-weight:600;">${l.weightPerBox} kg</div></div>
+        ${l.notes ? `
+          <div><div style="color:var(--text-muted); font-size:0.8rem;">Notes</div><div style="font-weight:600;">${l.notes}</div></div>
         ` : ''}
       </div>
       <div style="margin-top:1.5rem; margin-bottom:1rem;">
@@ -2086,17 +2244,30 @@ const app = {
     const trans = DB.get('transportCompanies').find(t=>t.id==(d.transportId||order.transportId)) || {};
     const user = DB.get('users').find(u=>u.id==d.userId) || {};
     
+    const itemsHtml = (d.items && d.items.length > 0) ? `
+      <div style="margin-bottom:1rem; background:rgba(0,0,0,0.2); border-radius:8px; padding:12px; border-left:3px solid var(--secondary);">
+        <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">Items Dispatched in this Round</div>
+        ${d.items.map(i => `
+          <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.9rem;">
+            <span>${i.productName || 'Unknown'} <span style="color:var(--text-muted); font-size:0.75rem;">(${i.grade})</span></span>
+            <span style="font-weight:bold; color:var(--secondary);">${i.quantity} kg</span>
+          </div>
+        `).join('')}
+      </div>
+    ` : '';
+
     this.openDrawer(`
       <h3 style="margin-bottom:1rem;">Dispatch Details</h3>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; margin-bottom:1rem;">
         <div><div style="color:var(--text-muted); font-size:0.8rem;">Order</div><div style="font-weight:600;">#${String(d.orderId || '').toUpperCase()}</div></div>
         <div><div style="color:var(--text-muted); font-size:0.8rem;">Date</div><div>${new Date(d.date).toLocaleString()}</div></div>
-        <div><div style="color:var(--text-muted); font-size:0.8rem;">Company</div><div>${comp.name||'N/A'}</div></div>
-        <div><div style="color:var(--text-muted); font-size:0.8rem;">Transport</div><div>${trans.name||'N/A'}</div></div>
-        <div><div style="color:var(--text-muted); font-size:0.8rem;">Dispatched By</div><div>${user.name||'System'}</div></div>
-        <div><div style="color:var(--text-muted); font-size:0.8rem;">Order Value</div><div style="font-weight:700; color:var(--secondary);">\u20b9${(order.total||0).toLocaleString()}</div></div>
+        <div><div style="color:var(--text-muted); font-size:0.8rem;">Company</div><div>${d.companyName||comp.name||'N/A'}</div></div>
+        <div><div style="color:var(--text-muted); font-size:0.8rem;">Transport</div><div>${d.transportName||trans.name||'N/A'}</div></div>
+        <div><div style="color:var(--text-muted); font-size:0.8rem;">Dispatched By</div><div>${d.dispatchedBy||user.name||'System'}</div></div>
+        <div><div style="color:var(--text-muted); font-size:0.8rem;">Order Value</div><div style="font-weight:700; color:var(--secondary);">\u20b9${(d.orderTotal||order.total||0).toLocaleString()}</div></div>
         <div><div style="color:var(--text-muted); font-size:0.8rem;">LR Status</div><div>${d.lrImage ? '<span class="badge badge-done">UPLOADED</span>' : '<span class="badge badge-pending">PENDING</span>'}</div></div>
       </div>
+      ${itemsHtml}
       ${d.lrImage ? `
         <div style="margin-bottom:1rem;">
           <div style="color:var(--text-muted); font-size:0.8rem; margin-bottom:0.5rem;">LR Copy</div>

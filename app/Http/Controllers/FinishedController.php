@@ -33,7 +33,7 @@ class FinishedController extends Controller
                 stocks.grade,
                 SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
             ")
-            ->havingRaw("quantity > 0")
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
             ->get()->map(fn($r) => (array) $r)->toArray();
     }
 
@@ -107,8 +107,7 @@ class FinishedController extends Controller
             'output_product_id' => 'required|exists:products,id',
             'output_grade'      => 'required|string',
             'output_qty'        => 'required|numeric|min:0.001',
-            'boxes'             => 'nullable|integer|min:1',
-            'weight_per_box'    => 'nullable|numeric|min:0.001',
+            'notes'             => 'nullable|string',
             'inputs'            => 'required|array|min:1',
             'inputs.*.product_id' => 'required|exists:products,id',
             'inputs.*.grade'      => 'required|string',
@@ -154,8 +153,7 @@ class FinishedController extends Controller
                 'output_product_id' => $request->output_product_id,
                 'output_grade'      => $request->output_grade,
                 'output_qty'        => $request->output_qty,
-                'boxes'             => $request->boxes,
-                'weight_per_box'    => $request->weight_per_box,
+                'notes'             => $request->notes,
             ]);
 
             foreach ($request->inputs as $inp) {
@@ -186,9 +184,7 @@ class FinishedController extends Controller
                 'grade'            => $request->output_grade,
                 'quantity'         => $request->output_qty,
                 'transaction_type' => 'IN',
-                'notes'            => "Produced: Production log #{$log->id}",
-                'boxes'            => $request->boxes,
-                'weight_per_box'   => $request->weight_per_box,
+                'notes'            => $request->notes ? "Produced: Production log #{$log->id}. Notes: " . $request->notes : "Produced: Production log #{$log->id}",
             ]);
         });
 
@@ -207,8 +203,7 @@ class FinishedController extends Controller
                 'outputName'      => $l->outputProduct?->name,
                 'outputGrade'     => $l->output_grade,
                 'outputQty'       => $l->output_qty,
-                'boxes'           => $l->boxes,
-                'weightPerBox'    => $l->weight_per_box,
+                'notes'           => $l->notes,
                 'date'            => $l->created_at->toISOString(),
                 'consumedInputs'  => $l->inputs->map(fn($i) => [
                     'productId' => $i->input_product_id,

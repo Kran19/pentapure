@@ -76,19 +76,13 @@
     @else
     <div class="table-container">
       <table>
-        <thead><tr><th>Product</th><th>Grade</th><th>Boxes</th><th>Total Qty</th><th>Unit</th><th>Action</th></tr></thead>
+        <thead><tr><th>Product</th><th>Grade</th><th>Total Qty</th><th>Unit</th><th>Action</th></tr></thead>
         <tbody>
           @foreach($finishedItems as $s)
           <tr>
             <td style="font-weight:600;">{{ $s->name }}</td>
             <td><span class="badge badge-info">{{ $s->grade }}</span></td>
-            <td style="color:var(--text-accent); font-weight:500;">
-              @if($s->boxes > 0)
-                {{ $s->boxes }} <span style="font-size:0.75rem; color:var(--text-muted);">({{ $s->weightPerBox }}kg each)</span>
-              @else
-                -
-              @endif
-            </td>
+
             <td style="font-weight:bold; color:var(--secondary);">{{ number_format($s->quantity, 2) }}</td>
             <td style="color:var(--text-muted);">{{ $s->unit }}</td>
             <td>

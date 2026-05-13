@@ -195,18 +195,16 @@ class AdminController extends Controller
     {
         $allStock = DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'stocks.weight_per_box', 'products.name', 'products.unit')
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit')
             ->selectRaw("
                 stocks.product_id as productId,
                 products.name,
                 products.unit,
                 stocks.stage,
                 stocks.grade,
-                stocks.weight_per_box as weightPerBox,
-                SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity,
-                SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.boxes ELSE -stocks.boxes END) as boxes
+                SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
             ")
-            ->havingRaw("quantity > 0")
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
             ->orderBy('stocks.stage')
             ->orderBy('products.name')
             ->get();

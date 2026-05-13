@@ -187,7 +187,7 @@ class RawController extends Controller
                 stocks.grade,
                 SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
             ")
-            ->havingRaw("quantity > 0")
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
             ->get()
             ->map(fn($r) => (array) $r)
             ->toArray();

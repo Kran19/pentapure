@@ -111,6 +111,7 @@ Route::prefix('cashier')->middleware('auth.role:CASHIER')->controller(CashierCon
     Route::get('/action',      'action')->name('cashier.action');
     Route::post('/action',     'storeTransaction');
     Route::get('/history',     'history')->name('cashier.history');
+    Route::get('/history/pdf', 'downloadPdf')->name('cashier.pdf');
     Route::get('/profile',     'profile')->name('cashier.profile');
 });
 

@@ -63,7 +63,7 @@ class SalesController extends Controller
             'id'=>$t->id,'name'=>$t->name,'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
         ]);
         $products = Product::target()->active()->visibleTo($this->authUser()['role'])->get(['id', 'name', 'unit', 'type']);
-        $grades = ['PPF', 'TPR', 'TPS', 'GOLD', 'PREMIUM', 'RICH', 'RICH+', 'EXTRA STRONG', 'REGULAR', 'DELUXE', 'PURE'];
+        $grades = \App\Models\Grade::where('is_active', true)->pluck('name')->toArray();
 
         $pageData = compact('companies', 'transportCompanies', 'products', 'grades');
         return view('sales.action', compact('pageData'));

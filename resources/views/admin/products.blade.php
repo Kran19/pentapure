@@ -25,7 +25,7 @@
       </div>
       <div class="form-group">
         <label>Unit</label>
-        <input type="text" id="p-unit" value="kg" placeholder="kg, boxes...">
+        <input type="text" id="p-unit" value="kg" placeholder="kg, liters, pieces...">
       </div>
     </div>
 

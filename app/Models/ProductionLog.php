@@ -9,13 +9,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ProductionLog extends Model
 {
     protected $fillable = [
-        'user_id', 'type', 'output_product_id', 'output_grade', 'output_qty', 'boxes', 'weight_per_box'
+        'user_id', 'type', 'output_product_id', 'output_grade', 'output_qty', 'notes'
     ];
 
     protected $casts = [
-        'output_qty' => 'decimal:3',
-        'weight_per_box' => 'decimal:3',
-        'boxes' => 'integer'
+        'output_qty' => 'decimal:3'
     ];
 
     public function user(): BelongsTo
