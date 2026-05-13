@@ -24,11 +24,12 @@
     input.name = name;
     input.placeholder = placeholder || '';
     input.className = 'btn-sm filter-input';
-    input.style.background = 'var(--glass-bg)';
-    input.style.color = 'white';
-    input.style.border = '1px solid var(--glass-border)';
+    input.style.background = '#FFFFFF';
+    input.style.color = '#2A2A2A';
+    input.style.border = '1px solid #DDCFAF';
     input.style.padding = '5px 10px';
     input.style.minWidth = '120px';
+    input.style.textTransform = 'uppercase';
     return input;
   }
 
@@ -36,11 +37,12 @@
     const select = document.createElement('select');
     select.name = name;
     select.className = 'btn-sm filter-input';
-    select.style.background = 'var(--glass-bg)';
-    select.style.color = 'white';
-    select.style.border = '1px solid var(--glass-border)';
+    select.style.background = '#FFFFFF';
+    select.style.color = '#2A2A2A';
+    select.style.border = '1px solid #DDCFAF';
     select.style.padding = '5px 10px';
     select.style.minWidth = '120px';
+    select.style.textTransform = 'uppercase';
 
     const emptyOption = document.createElement('option');
     emptyOption.value = '';
@@ -117,7 +119,7 @@
     filterBar.style.gap = '0.75rem';
     filterBar.style.marginBottom = '1rem';
     filterBar.style.padding = '0.75rem';
-    filterBar.style.background = 'rgba(0,0,0,0.15)';
+    filterBar.style.background = '#D8D8D8';
     filterBar.style.borderRadius = '0.75rem';
 
     headerCells.forEach((th, index) => {

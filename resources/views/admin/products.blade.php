@@ -33,7 +33,7 @@
         <label style="font-size:0.9rem; color:var(--primary-light); margin-bottom:0.5rem; display:block;">Select Allowed Grades for this Product</label>
         <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:8px;">
             @foreach($pageData['allGrades'] as $g)
-            <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; background:rgba(255,255,255,0.05); padding:6px 10px; border-radius:6px; cursor:pointer;">
+            <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; background:var(--bg-hover); border:1px solid var(--border-soft); padding:6px 10px; border-radius:6px; cursor:pointer;">
                 <input type="checkbox" name="p-grades" value="{{ $g->id }}" style="width:auto;"> {{ $g->name }}
             </label>
             @endforeach
@@ -44,7 +44,7 @@
         <label style="font-size:0.9rem; color:var(--primary-light); margin-bottom:0.5rem; display:block;">Visible To / Allowed User Types</label>
         <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px;">
             @foreach(['ADMIN', 'RAW', 'SEMI', 'FINISHED', 'SALES', 'DISPATCH', 'CASHIER', 'ATTENDANCE'] as $role)
-            <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; background:rgba(255,255,255,0.05); padding:6px 10px; border-radius:6px; cursor:pointer;">
+            <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; background:var(--bg-hover); border:1px solid var(--border-soft); padding:6px 10px; border-radius:6px; cursor:pointer;">
                 <input type="checkbox" name="p-roles" value="{{ $role }}" style="width:auto;"> {{ $role }}
             </label>
             @endforeach
@@ -114,7 +114,7 @@
             <td style="font-weight:600;">{{ $p['name'] }}</td>
             <td style="white-space:normal; min-width:200px;">
                 @foreach($p['gradeNames'] as $gn)
-                    <span style="font-size:0.7rem; background:rgba(16,185,129,0.2); padding:2px 6px; border-radius:4px; margin:2px; display:inline-block; border:1px solid var(--secondary);">{{ $gn }}</span>
+                    <span style="font-size:0.75rem; background:var(--bg-hover); color:var(--secondary); padding:4px 8px; border-radius:6px; margin:2px; display:inline-block; border:1px solid var(--secondary); font-weight:600;">{{ $gn }}</span>
                 @endforeach
             </td>
             <td>{{ $p['unit'] }}</td>
@@ -154,7 +154,7 @@
             <td style="font-weight:600;">{{ $p['name'] }}</td>
             <td style="white-space:normal; min-width:200px;">
                 @foreach($p['gradeNames'] as $gn)
-                    <span style="font-size:0.7rem; background:rgba(79,70,229,0.2); padding:2px 6px; border-radius:4px; margin:2px; display:inline-block; border:1px solid var(--primary);">{{ $gn }}</span>
+                    <span style="font-size:0.75rem; background:var(--bg-hover); color:var(--primary); padding:4px 8px; border-radius:6px; margin:2px; display:inline-block; border:1px solid var(--primary); font-weight:600;">{{ $gn }}</span>
                 @endforeach
             </td>
             <td>{{ $p['unit'] }}</td>

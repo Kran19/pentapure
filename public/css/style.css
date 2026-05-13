@@ -46,18 +46,54 @@
   --glass-border: var(--border-color);
   --card-border: var(--border-soft);
   --primary-light: #8A5A00;
+
+  /* Table Specific */
+  --table-header-bg: #FFF3D6;
+  --table-header-text: #5A4300;
+  --table-row-bg: #FFFFFF;
+  --table-row-text: #2A2A2A;
+  --table-border: #F1E7D0;
+  --table-hover: #FFF9EC;
+  --table-selected: #FFE7A8;
+
+  /* Placeholder */
+  --placeholder-color: #2A2A2A;
 }
 
 html.dark-mode {
+  --bg-main: #020617;
+  --bg-sidebar: #0F172A;
+  --bg-card: #1E293B;
+  --bg-hover: #334155;
+  --border-color: #334155;
+  --border-soft: #334155;
   --sidebar-bg: #0F172A;
   --sidebar-mobile-bg: #0F172A;
   --dark: #020617;
   --dark-panel: #1E293B;
   --input-bg: #334155;
   --text-main: #F8FAFC;
+  --text-secondary: #94A3B8;
   --text-muted: #94A3B8;
   --glass-bg: #1E293B;
   --glass-border: #334155;
+  --card-border: #334155;
+
+  /* Table Dark mode overrides */
+  --table-header-bg: #2B241C;
+  --table-header-text: #F4B400;
+  --table-row-bg: #1E293B;
+  --table-row-text: #F8FAFC;
+  --table-border: #334155;
+  --table-hover: #2D3748;
+  --table-selected: #2B241C;
+
+  /* Placeholder Dark mode */
+  --placeholder-color: #A0AEC0;
+
+  /* Brand Overrides for Dark Mode */
+  --primary-light: #FFD76A;
+  --secondary: #FFA500;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -83,6 +119,7 @@ body {
   justify-content: center;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  text-transform: uppercase;
 }
 
 /* Scrollbar */
@@ -340,6 +377,14 @@ select, input, textarea {
   font-size: 0.95rem;
   outline: none;
   transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #5F6368 !important;
+  opacity: 1 !important;
+  text-transform: uppercase;
 }
 option {
   background: var(--input-bg);
@@ -352,8 +397,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1);
   opacity: 0.6;
 }
-input[type="date"]::-webkit-calendar-picker-indicator:hover {
-  opacity: 1;
+input::placeholder, textarea::placeholder {
+  color: var(--placeholder-color) !important;
+  opacity: 0.8 !important;
 }
 
 .password-wrapper {
@@ -982,27 +1028,37 @@ table {
 th, td {
   padding: 1rem;
   text-align: left;
-  border-bottom: 1px solid #F1E7D0;
+  border-bottom: 1px solid var(--table-border);
+  color: var(--table-row-text);
 }
 th {
-  color: #5A4300;
+  color: var(--table-header-text);
   font-weight: 600;
-  background: #FFF3D6;
+  background: var(--table-header-bg);
   position: sticky;
   top: 0;
 }
 tr:hover td {
-  background: #FFF9EC;
+  background: var(--table-hover);
 }
 
 .filter-bar {
   display: flex;
   gap: 1rem;
   margin-bottom: 1rem;
+  background: var(--bg-sidebar) !important;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
 }
 .filter-bar input, .filter-bar select {
   width: auto;
   min-width: 200px;
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--border-soft) !important;
+  text-transform: uppercase;
+  opacity: 1 !important;
 }
 
 /* Helpers */
@@ -1179,6 +1235,51 @@ tr:hover td {
 
 * {
   color: var(--text-main);
+  text-transform: inherit;
+}
+
+button,
+.btn,
+.btn-primary,
+.btn-secondary,
+a,
+label,
+th,
+td,
+.nav-item,
+.card-title,
+.tabulator,
+.tabulator * {
+  text-transform: uppercase;
+}
+
+input,
+select,
+textarea,
+option,
+.filter-input,
+.btn-sm.filter-input,
+[class*="filter"] input,
+[class*="filter"] select {
+  background: #FFFFFF !important;
+  color: #2A2A2A !important;
+  -webkit-text-fill-color: #2A2A2A !important;
+  border-color: #DDCFAF !important;
+  opacity: 1 !important;
+}
+
+input::placeholder,
+textarea::placeholder,
+.filter-input::placeholder,
+.btn-sm.filter-input::placeholder {
+  color: #5F6368 !important;
+  -webkit-text-fill-color: #5F6368 !important;
+  opacity: 1 !important;
+}
+
+select option {
+  color: #2A2A2A !important;
+  background: #FFFFFF !important;
 }
 
 body:not(.admin-mode) input,
