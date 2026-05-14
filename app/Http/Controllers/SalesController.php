@@ -62,7 +62,7 @@ class SalesController extends Controller
         $transportCompanies = Transporter::orderBy('name')->get()->map(fn($t)=>[
             'id'=>$t->id,'name'=>$t->name,'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
         ]);
-        $products = Product::target()->active()->visibleTo($this->authUser()['role'])->get(['id', 'name', 'unit', 'type']);
+        $products = Product::active()->get(['id', 'name', 'unit', 'type']);
         $grades = \App\Models\Grade::where('is_active', true)->pluck('name')->toArray();
 
         $pageData = compact('companies', 'transportCompanies', 'products', 'grades');
