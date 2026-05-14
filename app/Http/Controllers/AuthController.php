@@ -68,7 +68,7 @@ class AuthController extends Controller
     private function redirectToRole(string $role): \Illuminate\Http\RedirectResponse
     {
         return match ($role) {
-            'ADMIN'      => redirect('/admin/dashboard'),
+            'ADMIN'      => redirect('/admin/home'),
             'RAW'        => redirect('/raw/home'),
             'SEMI'       => redirect('/semi/home'),
             'FINISHED'   => redirect('/finished/home'),

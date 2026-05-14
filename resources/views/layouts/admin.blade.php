@@ -56,7 +56,7 @@
 
           @php $seg = request()->segment(2) ?? 'dashboard'; @endphp
 
-          <a href="{{ url('admin/dashboard') }}" class="nav-item {{ $seg=='dashboard'?'active':'' }}">
+          <a href="{{ url('admin/home') }}" class="nav-item {{ $seg=='home' || $seg=='dashboard'?'active':'' }}">
             📊 Dashboard
           </a>
           <a href="{{ url('admin/users') }}" class="nav-item {{ $seg=='users'?'active':'' }}">

@@ -123,6 +123,7 @@ Route::prefix('cashier')->middleware('auth.role:CASHIER')->controller(CashierCon
 // ── ADMIN ROUTES ───────────────────────────────────────────────────────────
 Route::prefix('admin')->middleware('auth.role:ADMIN')->controller(AdminController::class)->group(function () {
     Route::get('/dashboard',          'dashboard')->name('admin.dashboard');
+    Route::get('/home',               'dashboard')->name('admin.home');
     Route::get('/users',              'users')->name('admin.users');
     Route::post('/users',             'storeUser');
     Route::post('/users/toggle',      'toggleUserStatus');
