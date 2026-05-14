@@ -148,6 +148,10 @@ Route::prefix('admin')->middleware('auth.role:ADMIN')->controller(AdminControlle
     Route::post('/categories/toggle','toggleCategoryStatus');
     Route::delete('/categories/{id}','destroyCategory');
 
+    // Dispatch Activity
+    Route::get('/dispatch-activity', 'dispatchActivity')->name('admin.dispatch.activity');
+    Route::get('/dispatch-activity/pdf', 'dispatchActivityPdf')->name('admin.dispatch.pdf');
+
     // Admin Attendance sub-pages (read + full access)
 
     Route::get('/attendance/dashboard',   [AttendanceController::class, 'home'])->name('admin.attendance.dashboard');

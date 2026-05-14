@@ -81,6 +81,9 @@
           <a href="{{ url('admin/categories') }}" class="nav-item {{ $seg=='categories'?'active':'' }}">
             🏷️ Categories Master
           </a>
+          <a href="{{ url('admin/dispatch-activity') }}" class="nav-item {{ $seg=='dispatch-activity'?'active':'' }}">
+            🚚 Dispatch Activity
+          </a>
 
 
           <!-- Attendance Accordion -->

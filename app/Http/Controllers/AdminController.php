@@ -472,4 +472,54 @@ class AdminController extends Controller
 
         return response()->json(['success' => true, 'message' => "Stock updated! {$summary}."]);
     }
+    // ── DISPATCH ACTIVITY ───────────────────────────────────────────────────
+    public function dispatchActivity(Request $request)
+    {
+        $query = \App\Models\Order::with(['company', 'items.product', 'dispatchLog.user', 'transporter'])
+            ->orderByDesc('created_at');
+
+        if ($request->status) {
+            $query->where('dispatch_status', $request->status);
+        }
+        if ($request->date_from) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->date_to) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        $orders = $query->paginate(20)->withQueryString();
+
+        $pageData = [
+            'orders' => $orders,
+            'filters' => [
+                'status' => $request->status,
+                'date_from' => $request->date_from,
+                'date_to' => $request->date_to,
+            ]
+        ];
+
+        return view('admin.dispatch_activity', compact('pageData'));
+    }
+
+    public function dispatchActivityPdf(Request $request)
+    {
+        $query = \App\Models\Order::with(['company', 'items.product', 'dispatchLog.user', 'transporter'])
+            ->orderByDesc('created_at');
+
+        if ($request->status) {
+            $query->where('dispatch_status', $request->status);
+        }
+        if ($request->date_from) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->date_to) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        $orders = $query->get();
+        
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.dispatch_activity_pdf', compact('orders'));
+        return $pdf->download('dispatch-activity-' . now()->format('Y-m-d') . '.pdf');
+    }
 }
