@@ -144,4 +144,25 @@ class CashierController extends Controller
     {
         return view('cashier.profile');
     }
+
+    public function ledger()
+    {
+        $user = $this->authUser();
+        $txs = Transaction::where('user_id', $user['id'])
+            ->orderByDesc('created_at')
+            ->get();
+        
+        $summary = [
+            'totalIn'  => $txs->where('type', 'IN')->sum('amount'),
+            'totalOut' => $txs->where('type', 'OUT')->sum('amount'),
+            'balance'  => $txs->where('type', 'IN')->sum('amount') - $txs->where('type', 'OUT')->sum('amount'),
+        ];
+
+        $pageData = [
+            'transactions' => $txs,
+            'summary' => $summary
+        ];
+
+        return view('cashier.ledger', compact('pageData'));
+    }
 }

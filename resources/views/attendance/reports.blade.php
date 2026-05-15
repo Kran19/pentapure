@@ -90,25 +90,49 @@
 <script>
 function exportToExcel() {
     let csv = [];
-    const rows = document.querySelectorAll("table tr");
+    const table = document.querySelector("table");
+    const rows = table.querySelectorAll("tr");
+    
     for (let i = 0; i < rows.length; i++) {
-        if(rows[i].classList.contains('no-print')) continue;
-        let row = [], cols = rows[i].querySelectorAll("td, th");
+        let row = [];
+        let cols = rows[i].querySelectorAll("td, th");
+        
+        // Skip rows that are meant to be hidden or are internal action rows
+        if (rows[i].classList.contains('no-print')) continue;
+
         for (let j = 0; j < cols.length; j++) {
-            if(cols[j].classList.contains('no-print')) continue;
-            let data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, "").replace(/(\s\s+)/gm, ' ');
+            // Skip action column
+            if (cols[j].classList.contains('no-print')) continue;
+            
+            // Get text, clean up extra whitespace and newlines
+            let data = cols[j].innerText.trim()
+                .replace(/\n/g, " ")
+                .replace(/\s\s+/g, " ");
+            
+            // Escape double quotes
             data = data.replace(/"/g, '""');
             row.push('"' + data + '"');
         }
-        csv.push(row.join(","));
+        
+        if (row.length > 0) {
+            csv.push(row.join(","));
+        }
     }
-    const csvFile = new Blob([csv.join("\n")], {type: "text/csv"});
+    
+    const csvFile = new Blob([csv.join("\n")], {type: "text/csv;charset=utf-8;"});
     const downloadLink = document.createElement("a");
-    downloadLink.download = "Monthly_Payroll_Report_{{ $month }}.csv";
-    downloadLink.href = window.URL.createObjectURL(csvFile);
-    downloadLink.style.display = "none";
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
+    const fileName = "Monthly_Payroll_Report_{{ $month }}.csv";
+    
+    if (navigator.msSaveBlob) { // IE 10+
+        navigator.msSaveBlob(csvFile, fileName);
+    } else {
+        downloadLink.download = fileName;
+        downloadLink.href = window.URL.createObjectURL(csvFile);
+        downloadLink.style.display = "none";
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+    }
 }
 </script>
 

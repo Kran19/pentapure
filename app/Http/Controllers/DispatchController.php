@@ -20,7 +20,34 @@ class DispatchController extends Controller
         $pending   = Order::with(['company', 'transporter', 'items'])->where('dispatch_status', 'PENDING')->orderByDesc('created_at')->get();
         $completed = Order::with(['company', 'transporter'])->where('dispatch_status', 'DONE')->orderByDesc('created_at')->get();
 
+        $rawStock = DB::table('stocks')
+            ->join('products', 'stocks.product_id', '=', 'products.id')
+            ->where('stocks.stage', 'RAW')
+            ->groupBy('stocks.product_id', 'stocks.grade', 'products.name', 'products.unit')
+            ->selectRaw("stocks.product_id as id, products.name, stocks.grade, products.unit, SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity")
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
+            ->get();
+
+        $semiStock = DB::table('stocks')
+            ->join('products', 'stocks.product_id', '=', 'products.id')
+            ->where('stocks.stage', 'SEMI')
+            ->groupBy('stocks.product_id', 'stocks.grade', 'products.name', 'products.unit')
+            ->selectRaw("stocks.product_id as id, products.name, stocks.grade, products.unit, SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity")
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
+            ->get();
+
+        $finishedStock = DB::table('stocks')
+            ->join('products', 'stocks.product_id', '=', 'products.id')
+            ->where('stocks.stage', 'FINISHED')
+            ->groupBy('stocks.product_id', 'stocks.grade', 'products.name', 'products.unit')
+            ->selectRaw("stocks.product_id as id, products.name, stocks.grade, products.unit, SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity")
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
+            ->get();
+
         $pageData = [
+            'rawStock'        => $rawStock,
+            'semiStock'       => $semiStock,
+            'finishedStock'   => $finishedStock,
             'pendingOrders'   => $pending->map(fn($o) => [
                 'id'           => $o->id,
                 'companyId'    => $o->company_id,
@@ -39,6 +66,7 @@ class DispatchController extends Controller
             ]),
             'companies'           => Company::all(['id', 'name']),
             'transportCompanies'  => Transporter::all(['id', 'name']),
+            'products'            => Product::active()->get(['id', 'name', 'unit', 'type']),
         ];
         return view('dispatch.home', compact('pageData'));
     }

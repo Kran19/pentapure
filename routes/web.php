@@ -47,6 +47,15 @@ Route::get('/admin/debug-check-sub', function() {
     ]);
 });
 
+Route::middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE')->group(function() {
+    Route::get('/api/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
+    Route::post('/api/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
+    Route::post('/api/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);
+    
+    // Admin specific notification send route
+    Route::post('/admin/notifications/send', [AdminController::class, 'sendNotification'])->middleware('auth.role:ADMIN');
+});
+
 // ── Auth Routes (No Auth Required) ────────────────────────────────────────
 Route::get('/login',  [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
@@ -85,6 +94,7 @@ Route::prefix('finished')->middleware('auth.role:FINISHED')->controller(Finished
     Route::get('/po',      'home')->name('finished.po');
     Route::post('/po',     [RawController::class, 'storePO']); // Shared logic from RawController
     Route::post('/action', 'storeProduction');
+    Route::post('/quick-product', [AdminController::class, 'storeProduct']);
     Route::get('/history', 'history')->name('finished.history');
     Route::get('/profile', 'profile')->name('finished.profile');
 });
@@ -117,6 +127,7 @@ Route::prefix('cashier')->middleware('auth.role:CASHIER')->controller(CashierCon
     Route::post('/action',     'storeTransaction');
     Route::get('/history',     'history')->name('cashier.history');
     Route::get('/history/pdf', 'downloadPdf')->name('cashier.pdf');
+    Route::get('/ledger',      'ledger')->name('cashier.ledger');
     Route::get('/profile',     'profile')->name('cashier.profile');
 });
 
@@ -151,6 +162,9 @@ Route::prefix('admin')->middleware('auth.role:ADMIN')->controller(AdminControlle
     // Dispatch Activity
     Route::get('/dispatch-activity', 'dispatchActivity')->name('admin.dispatch.activity');
     Route::get('/dispatch-activity/pdf', 'dispatchActivityPdf')->name('admin.dispatch.pdf');
+
+    // Cashier Overview for Admin
+    Route::get('/cashier-overview', 'cashierOverview')->name('admin.cashier.overview');
 
     // Admin Attendance sub-pages (read + full access)
 

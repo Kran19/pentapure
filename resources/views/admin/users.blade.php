@@ -85,6 +85,9 @@
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
                 @if($user['id'] != auth()->id())
+                  <button class="btn-icon notify" onclick="openNotifyModal({{ $user['id'] }}, '{{ addslashes($user['name']) }}')" title="Notify User">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                  </button>
                   <button class="btn-icon delete" onclick="adminDeleteUser({{ $user['id'] }})" title="Delete">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                   </button>
@@ -137,7 +140,7 @@ function adminSaveUser() {
 
   fetch('/admin/users', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
     body: JSON.stringify(payload)
   }).then(r => r.json()).then(d => {
     if (d.success) { 
@@ -152,7 +155,7 @@ function adminSaveUser() {
 function adminToggleUser(id) {
   fetch('/admin/users/toggle', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
     body: JSON.stringify({ user_id: id })
   }).then(r => r.json()).then(d => {
     if (d.success) app.toast(d.message);
@@ -173,7 +176,7 @@ function adminDeleteUser(id) {
     if (result.isConfirmed) {
       fetch(`/admin/users/${id}`, {
         method: 'DELETE',
-        headers: { 'X-CSRF-TOKEN': csrfToken }
+        headers: { 'X-CSRF-TOKEN': window.csrfToken }
       }).then(r => r.json()).then(d => {
         if (d.success) {
           Swal.fire('Deleted!', d.message, 'success');
@@ -184,6 +187,61 @@ function adminDeleteUser(id) {
       });
     }
   });
+}
+
+function openNotifyModal(userId, userName) {
+    Swal.fire({
+        title: `Send Notification to ${userName}`,
+        html: `
+            <div style="text-align:left;">
+                <label style="display:block; margin-bottom:5px; font-size:0.9rem;">Title</label>
+                <input id="swal-notify-title" class="swal2-input" style="margin:0 0 15px 0; width:100%;" placeholder="Enter title">
+                
+                <label style="display:block; margin-bottom:5px; font-size:0.9rem;">Message</label>
+                <textarea id="swal-notify-message" class="swal2-textarea" style="margin:0 0 15px 0; width:100%; height:100px;" placeholder="Enter message"></textarea>
+                
+                <label style="display:block; margin-bottom:5px; font-size:0.9rem;">Type</label>
+                <select id="swal-notify-type" class="swal2-select" style="margin:0; width:100%;">
+                    <option value="info">Info (Blue)</option>
+                    <option value="warning">Warning (Yellow)</option>
+                    <option value="success">Success (Green)</option>
+                    <option value="danger">Danger (Red)</option>
+                </select>
+            </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Send Notification',
+        preConfirm: () => {
+            const title = document.getElementById('swal-notify-title').value;
+            const message = document.getElementById('swal-notify-message').value;
+            const type = document.getElementById('swal-notify-type').value;
+            if (!title || !message) {
+                Swal.showValidationMessage('Title and message are required');
+                return false;
+            }
+            return { title, message, type };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch('/admin/notifications/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
+                body: JSON.stringify({
+                    user_id: userId,
+                    title: result.value.title,
+                    message: result.value.message,
+                    type: result.value.type
+                })
+            }).then(r => r.json()).then(d => {
+                if (d.success) {
+                    Swal.fire('Sent!', d.message, 'success');
+                } else {
+                    Swal.fire('Error', d.message || 'Error', 'error');
+                }
+            });
+        }
+    });
 }
 </script>
 @endsection

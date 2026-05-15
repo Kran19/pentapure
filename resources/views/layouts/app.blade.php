@@ -55,6 +55,12 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
           <span>Reports</span>
         </a>
+        @if($prefix === 'cashier')
+        <a href="{{ url($prefix . '/ledger') }}" class="nav-item {{ $currentRoute == 'ledger' ? 'active' : '' }}" style="text-decoration:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          <span>Ledger</span>
+        </a>
+        @endif
         @if($prefix === 'attendance')
         <a href="{{ url($prefix . '/team') }}" class="nav-item {{ $currentRoute == 'team' ? 'active' : '' }}" style="text-decoration:none;">
           <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
@@ -94,8 +100,15 @@
             <span class="user-name" id="current-user-name">{{ $userName }}</span>
             <span class="role-badge" id="current-user-role">{{ $userRole }}</span>
           </div>
-          <div class="header-actions">
-            <a href="{{ url($prefix . '/profile') }}" class="profile-link">
+          <div class="header-actions" style="display:flex; align-items:center;">
+            <div id="notif-bell-container" style="position:relative; cursor:pointer; margin-right:15px; color:var(--text-main);" onclick="app.toggleNotifications()">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              <span id="notif-badge" style="position:absolute; top:-5px; right:-5px; background:var(--danger); color:white; font-size:10px; padding:2px 5px; border-radius:10px; display:none; min-width:16px; text-align:center;">0</span>
+            </div>
+            <a href="{{ url($prefix . '/profile') }}" class="profile-link" style="color:var(--text-main);">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>

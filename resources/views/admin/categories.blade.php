@@ -3,7 +3,7 @@
 @section('content')
 <div style="padding: 1.5rem;">
   <div class="flex-between mb-1" style="flex-wrap: wrap; gap: 10px;">
-    <h2 style="margin:0;">🏷️ Categories Master</h2>
+    <h2 style="margin:0;">🏷️ Expense Category Master</h2>
     <button class="btn btn-sm btn-secondary" style="width:auto; padding:0.4rem 1rem;" onclick="openCategoryModal()">+ Add New Category</button>
   </div>
 

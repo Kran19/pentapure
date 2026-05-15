@@ -101,6 +101,31 @@
     </a>
   </div>
 
+  <!-- Charts Section -->
+  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:1.5rem; margin-bottom:2rem;">
+    <!-- Sales Trend Chart -->
+    <div class="card" style="padding:1.5rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <h3 style="margin:0; font-size:1.1rem; color:var(--text-main);">📈 Sales Trend (Last 7 Days)</h3>
+        <span style="font-size:0.75rem; color:var(--text-muted);">Revenue in ₹</span>
+      </div>
+      <div style="height: 250px; position: relative;">
+        <canvas id="salesChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Production vs Stock Distribution -->
+    <div class="card" style="padding:1.5rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <h3 style="margin:0; font-size:1.1rem; color:var(--text-main);">🏗️ Production Activity</h3>
+        <span style="font-size:0.75rem; color:var(--text-muted);">Qty in kg</span>
+      </div>
+      <div style="height: 250px; position: relative;">
+        <canvas id="productionChart"></canvas>
+      </div>
+    </div>
+  </div>
+
   <!-- Quick Links -->
   <div class="card" style="padding:1.2rem;">
     <div class="card-title">Quick Actions</div>
@@ -110,9 +135,75 @@
       <a href="{{ route('admin.stock') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">📦 Live Stock</a>
       <a href="{{ route('admin.po') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">📋 Purchase Orders</a>
       <a href="{{ route('admin.logs') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">🕐 Activity Logs</a>
-      <a href="{{ url('admin/debug-notifications') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none; background: var(--danger); border:none;">🔔 Notifications Debug</a>
+
     </div>
   </div>
 
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const isDark = document.documentElement.classList.contains('dark-mode');
+    const textColor = isDark ? '#e2e8f0' : '#475569';
+    const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
+
+    // --- Sales Chart ---
+    const salesCtx = document.getElementById('salesChart').getContext('2d');
+    const salesGradient = salesCtx.createLinearGradient(0, 0, 0, 250);
+    salesGradient.addColorStop(0, 'rgba(16, 185, 129, 0.4)');
+    salesGradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
+
+    new Chart(salesCtx, {
+        type: 'line',
+        data: {
+            labels: @json($pageData['days']),
+            datasets: [{
+                label: 'Revenue',
+                data: @json($pageData['salesTrend']),
+                borderColor: '#10b981',
+                borderWidth: 3,
+                backgroundColor: salesGradient,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointBackgroundColor: '#10b981'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 } } },
+                x: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 } } }
+            }
+        }
+    });
+
+    // --- Production Chart ---
+    const prodCtx = document.getElementById('productionChart').getContext('2d');
+    new Chart(prodCtx, {
+        type: 'bar',
+        data: {
+            labels: @json($pageData['days']),
+            datasets: [{
+                label: 'Production Qty',
+                data: @json($pageData['productionTrend']),
+                backgroundColor: '#f59e0b',
+                borderRadius: 6,
+                barThickness: 15
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 } } },
+                x: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 } } }
+            }
+        }
+    });
+});
+</script>
 @endsection

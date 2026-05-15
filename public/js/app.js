@@ -93,6 +93,10 @@ const app = {
     window.customEnd = '';
     window.rawHomeTab = 'stock';
 
+    // 3. Notification Init
+    this.fetchNotifications();
+    setInterval(() => this.fetchNotifications(), 10000); // Poll every 10 seconds
+
     // 2. Clear Splash
     const splash = document.getElementById('splash-screen');
     if (splash) {
@@ -136,6 +140,7 @@ const app = {
         if (viewStr === 'home') this.renderHome(container);
         else if (viewStr === 'action') this.renderAction(container);
         else if (viewStr === 'history') this.renderHistory(container);
+        else if (viewStr === 'ledger') this.renderCashierLedger(container);
         else if (viewStr === 'team') this.renderAttendanceTeam(container);
         else if (viewStr === 'profile') this.renderProfile(container);
         else if (viewStr === 'po') this.renderPurchaseOrder(container);
@@ -192,13 +197,123 @@ const app = {
     document.getElementById('modal-overlay').classList.remove('active');
   },
 
-  openDrawer(html) {
-    document.getElementById('drawer-content').innerHTML = html;
+  openDrawer(htmlOrView) {
+    const container = document.getElementById('drawer-content');
+    if (htmlOrView === 'notifications') {
+        this.renderNotifications(container);
+    } else {
+        container.innerHTML = htmlOrView;
+    }
     document.getElementById('bottom-drawer-overlay').classList.add('active');
   },
 
   closeDrawer() {
     document.getElementById('bottom-drawer-overlay').classList.remove('active');
+  },
+
+  // --- NOTIFICATIONS ---
+  fetchNotifications() {
+    fetch('/api/notifications')
+      .then(r => r.json())
+      .then(d => {
+        const oldLen = (this.notifications || []).length;
+        const newNotifs = d.notifications || [];
+        
+        this.notifications = newNotifs;
+        this.updateNotifBadge();
+        
+        // Show toast if new notifications arrived
+        if (oldLen !== undefined && newNotifs.length > oldLen) {
+            const diff = newNotifs.length - oldLen;
+            this.toast(`You have ${diff} new notification${diff > 1 ? 's' : ''}`, 'info');
+        }
+      })
+      .catch(() => {});
+  },
+
+  updateNotifBadge() {
+    const badge = document.getElementById('notif-badge');
+    const adminBadge = document.getElementById('nav-notif-count');
+    const count = this.notifications.length;
+    
+    [badge, adminBadge].forEach(el => {
+      if (!el) return;
+      if (count > 0) {
+        el.innerText = count;
+        el.style.display = 'inline-block';
+      } else {
+        el.style.display = 'none';
+      }
+    });
+  },
+
+  toggleNotifications() {
+    if (this.notifications.length === 0) {
+      this.toast('No new notifications', 'info');
+      return;
+    }
+    this.openDrawer('notifications');
+  },
+
+  renderNotifications(container) {
+    if (this.notifications.length === 0) {
+      container.innerHTML = `<div style="padding:2.5rem 1rem; text-align:center; color:var(--text-muted);">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom:1rem; opacity:0.5;">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </svg>
+        <p>No new notifications</p>
+      </div>`;
+      return;
+    }
+    
+    container.innerHTML = `
+      <div style="padding:1rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+          <h3 style="margin:0; font-size:1.3rem;">Notifications</h3>
+          <button class="btn btn-secondary" onclick="app.markAllNotificationsRead()" style="width:auto; padding:0.4rem 0.8rem; font-size:0.8rem;">Mark all as read</button>
+        </div>
+        <div style="display:grid; gap:0.85rem;">
+          ${this.notifications.map(n => `
+            <div class="card" style="padding:1rem; border-left:4px solid var(--${n.type || 'info'}); position:relative; background:var(--card-bg);">
+              <div style="font-weight:bold; margin-bottom:6px; display:flex; justify-content:space-between; padding-right:20px; font-size:1rem;">
+                ${n.title}
+                <span style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;">${n.created_at}</span>
+              </div>
+              <div style="font-size:0.9rem; color:var(--text-main); line-height:1.4;">${n.message}</div>
+              <button onclick="app.markNotificationRead('${n.id}')" style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.05); border:none; color:var(--text-muted); cursor:pointer; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">&times;</button>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  },
+
+  markNotificationRead(id) {
+    fetch(`/api/notifications/${id}/read`, { method: 'POST', headers: { 'X-CSRF-TOKEN': window.csrfToken } })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          this.notifications = this.notifications.filter(n => n.id !== id);
+          this.updateNotifBadge();
+          if (document.getElementById('drawer-content') && document.getElementById('bottom-drawer-overlay').classList.contains('active')) {
+            this.renderNotifications(document.getElementById('drawer-content'));
+          }
+          if (this.notifications.length === 0) this.closeDrawer();
+        }
+      });
+  },
+
+  markAllNotificationsRead() {
+    fetch('/api/notifications/read-all', { method: 'POST', headers: { 'X-CSRF-TOKEN': window.csrfToken } })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          this.notifications = [];
+          this.updateNotifBadge();
+          this.closeDrawer();
+        }
+      });
   },
 
   // --- AUTH & NAV ---
@@ -303,6 +418,7 @@ const app = {
       if (this.currentView === 'home') this.renderHome(content);
       else if (this.currentView === 'action') this.renderAction(content);
       else if (this.currentView === 'history') this.renderHistory(content);
+      else if (this.currentView === 'ledger') this.renderCashierLedger(content);
       else if (this.currentView === 'profile') this.renderProfile(content);
     }
   },
@@ -328,7 +444,16 @@ const app = {
       let p = rmList.find(prod => prod.id == id);
       if (!p) p = products.find(prod => prod.id == id);
       
-      if (!p) return { id, name: 'Unknown Product', quantity: agg[key], unit: '?', grade: gradeMap[key] };
+      if (!p) {
+        const firstItem = items.find(i => `${i.productId}_${i.grade || 'NONE'}` === key);
+        return { 
+          id, 
+          name: firstItem?.name || firstItem?.productName || 'Unknown Product', 
+          quantity: agg[key], 
+          unit: firstItem?.unit || 'kg', 
+          grade: gradeMap[key] 
+        };
+      }
       
       return { 
         id: p.id, 
@@ -718,6 +843,40 @@ const app = {
           </div>
         </div>
       `;
+    } else if (outputType === 'FINISHED') {
+      const semiStock = this.getAggregatedStock('semiStock').filter(s => s.quantity > 0);
+      html += `
+        <div class="card mb-2" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:1rem;">
+          <div class="card-title" style="font-size:0.85rem; color:var(--primary-light); display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--secondary);"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+              Available Semi-Finished Materials
+            </div>
+            <div style="font-size:0.7rem; color:var(--text-muted); font-weight:normal;">Scroll &rarr;</div>
+          </div>
+          <div style="display:flex; overflow-x:auto; gap:12px; padding-bottom:10px; scrollbar-width:none; -ms-overflow-style:none;">
+            <style>div::-webkit-scrollbar { display: none; }</style>
+            ${semiStock.map(s => {
+              const lowStock = s.quantity < 500;
+              return `
+                <div class="animation-fadeIn" style="flex:0 0 200px; background:rgba(255,255,255,0.04); padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.05); position:relative; overflow:hidden;">
+                  <div style="font-size:0.8rem; font-weight:700; color:var(--text-main); margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</div>
+                  <div style="font-size:0.65rem; color:var(--text-muted); margin-bottom:6px;">Grade: <span class="badge badge-info" style="font-size:0.55rem; padding:2px 5px;">${s.grade}</span></div>
+                  <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                    <div style="font-weight:800; color:${lowStock ? 'var(--warning)' : 'var(--secondary)'}; font-size:1rem;">
+                      ${s.quantity.toLocaleString()} <span style="font-size:0.7rem; font-weight:400; color:var(--text-muted);">${s.unit}</span>
+                    </div>
+                  </div>
+                  ${lowStock ? `<div style="font-size:0.55rem; color:var(--warning); margin-top:5px; display:flex; align-items:center; gap:2px;"><span style="font-size:0.7rem;">⚠</span> Low</div>` : ''}
+                  <div style="position:absolute; top:0; right:0; width:3px; height:100%; background:${lowStock ? 'var(--warning)' : 'var(--secondary)'}; opacity:0.6;"></div>
+                </div>
+              `;
+            }).join('') || `<div style="width:100%; padding:20px; text-align:center; background:rgba(0,0,0,0.1); border-radius:10px;">
+                <div style="color:var(--text-muted); font-size:0.85rem;">No semi-finished material stock available.</div>
+              </div>`}
+          </div>
+        </div>
+      `;
     }
 
     html += `
@@ -798,13 +957,14 @@ const app = {
     const inputType = outputType === 'SEMI' ? 'RAW' : 'SEMI';
     const inputStockKey = outputType === 'SEMI' ? 'rawStock' : 'semiStock';
     
-    const outProds = DB.get('products').filter(p => p.type === outputType);
+    const outProds = DB.get('products').filter(p => p.type === outputType || (outputType === 'SEMI' && p.type === 'FINISHED'));
     const allGrades = DB.get('grades');
     
     const availableInputStock = this.getAggregatedStock(inputStockKey).filter(s => s.quantity > 0);
     window.currentAvailableInputStock = availableInputStock;
     
     if (outputType === 'FINISHED') {
+      const outProds = DB.get('products').filter(p => p.type === 'FINISHED' || p.type === 'SEMI');
       container.innerHTML = `
         <div class="card">
           <div class="card-title">Create Finished Goods</div>
@@ -816,6 +976,18 @@ const app = {
               ${availableInputStock.map(s => `<option value="${s.id}|${s.grade}" data-max="${s.quantity}">${s.name} (Grade: ${s.grade})</option>`).join('')}
             </select>
             <div id="finished-stock-hint" style="font-size:0.7rem; color:var(--text-muted); margin-top:4px; min-height:12px;"></div>
+          </div>
+
+          <div class="form-group mt-1">
+            <div class="flex-between">
+              <label>Output Product (What are you producing?)</label>
+              <button class="btn btn-sm btn-secondary" onclick="app.showQuickProductModal('FINISHED')" style="width:auto; padding:0.2rem 0.6rem; font-size:0.7rem;">+ New Product</button>
+            </div>
+            <select id="finished-output-id">
+              <option value="" disabled selected>-- Select Output Product --</option>
+              ${outProds.map(p => `<option value="${p.id}">${p.name} (${p.type})</option>`).join('')}
+            </select>
+            <div style="font-size:0.7rem; color:var(--text-muted); margin-top:4px;">Can't find product? Create it using the button above.</div>
           </div>
 
           <div class="form-group mt-1">
@@ -901,11 +1073,13 @@ const app = {
 
   submitFinishedProduction() {
     const val = document.getElementById('finished-input-id').value;
+    const outProdId = document.getElementById('finished-output-id').value;
     const inQty = Number(document.getElementById('finished-in-qty').value);
     const notes = document.getElementById('finished-notes').value;
     const outQty = Number(document.getElementById('finished-out-qty').value);
     
     if (!val) return this.toast('Select a semi-finished material', 'error');
+    if (!outProdId) return this.toast('Select an output product', 'error');
     if (!inQty || inQty <= 0) return this.toast('Enter valid consumed quantity', 'error');
     if (!outQty || outQty <= 0) return this.toast('Enter valid output quantity', 'error');
 
@@ -917,7 +1091,7 @@ const app = {
     if (inQty > available) return this.toast(`Not enough stock. Max: ${available}`, 'error');
 
     const payload = {
-      output_product_id: id,
+      output_product_id: outProdId,
       output_grade:      grade,
       output_qty:        outQty,
       notes:             notes,
@@ -1122,6 +1296,74 @@ const app = {
     .catch(() => this.toast('Network error. Try again.', 'error'));
   },
 
+  showQuickProductModal(defaultType = 'FINISHED') {
+    this.openModal(`
+      <div class="card" style="margin:0;">
+        <div class="card-title">Quick Create Product</div>
+        <div class="form-group">
+          <label>Product Name</label>
+          <input type="text" id="quick-p-name" placeholder="Enter product name">
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="quick-p-type">
+            <option value="FINISHED" ${defaultType==='FINISHED'?'selected':''}>FINISHED</option>
+            <option value="SEMI" ${defaultType==='SEMI'?'selected':''}>SEMI</option>
+            <option value="RAW" ${defaultType==='RAW'?'selected':''}>RAW</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Unit</label>
+          <input type="text" id="quick-p-unit" value="kg">
+        </div>
+        <div style="display:flex; gap:10px; margin-top:1.5rem;">
+          <button class="btn btn-secondary" style="flex:1;" onclick="app.closeModal()">Cancel</button>
+          <button class="btn" style="flex:2;" onclick="app.submitQuickProduct()">Create & Select</button>
+        </div>
+      </div>
+    `);
+  },
+
+  submitQuickProduct() {
+    const name = document.getElementById('quick-p-name').value;
+    const type = document.getElementById('quick-p-type').value;
+    const unit = document.getElementById('quick-p-unit').value;
+
+    if (!name) return this.toast('Name is required', 'error');
+
+    const rolePrefix = this.currentUser.role.toLowerCase();
+    const endpoint = rolePrefix === 'admin' ? '/admin/products' : `/${rolePrefix}/quick-product`;
+
+    fetch(endpoint, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json', 
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': csrfToken 
+      },
+      body: JSON.stringify({ name, type, unit })
+    })
+    .then(r => r.json())
+    .then(res => {
+      if (res.success) {
+        this.toast(res.message || 'Product created!');
+        this.closeModal();
+        // Refresh products and update dropdown if in action view
+        fetch(window.location.href, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+          .then(r => r.json())
+          .then(data => {
+             if(data.products) {
+                DB.set('products', data.products);
+                this.refreshCurrentView();
+             }
+          });
+      } else {
+        this.toast(res.message || 'Error creating product', 'error');
+      }
+    })
+    .catch(() => this.toast('Network error.', 'error'));
+  },
+
   // --- ROLE: SALES ---
   renderSalesHome(container) {
     const orders = DB.get('orders') || [];
@@ -1226,6 +1468,7 @@ const app = {
             <label>Order Type</label>
             <select id="order-type" onchange="app.onOrderTypeSelect(this.value)">
               <option value="" disabled selected>-- Select Type --</option>
+              <option value="ALL">All Products (Universal)</option>
               <option value="RAW">Raw Material Sales</option>
               <option value="SEMI">Semi-Finished Sales</option>
               <option value="FINISHED">Finished Goods Sales</option>
@@ -1315,7 +1558,14 @@ const app = {
 
   onOrderTypeSelect(type) {
     window.currentOrderType = type;
-    window.currentFinProds = (DB.get('products') || []).filter(p => p.type === type);
+    if (type === 'ALL') {
+      window.currentFinProds = DB.get('products') || [];
+    } else if (type === 'FINISHED' || type === 'SEMI') {
+      // Show both manufactured types for both SEMI and FINISHED sales selections
+      window.currentFinProds = (DB.get('products') || []).filter(p => p.type === 'FINISHED' || p.type === 'SEMI');
+    } else {
+      window.currentFinProds = (DB.get('products') || []).filter(p => p.type === type);
+    }
     
     const section = document.getElementById('order-products-section');
     section.style.display = 'block';
@@ -1470,6 +1720,55 @@ const app = {
       <div class="flex-between mb-1">
         <h2 style="margin:0;">Dispatches</h2>
       </div>
+
+      <!-- Raw Stock -->
+      <div class="card mb-1" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:0.8rem;">
+        <div style="font-size:0.75rem; color:var(--primary-light); margin-bottom:8px; font-weight:600; display:flex; align-items:center; gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--secondary);"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+          Raw Stock
+        </div>
+        <div style="display:flex; overflow-x:auto; gap:10px; padding-bottom:5px; scrollbar-width:none;">
+          ${(this.getAggregatedStock('rawStock').filter(s => s.quantity > 0)).map(s => `
+            <div style="flex:0 0 150px; background:rgba(255,255,255,0.04); padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+              <div style="font-size:0.7rem; font-weight:700; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</div>
+              <div style="font-size:0.85rem; font-weight:800; color:var(--secondary);">${s.quantity.toLocaleString()} <span style="font-size:0.6rem; font-weight:400; color:var(--text-muted);">${s.unit}</span></div>
+            </div>
+          `).join('') || '<div style="font-size:0.7rem; color:var(--text-muted);">No raw stock</div>'}
+        </div>
+      </div>
+
+      <!-- Semi Stock -->
+      <div class="card mb-1" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:0.8rem;">
+        <div style="font-size:0.75rem; color:var(--primary-light); margin-bottom:8px; font-weight:600; display:flex; align-items:center; gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--secondary);"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+          Semi-Finished Stock
+        </div>
+        <div style="display:flex; overflow-x:auto; gap:10px; padding-bottom:5px; scrollbar-width:none;">
+          ${(this.getAggregatedStock('semiStock').filter(s => s.quantity > 0)).map(s => `
+            <div style="flex:0 0 150px; background:rgba(255,255,255,0.04); padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+              <div style="font-size:0.7rem; font-weight:700; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</div>
+              <div style="font-size:0.85rem; font-weight:800; color:var(--secondary);">${s.quantity.toLocaleString()} <span style="font-size:0.6rem; font-weight:400; color:var(--text-muted);">${s.unit}</span></div>
+            </div>
+          `).join('') || '<div style="font-size:0.7rem; color:var(--text-muted);">No semi stock</div>'}
+        </div>
+      </div>
+
+      <!-- Finished Stock -->
+      <div class="card mb-2" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:0.8rem;">
+        <div style="font-size:0.75rem; color:var(--primary-light); margin-bottom:8px; font-weight:600; display:flex; align-items:center; gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--secondary);"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+          Finished Goods Stock
+        </div>
+        <div style="display:flex; overflow-x:auto; gap:10px; padding-bottom:5px; scrollbar-width:none;">
+          ${(this.getAggregatedStock('finishedStock').filter(s => s.quantity > 0)).map(s => `
+            <div style="flex:0 0 150px; background:rgba(255,255,255,0.04); padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+              <div style="font-size:0.7rem; font-weight:700; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</div>
+              <div style="font-size:0.85rem; font-weight:800; color:var(--secondary);">${s.quantity.toLocaleString()} <span style="font-size:0.6rem; font-weight:400; color:var(--text-muted);">${s.unit}</span></div>
+            </div>
+          `).join('') || '<div style="font-size:0.7rem; color:var(--text-muted);">No finished stock</div>'}
+        </div>
+      </div>
+
       <div class="tabs">
         <div class="tab-btn ${tab==='PENDING'?'active':''}" onclick="window.dispatchTab='PENDING'; window.currentPage=1; app.refreshCurrentView()">${this.t('Pending')}</div>
         <div class="tab-btn ${tab==='COMPLETED'?'active':''}" onclick="window.dispatchTab='COMPLETED'; window.currentPage=1; app.refreshCurrentView()">${this.t('Completed')}</div>
@@ -1628,6 +1927,17 @@ const app = {
   },
 
   previewLR(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      this.toast('Only JPG, JPEG, PNG, and WEBP images are allowed.', 'error');
+      event.target.value = '';
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = function(){
       const img = document.getElementById('lr-preview');
@@ -1635,7 +1945,7 @@ const app = {
       img.style.display = 'block';
       window.currentLRImage = reader.result;
     };
-    if(event.target.files[0]) reader.readAsDataURL(event.target.files[0]);
+    reader.readAsDataURL(file);
   },
 
   submitDispatch() {
@@ -1687,29 +1997,61 @@ const app = {
     .catch(() => this.toast('Network error.', 'error'));
   },
 
-  handleLateLRUpload(event, logId, idx) {
+  previewLateLR(event, logId, idx) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Validate file type
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      this.toast('Only JPG, JPEG, PNG, and WEBP images are allowed.', 'error');
+      event.target.value = '';
+      return;
+    }
+    
     const reader = new FileReader();
     reader.onload = () => {
-      const payload = { log_id: logId, lr_image: reader.result };
-      fetch('/dispatch/update-lr', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-        body: JSON.stringify(payload)
-      })
-      .then(r => r.json())
-      .then(d => {
-        if (d.success) {
-          this.toast(d.message);
-          // Update local data
-          const log = window._historyLogs[idx];
-          if (log) log.lrImage = d.lr_url;
-          this.openDispatchDrawer(idx);
-        } else {
-          this.toast(d.message, 'error');
-        }
-      });
+      window.tempLRData = reader.result;
+      const container = document.getElementById('late-lr-preview-container');
+      container.innerHTML = `
+        <div style="margin-top:1rem; padding:10px; background:rgba(255,255,255,0.05); border-radius:10px; border:1px solid var(--secondary);">
+          <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:8px;">Preview:</div>
+          <img src="${reader.result}" style="width:100%; max-height:200px; object-fit:contain; border-radius:6px; margin-bottom:10px;">
+          <button class="btn" onclick="app.submitLateLR(${logId}, ${idx})" style="padding:0.8rem;">Confirm & Submit LR</button>
+          <button class="btn btn-secondary mt-1" onclick="app.openDispatchDrawer(${idx})" style="padding:0.6rem; font-size:0.8rem;">Cancel</button>
+        </div>
+      `;
     };
-    if (event.target.files[0]) reader.readAsDataURL(event.target.files[0]);
+    reader.readAsDataURL(file);
+  },
+
+  submitLateLR(logId, idx) {
+    const imageData = window.tempLRData;
+    if (!imageData) return this.toast('No image data found', 'error');
+    
+    this.toast('Uploading LR...', 'info');
+    fetch('/dispatch/update-lr', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+      body: JSON.stringify({ log_id: logId, lr_image: imageData })
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        this.toast(d.message);
+        window.tempLRData = null; // Clear memory
+        const log = window._historyLogs[idx];
+        if (log) log.lrImage = d.lr_url;
+        this.openDispatchDrawer(idx);
+      } else {
+        this.toast(d.message, 'error');
+      }
+    })
+    .catch(() => this.toast('Network error.', 'error'));
+  },
+
+  handleLateLRUpload(event, logId, idx) {
+    this.previewLateLR(event, logId, idx);
   },
 
   // --- ROLE: CASHIER ---
@@ -1943,6 +2285,66 @@ const app = {
     else if(role === 'DISPATCH') this.renderDispatchHome(container);
     else if(role === 'CASHIER') this.renderCashierHome(container);
     else if(role === 'ATTENDANCE') this.renderAttendanceHome(container);
+  },
+
+  renderCashierLedger(container) {
+    const summary = DB.get('summary') || { totalIn: 0, totalOut: 0, balance: 0 };
+    const txs = DB.get('transactions') || [];
+    const page = window.currentPage || 1;
+    const { paginated, totalPages } = this.paginate(txs, page, 15);
+
+    container.innerHTML = `
+      <div class="flex-between mb-1">
+        <h2 style="margin:0;">Detailed Ledger</h2>
+        <button class="btn btn-sm btn-secondary" style="width:auto;" onclick="app.downloadCashierPdf()">Export PDF</button>
+      </div>
+
+      <!-- Summary -->
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:1.5rem;">
+        <div class="card" style="padding:10px; text-align:center;">
+          <div style="font-size:0.7rem; color:var(--text-muted);">INCOME</div>
+          <div style="font-weight:bold; color:var(--secondary);">\u20b9${summary.totalIn.toLocaleString()}</div>
+        </div>
+        <div class="card" style="padding:10px; text-align:center;">
+          <div style="font-size:0.7rem; color:var(--text-muted);">EXPENSE</div>
+          <div style="font-weight:bold; color:var(--danger);">\u20b9${summary.totalOut.toLocaleString()}</div>
+        </div>
+        <div class="card" style="padding:10px; text-align:center; background:rgba(255,255,255,0.05);">
+          <div style="font-size:0.7rem; color:var(--text-muted);">BALANCE</div>
+          <div style="font-weight:bold; color:var(--primary-light);">\u20b9${summary.balance.toLocaleString()}</div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div class="table-container">
+          <table style="font-size:0.85rem;">
+            <thead>
+              <tr style="background:rgba(0,0,0,0.2);">
+                <th style="padding:12px;">Date</th>
+                <th>Details</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${paginated.map(t => `
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                  <td style="padding:12px; font-size:0.75rem;">${new Date(t.created_at).toLocaleDateString()}<br><span style="color:var(--text-muted);">${new Date(t.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></td>
+                  <td>
+                    <div style="font-weight:600;">${t.note || 'Cash '+t.type}</div>
+                    <div style="font-size:0.7rem; color:var(--text-muted);">${t.category.toUpperCase()} ${t.reference ? '\u00b7 Ref: '+t.reference : ''}</div>
+                  </td>
+                  <td style="font-weight:bold; color:${t.type==='IN'?'var(--secondary)':'var(--danger)'}; text-align:right; padding-right:12px;">
+                    ${t.type==='IN'?'+':'-'}\u20b9${t.amount.toLocaleString()}
+                  </td>
+                </tr>
+              `).join('') || '<tr><td colspan="3" class="text-center text-muted" style="padding:20px;">No transactions found.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      ${this.renderPaginationControls(page, totalPages)}
+    `;
   },
 
   renderAction(container) {
@@ -2310,15 +2712,19 @@ const app = {
         <div style="margin-bottom:1rem;">
           <div style="color:var(--text-muted); font-size:0.8rem; margin-bottom:0.5rem;">LR Copy</div>
           <img src="${d.lrImage}" style="width:100%; border-radius:10px; max-height:200px; object-fit:contain; cursor:pointer;" onclick="app.viewImage(this.src)">
-          <button class="btn btn-sm btn-secondary mt-1" style="width:100%; font-size:0.7rem;" onclick="document.getElementById('late-lr-input').click()">Update LR Copy</button>
+          <div id="late-lr-preview-container">
+            <button class="btn btn-sm btn-secondary mt-1" style="width:100%; font-size:0.7rem;" onclick="document.getElementById('late-lr-input').click()">Update LR Copy</button>
+          </div>
         </div>
       ` : `
         <div style="margin-bottom:1rem; padding:1.5rem; background:rgba(255,165,0,0.05); border:1px dashed rgba(255,165,0,0.3); border-radius:12px; text-align:center;">
           <div style="color:var(--warning); font-weight:600; font-size:0.9rem; margin-bottom:10px;">LR Copy Pending</div>
-          <button class="btn btn-secondary" style="width:100%;" onclick="document.getElementById('late-lr-input').click()">Upload LR Now</button>
+          <div id="late-lr-preview-container">
+            <button class="btn btn-secondary" style="width:100%;" onclick="document.getElementById('late-lr-input').click()">Upload LR Now</button>
+          </div>
         </div>
       `}
-      <input type="file" id="late-lr-input" accept="image/*" style="display:none;" onchange="app.handleLateLRUpload(event, ${d.id}, ${idx})">
+      <input type="file" id="late-lr-input" accept=".jpg,.jpeg,.png,.webp" style="display:none;" onchange="app.handleLateLRUpload(event, ${d.id}, ${idx})">
       <button class="btn btn-secondary" onclick="app.closeDrawer()" style="width:100%;">Close</button>
     `);
   },
@@ -3052,6 +3458,7 @@ const app = {
           <div style="margin-bottom:1rem; display:flex; gap:10px;">
             <button class="btn btn-sm btn-secondary" style="flex:1;" onclick="app.markAllPresent()">Mark All Present</button>
             <button class="btn btn-sm" style="flex:1;" onclick="app.submitAttendance()">Save All</button>
+            <button class="btn btn-sm btn-secondary" style="flex:1; background:#27ae60; color:white;" onclick="app.exportDailyToCSV()">📗 Export to Sheet</button>
           </div>
 
           ${filtered.map((w, idx) => {
@@ -3222,6 +3629,7 @@ const app = {
             <h2 style="margin:0;">Monthly Reports</h2>
             <div style="display:flex; gap:8px; align-items:center;">
               <input type="month" value="${month}" onchange="window._attMonth=this.value; app.refreshCurrentView()" style="width:auto; padding:0.4rem; font-size:0.85rem;">
+              <button class="btn btn-sm" onclick="app.exportMonthlyToCSV('${month}')" style="width:auto; padding:0.4rem 1rem; background:#27ae60; color:white;">📗 Export to Sheet</button>
               <a class="btn btn-sm btn-secondary" href="/history/attendance/pdf?month=${month}" target="_blank" style="width:auto; text-decoration:none;">Download PDF</a>
             </div>
           </div>
@@ -3231,6 +3639,67 @@ const app = {
           <button class="btn btn-secondary mt-1" onclick="window.print()">Print Report</button>
         `;
       });
+  },
+
+  exportMonthlyToCSV(month) {
+    let csv = [];
+    const table = document.querySelector("table");
+    if (!table) return this.toast('No report data to export', 'error');
+    
+    const rows = table.querySelectorAll("tr");
+    for (let i = 0; i < rows.length; i++) {
+        let row = [];
+        let cols = rows[i].querySelectorAll("td, th");
+        if (rows[i].classList.contains('no-print')) continue;
+
+        for (let j = 0; j < cols.length; j++) {
+            if (cols[j].classList.contains('no-print')) continue;
+            let data = cols[j].innerText.trim().replace(/\n/g, " ").replace(/\s\s+/g, " ");
+            data = data.replace(/"/g, '""');
+            row.push('"' + data + '"');
+        }
+        if (row.length > 0) csv.push(row.join(","));
+    }
+    
+    const csvFile = new Blob([csv.join("\n")], {type: "text/csv;charset=utf-8;"});
+    const downloadLink = document.createElement("a");
+    downloadLink.download = `Monthly_Payroll_Report_${month}.csv`;
+    downloadLink.href = window.URL.createObjectURL(csvFile);
+    downloadLink.style.display = "none";
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+  },
+
+  exportDailyToCSV() {
+    const workers = window._attWorkers || [];
+    if (!workers.length) return this.toast('No data to export', 'error');
+    const date = window._attDate || new Date().toISOString().slice(0, 10);
+    
+    let csv = ["Worker Name,Department,Status,In Time,Out Time,Break In,Break Out,Total Hours,OT Hours"];
+    workers.forEach(w => {
+      const line = [
+        w.name,
+        w.department,
+        w.status,
+        w.in_time || '--:--',
+        w.out_time || '--:--',
+        w.break_in || '--:--',
+        w.break_out || '--:--',
+        (w.total_hours || 0).toFixed(2),
+        (w.overtime_hours || 0).toFixed(2)
+      ].map(v => `"${v}"`).join(",");
+      csv.push(line);
+    });
+
+    const csvFile = new Blob([csv.join("\n")], {type: "text/csv;charset=utf-8;"});
+    const downloadLink = document.createElement("a");
+    downloadLink.download = `Daily_Attendance_${date}.csv`;
+    downloadLink.href = window.URL.createObjectURL(csvFile);
+    downloadLink.style.display = "none";
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
   },
 
   openWorkerDrawer(workerId = null) {

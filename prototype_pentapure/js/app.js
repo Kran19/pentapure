@@ -175,11 +175,10 @@ const app = {
   navigate(view) {
     this.currentView = view;
     window.currentPage = 1;
-    // Update bottom nav UI
-    document.querySelectorAll('.bottom-nav .nav-item').forEach(el => el.classList.remove('active'));
-    const targetEl = Array.from(document.querySelectorAll('.bottom-nav .nav-item')).find(el => el.innerText.toLowerCase() === view);
-    if(targetEl) targetEl.classList.add('active');
+    this.refreshCurrentView();
+  },
 
+  refreshCurrentView() {
     const content = document.getElementById('content-area');
     content.innerHTML = '';
 
@@ -218,8 +217,46 @@ const app = {
     } else {
       const content = document.getElementById('content-area');
       if (this.currentView === 'home') this.renderHome(content);
+      else if (this.currentView === 'action') this.renderAction(content);
       else if (this.currentView === 'history') this.renderHistory(content);
+      else if (this.currentView === 'ledger') this.renderCashierLedger(content);
+      else if (this.currentView === 'profile') this.renderProfile(content);
+      else if (this.currentView === 'po') this.renderPurchaseOrder(content);
     }
+  },
+
+  renderCashierLedger(container) {
+    const txs = DB.get('transactions') || [];
+    const page = window.currentPage || 1;
+    const { paginated, totalPages } = this.paginate(txs, page, 15);
+
+    container.innerHTML = `
+      <h2 class="mb-1">Detailed Ledger</h2>
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Date</th><th>Details</th><th>Amount</th></tr>
+            </thead>
+            <tbody>
+              ${paginated.map(t => `
+                <tr>
+                  <td style="font-size:0.75rem;">${new Date(t.date).toLocaleDateString()}</td>
+                  <td>
+                    <div style="font-weight:600;">${t.note || 'Cash '+t.type}</div>
+                    <div style="font-size:0.7rem; color:var(--text-muted);">${t.category ? t.category.toUpperCase() : 'GENERAL'}</div>
+                  </td>
+                  <td style="font-weight:bold; color:${t.type==='IN'?'var(--secondary)':'var(--danger)'}; text-align:right;">
+                    ${t.type==='IN'?'+':'-'}\u20b9${t.amount.toLocaleString()}
+                  </td>
+                </tr>
+              `).join('') || '<tr><td colspan="3" class="text-center text-muted">No transactions.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      ${this.renderPaginationControls(page, totalPages)}
+    `;
   },
 
   // --- DATA HELPERS ---

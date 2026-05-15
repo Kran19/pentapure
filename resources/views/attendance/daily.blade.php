@@ -16,6 +16,7 @@
       <span style="color:var(--text-muted);">{{ $authUser['role'] === 'ADMIN' ? 'Reviewing' : 'Managing' }} active workers for <strong>{{ \Carbon\Carbon::parse($date)->format('d M Y') }}</strong></span>
       <div style="display:flex; gap:10px;">
         <button class="btn btn-sm btn-secondary" onclick="window.print()" style="width:auto; padding:0.4rem 1rem;">🖨️ Print Daily Sheet</button>
+        <button class="btn btn-sm btn-secondary" onclick="exportDailyToCSV()" style="width:auto; padding:0.4rem 1rem; background:#27ae60; color:white;">📗 Export to Sheet</button>
         @if($authUser['role'] === 'ATTENDANCE')
           <button class="btn btn-sm" onclick="markAllPresent()" style="width:auto; padding:0.4rem 1rem;">Mark All Present (9-6)</button>
         @endif
@@ -214,5 +215,44 @@ document.getElementById('bulk-attendance-form').onsubmit = function(e) {
     else Swal.fire('Error', d.message, 'error');
   });
 };
+
+function exportDailyToCSV() {
+    let csv = [];
+    // Header
+    csv.push("Worker Name,Department,Status,In Time,Out Time,Break In,Break Out,Total Hours,OT Hours");
+    
+    document.querySelectorAll('.attendance-row').forEach(row => {
+        const name = row.querySelector('td:first-child div:first-child').innerText.trim();
+        const dept = row.querySelector('td:first-child div:last-child').innerText.trim();
+        let status, inT, outT, bIn, bOut;
+        
+        const statusEl = row.querySelector('.status-select');
+        if (statusEl) {
+            status = statusEl.value;
+            inT = row.querySelector('.time-in').value || '--:--';
+            outT = row.querySelector('.time-out').value || '--:--';
+            bIn = row.querySelector('.time-bin').value || '--:--';
+            bOut = row.querySelector('.time-bout').value || '--:--';
+        } else {
+            // Admin view (plain text)
+            status = row.querySelector('td:nth-child(2) span').innerText.trim();
+            inT = row.querySelector('td:nth-child(3) span').innerText.trim();
+            outT = row.querySelector('td:nth-child(4) span').innerText.trim();
+            bIn = row.querySelector('td:nth-child(5) span').innerText.trim();
+            bOut = row.querySelector('td:nth-child(6) span').innerText.trim();
+        }
+        
+        const line = [name, dept, status, inT, outT, bIn, bOut].map(v => `"${v}"`).join(",");
+        csv.push(line);
+    });
+    
+    const csvFile = new Blob([csv.join("\n")], {type: "text/csv"});
+    const downloadLink = document.createElement("a");
+    downloadLink.download = "Daily_Attendance_{{ $date }}.csv";
+    downloadLink.href = window.URL.createObjectURL(csvFile);
+    downloadLink.style.display = "none";
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+}
 </script>
 @endsection

@@ -147,6 +147,13 @@ class FinishedController extends Controller
         }
 
         DB::transaction(function () use ($request, $user) {
+            // Auto-update product type to FINISHED if it was SEMI, ensuring it becomes visible to Sales
+            $product = Product::find($request->output_product_id);
+            if ($product && $product->type === 'SEMI') {
+                $product->type = 'FINISHED';
+                $product->save();
+            }
+
             $log = ProductionLog::create([
                 'user_id'           => $user['id'],
                 'type'              => 'FINISHED',

@@ -39,16 +39,19 @@ class ProductSeeder extends Seeder
         ];
 
         foreach ($rawMaterials as $rm) {
-            Product::create([
-                'name'      => $rm['name'],
-                'type'      => 'RAW',
-                'unit'      => 'kg',
-                'image_url' => $rm['image_url'],
-            ]);
+            Product::firstOrCreate(
+                ['name' => $rm['name']],
+                [
+                    'type'      => 'RAW',
+                    'unit'      => 'kg',
+                    'image_url' => $rm['image_url'],
+                ]
+            );
         }
 
-        // ─── 38 SEMI-FINISHED PRODUCTS ───────────────────────────────────────
-        $semiProducts = [
+        // ─── MANUFACTURED PRODUCTS (Combined Semi & Finished) ─────────────────
+        // These can exist in both SEMI and FINISHED stages in stock
+        $manufacturedProducts = [
             'Tomato Powder', 'Lemon Powder', 'Tamarind Powder', 'Beetroot Powder',
             'Green Chili Powder', 'Capsicum Powder', 'Cheese Powder / Cheddar Cheese',
             'Mango Powder', 'Fig Powder', 'Pineapple Powder', 'Papaya Powder',
@@ -59,33 +62,19 @@ class ProductSeeder extends Seeder
             'Cumin Powder', 'Turmeric Powder', 'Red Chili Powder', 'Coriander Powder',
             'Black Pepper Powder', 'Coriander Cumin Powder', 'Red Chili Flakes (Pizza Cut)',
             'Magic Masala', 'Chatpata Masala', 'Peri Peri Masala', 'Schezwan Masala',
-            'Masala Masti', 'Garlic in Brine'
+            'Masala Masti', 'Garlic in Brine',
+            'Packaged Tomato Powder', 'Packaged Lemon Powder', 'Packaged Tamarind Powder',
+            'Premium Masala Pack (500g)', 'Curry Base Mix (250g)', 'Ready-to-use Garlic Paste Box'
         ];
 
-        foreach ($semiProducts as $name) {
-            Product::create([
-                'name' => $name,
-                'type' => 'SEMI',
-                'unit' => 'kg',
-            ]);
-        }
-
-        // ─── FINISHED PRODUCTS ───────────────────────────────────────────────
-        $finishedProducts = [
-            'Packaged Tomato Powder',
-            'Packaged Lemon Powder',
-            'Packaged Tamarind Powder',
-            'Premium Masala Pack (500g)',
-            'Curry Base Mix (250g)',
-            'Ready-to-use Garlic Paste Box'
-        ];
-
-        foreach ($finishedProducts as $name) {
-            Product::create([
-                'name' => $name,
-                'type' => 'FINISHED',
-                'unit' => 'kg',
-            ]);
+        foreach ($manufacturedProducts as $name) {
+            Product::firstOrCreate(
+                ['name' => $name],
+                [
+                    'type' => 'FINISHED', // Set to FINISHED so Sales can see them all
+                    'unit' => 'kg',
+                ]
+            );
         }
     }
 }

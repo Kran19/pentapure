@@ -56,7 +56,26 @@ class AdminController extends Controller
         $totalWorkers = \App\Models\Worker::count();
         $presentToday = \App\Models\Attendance::where('date', \Carbon\Carbon::today()->toDateString())->whereIn('status', ['PRESENT', 'HALF_DAY'])->count();
 
-        $pageData = compact('rawQty', 'semiQty', 'finishedQty', 'lowRawCount', 'lowSemiCount', 'lowFinishedCount', 'totalOrders', 'totalRevenue', 'pendingPOs', 'totalWorkers', 'presentToday');
+        // --- Chart Data ---
+        $days = [];
+        $salesTrend = [];
+        $productionTrend = [];
+        
+        for ($i = 6; $i >= 0; $i--) {
+            $date = \Carbon\Carbon::today()->subDays($i);
+            $days[] = $date->format('D (d M)');
+            
+            $salesTrend[] = \App\Models\Order::whereDate('created_at', $date)->sum('total') ?: 0;
+            $productionTrend[] = \App\Models\ProductionLog::whereDate('created_at', $date)->sum('output_qty') ?: 0;
+        }
+
+        $pageData = compact(
+            'rawQty', 'semiQty', 'finishedQty', 
+            'lowRawCount', 'lowSemiCount', 'lowFinishedCount', 
+            'totalOrders', 'totalRevenue', 'pendingPOs', 
+            'totalWorkers', 'presentToday',
+            'days', 'salesTrend', 'productionTrend'
+        );
         return view('admin.dashboard', compact('pageData'));
     }
 
@@ -124,6 +143,32 @@ class AdminController extends Controller
         }
         User::destroy($id);
         return response()->json(['success' => true, 'message' => 'User deleted!']);
+    }
+
+    public function sendNotification(Request $request)
+    {
+        try {
+            $request->validate([
+                'user_id' => 'required|exists:users,id',
+                'title'   => 'required|string|max:100',
+                'message' => 'required|string|max:500',
+                'type'    => 'required|in:info,warning,success,danger'
+            ]);
+
+            $user = User::findOrFail($request->user_id);
+            \Log::info("Admin sending notification to User ID: {$user->id}, Title: {$request->title}");
+            
+            $user->notify(new \App\Notifications\GeneralNotification(
+                $request->title,
+                $request->message,
+                $request->type
+            ));
+
+            return response()->json(['success' => true, 'message' => 'Notification sent successfully!']);
+        } catch (\Exception $e) {
+            \Log::error("Failed to send notification: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to send notification: ' . $e->getMessage()]);
+        }
     }
 
     // ── PRODUCTS ───────────────────────────────────────────────────────────
@@ -521,5 +566,27 @@ class AdminController extends Controller
         
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.dispatch_activity_pdf', compact('orders'));
         return $pdf->download('dispatch-activity-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function cashierOverview()
+    {
+        $txs = \App\Models\Transaction::with('user')->orderByDesc('created_at')->get();
+        
+        $summary = [
+            'totalIn'  => $txs->where('type', 'IN')->sum('amount'),
+            'totalOut' => $txs->where('type', 'OUT')->sum('amount'),
+            'balance'  => $txs->where('type', 'IN')->sum('amount') - $txs->where('type', 'OUT')->sum('amount'),
+            'byCategory' => $txs->groupBy('category')->map(fn($group) => [
+                'in' => $group->where('type', 'IN')->sum('amount'),
+                'out' => $group->where('type', 'OUT')->sum('amount'),
+            ]),
+        ];
+
+        $pageData = [
+            'transactions' => $txs,
+            'summary' => $summary
+        ];
+
+        return view('admin.cashier_overview', compact('pageData'));
     }
 }

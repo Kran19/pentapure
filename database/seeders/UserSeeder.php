@@ -11,14 +11,16 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         // Admin - sets passwords for everyone
-        $admin = User::create([
-            'name'       => 'Super Admin',
-            'email'      => 'admin@pentapure.com',
-            'password'   => Hash::make('admin@123'),
-            'role'       => 'ADMIN',
-            'parent_id'  => null,
-            'status'     => 'ACTIVE',
-        ]);
+        $admin = User::updateOrCreate(
+            ['email' => 'admin@pentapure.com'],
+            [
+                'name'       => 'Super Admin',
+                'password'   => Hash::make('admin@123'),
+                'role'       => 'ADMIN',
+                'parent_id'  => null,
+                'status'     => 'ACTIVE',
+            ]
+        );
 
         // Operational users - admin sets their passwords
         $roles = [
@@ -32,14 +34,16 @@ class UserSeeder extends Seeder
         ];
 
         foreach ($roles as $data) {
-            User::create([
-                'name'      => $data['name'],
-                'email'     => $data['email'],
-                'password'  => Hash::make($data['password']),
-                'role'      => $data['role'],
-                'parent_id' => $admin->id,
-                'status'    => 'ACTIVE',
-            ]);
+            User::updateOrCreate(
+                ['email' => $data['email']],
+                [
+                    'name'      => $data['name'],
+                    'password'  => Hash::make($data['password']),
+                    'role'      => $data['role'],
+                    'parent_id' => $admin->id,
+                    'status'    => 'ACTIVE',
+                ]
+            );
         }
     }
 }
