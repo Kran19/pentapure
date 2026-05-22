@@ -26,26 +26,42 @@ class AdminController extends Controller
             ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")->value('net') ?? 0;
 
         $lowRawCount = DB::table('stocks')
-            ->select('product_id', 'stage', 'grade')
-            ->where('stage', 'RAW')
-            ->groupBy('product_id', 'stage', 'grade')
-            ->havingRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) < 500")
+            ->leftJoin('stock_limits', function($join) {
+                $join->on('stocks.product_id', '=', 'stock_limits.product_id')
+                     ->on('stocks.stage', '=', 'stock_limits.stage')
+                     ->on('stocks.grade', '=', 'stock_limits.grade');
+            })
+            ->select('stocks.product_id', 'stocks.stage', 'stocks.grade')
+            ->where('stocks.stage', 'RAW')
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'stock_limits.alert_limit')
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) < IFNULL(stock_limits.alert_limit, 0)")
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0") // Optional: exclude 0 stock? Actually if stock is 0, it should probably still alert if limit is > 0. Let's just use the limit comparison.
             ->get()
             ->count();
 
         $lowSemiCount = DB::table('stocks')
-            ->select('product_id', 'stage', 'grade')
-            ->where('stage', 'SEMI')
-            ->groupBy('product_id', 'stage', 'grade')
-            ->havingRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) < 500")
+            ->leftJoin('stock_limits', function($join) {
+                $join->on('stocks.product_id', '=', 'stock_limits.product_id')
+                     ->on('stocks.stage', '=', 'stock_limits.stage')
+                     ->on('stocks.grade', '=', 'stock_limits.grade');
+            })
+            ->select('stocks.product_id', 'stocks.stage', 'stocks.grade')
+            ->where('stocks.stage', 'SEMI')
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'stock_limits.alert_limit')
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) < IFNULL(stock_limits.alert_limit, 0)")
             ->get()
             ->count();
 
         $lowFinishedCount = DB::table('stocks')
-            ->select('product_id', 'stage', 'grade')
-            ->where('stage', 'FINISHED')
-            ->groupBy('product_id', 'stage', 'grade')
-            ->havingRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) < 500")
+            ->leftJoin('stock_limits', function($join) {
+                $join->on('stocks.product_id', '=', 'stock_limits.product_id')
+                     ->on('stocks.stage', '=', 'stock_limits.stage')
+                     ->on('stocks.grade', '=', 'stock_limits.grade');
+            })
+            ->select('stocks.product_id', 'stocks.stage', 'stocks.grade')
+            ->where('stocks.stage', 'FINISHED')
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'stock_limits.alert_limit')
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) < IFNULL(stock_limits.alert_limit, 0)")
             ->get()
             ->count();
 
@@ -242,13 +258,19 @@ class AdminController extends Controller
     {
         $allStock = DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit')
+            ->leftJoin('stock_limits', function($join) {
+                $join->on('stocks.product_id', '=', 'stock_limits.product_id')
+                     ->on('stocks.stage', '=', 'stock_limits.stage')
+                     ->on('stocks.grade', '=', 'stock_limits.grade');
+            })
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'stock_limits.alert_limit')
             ->selectRaw("
                 stocks.product_id as productId,
                 products.name,
                 products.unit,
                 stocks.stage,
                 stocks.grade,
+                IFNULL(stock_limits.alert_limit, 0) as alert_limit,
                 SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
             ")
             ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
@@ -258,6 +280,29 @@ class AdminController extends Controller
 
         $pageData = ['allStock' => $allStock];
         return view('admin.stock', compact('pageData'));
+    }
+
+    public function setStockLimit(Request $request)
+    {
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'stage' => 'required|string',
+            'grade' => 'required|string',
+            'alert_limit' => 'required|numeric|min:0'
+        ]);
+
+        \App\Models\StockLimit::updateOrCreate(
+            [
+                'product_id' => $request->product_id,
+                'stage' => $request->stage,
+                'grade' => $request->grade
+            ],
+            [
+                'alert_limit' => $request->alert_limit
+            ]
+        );
+
+        return response()->json(['success' => true, 'message' => 'Stock alert limit updated!']);
     }
 
     // ── PURCHASE ORDERS ────────────────────────────────────────────────────
@@ -588,5 +633,48 @@ class AdminController extends Controller
         ];
 
         return view('admin.cashier_overview', compact('pageData'));
+    }
+
+    // ── NOTIFICATION HISTORY ───────────────────────────────────────────────
+    public function notificationHistory()
+    {
+        $sessionUser = session('auth_user');
+        $user = $sessionUser ? User::find($sessionUser['id']) : null;
+
+        $notifications = collect();
+        if ($user) {
+            $notifications = $user->notifications()
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(function ($n) {
+                    return (object)[
+                        'id'         => $n->id,
+                        'title'      => $n->data['title'] ?? 'Notification',
+                        'message'    => $n->data['message'] ?? '',
+                        'type'       => $n->data['type'] ?? 'info',
+                        'url'        => $n->data['url'] ?? null,
+                        'is_read'    => !is_null($n->read_at),
+                        'read_at'    => $n->read_at,
+                        'created_at' => $n->created_at,
+                        'notif_class' => class_basename($n->type),
+                    ];
+                });
+        }
+
+        $pageData = [
+            'notifications' => $notifications,
+            'unreadCount'   => $notifications->where('is_read', false)->count(),
+            'totalCount'    => $notifications->count(),
+        ];
+
+        return view('admin.notifications', compact('pageData'));
+    }
+
+    // ── ADMIN: DOWNLOAD ANY CASHIER'S PDF ──────────────────────────────────
+    public function downloadCashierPdf(\Illuminate\Http\Request $request, $userId)
+    {
+        $cashier = User::findOrFail($userId);
+        $controller = new \App\Http\Controllers\CashierController();
+        return $controller->generateCashierPdf($request, (int) $userId, $cashier->name);
     }
 }

@@ -37,13 +37,13 @@
 
         <div id="admin-mobile-header" class="admin-mobile-header">
           Pentapure Admin
-          <div id="notif-bell-container" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer;" onclick="app.toggleNotifications()">
+          <a href="{{ url('admin/notifications') }}" id="notif-bell-container" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:inherit; text-decoration:none;">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
               <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
             </svg>
             <span id="notif-badge" style="position:absolute; top:-5px; right:-5px; background:var(--danger); color:white; font-size:10px; padding:2px 5px; border-radius:10px; display:none; min-width:16px; text-align:center;">0</span>
-          </div>
+          </a>
         </div>
 
         <!-- Sidebar -->
@@ -97,10 +97,11 @@
             💰 Cashier Overview
           </a>
 
-          <div class="nav-item" onclick="app.toggleNotifications()" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+          <a href="{{ url('admin/notifications') }}" class="nav-item {{ $seg=='notifications'?'active':'' }}"
+             style="display:flex; justify-content:space-between; align-items:center;">
             <span>🔔 Notifications</span>
             <span id="nav-notif-count" class="badge badge-danger" style="display:none; font-size:0.7rem; padding:2px 6px;">0</span>
-          </div>
+          </a>
 
 
           <!-- Attendance Accordion -->

@@ -2232,8 +2232,90 @@ const app = {
     `);
   },
 
+  // Open professional PDF generation modal
   downloadCashierPdf() {
-    this.downloadHistoryPdf('cashier');
+    const txs   = window.serverPageData?.transactions || [];
+    const cats  = [...new Set(txs.map(t => t.category).filter(Boolean))].sort();
+    const sites = [...new Set(txs.map(t => t.site).filter(Boolean))].sort();
+
+    const today = new Date().toISOString().split('T')[0];
+    const oneMonthAgo = new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
+
+    Swal.fire({
+      title: '📄 Generate Account Statement',
+      html: `
+        <div style="text-align:left; font-size:0.9rem;">
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; margin-bottom:0.8rem;">
+            <div>
+              <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px;">From Date</label>
+              <input id="sp-from" type="date" value="${oneMonthAgo}" style="width:100%; padding:0.5rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+            </div>
+            <div>
+              <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px;">To Date</label>
+              <input id="sp-to" type="date" value="${today}" style="width:100%; padding:0.5rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; margin-bottom:0.8rem;">
+            <div>
+              <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px;">Category</label>
+              <select id="sp-cat" style="width:100%; padding:0.5rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+                <option value="all">All Categories</option>
+                ${cats.map(c => `<option value="${c}">${c.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase())}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px;">Site / Branch</label>
+              <select id="sp-site" style="width:100%; padding:0.5rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+                <option value="all">All Sites</option>
+                ${sites.map(s => `<option value="${s}">${s}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <div style="margin-bottom:0.8rem;">
+            <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px;">Opening Balance (₹)</label>
+            <input id="sp-opening" type="number" step="0.01" placeholder="Leave blank to auto-calculate" style="width:100%; padding:0.5rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+          </div>
+
+          <div style="background:rgba(35,134,54,0.1); border:1px solid #238636; border-radius:8px; padding:0.7rem; display:flex; align-items:center; gap:0.6rem;">
+            <input type="checkbox" id="sp-bills" checked style="width:16px; height:16px; accent-color:#238636;">
+            <label for="sp-bills" style="font-size:0.85rem; cursor:pointer;">
+              📎 Include bill attachments as extra pages after statement
+            </label>
+          </div>
+        </div>
+      `,
+      background: '#0d1117',
+      color: '#e6edf3',
+      showCancelButton: true,
+      confirmButtonText: '📄 Generate PDF',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#238636',
+      cancelButtonColor: '#30363d',
+      width: '500px',
+      preConfirm: () => {
+        const from = document.getElementById('sp-from').value;
+        const to   = document.getElementById('sp-to').value;
+        if (!from || !to) { Swal.showValidationMessage('Please select both dates'); return false; }
+        if (from > to)    { Swal.showValidationMessage('From date must be before To date'); return false; }
+        return {
+          from, to,
+          category: document.getElementById('sp-cat').value,
+          site: document.getElementById('sp-site').value,
+          include_bills: document.getElementById('sp-bills').checked ? 'yes' : 'no',
+          opening_balance: document.getElementById('sp-opening').value || '',
+        };
+      }
+    }).then(result => {
+      if (!result.isConfirmed) return;
+      const p = result.value;
+      let url = `/cashier/history/pdf?from=${p.from}&to=${p.to}&include_bills=${p.include_bills}&category=${p.category}&site=${p.site}`;
+      if (p.opening_balance) url += `&opening_balance=${p.opening_balance}`;
+      this.toast('Generating PDF... this may take a moment ⏳', 'info');
+      window.open(url, '_blank');
+    });
   },
 
   setPdfRange(preset) {
@@ -2288,34 +2370,38 @@ const app = {
   },
 
   renderCashierLedger(container) {
-    const summary = DB.get('summary') || { totalIn: 0, totalOut: 0, balance: 0 };
-    const txs = DB.get('transactions') || [];
+    const pageData = window.serverPageData || {};
+    const summary  = pageData.summary || { totalIn: 0, totalOut: 0, balance: 0 };
+    const txs = (pageData.transactions || []).sort((a,b) => new Date(b.date) - new Date(a.date));
     const page = window.currentPage || 1;
     const { paginated, totalPages } = this.paginate(txs, page, 15);
 
     container.innerHTML = `
       <div class="flex-between mb-1">
-        <h2 style="margin:0;">Detailed Ledger</h2>
-        <button class="btn btn-sm btn-secondary" style="width:auto;" onclick="app.downloadCashierPdf()">Export PDF</button>
+        <h2 style="margin:0;">💰 Account Ledger</h2>
+        <button class="btn btn-sm" style="width:auto; padding:0.5rem 1.1rem; display:flex; align-items:center; gap:0.4rem;" onclick="app.downloadCashierPdf()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export PDF
+        </button>
       </div>
 
-      <!-- Summary -->
-      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:1.5rem;">
-        <div class="card" style="padding:10px; text-align:center;">
-          <div style="font-size:0.7rem; color:var(--text-muted);">INCOME</div>
-          <div style="font-weight:bold; color:var(--secondary);">\u20b9${summary.totalIn.toLocaleString()}</div>
+      <!-- Summary Cards -->
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:1.2rem;">
+        <div class="card" style="padding:12px; text-align:center;">
+          <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">INCOME</div>
+          <div style="font-weight:bold; color:var(--secondary); font-size:1.1rem;">₹${Number(summary.totalIn).toLocaleString()}</div>
         </div>
-        <div class="card" style="padding:10px; text-align:center;">
-          <div style="font-size:0.7rem; color:var(--text-muted);">EXPENSE</div>
-          <div style="font-weight:bold; color:var(--danger);">\u20b9${summary.totalOut.toLocaleString()}</div>
+        <div class="card" style="padding:12px; text-align:center;">
+          <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">EXPENSE</div>
+          <div style="font-weight:bold; color:var(--danger); font-size:1.1rem;">₹${Number(summary.totalOut).toLocaleString()}</div>
         </div>
-        <div class="card" style="padding:10px; text-align:center; background:rgba(255,255,255,0.05);">
-          <div style="font-size:0.7rem; color:var(--text-muted);">BALANCE</div>
-          <div style="font-weight:bold; color:var(--primary-light);">\u20b9${summary.balance.toLocaleString()}</div>
+        <div class="card" style="padding:12px; text-align:center; background:${Number(summary.balance)>=0?'rgba(34,197,94,0.08)':'rgba(239,68,68,0.08)'}">
+          <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">BALANCE</div>
+          <div style="font-weight:bold; color:${Number(summary.balance)>=0?'var(--secondary)':'var(--danger)'}; font-size:1.1rem;">₹${Number(summary.balance).toLocaleString()}</div>
         </div>
       </div>
 
-      <!-- Table -->
+      <!-- Transaction Table -->
       <div class="card" style="padding:0; overflow:hidden;">
         <div class="table-container">
           <table style="font-size:0.85rem;">
@@ -2323,28 +2409,165 @@ const app = {
               <tr style="background:rgba(0,0,0,0.2);">
                 <th style="padding:12px;">Date</th>
                 <th>Details</th>
+                <th>Category</th>
                 <th>Amount</th>
+                <th style="text-align:center;">Bills</th>
+                <th style="text-align:center;">Action</th>
               </tr>
             </thead>
             <tbody>
               ${paginated.map(t => `
-                <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
-                  <td style="padding:12px; font-size:0.75rem;">${new Date(t.created_at).toLocaleDateString()}<br><span style="color:var(--text-muted);">${new Date(t.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></td>
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+                  <td style="padding:12px; font-size:0.75rem; white-space:nowrap;">
+                    ${new Date(t.date || t.created_at).toLocaleDateString()}<br>
+                    <span style="color:var(--text-muted);">${new Date(t.date || t.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+                  </td>
                   <td>
                     <div style="font-weight:600;">${t.note || 'Cash '+t.type}</div>
-                    <div style="font-size:0.7rem; color:var(--text-muted);">${t.category.toUpperCase()} ${t.reference ? '\u00b7 Ref: '+t.reference : ''}</div>
+                    ${t.description ? `<div style="font-size:0.72rem; color:var(--text-muted);">${t.description}</div>` : ''}
+                    ${t.reference ? `<div style="font-size:0.72rem; color:var(--text-muted);">Ref: ${t.reference}</div>` : ''}
                   </td>
-                  <td style="font-weight:bold; color:${t.type==='IN'?'var(--secondary)':'var(--danger)'}; text-align:right; padding-right:12px;">
-                    ${t.type==='IN'?'+':'-'}\u20b9${t.amount.toLocaleString()}
+                  <td>
+                    <span style="font-size:0.75rem; background:rgba(0,0,0,0.2); padding:2px 8px; border-radius:10px;">
+                      ${(t.category||'general').replace(/_/g,' ').toUpperCase()}
+                    </span>
+                    ${t.site ? `<div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">📍 ${t.site}</div>` : ''}
+                  </td>
+                  <td style="font-weight:bold; color:${t.type==='IN'?'var(--secondary)':'var(--danger)'}; text-align:right; padding-right:12px; white-space:nowrap;">
+                    ${t.type==='IN'?'+':'-'}₹${Number(t.amount).toLocaleString()}
+                  </td>
+                  <td style="text-align:center; min-width:80px;">
+                    ${(t.bills && t.bills.length > 0) ? `
+                      <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:4px;">
+                        ${t.bills.map(b => `
+                          <button onclick="app.viewBill(${b.id}, '${b.file_type}')" title="View ${b.original_name}"
+                            style="background:rgba(59,130,246,0.15); border:1px solid rgba(59,130,246,0.3); color:#60a5fa; border-radius:6px; padding:2px 6px; font-size:0.72rem; cursor:pointer;">
+                            ${b.file_type === 'pdf' ? '📄' : '🖼️'} ${b.original_name.length > 10 ? b.original_name.substring(0,10)+'…' : b.original_name}
+                          </button>
+                        `).join('')}
+                      </div>
+                    ` : '<span style="color:var(--text-muted); font-size:0.75rem;">No bills</span>'}
+                  </td>
+                  <td style="text-align:center; min-width:60px;">
+                    <button onclick="app.showBillUpload(${t.id})" title="Attach/Manage Bills"
+                      style="background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); color:#4ade80; border-radius:6px; padding:4px 8px; font-size:0.75rem; cursor:pointer;">
+                      📎
+                    </button>
                   </td>
                 </tr>
-              `).join('') || '<tr><td colspan="3" class="text-center text-muted" style="padding:20px;">No transactions found.</td></tr>'}
+              `).join('') || '<tr><td colspan="6" class="text-center text-muted" style="padding:20px;">No transactions found.</td></tr>'}
             </tbody>
           </table>
         </div>
       </div>
       ${this.renderPaginationControls(page, totalPages)}
     `;
+  },
+
+  // View a bill (open in new tab via server route)
+  viewBill(billId, fileType) {
+    window.open(`/cashier/bill/${billId}/view`, '_blank');
+  },
+
+  // Show bill upload modal for a transaction
+  showBillUpload(txId) {
+    const txs = (window.serverPageData?.transactions || []);
+    const tx  = txs.find(t => t.id == txId);
+    const existingBills = tx?.bills || [];
+
+    Swal.fire({
+      title: '📎 Manage Bills',
+      html: `
+        <div style="text-align:left;">
+          ${existingBills.length > 0 ? `
+            <div style="margin-bottom:1rem;">
+              <div style="font-size:0.8rem; color:#8b949e; margin-bottom:0.5rem;">Attached Bills (${existingBills.length}):</div>
+              <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                ${existingBills.map(b => `
+                  <div style="display:flex; align-items:center; justify-content:space-between; background:#161b22; border:1px solid #30363d; border-radius:6px; padding:0.5rem 0.7rem;">
+                    <span style="font-size:0.82rem;">${b.file_type==='pdf'?'📄':'🖼️'} ${b.original_name}</span>
+                    <div style="display:flex; gap:0.4rem;">
+                      <button onclick="window.open('/cashier/bill/${b.id}/view','_blank')" style="background:rgba(59,130,246,0.2); border:none; color:#60a5fa; border-radius:4px; padding:3px 8px; font-size:0.75rem; cursor:pointer;">View</button>
+                      <button onclick="app.deleteBill(${b.id}, ${txId})" style="background:rgba(239,68,68,0.2); border:none; color:#f87171; border-radius:4px; padding:3px 8px; font-size:0.75rem; cursor:pointer;">Delete</button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : '<p style="color:#8b949e; font-size:0.85rem; margin-bottom:0.8rem;">No bills attached yet.</p>'}
+
+          <div style="background:#0d1117; border:2px dashed #30363d; border-radius:8px; padding:1rem; text-align:center;">
+            <div style="font-size:0.85rem; color:#8b949e; margin-bottom:0.5rem;">📁 Upload New Bill</div>
+            <input type="file" id="bill-upload-input" accept="image/jpeg,image/png,application/pdf" style="display:block; margin:0 auto; font-size:0.8rem;">
+            <div style="font-size:0.72rem; color:#555; margin-top:0.4rem;">JPG, PNG or PDF · Max 10MB</div>
+          </div>
+        </div>
+      `,
+      background: '#0d1117',
+      color: '#e6edf3',
+      showCancelButton: true,
+      confirmButtonText: 'Upload',
+      cancelButtonText: 'Close',
+      confirmButtonColor: '#238636',
+      cancelButtonColor: '#30363d',
+      width: '480px',
+      preConfirm: () => {
+        const fileInput = document.getElementById('bill-upload-input');
+        if (!fileInput.files.length) {
+          Swal.showValidationMessage('Please select a file to upload');
+          return false;
+        }
+        return fileInput.files[0];
+      }
+    }).then(result => {
+      if (!result.isConfirmed) return;
+      const formData = new FormData();
+      formData.append('transaction_id', txId);
+      formData.append('bill_file', result.value);
+      formData.append('_token', window.csrfToken);
+
+      fetch('/cashier/bill/upload', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(d => {
+          if (d.success) {
+            this.toast('Bill uploaded! ✅', 'success');
+            setTimeout(() => location.reload(), 1000);
+          } else {
+            this.toast(d.message || 'Upload failed', 'error');
+          }
+        })
+        .catch(() => this.toast('Network error', 'error'));
+    });
+  },
+
+  // Delete a bill attachment
+  deleteBill(billId, txId) {
+    Swal.fire({
+      title: 'Delete Bill?',
+      text: 'This will permanently remove the bill attachment.',
+      icon: 'warning',
+      background: '#0d1117',
+      color: '#e6edf3',
+      showCancelButton: true,
+      confirmButtonText: 'Delete',
+      confirmButtonColor: '#b91c1c',
+      cancelButtonColor: '#30363d',
+    }).then(result => {
+      if (!result.isConfirmed) return;
+      fetch(`/cashier/bill/${billId}`, {
+        method: 'DELETE',
+        headers: { 'X-CSRF-TOKEN': window.csrfToken, 'Content-Type': 'application/json' }
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          this.toast('Bill deleted', 'success');
+          setTimeout(() => location.reload(), 800);
+        } else {
+          this.toast(d.message || 'Failed', 'error');
+        }
+      });
+    });
   },
 
   renderAction(container) {

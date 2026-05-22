@@ -21,15 +21,21 @@
         <thead><tr><th>Product</th><th>Grade</th><th>Qty</th><th>Unit</th><th>Action</th></tr></thead>
         <tbody>
           @foreach($rawItems as $s)
-          <tr>
+          @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
+          <tr @if($isLow) style="background-color: #ffe6e6;" title="Low Stock! Limit is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:600;">{{ $s->name }}</td>
             <td><span class="badge badge-info">{{ $s->grade }}</span></td>
             <td style="font-weight:bold; color:var(--secondary);">{{ number_format($s->quantity, 2) }}</td>
             <td style="color:var(--text-muted);">{{ $s->unit }}</td>
             <td>
-              <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
-              </button>
+              <div style="display:flex; align-items:center; gap:0.4rem;">
+                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+                </button>
+                <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" style="color:var(--danger);">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                </button>
+              </div>
             </td>
           </tr>
           @endforeach
@@ -50,15 +56,21 @@
         <thead><tr><th>Product</th><th>Grade</th><th>Qty</th><th>Unit</th><th>Action</th></tr></thead>
         <tbody>
           @foreach($semiItems as $s)
-          <tr>
+          @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
+          <tr @if($isLow) style="background-color: #ffe6e6;" title="Low Stock! Limit is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:600;">{{ $s->name }}</td>
             <td><span class="badge badge-info">{{ $s->grade }}</span></td>
             <td style="font-weight:bold; color:var(--warning);">{{ number_format($s->quantity, 2) }}</td>
             <td style="color:var(--text-muted);">{{ $s->unit }}</td>
             <td>
-              <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
-              </button>
+              <div style="display:flex; align-items:center; gap:0.4rem;">
+                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+                </button>
+                <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" style="color:var(--danger);">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                </button>
+              </div>
             </td>
           </tr>
           @endforeach
@@ -79,16 +91,22 @@
         <thead><tr><th>Product</th><th>Grade</th><th>Total Qty</th><th>Unit</th><th>Action</th></tr></thead>
         <tbody>
           @foreach($finishedItems as $s)
-          <tr>
+          @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
+          <tr @if($isLow) style="background-color: #ffe6e6;" title="Low Stock! Limit is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:600;">{{ $s->name }}</td>
             <td><span class="badge badge-info">{{ $s->grade }}</span></td>
 
             <td style="font-weight:bold; color:var(--secondary);">{{ number_format($s->quantity, 2) }}</td>
             <td style="color:var(--text-muted);">{{ $s->unit }}</td>
             <td>
-              <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
-              </button>
+              <div style="display:flex; align-items:center; gap:0.4rem;">
+                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+                </button>
+                <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" style="color:var(--danger);">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                </button>
+              </div>
             </td>
           </tr>
           @endforeach
@@ -226,6 +244,88 @@ function adminAdjustStock(productId, stage, grade) {
         color: '#e6edf3',
         confirmButtonColor: '#238636',
       });
+    });
+  });
+}
+
+function adminSetLimit(productId, stage, grade, currentLimit) {
+  const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ Finished' }[stage] || stage;
+
+  Swal.fire({
+    title: 'Set Alert Limit',
+    html: `
+      <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:#8b949e;">
+        <strong style="color:#e6edf3;">${grade}</strong> &nbsp;·&nbsp; ${stageLabel}
+      </div>
+
+      <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#8b949e;margin-bottom:0.35rem;">
+        Alert Limit (kg)
+      </label>
+      <input id="swal-limit-qty" type="number" min="0" step="0.01" value="${currentLimit}" style="
+        width:100%; padding:0.65rem 0.8rem; border-radius:8px;
+        background:#161b22; border:1px solid #30363d; color:#e6edf3;
+        font-size:1rem; margin-bottom:1rem; outline:none; box-sizing:border-box;
+      ">
+      <p style="text-align:left; font-size:0.8rem; color:#8b949e;">Set to 0 to disable alerts for this item.</p>
+    `,
+    background: '#0d1117',
+    color: '#e6edf3',
+    showCancelButton: true,
+    confirmButtonText: 'Save Limit',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#238636',
+    cancelButtonColor: '#30363d',
+    focusConfirm: false,
+    width: '460px',
+    customClass: {
+      popup: 'swal-stock-popup',
+      confirmButton: 'swal-confirm-btn',
+      cancelButton: 'swal-cancel-btn',
+    },
+    preConfirm: () => {
+      const limit = parseFloat(document.getElementById('swal-limit-qty').value);
+      if (isNaN(limit) || limit < 0) {
+        Swal.showValidationMessage('⚠️ Please enter a valid limit (≥ 0).');
+        return false;
+      }
+      return limit;
+    }
+  }).then(result => {
+    if (!result.isConfirmed) return;
+
+    fetch('/admin/stock/limit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+      body: JSON.stringify({
+        product_id: productId,
+        stage,
+        grade,
+        alert_limit: result.value
+      })
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Limit Saved',
+          text: d.message,
+          background: '#0d1117',
+          color: '#e6edf3',
+          confirmButtonColor: '#238636',
+          timer: 1500,
+          showConfirmButton: false
+        }).then(() => location.reload());
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Failed',
+          text: d.message || 'Something went wrong.',
+          background: '#0d1117',
+          color: '#e6edf3',
+          confirmButtonColor: '#238636',
+        });
+      }
     });
   });
 }

@@ -4,16 +4,25 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Transaction extends Model
 {
-    protected $fillable = ['user_id', 'type', 'amount', 'category', 'note', 'reference'];
+    protected $fillable = [
+        'user_id', 'type', 'amount', 'category',
+        'note', 'reference', 'site', 'description', 'date'
+    ];
 
     protected $casts = ['amount' => 'decimal:2'];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function bills(): HasMany
+    {
+        return $this->hasMany(TransactionBill::class)->orderBy('sort_order');
     }
 
     protected static function booted()

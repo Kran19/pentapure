@@ -122,14 +122,23 @@ Route::prefix('dispatch')->middleware('auth.role:DISPATCH')->controller(Dispatch
 
 // ── CASHIER ROUTES ─────────────────────────────────────────────────────────
 Route::prefix('cashier')->middleware('auth.role:CASHIER')->controller(CashierController::class)->group(function () {
-    Route::get('/home',        'home')->name('cashier.home');
-    Route::get('/action',      'action')->name('cashier.action');
-    Route::post('/action',     'storeTransaction');
-    Route::get('/history',     'history')->name('cashier.history');
-    Route::get('/history/pdf', 'downloadPdf')->name('cashier.pdf');
-    Route::get('/ledger',      'ledger')->name('cashier.ledger');
-    Route::get('/profile',     'profile')->name('cashier.profile');
+    Route::get('/home',                'home')->name('cashier.home');
+    Route::get('/action',              'action')->name('cashier.action');
+    Route::post('/action',             'storeTransaction');
+    Route::get('/history',             'history')->name('cashier.history');
+    Route::get('/history/pdf',         'downloadPdf')->name('cashier.pdf');
+    Route::get('/ledger',              'ledger')->name('cashier.ledger');
+    Route::get('/profile',             'profile')->name('cashier.profile');
+    // Bill management
+    Route::post('/bill/upload',        'uploadBill')->name('cashier.bill.upload');
+    Route::delete('/bill/{id}',        'destroyBill')->name('cashier.bill.destroy');
+    Route::get('/bill/{id}/view',      'viewBill')->name('cashier.bill.view');
 });
+
+// Admin can also generate any cashier's PDF
+Route::get('/admin/cashier/{userId}/pdf', [AdminController::class, 'downloadCashierPdf'])
+    ->middleware('auth.role:ADMIN')
+    ->name('admin.cashier.pdf');
 
 // ── ADMIN ROUTES ───────────────────────────────────────────────────────────
 Route::prefix('admin')->middleware('auth.role:ADMIN')->controller(AdminController::class)->group(function () {
@@ -145,6 +154,7 @@ Route::prefix('admin')->middleware('auth.role:ADMIN')->controller(AdminControlle
     Route::delete('/products/{id}',   'destroyProduct');
     Route::get('/stock',              'stock')->name('admin.stock');
     Route::post('/stock/adjust',      'adjustStock');
+    Route::post('/stock/limit',       'setStockLimit');
     Route::get('/po',                 'po')->name('admin.po');
     Route::post('/po/approve',        'approvePO');
     Route::delete('/po/{id}',         'destroyPO');
@@ -152,6 +162,7 @@ Route::prefix('admin')->middleware('auth.role:ADMIN')->controller(AdminControlle
     Route::get('/grades',             'grades')->name('admin.grades');
     Route::post('/grades',            'storeGrade');
     Route::delete('/grades/{id}',     'destroyGrade');
+    Route::get('/notifications',      'notificationHistory')->name('admin.notifications');
 
     // Categories (Cashier expense categories)
     Route::get('/categories',        'categories')->name('admin.categories');
