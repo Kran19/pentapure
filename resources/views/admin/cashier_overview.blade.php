@@ -6,7 +6,10 @@
         <h2 style="margin:0;">💰 Cashier Overview</h2>
         <div style="display:flex; gap:0.5rem;">
             <button class="btn btn-secondary" onclick="location.reload()" style="width:auto; padding:0.6rem 1rem;">🔄 Refresh</button>
-            <a href="{{ route('cashier.pdf') }}" class="btn" style="width:auto; padding:0.6rem 1rem; text-decoration:none; display:flex; align-items:center; gap:5px;">
+            <a href="{{ route('admin.cashier.logs') }}" class="btn" style="width:auto; padding:0.6rem 1rem; background-color:var(--primary-light); text-decoration:none; display:flex; align-items:center; gap:5px;">
+                📝 View Edit Logs
+            </a>
+            <a href="{{ route('admin.cashier_overview.pdf') }}" class="btn" style="width:auto; padding:0.6rem 1rem; text-decoration:none; display:flex; align-items:center; gap:5px;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                 Export PDF
             </a>
@@ -65,6 +68,32 @@
                     @endforeach
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Cashier Breakdown -->
+    <div style="margin-top:2rem;">
+        <h3 class="mb-1">Cashier Breakdown</h3>
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:1rem;">
+            @foreach($pageData['summary']['byCashier'] as $vals)
+            <div class="card" style="padding:1rem;">
+                <div style="font-weight:600; color:var(--primary-light); margin-bottom:8px; border-bottom:1px solid var(--glass-border); padding-bottom:5px;">
+                    {{ strtoupper($vals['name']) }}
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
+                    <span style="color:var(--text-muted);">In:</span>
+                    <span style="color:var(--secondary); font-weight:600;">₹{{ number_format($vals['in'], 2) }}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
+                    <span style="color:var(--text-muted);">Out:</span>
+                    <span style="color:var(--danger); font-weight:600;">₹{{ number_format($vals['out'], 2) }}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-top:5px; padding-top:5px; border-top:1px dashed var(--glass-border);">
+                    <span style="color:var(--text-muted);">Balance:</span>
+                    <span style="font-weight:bold; color:{{ $vals['balance'] >= 0 ? 'var(--secondary)' : 'var(--danger)' }};">₹{{ number_format($vals['balance'], 2) }}</span>
+                </div>
+            </div>
+            @endforeach
         </div>
     </div>
 

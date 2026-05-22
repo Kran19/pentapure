@@ -105,8 +105,9 @@ class AdminController extends Controller
     public function storeUser(Request $request)
     {
         $rules = [
-            'name' => 'required|string|max:100',
-            'role' => 'required|in:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE',
+            'name'   => 'required|string|max:100',
+            'role'   => 'required|in:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE',
+            'branch' => 'nullable|string|max:100',
         ];
 
         if (!$request->user_id) {
@@ -124,6 +125,11 @@ class AdminController extends Controller
                 $user->password = Hash::make($request->password);
             }
             $user->parent_id = $request->parent_id ?: null;
+            if ($request->role === 'CASHIER') {
+                $user->branch = $request->branch;
+            } else {
+                $user->branch = null;
+            }
             $user->save();
             $msg = 'User updated!';
         } else {
@@ -133,6 +139,7 @@ class AdminController extends Controller
                 'password'  => Hash::make($request->password),
                 'role'      => $request->role,
                 'parent_id' => $request->parent_id ?: null,
+                'branch'    => $request->role === 'CASHIER' ? $request->branch : null,
                 'status'    => 'ACTIVE',
             ]);
             $msg = 'User created!';
@@ -342,6 +349,15 @@ class AdminController extends Controller
     }
 
     // ── ACTIVITY LOGS ──────────────────────────────────────────────────────
+    public function cashierActivityLogs()
+    {
+        $logs = \App\Models\TransactionLog::with(['user', 'transaction'])
+            ->orderByDesc('created_at')
+            ->paginate(50);
+            
+        return view('admin.cashier_logs', ['pageData' => ['logs' => $logs]]);
+    }
+
     public function logs()
     {
         // 1. Production Logs (Raw/Semi/Finished)
@@ -625,6 +641,15 @@ class AdminController extends Controller
                 'in' => $group->where('type', 'IN')->sum('amount'),
                 'out' => $group->where('type', 'OUT')->sum('amount'),
             ]),
+            'byCashier' => $txs->groupBy('user_id')->map(function($group) {
+                $user = $group->first()->user;
+                return [
+                    'name' => $user ? $user->name : 'Unknown',
+                    'in' => $group->where('type', 'IN')->sum('amount'),
+                    'out' => $group->where('type', 'OUT')->sum('amount'),
+                    'balance' => $group->where('type', 'IN')->sum('amount') - $group->where('type', 'OUT')->sum('amount'),
+                ];
+            })->values(),
         ];
 
         $pageData = [
@@ -633,6 +658,38 @@ class AdminController extends Controller
         ];
 
         return view('admin.cashier_overview', compact('pageData'));
+    }
+
+    public function overviewPdf(Request $request)
+    {
+        $txs = \App\Models\Transaction::with('user')->orderByDesc('created_at')->get();
+        
+        $summary = [
+            'totalIn'  => $txs->where('type', 'IN')->sum('amount'),
+            'totalOut' => $txs->where('type', 'OUT')->sum('amount'),
+            'balance'  => $txs->where('type', 'IN')->sum('amount') - $txs->where('type', 'OUT')->sum('amount'),
+            'byCategory' => $txs->groupBy('category')->map(fn($group) => [
+                'in' => $group->where('type', 'IN')->sum('amount'),
+                'out' => $group->where('type', 'OUT')->sum('amount'),
+            ]),
+            'byCashier' => $txs->groupBy('user_id')->map(function($group) {
+                $user = $group->first()->user;
+                return [
+                    'name' => $user ? $user->name : 'Unknown',
+                    'in' => $group->where('type', 'IN')->sum('amount'),
+                    'out' => $group->where('type', 'OUT')->sum('amount'),
+                    'balance' => $group->where('type', 'IN')->sum('amount') - $group->where('type', 'OUT')->sum('amount'),
+                ];
+            })->values(),
+        ];
+
+        $pageData = [
+            'transactions' => $txs,
+            'summary' => $summary
+        ];
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.cashier_overview_pdf', compact('pageData'));
+        return $pdf->download('cashier-overview-' . now()->format('Y-m-d') . '.pdf');
     }
 
     // ── NOTIFICATION HISTORY ───────────────────────────────────────────────

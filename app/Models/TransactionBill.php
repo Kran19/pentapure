@@ -31,7 +31,7 @@ class TransactionBill extends Model
      */
     public function getAbsolutePathAttribute(): string
     {
-        return Storage::path($this->file_path);
+        return Storage::disk('public')->path($this->file_path);
     }
 
     /**

@@ -21,12 +21,16 @@
       </div>
       <div class="form-group">
         <label>Role *</label>
-        <select id="u-role">
+        <select id="u-role" onchange="toggleBranchField(this.value)">
           <option value="">-- Select Role --</option>
           @foreach(['RAW','SEMI','FINISHED','CASHIER','SALES','DISPATCH','ATTENDANCE','ADMIN'] as $r)
             <option value="{{ $r }}">{{ $r }}</option>
           @endforeach
         </select>
+      </div>
+      <div class="form-group" id="branch-field-container" style="display:none;">
+        <label>Assigned Branch (Cashier Only)</label>
+        <input type="text" id="u-branch" placeholder="e.g. Main Factory">
       </div>
       <div class="form-group">
         <label>Password *</label>
@@ -110,6 +114,16 @@
 <script>
 let editingUserId = null;
 
+function toggleBranchField(role) {
+  const container = document.getElementById('branch-field-container');
+  if (role === 'CASHIER') {
+    container.style.display = 'block';
+  } else {
+    container.style.display = 'none';
+    document.getElementById('u-branch').value = '';
+  }
+}
+
 function adminEditUser(user) {
   editingUserId = user.id;
   document.getElementById('user-form-card').style.display = 'block';
@@ -117,6 +131,9 @@ function adminEditUser(user) {
   document.getElementById('u-name').value = user.name;
   document.getElementById('u-email').value = user.email;
   document.getElementById('u-role').value = user.role;
+  document.getElementById('u-branch').value = user.branch || '';
+  toggleBranchField(user.role);
+  
   document.getElementById('u-password').value = ''; 
   document.getElementById('u-password').placeholder = '(Leave blank to keep current)';
   document.getElementById('user-form-card').scrollIntoView({ behavior: 'smooth' });
@@ -128,6 +145,7 @@ function adminSaveUser() {
     name: document.getElementById('u-name').value,
     email: document.getElementById('u-email').value,
     role: document.getElementById('u-role').value,
+    branch: document.getElementById('u-branch').value,
     password: document.getElementById('u-password').value,
   };
   

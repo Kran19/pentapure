@@ -2069,29 +2069,7 @@ const app = {
   },
 
   renderCashierAdd(container) {
-    // Default categories + admin categories (active) + user-added ones from localStorage
-    const defaultCats = [
-      { value: 'general', label: 'General' },
-      { value: 'small', label: 'Small Expense (< ₹5,000)' },
-      { value: 'big', label: 'Big Expense (≥ ₹5,000)' },
-      { value: 'salary', label: 'Salary' },
-      { value: 'transport', label: 'Transport' },
-      { value: 'maintenance', label: 'Maintenance' },
-      { value: 'raw_material', label: 'Raw Material Purchase' },
-      { value: 'utilities', label: 'Utilities (Electricity/Water)' },
-    ];
-
-    const adminCats = (window.serverPageData && window.serverPageData.categories) ? window.serverPageData.categories : [];
-    const customCats = JSON.parse(localStorage.getItem('cashier_custom_categories') || '[]');
-
-    const allCats = [...defaultCats, ...adminCats, ...customCats]
-      .reduce((acc, c) => {
-        const key = c.value;
-        if(!key) return acc;
-        if(!acc.find(x => x.value === key)) acc.push({ value: c.value, label: c.label || c.value });
-        return acc;
-      }, []);
-
+    const allCats = (window.serverPageData && window.serverPageData.categories) ? window.serverPageData.categories : [];
 
     container.innerHTML = `
       <div class="card">
@@ -2124,6 +2102,10 @@ const app = {
           <label>Reference / Bill No. (optional)</label>
           <input type="text" id="tx-ref" placeholder="e.g. INV-2024-001">
         </div>
+        <div class="form-group">
+          <label>Attach Bill (optional)</label>
+          <input type="file" id="tx-bill" accept="image/jpeg,image/png,application/pdf" style="font-size:0.9rem; padding:0.5rem; background:#0d1117; border:1px dashed #30363d; border-radius:6px; width:100%; color:#8b949e;">
+        </div>
         <button class="btn mt-1" onclick="app.submitTransaction()">Save Transaction</button>
       </div>
     `;
@@ -2131,15 +2113,31 @@ const app = {
   },
 
   addNewExpenseCategory() {
+    const allCats = (window.serverPageData && window.serverPageData.categories) ? window.serverPageData.categories : [];
+    
     this.openDrawer(`
-      <h3 style="margin-bottom:1rem;">Add New Category</h3>
-      <div class="form-group">
-        <label>Category Name</label>
-        <input type="text" id="new-cat-name" placeholder="e.g. Packaging, Office Supplies..." style="font-size:1rem;">
+      <h3 style="margin-bottom:1rem;">Manage Categories</h3>
+      
+      <!-- Existing Categories List -->
+      <div style="max-height:200px; overflow-y:auto; margin-bottom:1.5rem; background:#0d1117; border:1px solid #30363d; border-radius:8px; padding:0.5rem;">
+        ${allCats.length === 0 ? '<div style="color:#8b949e; font-size:0.85rem; text-align:center; padding:10px;">No categories found</div>' : ''}
+        ${allCats.map(c => `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem; border-bottom:1px solid #21262d;">
+            <span style="font-size:0.9rem; color:#e6edf3;">${c.label}</span>
+            <button onclick="app.deleteExpenseCategory(${c.id}, '${c.label}')" style="background:none; border:none; color:#f87171; cursor:pointer; font-size:0.85rem; padding:4px 8px;">Delete</button>
+          </div>
+        `).join('')}
       </div>
+
+      <!-- Add New Category Form -->
+      <div class="form-group">
+        <label>Add New Category</label>
+        <input type="text" id="new-cat-name" placeholder="e.g. Packaging, Office Supplies..." style="font-size:1rem; margin-bottom:0.5rem;">
+      </div>
+      
       <div style="display:flex; gap:10px; margin-top:1rem;">
-        <button class="btn btn-secondary" style="flex:1;" onclick="app.closeDrawer()">Cancel</button>
-        <button class="btn" style="flex:2;" onclick="app.saveNewExpenseCategory()">Save Category</button>
+        <button class="btn btn-secondary" style="flex:1;" onclick="app.closeDrawer()">Close</button>
+        <button class="btn" style="flex:2;" onclick="app.saveNewExpenseCategory()">Save New</button>
       </div>
     `);
   },
@@ -2149,29 +2147,55 @@ const app = {
     const name = nameInput.value.trim();
     if (!name) return this.toast('Enter a category name', 'error');
     
-    const value = name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-    const customCats = JSON.parse(localStorage.getItem('cashier_custom_categories') || '[]');
+    fetch('/cashier/category', {
+      method: 'POST',
+      headers: { 'X-CSRF-TOKEN': window.csrfToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        this.toast(d.message, 'success');
+        if (!window.serverPageData.categories) window.serverPageData.categories = [];
+        window.serverPageData.categories.push(d.category);
+        window.serverPageData.categories.sort((a,b) => a.label.localeCompare(b.label));
+        
+        this.closeDrawer();
+        const container = document.getElementById('app-content');
+        this.renderCashierAdd(container);
+        
+        setTimeout(() => {
+          const select = document.getElementById('tx-category');
+          if (select) select.value = d.category.value;
+        }, 50);
+      } else {
+        this.toast(d.message || 'Failed to add category', 'error');
+      }
+    })
+    .catch(() => this.toast('Network error', 'error'));
+  },
+
+  deleteExpenseCategory(id, name) {
+    if (!confirm(`Are you sure you want to delete the category "${name}"?`)) return;
     
-    // Check for duplicates
-    if (customCats.some(c => c.value === value)) {
-      return this.toast('This category already exists', 'error');
-    }
-    
-    customCats.push({ value, label: name });
-    localStorage.setItem('cashier_custom_categories', JSON.stringify(customCats));
-    
-    this.closeDrawer();
-    this.toast(`Category "${name}" added!`);
-    
-    // Re-render the form to include the new category
-    const container = document.getElementById('app-content');
-    this.renderCashierAdd(container);
-    
-    // Auto-select the newly added category
-    setTimeout(() => {
-      const select = document.getElementById('tx-category');
-      if (select) select.value = value;
-    }, 100);
+    fetch(`/cashier/category/${id}`, {
+      method: 'DELETE',
+      headers: { 'X-CSRF-TOKEN': window.csrfToken, 'Content-Type': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        this.toast(d.message, 'success');
+        window.serverPageData.categories = window.serverPageData.categories.filter(c => c.id !== id);
+        
+        const container = document.getElementById('app-content');
+        this.renderCashierAdd(container);
+        this.addNewExpenseCategory(); // Re-open drawer with updated list
+      } else {
+        this.toast(d.message || 'Failed to delete', 'error');
+      }
+    })
+    .catch(() => this.toast('Network error', 'error'));
   },
 
   submitTransaction() {
@@ -2179,16 +2203,25 @@ const app = {
     const note     = document.getElementById('tx-note').value;
     const category = document.getElementById('tx-category').value;
     const ref      = document.getElementById('tx-ref').value;
+    const billFile = document.getElementById('tx-bill')?.files[0];
+    
     if (!amount || amount <= 0) return this.toast('Valid amount required', 'error');
+
+    const formData = new FormData();
+    formData.append('type', window.txType);
+    formData.append('amount', amount);
+    formData.append('note', note);
+    formData.append('category', category);
+    formData.append('reference', ref);
+    if (billFile) formData.append('bill_file', billFile);
 
     fetch('/cashier/action', {
       method: 'POST',
       headers: { 
-        'Content-Type': 'application/json', 
         'Accept': 'application/json',
         'X-CSRF-TOKEN': csrfToken 
       },
-      body: JSON.stringify({ type: window.txType, amount, note, category, reference: ref })
+      body: formData
     })
     .then(r => r.json())
     .then(d => {
@@ -2449,10 +2482,20 @@ const app = {
                     ` : '<span style="color:var(--text-muted); font-size:0.75rem;">No bills</span>'}
                   </td>
                   <td style="text-align:center; min-width:60px;">
-                    <button onclick="app.showBillUpload(${t.id})" title="Attach/Manage Bills"
-                      style="background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); color:#4ade80; border-radius:6px; padding:4px 8px; font-size:0.75rem; cursor:pointer;">
-                      📎
-                    </button>
+                    <div style="display:flex; justify-content:center; gap:4px;">
+                      <button onclick="app.showBillUpload(${t.id})" title="Attach/Manage Bills"
+                        style="background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); color:#4ade80; border-radius:6px; padding:4px 8px; font-size:0.75rem; cursor:pointer;">
+                        📎
+                      </button>
+                      <button onclick="app.editTransaction(${t.id})" title="Edit"
+                        style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.3); color:#60a5fa; border-radius:6px; padding:4px 8px; font-size:0.75rem; cursor:pointer;">
+                        ✏️
+                      </button>
+                      <button onclick="app.deleteTransaction(${t.id})" title="Delete"
+                        style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#f87171; border-radius:6px; padding:4px 8px; font-size:0.75rem; cursor:pointer;">
+                        🗑️
+                      </button>
+                    </div>
                   </td>
                 </tr>
               `).join('') || '<tr><td colspan="6" class="text-center text-muted" style="padding:20px;">No transactions found.</td></tr>'}
@@ -2462,6 +2505,74 @@ const app = {
       </div>
       ${this.renderPaginationControls(page, totalPages)}
     `;
+  },
+
+  editTransaction(id) {
+    const tx = window.serverPageData.transactions.find(t => t.id === id);
+    if (!tx) return;
+    
+    const allCats = window.serverPageData.categories || [];
+    
+    this.openDrawer(`
+      <h3 style="margin-bottom:1rem;">Edit Transaction</h3>
+      <div class="form-group">
+        <label>Amount (₹)</label>
+        <input type="number" id="edit-tx-amount" value="${tx.amount}" style="font-size:1.1rem; padding:0.6rem;">
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="edit-tx-category">
+          ${allCats.map(c => `<option value="${c.value}" ${c.value === tx.category ? 'selected' : ''}>${c.label}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Particulars / Note</label>
+        <input type="text" id="edit-tx-note" value="${tx.note || ''}">
+      </div>
+      <button class="btn mt-1" onclick="app.saveTransactionEdit(${tx.id})">Update Transaction</button>
+    `);
+  },
+
+  saveTransactionEdit(id) {
+    const amount = Number(document.getElementById('edit-tx-amount').value);
+    const category = document.getElementById('edit-tx-category').value;
+    const note = document.getElementById('edit-tx-note').value;
+    
+    if (!amount || amount <= 0) return this.toast('Invalid amount', 'error');
+
+    fetch(`/cashier/action/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
+      body: JSON.stringify({ amount, category, note })
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        this.toast(d.message, 'success');
+        this.closeDrawer();
+        setTimeout(() => location.reload(), 600); // Reload to update ledger logic
+      } else {
+        this.toast(d.message || 'Update failed', 'error');
+      }
+    });
+  },
+
+  deleteTransaction(id) {
+    if (!confirm('Are you sure you want to completely delete this transaction? This action is permanent and will affect the balance.')) return;
+    
+    fetch(`/cashier/action/${id}`, {
+      method: 'DELETE',
+      headers: { 'X-CSRF-TOKEN': window.csrfToken }
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        this.toast(d.message, 'success');
+        setTimeout(() => location.reload(), 600);
+      } else {
+        this.toast(d.message || 'Delete failed', 'error');
+      }
+    });
   },
 
   // View a bill (open in new tab via server route)

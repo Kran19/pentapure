@@ -133,6 +133,12 @@ Route::prefix('cashier')->middleware('auth.role:CASHIER')->controller(CashierCon
     Route::post('/bill/upload',        'uploadBill')->name('cashier.bill.upload');
     Route::delete('/bill/{id}',        'destroyBill')->name('cashier.bill.destroy');
     Route::get('/bill/{id}/view',      'viewBill')->name('cashier.bill.view');
+    // Category management
+    Route::post('/category',           'storeCategory')->name('cashier.category.store');
+    Route::delete('/category/{id}',    'destroyCategory')->name('cashier.category.destroy');
+    // Transaction management
+    Route::put('/action/{id}',         'updateTransaction')->name('cashier.action.update');
+    Route::delete('/action/{id}',      'destroyTransaction')->name('cashier.action.destroy');
 });
 
 // Admin can also generate any cashier's PDF
@@ -159,6 +165,7 @@ Route::prefix('admin')->middleware('auth.role:ADMIN')->controller(AdminControlle
     Route::post('/po/approve',        'approvePO');
     Route::delete('/po/{id}',         'destroyPO');
     Route::get('/logs',               'logs')->name('admin.logs');
+    Route::get('/cashier-logs',       'cashierActivityLogs')->name('admin.cashier.logs');
     Route::get('/grades',             'grades')->name('admin.grades');
     Route::post('/grades',            'storeGrade');
     Route::delete('/grades/{id}',     'destroyGrade');
@@ -174,8 +181,10 @@ Route::prefix('admin')->middleware('auth.role:ADMIN')->controller(AdminControlle
     Route::get('/dispatch-activity', 'dispatchActivity')->name('admin.dispatch.activity');
     Route::get('/dispatch-activity/pdf', 'dispatchActivityPdf')->name('admin.dispatch.pdf');
 
-    // Cashier Overview for Admin
-    Route::get('/cashier-overview', 'cashierOverview')->name('admin.cashier.overview');
+    // ── CASHIER OVERVIEW ───────────────────────────────────────────────────
+    Route::get('/cashier-overview',   'cashierOverview')->name('admin.cashier_overview');
+    Route::get('/cashier-overview/pdf','overviewPdf')->name('admin.cashier_overview.pdf');
+    Route::get('/cashier-logs',       'cashierActivityLogs')->name('admin.cashier.logs');
 
     // Admin Attendance sub-pages (read + full access)
 

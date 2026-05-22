@@ -30,11 +30,12 @@ class CashierController extends Controller
     // ── ACTION FORM ────────────────────────────────────────────────────────
     public function action()
     {
-        $categories = Category::where('is_active', true)->orderBy('name')->get(['name']);
-        $defaultValue = $categories->pluck('name')->map(function ($n) {
+        $categories = Category::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $defaultValue = $categories->map(function ($c) {
             return [
-                'value' => strtolower(preg_replace('/[^a-z0-9]+/i', '_', trim($n))),
-                'label' => $n
+                'id'    => $c->id,
+                'value' => strtolower(preg_replace('/[^a-z0-9]+/i', '_', trim($c->name))),
+                'label' => $c->name
             ];
         });
 
@@ -52,16 +53,17 @@ class CashierController extends Controller
             'bill_file'   => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
         ]);
 
-        $user = $this->authUser();
+        $userArray = $this->authUser();
+        $userModel = User::find($userArray['id']);
 
         $tx = Transaction::create([
-            'user_id'     => $user['id'],
+            'user_id'     => $userArray['id'],
             'type'        => $request->type,
             'amount'      => $request->amount,
             'category'    => $request->category ?? 'general',
             'note'        => $request->note,
             'reference'   => $request->reference,
-            'site'        => $request->site,
+            'site'        => $userModel ? $userModel->branch : null,
             'description' => $request->description,
         ]);
 
@@ -71,6 +73,63 @@ class CashierController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => "Transaction ({$request->type}) saved!", 'transaction_id' => $tx->id]);
+    }
+
+    public function updateTransaction(Request $request, $id)
+    {
+        $request->validate([
+            'amount'   => 'required|numeric|min:0.01',
+            'category' => 'nullable|string',
+            'note'     => 'nullable|string',
+        ]);
+
+        $user = $this->authUser();
+        $tx = Transaction::where('id', $id)->where('user_id', $user['id'])->firstOrFail();
+
+        $oldData = $tx->toArray();
+
+        $tx->update([
+            'amount'   => $request->amount,
+            'category' => $request->category ?? $tx->category,
+            'note'     => $request->note,
+        ]);
+
+        \App\Models\TransactionLog::create([
+            'transaction_id' => $tx->id,
+            'user_id'        => $user['id'],
+            'action'         => 'EDITED',
+            'old_data'       => $oldData,
+            'new_data'       => $tx->toArray(),
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Transaction updated!']);
+    }
+
+    public function destroyTransaction($id)
+    {
+        $user = $this->authUser();
+        $tx = Transaction::where('id', $id)->where('user_id', $user['id'])->firstOrFail();
+
+        $oldData = $tx->toArray();
+
+        // Also delete attached bills physically
+        foreach ($tx->bills as $bill) {
+            if ($bill->file_path && file_exists(storage_path('app/public/' . $bill->file_path))) {
+                @unlink(storage_path('app/public/' . $bill->file_path));
+            }
+        }
+
+        $tx->delete();
+
+        \App\Models\TransactionLog::create([
+            'transaction_id' => null, // Since it's deleted, or keep it but the FK must be nullable
+            'user_id'        => $user['id'],
+            'action'         => 'DELETED',
+            'old_data'       => $oldData,
+            'new_data'       => null,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Transaction deleted!']);
     }
 
     // ── UPLOAD BILL ────────────────────────────────────────────────────────
@@ -122,7 +181,8 @@ class CashierController extends Controller
     {
         $bill = TransactionBill::with('transaction')->findOrFail($id);
 
-        if ($bill->transaction->user_id !== $this->authUser()['id']) {
+        $user = $this->authUser();
+        if ($user['role'] !== 'ADMIN' && $bill->transaction->user_id !== $user['id']) {
             abort(403);
         }
 
@@ -133,6 +193,37 @@ class CashierController extends Controller
             'Content-Type'        => $bill->mime_type ?? 'application/octet-stream',
             'Content-Disposition' => 'inline; filename="' . $bill->original_name . '"',
         ]);
+    }
+
+    // ── CATEGORY MANAGEMENT ────────────────────────────────────────────────
+    public function storeCategory(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255|unique:categories,name',
+        ]);
+        
+        $category = Category::create([
+            'name'      => $request->name,
+            'is_active' => true,
+        ]);
+        
+        return response()->json([
+            'success' => true, 
+            'message' => 'Category created successfully!',
+            'category' => [
+                'id'    => $category->id,
+                'value' => strtolower(preg_replace('/[^a-z0-9]+/i', '_', trim($category->name))),
+                'label' => $category->name
+            ]
+        ]);
+    }
+
+    public function destroyCategory($id)
+    {
+        $category = Category::findOrFail($id);
+        $category->delete();
+        
+        return response()->json(['success' => true, 'message' => 'Category deleted successfully!']);
     }
 
     // ── HISTORY ────────────────────────────────────────────────────────────
@@ -203,10 +294,13 @@ class CashierController extends Controller
         $txs = $query->get();
 
         // Opening balance = sum of all transactions BEFORE the from date
-        $openingBalance = (float) $request->opening_balance;
-        if ($from && !$request->has('opening_balance')) {
+        $openingBalance = $request->has('opening_balance') && $request->opening_balance !== ''
+            ? (float) $request->opening_balance
+            : 0.0;
+
+        if ($from && !($request->has('opening_balance') && $request->opening_balance !== '')) {
             $prevTxs = Transaction::where('user_id', $userId)->where('created_at', '<', $from)->get();
-            $openingBalance = $prevTxs->sum(fn($t) => $t->type === 'IN' ? $t->amount : -$t->amount);
+            $openingBalance = (float) $prevTxs->sum(fn($t) => $t->type === 'IN' ? $t->amount : -$t->amount);
         }
 
         // Build transaction rows with running balance
@@ -247,22 +341,23 @@ class CashierController extends Controller
         $includeBills = $request->include_bills !== 'no';
 
         $data = [
-            'reportId'         => $userId * 100 + rand(1, 99),
-            'generatedOn'      => now()->format('d-M-Y H:i:s'),
-            'fromDate'         => $from  ? $from->format('Y-m-d') : ($txs->first()?->created_at?->format('Y-m-d') ?? now()->format('Y-m-d')),
-            'toDate'           => $to    ? $to->format('Y-m-d')   : now()->format('Y-m-d'),
-            'cashierName'      => $cashierName,
-            'cashierId'        => $userId,
-            'accountName'      => 'Pentapure Foods and Spices',
-            'site'             => $request->site_label ?? 'Pentapure Cash',
-            'category'         => $request->category && $request->category !== 'all' ? ucwords($request->category) : 'All',
-            'rows'             => $rows,
-            'openingBalance'   => $openingBalance,
-            'closingBalance'   => $runningBalance,
-            'sumIn'            => $sumIn,
-            'sumOut'           => $sumOut,
-            'totalRecords'     => count($rows),
-            'includeBills'     => $includeBills,
+            'reportId'       => $userId * 100 + rand(1, 99),
+            'generatedOn'    => now()->format('d-M-Y H:i:s'),
+            'fromDate'       => $from ? $from->format('Y-m-d') : ($txs->first()?->created_at?->format('Y-m-d') ?? now()->format('Y-m-d')),
+            'toDate'         => $to   ? $to->format('Y-m-d')   : now()->format('Y-m-d'),
+            'cashierName'    => $cashierName,
+            'cashierId'      => $userId,
+            'accountName'    => 'Pentapure Foods and Spices',
+            'site'           => $request->site && $request->site !== 'all' ? $request->site : 'All',
+            'category'       => $request->category && $request->category !== 'all' ? ucwords(str_replace('_',' ',$request->category)) : 'All',
+            'rows'           => $rows,
+            'openingBalance' => $openingBalance,
+            'closingBalance' => $runningBalance,
+            'sumIn'          => $sumIn,
+            'sumOut'         => $sumOut,
+            'totalRecords'   => count($rows),
+            'includeBills'   => $includeBills,
+            'billPages'      => [], // no embedded blade bills, using FPDI
         ];
 
         // 1. Generate the main statement HTML via DomPDF
