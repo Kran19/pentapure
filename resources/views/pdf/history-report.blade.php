@@ -66,7 +66,7 @@
 <div class="page">
     <div class="top">
         <div class="brand">
-            <div class="logo-mark">PP</div>
+            <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 82px; height: 82px; vertical-align: middle; margin-right: 12px; object-fit: contain;">
             <div class="brand-text">
                 <div class="brand-title">PentaPure</div>
                 <div class="tagline">The Pure Taste Of Nature</div>
@@ -171,7 +171,14 @@
                             <span class="badge {{ in_array($row['status'], ['PENDING', 'OPEN', 'ABSENT']) ? 'badge-warn' : 'badge-ok' }}">{{ $row['status'] }}</span>
                         </td>
                         <td class="amount">{{ number_format((float) $row['amount'], 2) }}</td>
-                        <td>{{ $row['description'] }}</td>
+                        <td>
+                            {{ $row['description'] }}
+                            @if(isset($row['lr_copy']) && $row['lr_copy'])
+                                <div style="margin-top: 8px;">
+                                    <img src="{{ public_path($row['lr_copy']) }}" style="max-width: 140px; max-height: 100px; border: 1px solid #d0d5dd; border-radius: 4px; object-fit: contain;">
+                                </div>
+                            @endif
+                        </td>
                     </tr>
                 @empty
                     <tr><td colspan="7" class="center">No history found for this period.</td></tr>

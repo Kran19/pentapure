@@ -35,9 +35,10 @@ class AuthController extends Controller
         }
 
         session(['auth_user' => [
-            'id'   => $user->id,
-            'name' => $user->name,
-            'role' => $user->role,
+            'id'          => $user->id,
+            'name'        => $user->name,
+            'role'        => $user->role,
+            'permissions' => $user->permissions,
         ]]);
 
         // Save Push Subscription if provided during login
@@ -69,6 +70,7 @@ class AuthController extends Controller
     {
         return match ($role) {
             'ADMIN'      => redirect('/admin/home'),
+            'SUB_ADMIN'  => redirect('/admin/home'),
             'RAW'        => redirect('/raw/home'),
             'SEMI'       => redirect('/semi/home'),
             'FINISHED'   => redirect('/finished/home'),

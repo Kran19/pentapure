@@ -95,8 +95,8 @@ class MonthlyAttendanceSeeder extends Seeder
                     $bin = $currentDate->copy()->setTime(13, 0, 0);
                     $bout = $currentDate->copy()->setTime(14, 0, 0);
                     
-                    $workingSeconds = $outTime->diffInSeconds($inTime) - $bout->diffInSeconds($bin);
-                    $totalHours = round($workingSeconds / 3600, 2);
+                    $workingSeconds = abs($outTime->diffInSeconds($inTime)) - abs($bout->diffInSeconds($bin));
+                    $totalHours = max(0, round($workingSeconds / 3600, 2));
                     $ot = max(0, $totalHours - 8);
                     
                     // Wage calculation

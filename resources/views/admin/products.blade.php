@@ -182,7 +182,9 @@
 
     <!-- Pagination Links -->
     <div style="margin-top:1.5rem; display:flex; justify-content:center;">
-      {{ $pageData['paginator']->links() }}
+      @if($pageData['paginator'])
+        {{ $pageData['paginator']->links() }}
+      @endif
     </div>
   </div>
 </div>
@@ -230,17 +232,18 @@ function adminSaveProduct() {
   const selectedGrades = Array.from(document.querySelectorAll('input[name="p-grades"]:checked')).map(cb => cb.value);
   const selectedRoles = Array.from(document.querySelectorAll('input[name="p-roles"]:checked')).map(cb => cb.value);
   
+  const formData = new FormData();
+  if (editingProductId) formData.append('product_id', editingProductId);
+  formData.append('name', document.getElementById('p-name').value);
+  formData.append('type', document.getElementById('p-type').value);
+  formData.append('unit', document.getElementById('p-unit').value || 'kg');
+  formData.append('grades', JSON.stringify(selectedGrades));
+  formData.append('allowed_roles', JSON.stringify(selectedRoles));
+  
   fetch('/admin/products', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-    body: JSON.stringify({
-      product_id: editingProductId,
-      name: document.getElementById('p-name').value,
-      type: document.getElementById('p-type').value,
-      unit: document.getElementById('p-unit').value || 'kg',
-      grades: selectedGrades,
-      allowed_roles: selectedRoles
-    })
+    headers: { 'X-CSRF-TOKEN': csrfToken }, // Don't set Content-Type for FormData, fetch sets it automatically with boundary
+    body: formData
   }).then(r => r.json()).then(d => {
     if (d.success) { 
         Swal.fire('Success', d.message, 'success');
@@ -289,4 +292,3 @@ function adminDeleteProduct(id) {
 toggleGradeDisplay();
 </script>
 @endsection
-

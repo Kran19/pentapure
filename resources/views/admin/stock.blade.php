@@ -2,7 +2,10 @@
 
 @section('content')
 <div style="padding:1.5rem;">
-  <h2 style="margin-bottom:1.5rem;">📦 Live Stock Overview</h2>
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem;">
+    <h2 style="margin:0;">📦 Live Stock Overview</h2>
+    <button class="btn" onclick="adminAddStock()" style="width:auto; padding:0.65rem 1.2rem;">+ Add Stock</button>
+  </div>
 
   @php
     $rawItems      = collect($pageData['allStock'])->where('stage', 'RAW');
@@ -18,15 +21,16 @@
     @else
     <div class="table-container">
       <table>
-        <thead><tr><th>Product</th><th>Grade</th><th>Qty</th><th>Unit</th><th>Action</th></tr></thead>
-        <tbody>
+        <thead><tr><th>Product</th><th>Grade</th><th>Qty</th><th>Unit</th><th>Location</th><th>Action</th></tr></thead>
+        <tbody id="raw-stock-tbody">
           @foreach($rawItems as $s)
           @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
-          <tr @if($isLow) style="background-color: #ffe6e6;" title="Low Stock! Limit is {{ $s->alert_limit }}" @endif>
+          <tr @if($isLow) style="background-color: #e60000; color: #fff;" title="Low Stock! Limit is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:600;">{{ $s->name }}</td>
             <td><span class="badge badge-info">{{ $s->grade }}</span></td>
-            <td style="font-weight:bold; color:var(--secondary);">{{ number_format($s->quantity, 2) }}</td>
-            <td style="color:var(--text-muted);">{{ $s->unit }}</td>
+            <td @if($isLow) style="font-weight:bold; color:#fff;" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
+            <td>{{ $s->unit }}</td>
+            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="RAW" style="cursor:pointer; color:var(--primary-light); text-decoration:underline;" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
               <div style="display:flex; align-items:center; gap:0.4rem;">
                 <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust">
@@ -35,6 +39,7 @@
                 <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" style="color:var(--danger);">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 </button>
+                <button class="btn btn-sm" onclick="showStockDetails('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}')" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
               </div>
             </td>
           </tr>
@@ -53,15 +58,16 @@
     @else
     <div class="table-container">
       <table>
-        <thead><tr><th>Product</th><th>Grade</th><th>Qty</th><th>Unit</th><th>Action</th></tr></thead>
-        <tbody>
+        <thead><tr><th>Product</th><th>Grade</th><th>Qty</th><th>Unit</th><th>Location</th><th>Action</th></tr></thead>
+        <tbody id="semi-stock-tbody">
           @foreach($semiItems as $s)
           @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
-          <tr @if($isLow) style="background-color: #ffe6e6;" title="Low Stock! Limit is {{ $s->alert_limit }}" @endif>
+          <tr @if($isLow) style="background-color: #ff4d4d; color: #fff;" title="Low Stock! Limit is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:600;">{{ $s->name }}</td>
             <td><span class="badge badge-info">{{ $s->grade }}</span></td>
-            <td style="font-weight:bold; color:var(--warning);">{{ number_format($s->quantity, 2) }}</td>
-            <td style="color:var(--text-muted);">{{ $s->unit }}</td>
+            <td @if($isLow) style="font-weight:bold; color:#fff;" @else style="font-weight:bold; color:var(--warning);" @endif>{{ number_format($s->quantity, 2) }}</td>
+            <td>{{ $s->unit }}</td>
+            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="SEMI" style="cursor:pointer; color:var(--primary-light); text-decoration:underline;" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
               <div style="display:flex; align-items:center; gap:0.4rem;">
                 <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust">
@@ -70,6 +76,7 @@
                 <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" style="color:var(--danger);">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 </button>
+                <button class="btn btn-sm" onclick="showStockDetails('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}')" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
               </div>
             </td>
           </tr>
@@ -88,16 +95,17 @@
     @else
     <div class="table-container">
       <table>
-        <thead><tr><th>Product</th><th>Grade</th><th>Total Qty</th><th>Unit</th><th>Action</th></tr></thead>
-        <tbody>
+        <thead><tr><th>Product</th><th>Grade</th><th>Total Qty</th><th>Unit</th><th>Location</th><th>Action</th></tr></thead>
+        <tbody id="finished-stock-tbody">
           @foreach($finishedItems as $s)
           @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
-          <tr @if($isLow) style="background-color: #ffe6e6;" title="Low Stock! Limit is {{ $s->alert_limit }}" @endif>
+          <tr @if($isLow) style="background-color: #ff4d4d; color:#fff;" title="Low Stock! Limit is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:600;">{{ $s->name }}</td>
             <td><span class="badge badge-info">{{ $s->grade }}</span></td>
 
-            <td style="font-weight:bold; color:var(--secondary);">{{ number_format($s->quantity, 2) }}</td>
-            <td style="color:var(--text-muted);">{{ $s->unit }}</td>
+            <td @if($isLow) style="font-weight:bold; color:#fff;" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
+            <td>{{ $s->unit }}</td>
+            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="FINISHED" style="cursor:pointer; color:var(--primary-light); text-decoration:underline;" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
               <div style="display:flex; align-items:center; gap:0.4rem;">
                 <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust">
@@ -106,6 +114,7 @@
                 <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" style="color:var(--danger);">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 </button>
+                <button class="btn btn-sm" onclick="showStockDetails('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}')" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
               </div>
             </td>
           </tr>
@@ -118,6 +127,145 @@
 </div>
 
 <script>
+const adminStockProducts = @json($pageData['allProducts']);
+const adminStockLogsByKey = @json($pageData['stockLogsByKey']);
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[char]));
+}
+
+function adminAddStock() {
+  const productOptions = adminStockProducts.map(p =>
+    `<option value="${p.id}" data-type="${p.type}" data-unit="${escapeHtml(p.unit || 'kg')}">${escapeHtml(p.type)} - ${escapeHtml(p.name)} (${escapeHtml(p.unit || 'kg')})</option>`
+  ).join('');
+
+  Swal.fire({
+    title: 'Add Stock',
+    html: `
+      <div style="text-align:left;">
+        <label style="font-size:0.82rem; font-weight:600; color:#8b949e;">Product</label>
+        <select id="add-stock-product" onchange="syncAddStockStage()" style="width:100%; padding:0.65rem; margin:0.35rem 0 0.85rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+          ${productOptions}
+        </select>
+
+        <label style="font-size:0.82rem; font-weight:600; color:#8b949e;">Stock Type</label>
+        <select id="add-stock-stage" style="width:100%; padding:0.65rem; margin:0.35rem 0 0.85rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+          <option value="RAW">RAW</option>
+          <option value="SEMI">SEMI</option>
+          <option value="FINISHED">FINISHED</option>
+        </select>
+
+        <label style="font-size:0.82rem; font-weight:600; color:#8b949e;">Grade</label>
+        <input id="add-stock-grade" value="NONE" style="width:100%; padding:0.65rem; margin:0.35rem 0 0.85rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+
+        <label style="font-size:0.82rem; font-weight:600; color:#8b949e;">Quantity</label>
+        <input id="add-stock-qty" type="number" min="0.001" step="0.001" placeholder="e.g. 200" style="width:100%; padding:0.65rem; margin:0.35rem 0 0.85rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+
+        <label style="font-size:0.82rem; font-weight:600; color:#8b949e;">Note</label>
+        <textarea id="add-stock-note" rows="2" placeholder="Optional details" style="width:100%; padding:0.65rem; margin-top:0.35rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3; resize:vertical;"></textarea>
+      </div>
+    `,
+    background: '#0d1117',
+    color: '#e6edf3',
+    showCancelButton: true,
+    confirmButtonText: 'Add Stock',
+    confirmButtonColor: '#238636',
+    cancelButtonColor: '#30363d',
+    didOpen: syncAddStockStage,
+    preConfirm: () => {
+      const productId = document.getElementById('add-stock-product').value;
+      const stage = document.getElementById('add-stock-stage').value;
+      const grade = document.getElementById('add-stock-grade').value.trim() || 'NONE';
+      const quantity = parseFloat(document.getElementById('add-stock-qty').value);
+      const reason = document.getElementById('add-stock-note').value.trim();
+
+      if (!productId) {
+        Swal.showValidationMessage('Please select a product.');
+        return false;
+      }
+      if (isNaN(quantity) || quantity <= 0) {
+        Swal.showValidationMessage('Please enter a quantity greater than 0.');
+        return false;
+      }
+      return { product_id: productId, stage, grade, quantity, adjust_type: 'add', reason };
+    }
+  }).then(result => {
+    if (!result.isConfirmed) return;
+    fetch('/admin/stock/adjust', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+      body: JSON.stringify(result.value)
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        Swal.fire('Saved', d.message || 'Stock added.', 'success').then(() => location.reload());
+      } else {
+        Swal.fire('Error', d.message || 'Could not add stock.', 'error');
+      }
+    });
+  });
+}
+
+function syncAddStockStage() {
+  const productSelect = document.getElementById('add-stock-product');
+  const stageSelect = document.getElementById('add-stock-stage');
+  const productType = productSelect?.selectedOptions?.[0]?.dataset?.type;
+  if (productType && stageSelect) stageSelect.value = productType;
+}
+
+function showStockDetails(productId, stage, grade, productName) {
+  const key = `${productId}_${grade || 'NONE'}_${stage}`;
+  const logs = adminStockLogsByKey[key] || [];
+  const rows = logs.map(log => {
+    const sign = log.transaction_type === 'IN' ? '+' : '-';
+    const color = log.transaction_type === 'IN' ? '#22c55e' : '#ef4444';
+    return `
+      <tr>
+        <td style="padding:8px; border-bottom:1px solid #30363d; color:${color}; font-weight:700;">${sign}${Number(log.quantity).toLocaleString(undefined, { maximumFractionDigits: 3 })}</td>
+        <td style="padding:8px; border-bottom:1px solid #30363d;">${escapeHtml(log.transaction_type)}</td>
+        <td style="padding:8px; border-bottom:1px solid #30363d;">${escapeHtml(log.user_name)}</td>
+        <td style="padding:8px; border-bottom:1px solid #30363d;">${escapeHtml(log.created_at)}</td>
+        <td style="padding:8px; border-bottom:1px solid #30363d;">${escapeHtml(log.notes || '')}</td>
+      </tr>
+    `;
+  }).join('') || `<tr><td colspan="5" style="padding:1rem; text-align:center; color:#8b949e;">No stock details found.</td></tr>`;
+
+  Swal.fire({
+    title: 'Stock Details',
+    html: `
+      <div style="text-align:left; color:#8b949e; margin-bottom:0.8rem;">
+        <strong style="color:#e6edf3;">${escapeHtml(productName)}</strong> / ${escapeHtml(stage)} / ${escapeHtml(grade || 'NONE')}
+      </div>
+      <div style="max-height:360px; overflow:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:0.82rem; text-align:left;">
+          <thead>
+            <tr style="color:#8b949e;">
+              <th style="padding:8px;">Qty</th>
+              <th style="padding:8px;">Type</th>
+              <th style="padding:8px;">By</th>
+              <th style="padding:8px;">Time</th>
+              <th style="padding:8px;">Notes</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `,
+    width: '850px',
+    background: '#0d1117',
+    color: '#e6edf3',
+    confirmButtonText: 'Close',
+    confirmButtonColor: '#30363d'
+  });
+}
+
 function adminAdjustStock(productId, stage, grade) {
   const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ Finished' }[stage] || stage;
 
@@ -329,6 +477,271 @@ function adminSetLimit(productId, stage, grade, currentLimit) {
     });
   });
 }
+
+// AJAX Polling every 30 seconds
+setInterval(() => {
+  fetch('/stock/live', {
+    headers: { 'Accept': 'application/json' }
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success && data.data) {
+      updateStockTables(data.data);
+    }
+  })
+  .catch(err => console.error('Polling error:', err));
+}, 30000);
+
+function updateStockTables(stockData) {
+  const stages = { 'RAW': 'raw-stock-tbody', 'SEMI': 'semi-stock-tbody', 'FINISHED': 'finished-stock-tbody' };
+  
+  // Group data by stage
+  const grouped = { 'RAW': [], 'SEMI': [], 'FINISHED': [] };
+  stockData.forEach(s => {
+    if (grouped[s.stage]) grouped[s.stage].push(s);
+  });
+
+  for (const [stage, tbodyId] of Object.entries(stages)) {
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) continue;
+
+    const items = grouped[stage];
+    
+    // Update headers count (optional, but good for UI consistency if we have access, maybe skip for now or just replace table body)
+    if (items.length === 0) {
+      // Keep existing "No stock" message if handled by blade, or just leave empty table.
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No stock recorded yet.</td></tr>`;
+      continue;
+    }
+
+    let html = '';
+    items.forEach(s => {
+      const limit = parseFloat(s.alert_limit) || 0;
+      const qty = parseFloat(s.quantity);
+      const isLow = limit > 0 && qty < limit;
+      const rowStyle = isLow ? 'background-color: #ff4d4d; color: #fff;' : '';
+      const titleAttr = isLow ? `title="Low Stock! Limit is ${limit}"` : '';
+      const formattedQty = qty.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      
+      let qtyColor = 'var(--text-color)';
+      if (stage === 'RAW') qtyColor = 'var(--secondary)';
+      if (stage === 'SEMI') qtyColor = 'var(--warning)';
+      if (stage === 'FINISHED') qtyColor = 'var(--secondary)';
+
+      html += `
+        <tr style="${rowStyle}" ${titleAttr}>
+          <td style="font-weight:600;">${s.name}</td>
+          <td><span class="badge badge-info">${s.grade}</span></td>
+          <td style="font-weight:bold; color:${qtyColor};">${formattedQty}</td>
+          <td>${s.unit || ''}</td>
+          <td class="location-col" data-product="${s.productId}" data-grade="${s.grade}" data-stage="${stage}" style="cursor:pointer; color:var(--primary-light); text-decoration:underline;" onclick="showLocationBreakdown(this)">📍 View Locations</td>
+          <td>
+            <div style="display:flex; align-items:center; gap:0.4rem;">
+              <button class="btn-icon edit" onclick="adminAdjustStock('${s.productId}', '${s.stage}', '${s.grade}')" title="Adjust">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+              </button>
+              <button class="btn-icon edit" onclick="adminSetLimit('${s.productId}', '${s.stage}', '${s.grade}', '${limit}')" title="Set Alert Limit" style="color:var(--danger);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+              </button>
+              <button class="btn btn-sm" onclick="showStockDetails('${s.productId}', '${s.stage}', '${String(s.grade).replace(/'/g, "\\'")}', '${String(s.name).replace(/'/g, "\\'")}')" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    });
+    tbody.innerHTML = html;
+  }
+  updateAllLocationLabels();
+}
+
+function getStoredLocationMappings() {
+  try {
+    return JSON.parse(localStorage.getItem('pentapure_product_locations')) || {};
+  } catch(e) {
+    return {};
+  }
+}
+
+function saveStoredLocationMappings(mappings) {
+  localStorage.setItem('pentapure_product_locations', JSON.stringify(mappings));
+}
+
+function parseStockNumber(value) {
+  return parseFloat(String(value || '').replace(/,/g, '')) || 0;
+}
+
+function getAvailableStockForLocationCell(el) {
+  const row = el.closest('tr');
+  return row ? parseStockNumber(row.children[2]?.textContent) : 0;
+}
+
+function sumLocationQuantities(locMap) {
+  return Object.values(locMap || {}).reduce((total, qty) => total + parseStockNumber(qty), 0);
+}
+
+function trimLocationMapToAvailable(locMap, availableQty) {
+  const cleaned = {};
+  let usedQty = 0;
+
+  Object.entries(locMap || {}).forEach(([loc, rawQty]) => {
+    const qty = parseStockNumber(rawQty);
+    const remaining = availableQty - usedQty;
+    if (!loc || qty <= 0 || remaining <= 0) return;
+    const safeQty = Math.min(qty, remaining);
+    cleaned[loc] = parseFloat(safeQty.toFixed(2));
+    usedQty += safeQty;
+  });
+
+  return cleaned;
+}
+
+function cleanupLocationMappingsForVisibleStock() {
+  const mappings = getStoredLocationMappings();
+  let changed = false;
+
+  document.querySelectorAll('.location-col').forEach(td => {
+    const pId = td.getAttribute('data-product');
+    const grade = td.getAttribute('data-grade') || 'NONE';
+    const stage = td.getAttribute('data-stage');
+    const key = `${pId}_${grade}_${stage}`;
+    const availableQty = getAvailableStockForLocationCell(td);
+    const originalMap = mappings[key] || {};
+    const cleanedMap = trimLocationMapToAvailable(originalMap, availableQty);
+
+    if (JSON.stringify(originalMap) !== JSON.stringify(cleanedMap)) {
+      changed = true;
+      if (Object.keys(cleanedMap).length) {
+        mappings[key] = cleanedMap;
+      } else {
+        delete mappings[key];
+      }
+    }
+  });
+
+  if (changed) saveStoredLocationMappings(mappings);
+}
+
+function updateAllLocationLabels() {
+  cleanupLocationMappingsForVisibleStock();
+  const mappings = getStoredLocationMappings();
+  document.querySelectorAll('.location-col').forEach(td => {
+    const pId = td.getAttribute('data-product');
+    const grade = td.getAttribute('data-grade') || 'NONE';
+    const stage = td.getAttribute('data-stage');
+    const key = `${pId}_${grade}_${stage}`;
+    const locMap = mappings[key] || {};
+    const count = Object.keys(locMap).length;
+    if(count === 0) {
+      td.innerHTML = `📍 <span style="font-size:0.75rem; color:#8b949e;">Not Set</span>`;
+    } else if(count === 1) {
+      td.innerHTML = `📍 <span style="font-weight:600; color:var(--secondary);">${Object.keys(locMap)[0]}</span>`;
+    } else {
+      td.innerHTML = `📍 <span class="badge badge-info" style="cursor:pointer; font-size:0.75rem;">${count} Locations</span>`;
+    }
+  });
+}
+
+function showLocationBreakdown(el) {
+  const pId = el.getAttribute('data-product');
+  const grade = el.getAttribute('data-grade') || 'NONE';
+  const stage = el.getAttribute('data-stage');
+  const key = `${pId}_${grade}_${stage}`;
+  
+  const mappings = getStoredLocationMappings();
+  const availableQty = getAvailableStockForLocationCell(el);
+  const locMap = trimLocationMapToAvailable(mappings[key] || {}, availableQty);
+  mappings[key] = locMap;
+  saveStoredLocationMappings(mappings);
+  const assignedQty = sumLocationQuantities(locMap);
+  const remainingQty = Math.max(availableQty - assignedQty, 0);
+
+  let locationsListHtml = Object.entries(locMap).map(([loc, qty]) => `
+    <div style="display:flex; justify-content:space-between; padding:8px 12px; background:rgba(255,255,255,0.05); border-radius:8px; margin-bottom:6px;">
+      <span style="font-weight:600; color:#e6edf3;">📍 ${loc}</span>
+      <span style="font-weight:bold; color:var(--secondary);">${qty} kg</span>
+    </div>
+  `).join('') || '<p style="text-align:center; color:#8b949e; margin: 1rem 0;">No locations linked yet.</p>';
+
+  // Admin can override/adjust locations manually
+  const allLocations = JSON.parse(localStorage.getItem('pentapure_storage_locations')) || ['Warehouse A', 'Warehouse B', 'Rack 1', 'Cold Room'];
+  let optionsHtml = allLocations.map(loc => `<option value="${loc}">${loc}</option>`).join('');
+
+  Swal.fire({
+    title: '📍 Stock Storage Locations',
+    html: `
+      <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:#8b949e;">
+        Product locations for this item.
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:1rem; text-align:center;">
+        <div style="background:#161b22; border-radius:8px; padding:8px;">
+          <div style="font-size:0.7rem; color:#8b949e;">Available</div>
+          <div style="font-weight:700; color:#e6edf3;">${availableQty.toFixed(2)} kg</div>
+        </div>
+        <div style="background:#161b22; border-radius:8px; padding:8px;">
+          <div style="font-size:0.7rem; color:#8b949e;">Assigned</div>
+          <div style="font-weight:700; color:var(--secondary);">${assignedQty.toFixed(2)} kg</div>
+        </div>
+        <div style="background:#161b22; border-radius:8px; padding:8px;">
+          <div style="font-size:0.7rem; color:#8b949e;">Remaining</div>
+          <div style="font-weight:700; color:#e6edf3;">${remainingQty.toFixed(2)} kg</div>
+        </div>
+      </div>
+      <div style="margin-bottom:1rem; max-height:200px; overflow-y:auto;">
+        ${locationsListHtml}
+      </div>
+      <div style="border-top:1px dashed #30363d; padding-top:1rem; text-align:left;">
+        <label style="display:block; font-size:0.8rem; color:#8b949e; margin-bottom:0.5rem;">Link Quantity to Location</label>
+        <div style="display:flex; gap:8px; margin-bottom:0.5rem;">
+          <select id="swal-loc-select" style="flex:1; padding:0.55rem; background:#161b22; border:1px solid #30363d; color:#e6edf3; border-radius:8px;">
+            ${optionsHtml}
+          </select>
+          <input type="number" id="swal-loc-qty" min="0.01" max="${remainingQty.toFixed(2)}" step="0.01" placeholder="Qty (kg)" style="width:100px; padding:0.55rem; background:#161b22; border:1px solid #30363d; color:#e6edf3; border-radius:8px;">
+        </div>
+        <button class="btn btn-sm" onclick="addLocationMapping('${key}', ${availableQty})" style="width:100%;">Save Location link</button>
+      </div>
+    `,
+    showConfirmButton: false,
+    showCancelButton: true,
+    cancelButtonText: 'Close',
+    background: '#0d1117',
+    color: '#e6edf3',
+    cancelButtonColor: '#30363d'
+  });
+}
+
+window.addLocationMapping = function(key, availableQty) {
+  const loc = document.getElementById('swal-loc-select').value;
+  const qty = parseFloat(document.getElementById('swal-loc-qty').value);
+  if(!loc || isNaN(qty) || qty <= 0) {
+    Swal.showValidationMessage('Please select location and enter positive quantity');
+    return;
+  }
+  const mappings = getStoredLocationMappings();
+  if(!mappings[key]) mappings[key] = {};
+  const currentQtyForLocation = parseStockNumber(mappings[key][loc]);
+  const assignedExcludingLocation = sumLocationQuantities(mappings[key]) - currentQtyForLocation;
+  const maxAllowed = Math.max(availableQty - assignedExcludingLocation, 0);
+
+  if(qty > maxAllowed) {
+    Swal.showValidationMessage(`Quantity cannot exceed remaining stock (${maxAllowed.toFixed(2)} kg).`);
+    return;
+  }
+
+  mappings[key][loc] = qty;
+  saveStoredLocationMappings(mappings);
+  Swal.fire({
+    icon: 'success',
+    title: 'Saved',
+    background: '#0d1117',
+    color: '#e6edf3',
+    timer: 1000,
+    showConfirmButton: false
+  }).then(() => {
+    updateAllLocationLabels();
+  });
+}
+
+document.addEventListener('DOMContentLoaded', updateAllLocationLabels);
 </script>
 
 <style>

@@ -1,6 +1,6 @@
 (function () {
-  const DATE_HEADER_PATTERN = /(date|created|updated|time|at)/i;
-  const NUMBER_HEADER_PATTERN = /(qty|quantity|amount|price|cost|total|kg|#|no|count)/i;
+  const DATE_HEADER_PATTERN = /(date|created|updated)/i;
+  const NUMBER_HEADER_PATTERN = /(qty|quantity|amount|price|cost|total|kg|#|no|count|present|absent|half|ot|hrs|hours)/i;
   const DATE_VALUE_PATTERN = /^(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}|\d{1,2}\s+[A-Za-z]{3,}\s+\d{4})$/;
 
   function normalizeText(value) {
@@ -114,20 +114,33 @@
     const rows = Array.from(table.tBodies[0].querySelectorAll('tr'));
     const controls = [];
     const filterBar = document.createElement('div');
-    filterBar.className = 'filter-bar';
+    filterBar.className = 'filter-bar flex-between';
     filterBar.style.flexWrap = 'wrap';
     filterBar.style.gap = '0.75rem';
     filterBar.style.marginBottom = '1rem';
     filterBar.style.padding = '0.75rem';
-    filterBar.style.background = '#D8D8D8';
+    filterBar.style.background = '#fdfbf7'; // Match theme light background
     filterBar.style.borderRadius = '0.75rem';
+    filterBar.style.border = '1px solid #DDCFAF'; // Match theme border
 
     headerCells.forEach((th, index) => {
       const label = normalizeText(th.textContent) || `Column ${index + 1}`;
+      
+      // Skip columns that shouldn't have filters
+      if (th.classList.contains('no-print') || label.toLowerCase() === 'action' || !label) {
+        return;
+      }
+
+      // Filter empty rows if any, to prevent empty matching messing up types
       const values = rows.map((row) => normalizeText((row.children[index] || {}).textContent));
+      const nonEmptyValues = values.filter(v => v !== '');
       const unique = uniqueValues(values).sort((a, b) => a.localeCompare(b));
-      const isDate = DATE_HEADER_PATTERN.test(label) || values.every((val) => DATE_VALUE_PATTERN.test(val));
-      const isNumber = NUMBER_HEADER_PATTERN.test(label) && values.every((val) => val === '' || !Number.isNaN(Number(val.replace(/,/g, ''))));
+      
+      const isDateHeader = /(date|created|updated)/i.test(label);
+      const isDate = isDateHeader || (nonEmptyValues.length > 0 && nonEmptyValues.every((val) => DATE_VALUE_PATTERN.test(val)));
+      
+      const isNumberHeader = /(qty|quantity|amount|price|cost|total|kg|#|no|count|present|absent|half|ot|hrs|hours)/i.test(label);
+      const isNumber = isNumberHeader || (nonEmptyValues.length > 0 && nonEmptyValues.every((val) => !Number.isNaN(Number(val.replace(/,/g, '')))));
 
       let controlElement;
       let controlType = 'text';

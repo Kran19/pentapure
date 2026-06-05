@@ -109,9 +109,6 @@
               </button>
             @endif
 
-            @if($n->url)
-              <a href="{{ $n->url }}" style="font-size:0.78rem; color:var(--primary-light);">View →</a>
-            @endif
           </div>
         </div>
       </div>

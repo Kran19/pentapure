@@ -106,8 +106,9 @@ class AdminController extends Controller
     {
         $rules = [
             'name'   => 'required|string|max:100',
-            'role'   => 'required|in:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE',
+            'role'   => 'required|in:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE',
             'branch' => 'nullable|string|max:100',
+            'permissions' => 'nullable',
         ];
 
         if (!$request->user_id) {
@@ -116,6 +117,11 @@ class AdminController extends Controller
         }
 
         $request->validate($rules);
+        
+        $permissions = is_string($request->permissions) ? json_decode($request->permissions, true) : ($request->permissions ?? []);
+        if ($request->role !== 'SUB_ADMIN') {
+            $permissions = [];
+        }
 
         if ($request->user_id) {
             $user = User::findOrFail($request->user_id);
@@ -130,6 +136,7 @@ class AdminController extends Controller
             } else {
                 $user->branch = null;
             }
+            $user->permissions = $permissions;
             $user->save();
             $msg = 'User updated!';
         } else {
@@ -141,6 +148,7 @@ class AdminController extends Controller
                 'parent_id' => $request->parent_id ?: null,
                 'branch'    => $request->role === 'CASHIER' ? $request->branch : null,
                 'status'    => 'ACTIVE',
+                'permissions' => $permissions,
             ]);
             $msg = 'User created!';
         }
@@ -199,7 +207,7 @@ class AdminController extends Controller
     {
         $products = Product::with('grades')
             ->orderBy('type')->orderBy('name')
-            ->paginate(15);
+            ->get();
             
         $allActiveGrades = \App\Models\Grade::where('is_active', true)->orderBy('name')->get();
         
@@ -210,7 +218,7 @@ class AdminController extends Controller
                 return $p;
             }),
             'allGrades' => $allActiveGrades,
-            'paginator' => $products
+            'paginator' => null
         ];
         return view('admin.products', compact('pageData'));
     }
@@ -220,30 +228,44 @@ class AdminController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|in:RAW,SEMI,FINISHED',
-            'grades' => 'nullable|array',
-            'allowed_roles' => 'nullable|array'
+            'grades' => 'nullable', // Could be stringified JSON or array
+            'allowed_roles' => 'nullable', // Could be stringified JSON or array
+            'image' => 'nullable|image|max:2048'
         ]);
+
+        // Parse JSON arrays if sent via FormData
+        $grades = is_string($request->grades) ? json_decode($request->grades, true) : ($request->grades ?? []);
+        $allowedRoles = is_string($request->allowed_roles) ? json_decode($request->allowed_roles, true) : ($request->allowed_roles ?? []);
+
+        $imageUrl = $request->image_url;
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('products', 'public');
+            $imageUrl = '/storage/' . $path;
+        }
 
         $data = [
             'name' => $request->name,
             'type' => $request->type,
             'unit' => $request->unit ?? 'kg',
-            'image_url' => $request->image_url,
-            'allowed_roles' => $request->allowed_roles
+            'allowed_roles' => $allowedRoles
         ];
+        
+        if ($imageUrl !== null) {
+            $data['image_url'] = $imageUrl;
+        }
 
         if ($request->product_id) {
             $product = Product::findOrFail($request->product_id);
             $product->update($data);
-            $product->grades()->sync($request->grades ?? []);
+            $product->grades()->sync($grades);
             $msg = 'Product updated!';
         } else {
             $product = Product::create($data);
-            $product->grades()->sync($request->grades ?? []);
+            $product->grades()->sync($grades);
             $msg = 'Product created!';
         }
 
-        return response()->json(['success' => true, 'message' => $msg]);
+        return response()->json(['success' => true, 'message' => $msg, 'product' => $product]);
     }
 
     public function destroyProduct($id)
@@ -285,8 +307,62 @@ class AdminController extends Controller
             ->orderBy('products.name')
             ->get();
 
-        $pageData = ['allStock' => $allStock];
+        $allProducts = Product::orderBy('type')
+            ->orderBy('name')
+            ->get(['id', 'name', 'type', 'unit', 'is_active']);
+
+        $stockLogsByKey = Stock::with(['user:id,name', 'product:id,name,unit'])
+            ->latest()
+            ->limit(500)
+            ->get()
+            ->groupBy(fn ($log) => "{$log->product_id}_{$log->grade}_{$log->stage}")
+            ->map(fn ($logs) => $logs->map(fn ($log) => [
+                'id' => $log->id,
+                'product_id' => $log->product_id,
+                'product_name' => $log->product?->name,
+                'unit' => $log->product?->unit,
+                'stage' => $log->stage,
+                'grade' => $log->grade,
+                'quantity' => (float) $log->quantity,
+                'transaction_type' => $log->transaction_type,
+                'notes' => $log->notes,
+                'user_name' => $log->user?->name ?? 'Unknown',
+                'created_at' => optional($log->created_at)->format('d M Y, h:i A'),
+            ])->values());
+
+        $pageData = [
+            'allStock' => $allStock,
+            'allProducts' => $allProducts,
+            'stockLogsByKey' => $stockLogsByKey,
+        ];
         return view('admin.stock', compact('pageData'));
+    }
+
+    public function liveStockApi()
+    {
+        $allStock = DB::table('stocks')
+            ->join('products', 'stocks.product_id', '=', 'products.id')
+            ->leftJoin('stock_limits', function($join) {
+                $join->on('stocks.product_id', '=', 'stock_limits.product_id')
+                     ->on('stocks.stage', '=', 'stock_limits.stage')
+                     ->on('stocks.grade', '=', 'stock_limits.grade');
+            })
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'stock_limits.alert_limit')
+            ->selectRaw("
+                stocks.product_id as productId,
+                products.name,
+                products.unit,
+                stocks.stage,
+                stocks.grade,
+                IFNULL(stock_limits.alert_limit, 0) as alert_limit,
+                SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
+            ")
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
+            ->orderBy('stocks.stage')
+            ->orderBy('products.name')
+            ->get();
+
+        return response()->json(['success' => true, 'data' => $allStock]);
     }
 
     public function setStockLimit(Request $request)
@@ -519,7 +595,7 @@ class AdminController extends Controller
         $request->validate([
 
             'product_id'  => 'required|exists:products,id',
-            'stage'       => 'required',
+            'stage'       => 'required|in:RAW,SEMI,FINISHED',
             'grade'       => 'required',
             'quantity'    => 'required|numeric|min:0',
             'adjust_type' => 'nullable|in:set,add,subtract',

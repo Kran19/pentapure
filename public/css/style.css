@@ -229,7 +229,9 @@ input:checked + .slider:before { transform: translateX(18px); }
   justify-content: center;
   height: 100%;
   text-align: center;
-  background: radial-gradient(circle at top right, rgba(79,70,229,0.3), transparent 50%);
+  background:
+    radial-gradient(circle at 88% 14%, rgba(244, 180, 0, 0.16), transparent 36%),
+    #FFF8EA;
 }
 
 .login-card {
@@ -242,7 +244,7 @@ input:checked + .slider:before { transform: translateX(18px); }
   max-width: 450px;
   max-height: 85vh;
   overflow-y: auto;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 18px 42px rgba(43, 36, 28, 0.16);
 }
 
 .user-btn {
@@ -1322,4 +1324,13 @@ body:not(.admin-mode) .btn,
 body:not(.admin-mode) button.btn,
 body:not(.admin-mode) a.btn {
   color: var(--dark-brand) !important;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
 }

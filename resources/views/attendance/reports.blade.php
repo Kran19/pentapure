@@ -28,12 +28,12 @@
             <th>Employee Name</th>
             <th>Department</th>
             <th>Salary</th>
+            <th class="no-print">Action</th>
             <th>Present</th>
             <th>Half Days</th>
             <th>Absent</th>
             <th>Total OT Hrs</th>
             <th>Total Payable (₹)</th>
-            <th class="no-print">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -60,14 +60,14 @@
                     <div style="font-weight:bold;">₹{{ number_format($data['worker']->salary_amount, 0) }}</div>
                     <div style="font-size:0.65rem; opacity:0.7;">{{ $data['worker']->salary_type }}</div>
                 </td>
+                <td class="no-print">
+                  <a href="{{ $prefix }}/reports/worker/{{ $data['worker']->id }}?month={{ $month }}" class="btn btn-sm" style="width:auto; padding:0.2rem 0.6rem; font-size:0.7rem; text-transform:uppercase;">View Sheet</a>
+                </td>
                 <td style="color:var(--secondary); font-weight:bold;">{{ $data['present'] }}</td>
                 <td style="color:var(--info);">{{ $data['half'] }}</td>
                 <td style="color:var(--danger);">{{ $data['absent'] }}</td>
                 <td style="font-weight:bold;">{{ number_format($data['total_ot'], 1) }}</td>
                 <td style="font-weight:bold; color:var(--primary-light); font-size:1.1rem;">₹{{ number_format($data['total_wage'], 2) }}</td>
-                <td class="no-print">
-                  <a href="{{ $prefix }}/reports/worker/{{ $data['worker']->id }}?month={{ $month }}" class="btn btn-sm" style="width:auto; padding:0.2rem 0.6rem; font-size:0.7rem;">View Sheet</a>
-                </td>
               </tr>
             @endforeach
           @endforeach
@@ -76,9 +76,10 @@
             <tr><td colspan="9" style="text-align:center; color:var(--text-muted);">No attendance records found for this month.</td></tr>
           @else
             <tr style="background:var(--glass-bg); font-weight:bold;">
-              <td colspan="7" style="text-align:right;">Grand Total Payroll Liability:</td>
-              <td style="color:var(--secondary); font-size:1.2rem;">₹{{ number_format($grandTotal, 2) }}</td>
+              <td colspan="3" style="text-align:right;">Grand Total Payroll Liability:</td>
               <td class="no-print"></td>
+              <td colspan="4"></td>
+              <td style="color:var(--secondary); font-size:1.2rem;">₹{{ number_format($grandTotal, 2) }}</td>
             </tr>
           @endif
         </tbody>

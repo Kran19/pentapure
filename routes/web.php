@@ -61,6 +61,12 @@ Route::get('/login',  [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout',[AuthController::class, 'logout'])->name('logout');
 
+// Shared Stock Routes (Admin, Sales, Dispatch, Raw, Semi, Finished)
+Route::post('/stock/adjust', [\App\Http\Controllers\AdminController::class, 'adjustStock'])
+    ->middleware('auth.role:ADMIN,SALES,DISPATCH');
+Route::get('/stock/live', [\App\Http\Controllers\AdminController::class, 'liveStockApi'])
+    ->middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER');
+
 Route::get('/history/{panel}/pdf', [HistoryPdfController::class, 'download'])
     ->middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE')
     ->name('history.pdf');

@@ -123,6 +123,7 @@ class HistoryPdfController extends Controller
                 'status' => $d->lr_image_path ? 'DONE' : 'PENDING',
                 'amount' => (float) ($d->order?->total ?? 0),
                 'description' => 'Order #' . $d->order_id . ' - ' . ($d->order?->company?->name ?? 'Company') . ' - ' . $d->dispatchItems->sum('quantity') . ' kg',
+                'lr_copy' => $d->lr_image_path,
             ])->toArray();
     }
 

@@ -186,7 +186,7 @@ class CashierController extends Controller
             abort(403);
         }
 
-        $path = Storage::path($bill->file_path);
+        $path = Storage::disk('public')->path($bill->file_path);
         if (!file_exists($path)) abort(404);
 
         return response()->file($path, [

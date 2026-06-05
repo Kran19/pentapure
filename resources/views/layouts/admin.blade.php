@@ -63,48 +63,79 @@
             </svg>
           </div>
 
-          @php $seg = request()->segment(2) ?? 'dashboard'; @endphp
+          @php 
+            $seg = request()->segment(2) ?? 'dashboard'; 
+            $role = $authUser['role'];
+            $perms = $authUser['permissions'] ?? [];
+            $can = fn($m) => $role === 'ADMIN' || in_array($m, $perms);
+          @endphp
 
+          @if($can('module_dashboard'))
           <a href="{{ url('admin/home') }}" class="nav-item {{ $seg=='home' || $seg=='dashboard'?'active':'' }}">
             📊 Dashboard
           </a>
+          @endif
+          @if($can('module_users'))
           <a href="{{ url('admin/users') }}" class="nav-item {{ $seg=='users'?'active':'' }}">
             👥 Users &amp; Hierarchy
           </a>
+          @endif
+          @if($can('module_products'))
           <a href="{{ url('admin/products') }}" class="nav-item {{ $seg=='products'?'active':'' }}">
             🏷️ Products Master
           </a>
+          @endif
+          @if($can('module_stock'))
           <a href="{{ url('admin/stock') }}" class="nav-item {{ $seg=='stock'?'active':'' }}">
             📦 Live Stock
           </a>
+          @endif
+          @if($can('module_po'))
           <a href="{{ url('admin/po') }}" class="nav-item {{ $seg=='po'?'active':'' }}">
             📋 Purchase Orders
           </a>
+          @endif
+          @if($can('module_logs'))
           <a href="{{ url('admin/logs') }}" class="nav-item {{ $seg=='logs'?'active':'' }}">
             🕐 Activity Logs
           </a>
+          @endif
+          @if($can('module_grades'))
           <a href="{{ url('admin/grades') }}" class="nav-item {{ $seg=='grades'?'active':'' }}">
             ✅ Grades Master
           </a>
+          @endif
 
+          <a href="#" onclick="event.preventDefault(); openLocationsAdminModal()" class="nav-item">
+            📍 Storage Locations
+          </a>
+
+          @if($can('module_categories'))
           <a href="{{ url('admin/categories') }}" class="nav-item {{ $seg=='categories'?'active':'' }}">
             🏷️ Expense Category Master
           </a>
+          @endif
+          @if($can('module_dispatch'))
           <a href="{{ url('admin/dispatch-activity') }}" class="nav-item {{ $seg=='dispatch-activity'?'active':'' }}">
             🚚 Dispatch Activity
           </a>
+          @endif
+          @if($can('module_cashier'))
           <a href="{{ url('admin/cashier-overview') }}" class="nav-item {{ $seg=='cashier-overview'?'active':'' }}">
             💰 Cashier Overview
           </a>
+          @endif
 
+          @if($can('module_notifications'))
           <a href="{{ url('admin/notifications') }}" class="nav-item {{ $seg=='notifications'?'active':'' }}"
              style="display:flex; justify-content:space-between; align-items:center;">
             <span>🔔 Notifications</span>
             <span id="nav-notif-count" class="badge badge-danger" style="display:none; font-size:0.7rem; padding:2px 6px;">0</span>
           </a>
-
+          @endif
 
           <!-- Attendance Accordion -->
+          @if($can('module_attendance'))
           @php $attSegs = ['attendance-dash','attendance-depts','attendance-workers','attendance-daily','attendance-reports']; @endphp
           <div>
             <div class="nav-item" id="att-toggle" onclick="toggleAttMenu()"
@@ -131,6 +162,7 @@
               </a>
             </div>
           </div>
+          @endif
 
           <!-- Logout via POST to properly clear session -->
           <div style="margin-top:auto;border-top:1px solid var(--glass-border);padding-top:0.5rem;">
@@ -205,6 +237,74 @@
         const menu = document.getElementById('att-submenu');
         const arrow = document.getElementById('att-arrow');
         if (menu) { menu.style.display = 'block'; arrow.style.transform = 'rotate(180deg)'; }
+      });
+    }
+    function getLocations() {
+      try {
+        return JSON.parse(localStorage.getItem('pentapure_storage_locations')) || ['Warehouse A', 'Warehouse B', 'Rack 1', 'Cold Room'];
+      } catch(e) {
+        return ['Warehouse A', 'Warehouse B', 'Rack 1', 'Cold Room'];
+      }
+    }
+
+    function saveLocations(locs) {
+      localStorage.setItem('pentapure_storage_locations', JSON.stringify(locs));
+    }
+
+    function openLocationsAdminModal() {
+      const locs = getLocations();
+      let listHtml = locs.map((loc, idx) => `
+        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:8px; margin-bottom:6px;">
+          <span style="font-weight:600; color:var(--primary-light);">${loc}</span>
+          <button class="btn btn-danger btn-sm" onclick="deleteLocation(${idx})" style="padding:4px 8px; width:auto; font-size:0.75rem;">Delete</button>
+        </div>
+      `).join('') || '<p style="text-align:center;color:#8b949e;">No locations added yet.</p>';
+
+      app.openModal(`
+        <div class="card" style="margin:0; width:100%; max-width:400px; text-align:left;">
+          <div class="card-title" style="margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
+            <span>📍 Storage Locations</span>
+            <button onclick="app.closeModal()" style="background:none; border:none; color:#8b949e; cursor:pointer; font-size:1.2rem;">&times;</button>
+          </div>
+          <div class="form-group" style="margin-bottom:1rem; display:flex; gap:8px;">
+            <input type="text" id="new-location-name" placeholder="e.g. Warehouse C" style="flex:1; padding:0.6rem 0.8rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+            <button class="btn" onclick="addLocation()" style="width:auto; padding:0.6rem 1rem;">Add</button>
+          </div>
+          <div style="max-height:250px; overflow-y:auto; padding-right:4px;">
+            ${listHtml}
+          </div>
+        </div>
+      `);
+    }
+
+    window.addLocation = function() {
+      const input = document.getElementById('new-location-name');
+      const val = input.value.trim();
+      if(!val) return app.toast('Enter location name', 'error');
+      const locs = getLocations();
+      if(locs.includes(val)) return app.toast('Location already exists', 'error');
+      locs.push(val);
+      saveLocations(locs);
+      app.toast('Location added');
+      openLocationsAdminModal();
+    }
+
+    window.deleteLocation = function(idx) {
+      Swal.fire({
+        title: 'Delete location?',
+        text: 'This will remove the option from future entries.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Yes, delete'
+      }).then(res => {
+        if(res.isConfirmed) {
+          const locs = getLocations();
+          locs.splice(idx, 1);
+          saveLocations(locs);
+          app.toast('Location deleted');
+          openLocationsAdminModal();
+        }
       });
     }
   </script>

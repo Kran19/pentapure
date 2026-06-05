@@ -248,6 +248,7 @@ const app = {
   },
 
   toggleNotifications() {
+    this.notifications = this.notifications || [];
     if (this.notifications.length === 0) {
       this.toast('No new notifications', 'info');
       return;
@@ -438,7 +439,7 @@ const app = {
       gradeMap[key] = i.grade || 'NONE';
     });
 
-    return Object.keys(agg).map(key => {
+    const result = Object.keys(agg).map(key => {
       const parts = key.split('_');
       const id = parts[0];
       let p = rmList.find(prod => prod.id == id);
@@ -463,6 +464,9 @@ const app = {
         grade: gradeMap[key] !== 'NONE' ? gradeMap[key] : (p.grade || 'NONE')
       };
     });
+
+    result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    return result;
   },
 
   renderPurchaseOrder(container) {
@@ -494,7 +498,7 @@ const app = {
             <label>Note / Necessity</label>
             <input type="text" id="po-note" placeholder="Optional notes for Admin">
           </div>
-          <button class="btn mt-1" onclick="app.submitPO()">Send Request to Admin</button>
+          <button class="btn mt-1" onclick="app.submitPO(this)">Send Request to Admin</button>
         </div>
 
         <h3 class="mt-2 mb-1">My Purchase Requests</h3>
@@ -519,13 +523,18 @@ const app = {
     }
   },
 
-  submitPO() {
+  submitPO(btn) {
     const matId = document.getElementById('po-material').value;
     const qty   = Number(document.getElementById('po-qty').value);
     const note  = document.getElementById('po-note').value;
 
     if (!matId) return this.toast('Select a material', 'error');
     if (!qty || qty <= 0) return this.toast('Enter valid quantity', 'error');
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin" style="vertical-align: middle; margin-right:5px;"><circle cx="12" cy="12" r="10" opacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path></svg> Sending...`;
+    }
 
     const rolePrefix = this.currentUser.role.toLowerCase();
     fetch(`/${rolePrefix}/po`, {
@@ -544,9 +553,13 @@ const app = {
         setTimeout(() => this.navigate('home'), 600);
       } else {
         this.toast(data.message || 'Error', 'error');
+        if (btn) { btn.disabled = false; btn.innerText = 'Send Request to Admin'; }
       }
     })
-    .catch(() => this.toast('Network error.', 'error'));
+    .catch(() => {
+      this.toast('Network error.', 'error');
+      if (btn) { btn.disabled = false; btn.innerText = 'Send Request to Admin'; }
+    });
   },
 
   // --- PROFILE VIEW ---
@@ -749,11 +762,17 @@ const app = {
         ${window._rawShowAll && filtered.length > 8 ? `<button class="btn btn-sm btn-secondary" style="width:100%; margin-bottom:1rem; padding:0.6rem;" onclick="window._rawShowAll=false; app.renderRawAdd(document.getElementById('content-area'))">Show Less</button>` : ''}
         <input type="hidden" id="raw-prod" value="">
         <div id="raw-selected-name" style="font-size:0.85rem; color:var(--primary-light); margin-bottom:0.5rem; min-height:1.2em;"></div>
-        <div class="form-group">
+        <div class="form-group" style="margin-bottom:1rem;">
           <label>Quantity (kg)</label>
           <input type="number" id="raw-qty" placeholder="Enter inward quantity" style="padding:0.7rem;">
         </div>
-        <button class="btn mt-1" onclick="app.submitRawStock()">Add to Stock</button>
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label>Storage Location</label>
+          <select id="raw-storage-location" style="padding:0.7rem;">
+            ${(JSON.parse(localStorage.getItem('pentapure_storage_locations')) || ['Warehouse A', 'Warehouse B', 'Rack 1', 'Cold Room']).map(l => `<option value="${l}">${l}</option>`).join('')}
+          </select>
+        </div>
+        <button class="btn mt-1" onclick="app.submitRawStock(this)">Add to Stock</button>
       </div>
     `;
   },
@@ -766,12 +785,18 @@ const app = {
     document.getElementById('raw-selected-name').innerText = rm ? `Selected: ${rm.name}` : '';
   },
 
-  submitRawStock() {
+  submitRawStock(btn) {
     const prodId = document.getElementById('raw-prod').value;
     const qty    = Number(document.getElementById('raw-qty').value);
 
     if (!prodId) return this.toast('Please select a material from the grid', 'error');
     if (!qty || qty <= 0) return this.toast('Enter a valid quantity', 'error');
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin" style="vertical-align: middle; margin-right:5px;"><circle cx="12" cy="12" r="10" opacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path></svg> Adding...`;
+    }
+    const loc = document.getElementById('raw-storage-location').value;
 
     fetch('/raw/action', {
       method: 'POST',
@@ -786,12 +811,34 @@ const app = {
     .then(data => {
       if (data.success) {
         this.toast(data.message || 'Stock added!');
-        setTimeout(() => this.navigate('home'), 600);
+        
+        // Save location mapping to local storage
+        if (loc) {
+          try {
+            const mappings = JSON.parse(localStorage.getItem('pentapure_product_locations')) || {};
+            const key = `${prodId}_NONE_RAW`;
+            if (!mappings[key]) mappings[key] = {};
+            mappings[key][loc] = (mappings[key][loc] || 0) + qty;
+            localStorage.setItem('pentapure_product_locations', JSON.stringify(mappings));
+          } catch(e) {}
+        }
+
+        // Clear the form to allow immediate next entry
+        document.getElementById('raw-qty').value = '';
+        document.getElementById('raw-prod').value = '';
+        document.getElementById('raw-selected-name').innerText = '';
+        document.querySelectorAll('.rm-card').forEach(c => c.style.borderColor = 'transparent');
+        window._rawSearch = '';
+        if (btn) { btn.disabled = false; btn.innerText = 'Add to Stock'; }
       } else {
         this.toast(data.message || 'Error saving stock', 'error');
+        if (btn) { btn.disabled = false; btn.innerText = 'Add to Stock'; }
       }
     })
-    .catch(() => this.toast('Network error. Please try again.', 'error'));
+    .catch(() => {
+      this.toast('Network error. Please try again.', 'error');
+      if (btn) { btn.disabled = false; btn.innerText = 'Add to Stock'; }
+    });
   },
 
   // --- ROLE: SEMI & FINISHED (Production Flow) ---
@@ -818,9 +865,12 @@ const app = {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--secondary);"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
               Available Raw Materials
             </div>
-            <div style="font-size:0.7rem; color:var(--text-muted); font-weight:normal;">Scroll &rarr;</div>
+            <div style="font-size:0.7rem; color:var(--text-muted); font-weight:normal; display:flex; gap:5px;">
+              <button onclick="document.getElementById('semi-scroll-container').scrollBy({left:-200, behavior:'smooth'})" style="border:1px solid #444; background:transparent; color:#ccc; border-radius:4px; cursor:pointer;">&larr;</button>
+              <button onclick="document.getElementById('semi-scroll-container').scrollBy({left:200, behavior:'smooth'})" style="border:1px solid #444; background:transparent; color:#ccc; border-radius:4px; cursor:pointer;">&rarr;</button>
+            </div>
           </div>
-          <div style="display:flex; overflow-x:auto; gap:12px; padding-bottom:10px; scrollbar-width:none; -ms-overflow-style:none;">
+          <div id="semi-scroll-container" style="display:flex; overflow-x:auto; gap:12px; padding-bottom:10px; scrollbar-width:none; -ms-overflow-style:none;">
             <style>div::-webkit-scrollbar { display: none; }</style>
             ${rawStock.map(s => {
               const lowStock = s.quantity < 500;
@@ -852,9 +902,12 @@ const app = {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--secondary);"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
               Available Semi-Finished Materials
             </div>
-            <div style="font-size:0.7rem; color:var(--text-muted); font-weight:normal;">Scroll &rarr;</div>
+            <div style="font-size:0.7rem; color:var(--text-muted); font-weight:normal; display:flex; gap:5px;">
+              <button onclick="document.getElementById('finished-scroll-container').scrollBy({left:-200, behavior:'smooth'})" style="border:1px solid #444; background:transparent; color:#ccc; border-radius:4px; cursor:pointer;">&larr;</button>
+              <button onclick="document.getElementById('finished-scroll-container').scrollBy({left:200, behavior:'smooth'})" style="border:1px solid #444; background:transparent; color:#ccc; border-radius:4px; cursor:pointer;">&rarr;</button>
+            </div>
           </div>
-          <div style="display:flex; overflow-x:auto; gap:12px; padding-bottom:10px; scrollbar-width:none; -ms-overflow-style:none;">
+          <div id="finished-scroll-container" style="display:flex; overflow-x:auto; gap:12px; padding-bottom:10px; scrollbar-width:none; -ms-overflow-style:none;">
             <style>div::-webkit-scrollbar { display: none; }</style>
             ${semiStock.map(s => {
               const lowStock = s.quantity < 500;
@@ -969,13 +1022,13 @@ const app = {
         <div class="card">
           <div class="card-title">Create Finished Goods</div>
           
-          <div class="form-group">
-            <label>Select Semi-Finished Material to Process</label>
-            <select id="finished-input-id" onchange="app.validateFinishedRowStock()">
-              <option value="" disabled selected>-- Select Material --</option>
-              ${availableInputStock.map(s => `<option value="${s.id}|${s.grade}" data-max="${s.quantity}">${s.name} (Grade: ${s.grade})</option>`).join('')}
-            </select>
-            <div id="finished-stock-hint" style="font-size:0.7rem; color:var(--text-muted); margin-top:4px; min-height:12px;"></div>
+          <div class="flex-between mb-1 mt-1">
+            <label style="margin:0; font-size:1rem; color:var(--primary-light);">Consumed Semi-Finished Materials</label>
+            <button class="btn btn-sm btn-secondary" onclick="app.addInputRow()" style="width:auto; padding:0.3rem 0.8rem; font-size:0.8rem;">+ Add Product</button>
+          </div>
+          
+          <div id="input-rows" style="display:flex; flex-direction:column; gap:10px; margin-bottom:1rem;">
+            <!-- Dynamic rows injected here -->
           </div>
 
           <div class="form-group mt-1">
@@ -983,16 +1036,18 @@ const app = {
               <label>Output Product (What are you producing?)</label>
               <button class="btn btn-sm btn-secondary" onclick="app.showQuickProductModal('FINISHED')" style="width:auto; padding:0.2rem 0.6rem; font-size:0.7rem;">+ New Product</button>
             </div>
-            <select id="finished-output-id">
+            <select id="finished-output-id" onchange="app.onFinishedOutputSelected()">
               <option value="" disabled selected>-- Select Output Product --</option>
               ${outProds.map(p => `<option value="${p.id}">${p.name} (${p.type})</option>`).join('')}
             </select>
             <div style="font-size:0.7rem; color:var(--text-muted); margin-top:4px;">Can't find product? Create it using the button above.</div>
           </div>
 
-          <div class="form-group mt-1">
-            <label>Consumed Quantity (kg)</label>
-            <input type="number" id="finished-in-qty" placeholder="Quantity consumed">
+          <div class="form-group mt-1 hidden" id="finished-grade-selection-group">
+            <label>Select Grade</label>
+            <select id="finished-grade">
+              <!-- Dynamic grades injected -->
+            </select>
           </div>
           
           <div class="form-group mt-1">
@@ -1004,13 +1059,26 @@ const app = {
             <label>Total Expected Output (kg)</label>
             <input type="number" id="finished-out-qty" placeholder="Enter total output quantity" style="font-weight:bold; color:var(--secondary);">
           </div>
+
+          <div class="form-group mt-1">
+            <label>Storage Location</label>
+            <select id="finished-storage-location" style="padding:0.7rem;">
+              ${(JSON.parse(localStorage.getItem('pentapure_storage_locations')) || ['Warehouse A', 'Warehouse B', 'Rack 1', 'Cold Room']).map(l => `<option value="${l}">${l}</option>`).join('')}
+            </select>
+          </div>
           
-          <button class="btn mt-2" onclick="app.submitFinishedProduction()">
+          <button class="btn mt-2" onclick="app.reviewFinishedProduction()">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            Confirm Production
+            Review Production
           </button>
         </div>
       `;
+      // Load one input row by default
+      setTimeout(() => {
+        if(document.getElementById('input-rows') && document.getElementById('input-rows').children.length === 0) {
+          app.addInputRow();
+        }
+      }, 50);
     } else {
       container.innerHTML = `
         <div class="card">
@@ -1046,6 +1114,13 @@ const app = {
               <!-- Rows injected here -->
             </div>
             
+            <div class="form-group mt-1">
+              <label>Storage Location</label>
+              <select id="semi-storage-location" style="padding:0.7rem;">
+                ${(JSON.parse(localStorage.getItem('pentapure_storage_locations')) || ['Warehouse A', 'Warehouse B', 'Rack 1', 'Cold Room']).map(l => `<option value="${l}">${l}</option>`).join('')}
+              </select>
+            </div>
+            
             <button class="btn mt-2" onclick="app.reviewProduction('${inputType}', '${outputType}', '${inputStockKey}')">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
               Review Production
@@ -1056,48 +1131,107 @@ const app = {
     }
   },
 
-  validateFinishedRowStock() {
-    const selectEl = document.getElementById('finished-input-id');
-    const option = selectEl.options[selectEl.selectedIndex];
-    const available = Number(option.dataset.max) || 0;
+  onFinishedOutputSelected() {
+    const productId = document.getElementById('finished-output-id').value;
+    const p = (DB.get('products') || []).find(x => x.id == productId);
     
-    const hint = document.getElementById('finished-stock-hint');
-    hint.innerText = `Available: ${available}`;
-    if(available === 0) hint.style.color = 'var(--danger)';
-    else hint.style.color = 'var(--secondary)';
+    const gradeSelect = document.getElementById('finished-grade');
+    const gradeGroup = document.getElementById('finished-grade-selection-group');
+    
+    if (p && p.gradeNames && p.gradeNames.length > 0) {
+      gradeSelect.innerHTML = `<option value="" disabled selected>-- Select Grade --</option>` + 
+        p.gradeNames.map(g => `<option value="${g}">${g}</option>`).join('') + 
+        (p.gradeNames.includes('N/A') ? '' : `<option value="N/A">N/A</option>`);
+      gradeGroup.classList.remove('hidden');
+    } else {
+      gradeGroup.classList.add('hidden');
+    }
   },
 
-  calculateFinishedTotal() {
-    // Deprecated: No longer auto-calculating as we use direct note entry
-  },
-
-  submitFinishedProduction() {
-    const val = document.getElementById('finished-input-id').value;
+  reviewFinishedProduction() {
     const outProdId = document.getElementById('finished-output-id').value;
-    const inQty = Number(document.getElementById('finished-in-qty').value);
-    const notes = document.getElementById('finished-notes').value;
+    const outGrade = document.getElementById('finished-grade') ? document.getElementById('finished-grade').value : 'NONE';
     const outQty = Number(document.getElementById('finished-out-qty').value);
-    
-    if (!val) return this.toast('Select a semi-finished material', 'error');
-    if (!outProdId) return this.toast('Select an output product', 'error');
-    if (!inQty || inQty <= 0) return this.toast('Enter valid consumed quantity', 'error');
+    const notes = document.getElementById('finished-notes').value;
+    const loc = document.getElementById('finished-storage-location').value;
+
+    if (!outProdId) return this.toast('Select output product', 'error');
     if (!outQty || outQty <= 0) return this.toast('Enter valid output quantity', 'error');
 
-    const [id, grade] = val.split('|');
-    const selectEl = document.getElementById('finished-input-id');
-    const option = selectEl.options[selectEl.selectedIndex];
-    const available = Number(option.dataset.max) || 0;
+    const inputs = [];
+    let validationFailed = false;
 
-    if (inQty > available) return this.toast(`Not enough stock. Max: ${available}`, 'error');
+    document.querySelectorAll('#input-rows .dynamic-row').forEach(row => {
+      const selectEl = row.querySelector('.prod-in-id');
+      const val = selectEl.value;
+      const qty = Number(row.querySelector('.prod-in-qty').value);
+      
+      if (val && qty > 0) {
+        const [id, grade] = val.split('|');
+        const option = selectEl.options[selectEl.selectedIndex];
+        const available = Number(option.dataset.max) || 0;
+        
+        if (qty > available) {
+          const pName = option.text;
+          this.toast(`Not enough stock for ${pName}. Max: ${available}`, 'error');
+          validationFailed = true;
+        }
+        inputs.push({ productId: id, grade: grade, quantity: qty, name: option.text.split('(')[0].trim() });
+      }
+    });
+
+    if (validationFailed) return;
+    if (inputs.length === 0) return this.toast('Add at least one consumed material', 'error');
+
+    // Save state for confirmation
+    window.tempFinishedProductionData = { outProdId, outGrade, outQty, notes, loc, inputs };
+    
+    const outProdName = DB.get('products').find(x => x.id == outProdId)?.name;
+    
+    this.openDrawer(`
+      <h3 style="margin-bottom:1rem; color:var(--secondary);">Review Finished Production</h3>
+      <div style="background:rgba(255,255,255,0.05); padding:1rem; border-radius:10px; margin-bottom:1rem; border:1px solid var(--glass-border);">
+        <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:4px;">Target Output</div>
+        <div style="font-weight:700; font-size:1.1rem; color:var(--text-main);">${outQty} kg of ${outProdName}</div>
+        <div style="font-size:0.85rem; margin-top:2px;">Grade: <span class="badge badge-info">${outGrade}</span></div>
+      </div>
+      
+      <div style="font-size:0.9rem; font-weight:600; margin-bottom:0.8rem; color:var(--primary-light);">Semi-Finished Materials to Consume:</div>
+      <ul style="list-style:none; padding:0; margin:0 0 1.5rem 0;">
+        ${inputs.map(inp => `
+          <li style="display:flex; justify-content:space-between; padding:0.6rem 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.9rem;">
+            <span>${inp.name} <span style="font-size:0.75rem; color:var(--text-muted);">(${inp.grade})</span></span>
+            <span style="font-weight:600; color:var(--danger);">- ${inp.quantity} kg</span>
+          </li>
+        `).join('')}
+      </ul>
+      
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-secondary" style="flex:1;" onclick="app.closeDrawer()">Cancel</button>
+        <button class="btn" style="flex:2;" onclick="app.confirmFinishedProduction(this)">Confirm & Process</button>
+      </div>
+    `);
+  },
+
+  confirmFinishedProduction(btn) {
+    const data = window.tempFinishedProductionData;
+    if (!data) return;
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><circle cx="12" cy="12" r="10" opacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path></svg> Processing...`;
+    }
 
     const payload = {
-      output_product_id: outProdId,
-      output_grade:      grade,
-      output_qty:        outQty,
-      notes:             notes,
-      inputs: [
-        { product_id: id, grade: grade, quantity: inQty }
-      ]
+      output_product_id: data.outProdId,
+      output_grade:      data.outGrade,
+      output_qty:        data.outQty,
+      notes:             data.notes,
+      inputs: data.inputs.map(inp => ({
+        product_id: inp.productId,
+        grade:      inp.grade,
+        quantity:   inp.quantity
+      }))
     };
 
     fetch('/finished/action', {
@@ -1113,12 +1247,47 @@ const app = {
     .then(res => {
       if (res.success) {
         this.toast(res.message || 'Finished Production logged successfully!');
-        this.navigate('home');
+        
+        // Save location mapping to local storage
+        if (data.loc) {
+          try {
+            const mappings = JSON.parse(localStorage.getItem('pentapure_product_locations')) || {};
+            const key = `${data.outProdId}_${data.outGrade}_FINISHED`;
+            if (!mappings[key]) mappings[key] = {};
+            mappings[key][data.loc] = (mappings[key][data.loc] || 0) + data.outQty;
+            
+            // Deduct consumed semi location mapping if applicable (takes first matched location)
+            data.inputs.forEach(inp => {
+              const inputKey = `${inp.productId}_${inp.grade}_SEMI`;
+              if (mappings[inputKey]) {
+                const inputLocs = Object.keys(mappings[inputKey]);
+                if (inputLocs.length > 0) {
+                  const consumedLoc = inputLocs[0];
+                  mappings[inputKey][consumedLoc] = Math.max(0, mappings[inputKey][consumedLoc] - inp.quantity);
+                  if (mappings[inputKey][consumedLoc] === 0) delete mappings[inputKey][consumedLoc];
+                }
+              }
+            });
+            
+            localStorage.setItem('pentapure_product_locations', JSON.stringify(mappings));
+          } catch(e) {}
+        }
+
+        window.tempFinishedProductionData = null;
+        this.closeDrawer();
+        document.getElementById('finished-out-qty').value = '';
+        document.getElementById('finished-notes').value = '';
+        document.querySelectorAll('.prod-in-qty').forEach(el => el.value = '');
+        if (btn) { btn.disabled = false; btn.innerHTML = `Confirm Production`; }
       } else {
         this.toast(res.message || 'Error logging production', 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = `Confirm Production`; }
       }
     })
-    .catch(() => this.toast('Network error. Try again.', 'error'));
+    .catch(() => {
+      this.toast('Network error. Try again.', 'error');
+      if (btn) { btn.disabled = false; btn.innerHTML = `Confirm Production`; }
+    });
   },
 
   onTargetProductSelected() {
@@ -1227,8 +1396,10 @@ const app = {
     if (validationFailed) return;
     if (inputs.length === 0) return this.toast('Add at least one consumed material', 'error');
 
+    const loc = document.getElementById('semi-storage-location').value;
+
     // Save state for confirmation
-    window.tempProductionData = { inputType, outputType, inputStockKey, outProdId, outGrade, outQty, inputs };
+    window.tempProductionData = { inputType, outputType, inputStockKey, outProdId, outGrade, outQty, inputs, loc };
     
     const outProdName = DB.get('products').find(x => x.id == outProdId)?.name;
     
@@ -1252,14 +1423,19 @@ const app = {
       
       <div style="display:flex; gap:10px;">
         <button class="btn btn-secondary" style="flex:1;" onclick="app.closeDrawer()">Cancel</button>
-        <button class="btn" style="flex:2;" onclick="app.confirmProduction()">Confirm & Process</button>
+        <button class="btn" style="flex:2;" onclick="app.confirmProduction(this)">Confirm & Process</button>
       </div>
     `);
   },
 
-  confirmProduction() {
+  confirmProduction(btn) {
     const data = window.tempProductionData;
     if (!data) return;
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><circle cx="12" cy="12" r="10" opacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path></svg> Processing...`;
+    }
 
     const endpoint = data.outputType === 'SEMI' ? '/semi/action' : '/finished/action';
     const payload  = {
@@ -1286,14 +1462,46 @@ const app = {
     .then(res => {
       if (res.success) {
         this.toast(res.message || `${data.outputType} Production logged!`);
+        
+        // Save location mapping to local storage
+        if (data.loc) {
+          try {
+            const mappings = JSON.parse(localStorage.getItem('pentapure_product_locations')) || {};
+            const key = `${data.outProdId}_${data.outGrade}_SEMI`;
+            if (!mappings[key]) mappings[key] = {};
+            mappings[key][data.loc] = (mappings[key][data.loc] || 0) + data.outQty;
+            
+            // Deduct consumed raw location mappings
+            data.inputs.forEach(inp => {
+              const inputKey = `${inp.productId}_${inp.grade}_RAW`;
+              if (mappings[inputKey]) {
+                const inputLocs = Object.keys(mappings[inputKey]);
+                if (inputLocs.length > 0) {
+                  const consumedLoc = inputLocs[0];
+                  mappings[inputKey][consumedLoc] = Math.max(0, mappings[inputKey][consumedLoc] - inp.quantity);
+                  if (mappings[inputKey][consumedLoc] === 0) delete mappings[inputKey][consumedLoc];
+                }
+              }
+            });
+            
+            localStorage.setItem('pentapure_product_locations', JSON.stringify(mappings));
+          } catch(e) {}
+        }
+
         window.tempProductionData = null;
         this.closeDrawer();
-        setTimeout(() => this.navigate('home'), 600);
+        document.getElementById('prod-out-qty').value = '';
+        document.querySelectorAll('.prod-in-qty').forEach(el => el.value = '');
+        if (btn) { btn.disabled = false; btn.innerHTML = `Confirm & Process`; }
       } else {
         this.toast(res.message || 'Error confirming production', 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = `Confirm & Process`; }
       }
     })
-    .catch(() => this.toast('Network error. Try again.', 'error'));
+    .catch(() => {
+      this.toast('Network error. Try again.', 'error');
+      if (btn) { btn.disabled = false; btn.innerHTML = `Confirm & Process`; }
+    });
   },
 
   showQuickProductModal(defaultType = 'FINISHED') {
@@ -1332,7 +1540,7 @@ const app = {
     if (!name) return this.toast('Name is required', 'error');
 
     const rolePrefix = this.currentUser.role.toLowerCase();
-    const endpoint = rolePrefix === 'admin' ? '/admin/products' : `/${rolePrefix}/quick-product`;
+    const endpoint = rolePrefix === 'admin' ? '/admin/products' : `/finished/quick-product`;
 
     fetch(endpoint, {
       method: 'POST',
@@ -1348,15 +1556,35 @@ const app = {
       if (res.success) {
         this.toast(res.message || 'Product created!');
         this.closeModal();
-        // Refresh products and update dropdown if in action view
-        fetch(window.location.href, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
-          .then(r => r.json())
-          .then(data => {
-             if(data.products) {
-                DB.set('products', data.products);
-                this.refreshCurrentView();
-             }
+        
+        if (res.product) {
+          // Add to local DB cache
+          const allProds = DB.get('products') || [];
+          allProds.push(res.product);
+          // Re-sort alphabetically
+          allProds.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+          DB.set('products', allProds);
+          
+          if (window.currentFinProds) {
+            window.currentFinProds.push(res.product);
+            window.currentFinProds.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+          }
+
+          // Add to relevant dropdowns
+          const selects = document.querySelectorAll('select');
+          selects.forEach(sel => {
+            if (sel.id === 'finished-output-id' || sel.id === 'prod-output' || sel.classList.contains('o-prod-id') || sel.classList.contains('prod-in-id') || sel.id === 'finished-input-id') {
+              const opt = document.createElement('option');
+              opt.value = res.product.id;
+              opt.text = `${res.product.name} (${res.product.type})`;
+              sel.appendChild(opt);
+              // Only auto-select if it's the output dropdown (so we don't accidentally select it in input fields)
+              if (sel.id === 'finished-output-id' || sel.id === 'prod-output' || sel.classList.contains('o-prod-id')) {
+                sel.value = res.product.id;
+              }
+            }
           });
+        }
       } else {
         this.toast(res.message || 'Error creating product', 'error');
       }
@@ -1394,22 +1622,22 @@ const app = {
         
         <!-- Type Breakdown -->
         <div class="stat-card" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);">
-          <div style="color:var(--secondary); font-size:0.8rem;">Raw Sales</div>
-          <div style="font-size:1.2rem; font-weight:700;">${orders.filter(o => o.products && o.products.some(p => {
+          <div style="color:var(--secondary);">Raw Sales</div>
+          <div class="stat-value">${orders.filter(o => o.products && o.products.some(p => {
             const pr = DB.get('products').find(x => x.id == p.productId);
             return pr && pr.type === 'RAW';
           })).length}</div>
         </div>
         <div class="stat-card" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);">
-          <div style="color:var(--warning); font-size:0.8rem;">Semi Sales</div>
-          <div style="font-size:1.2rem; font-weight:700;">${orders.filter(o => o.products && o.products.some(p => {
+          <div style="color:var(--warning);">Semi Sales</div>
+          <div class="stat-value">${orders.filter(o => o.products && o.products.some(p => {
             const pr = DB.get('products').find(x => x.id == p.productId);
             return pr && pr.type === 'SEMI';
           })).length}</div>
         </div>
         <div class="stat-card" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);">
-          <div style="color:var(--primary-light); font-size:0.8rem;">Finished Sales</div>
-          <div style="font-size:1.2rem; font-weight:700;">${orders.filter(o => o.products && o.products.some(p => {
+          <div style="color:var(--primary-light);">Finished Sales</div>
+          <div class="stat-value">${orders.filter(o => o.products && o.products.some(p => {
             const pr = DB.get('products').find(x => x.id == p.productId);
             return pr && pr.type === 'FINISHED';
           })).length}</div>
@@ -1727,7 +1955,11 @@ const app = {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--secondary);"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
           Raw Stock
         </div>
-        <div style="display:flex; overflow-x:auto; gap:10px; padding-bottom:5px; scrollbar-width:none;">
+      <div style="font-size:0.7rem; color:var(--text-muted); font-weight:normal; margin-bottom:5px; text-align:right;">
+        <button onclick="this.parentElement.nextElementSibling.scrollBy({left:-200, behavior:'smooth'})" style="border:1px solid #444; background:transparent; color:#ccc; border-radius:4px; cursor:pointer;">&larr;</button>
+        <button onclick="this.parentElement.nextElementSibling.scrollBy({left:200, behavior:'smooth'})" style="border:1px solid #444; background:transparent; color:#ccc; border-radius:4px; cursor:pointer;">&rarr;</button>
+      </div>
+      <div style="display:flex; overflow-x:auto; gap:10px; padding-bottom:5px; scrollbar-width:none;">
           ${(this.getAggregatedStock('rawStock').filter(s => s.quantity > 0)).map(s => `
             <div style="flex:0 0 150px; background:rgba(255,255,255,0.04); padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
               <div style="font-size:0.7rem; font-weight:700; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</div>
@@ -1743,7 +1975,11 @@ const app = {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--secondary);"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
           Semi-Finished Stock
         </div>
-        <div style="display:flex; overflow-x:auto; gap:10px; padding-bottom:5px; scrollbar-width:none;">
+      <div style="font-size:0.7rem; color:var(--text-muted); font-weight:normal; margin-bottom:5px; text-align:right;">
+        <button onclick="this.parentElement.nextElementSibling.scrollBy({left:-200, behavior:'smooth'})" style="border:1px solid #444; background:transparent; color:#ccc; border-radius:4px; cursor:pointer;">&larr;</button>
+        <button onclick="this.parentElement.nextElementSibling.scrollBy({left:200, behavior:'smooth'})" style="border:1px solid #444; background:transparent; color:#ccc; border-radius:4px; cursor:pointer;">&rarr;</button>
+      </div>
+      <div style="display:flex; overflow-x:auto; gap:10px; padding-bottom:5px; scrollbar-width:none;">
           ${(this.getAggregatedStock('semiStock').filter(s => s.quantity > 0)).map(s => `
             <div style="flex:0 0 150px; background:rgba(255,255,255,0.04); padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
               <div style="font-size:0.7rem; font-weight:700; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</div>
@@ -1759,7 +1995,11 @@ const app = {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--secondary);"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
           Finished Goods Stock
         </div>
-        <div style="display:flex; overflow-x:auto; gap:10px; padding-bottom:5px; scrollbar-width:none;">
+      <div style="font-size:0.7rem; color:var(--text-muted); font-weight:normal; margin-bottom:5px; text-align:right;">
+        <button onclick="this.parentElement.nextElementSibling.scrollBy({left:-200, behavior:'smooth'})" style="border:1px solid #444; background:transparent; color:#ccc; border-radius:4px; cursor:pointer;">&larr;</button>
+        <button onclick="this.parentElement.nextElementSibling.scrollBy({left:200, behavior:'smooth'})" style="border:1px solid #444; background:transparent; color:#ccc; border-radius:4px; cursor:pointer;">&rarr;</button>
+      </div>
+      <div style="display:flex; overflow-x:auto; gap:10px; padding-bottom:5px; scrollbar-width:none;">
           ${(this.getAggregatedStock('finishedStock').filter(s => s.quantity > 0)).map(s => `
             <div style="flex:0 0 150px; background:rgba(255,255,255,0.04); padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
               <div style="font-size:0.7rem; font-weight:700; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</div>
@@ -2405,7 +2645,17 @@ const app = {
   renderCashierLedger(container) {
     const pageData = window.serverPageData || {};
     const summary  = pageData.summary || { totalIn: 0, totalOut: 0, balance: 0 };
-    const txs = (pageData.transactions || []).sort((a,b) => new Date(b.date) - new Date(a.date));
+    let txs = (pageData.transactions || []).sort((a,b) => new Date(b.date) - new Date(a.date));
+    
+    // Apply global search filter
+    const q = (window.cashierSearchQuery || '').toLowerCase();
+    if (q) {
+      txs = txs.filter(t => {
+        const details = (t.note || '') + ' ' + (t.description || '') + ' ' + (t.reference || '') + ' ' + (t.category || '');
+        return details.toLowerCase().includes(q) || (t.amount && t.amount.toString().includes(q));
+      });
+    }
+
     const page = window.currentPage || 1;
     const { paginated, totalPages } = this.paginate(txs, page, 15);
 
@@ -2434,10 +2684,16 @@ const app = {
         </div>
       </div>
 
+      <div class="form-group mb-1">
+        <input type="text" placeholder="🔍 Search details, category, or amount..." value="${q}" 
+          oninput="window.cashierSearchQuery=this.value; window.currentPage=1; app.refreshCurrentView()" 
+          style="padding:0.6rem 0.8rem; font-size:0.85rem;">
+      </div>
+
       <!-- Transaction Table -->
       <div class="card" style="padding:0; overflow:hidden;">
         <div class="table-container">
-          <table style="font-size:0.85rem;">
+          <table style="font-size:0.85rem;" data-filterable="false">
             <thead>
               <tr style="background:rgba(0,0,0,0.2);">
                 <th style="padding:12px;">Date</th>

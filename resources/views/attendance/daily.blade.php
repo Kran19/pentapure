@@ -8,6 +8,14 @@
     <form method="GET" action="{{ url()->current() }}" style="display:flex; gap:10px; align-items:center;">
       <label style="font-weight:bold;">Date:</label>
       <input type="date" name="date" value="{{ $date }}" onchange="this.form.submit()" style="padding:0.4rem; border-radius:4px; border:1px solid #ccc;">
+      
+      <label style="font-weight:bold; margin-left:10px;">Status:</label>
+      <select onchange="filterAttendanceTable(this.value)" style="padding:0.4rem; border-radius:4px; border:1px solid #ccc;">
+        <option value="ALL">All</option>
+        <option value="PRESENT">Present</option>
+        <option value="ABSENT">Absent</option>
+        <option value="HALF_DAY">Half Day</option>
+      </select>
     </form>
   </div>
 
@@ -74,10 +82,10 @@
                   @if($isAdmin) <span style="font-weight:bold;">{{ $out }}</span> @else <input type="time" name="attendances[{{$index}}][out_time]" value="{{ $out === '--:--' ? '' : $out }}" class="time-out"> @endif
                 </td>
                 <td>
-                  @if($isAdmin) <span style="font-size:0.85rem; color:#666;">{{ $bin }}</span> @else <input type="time" name="attendances[{{$index}}][break_in]" value="{{ $bin === '--:--' ? '' : $bin }}" class="time-bin"> @endif
+                  @if($isAdmin) <span style="font-size:0.85rem; color:var(--text-muted);">{{ $bin }}</span> @else <input type="time" name="attendances[{{$index}}][break_in]" value="{{ $bin === '--:--' ? '' : $bin }}" class="time-bin"> @endif
                 </td>
                 <td>
-                  @if($isAdmin) <span style="font-size:0.85rem; color:#666;">{{ $bout }}</span> @else <input type="time" name="attendances[{{$index}}][break_out]" value="{{ $bout === '--:--' ? '' : $bout }}" class="time-bout"> @endif
+                  @if($isAdmin) <span style="font-size:0.85rem; color:var(--text-muted);">{{ $bout }}</span> @else <input type="time" name="attendances[{{$index}}][break_out]" value="{{ $bout === '--:--' ? '' : $bout }}" class="time-bout"> @endif
                 </td>
               </tr>
             @endforeach
@@ -253,6 +261,24 @@ function exportDailyToCSV() {
     downloadLink.style.display = "none";
     document.body.appendChild(downloadLink);
     downloadLink.click();
+}
+
+function filterAttendanceTable(statusFilter) {
+  document.querySelectorAll('.attendance-row').forEach(row => {
+    let currentStatus;
+    const select = row.querySelector('.status-select');
+    if (select) {
+      currentStatus = select.value;
+    } else {
+      currentStatus = row.querySelector('td:nth-child(2) span').innerText.trim();
+    }
+    
+    if (statusFilter === 'ALL' || currentStatus === statusFilter) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
 }
 </script>
 @endsection

@@ -229,13 +229,13 @@ class AttendanceController extends Controller
                 $in  = Carbon::parse($date . ' ' . $rec['in_time']);
                 $out = Carbon::parse($date . ' ' . $rec['out_time']);
                 if ($out->lt($in)) $out->addDay();
-                $mins = $in->diffInMinutes($out);
+                $mins = abs($in->diffInMinutes($out));
 
                 if (!empty($rec['break_in']) && !empty($rec['break_out'])) {
                     $bIn  = Carbon::parse($date . ' ' . $rec['break_in']);
                     $bOut = Carbon::parse($date . ' ' . $rec['break_out']);
                     if ($bOut->lt($bIn)) $bOut->addDay();
-                    $mins -= $bIn->diffInMinutes($bOut);
+                    $mins -= abs($bIn->diffInMinutes($bOut));
                 }
 
                 $totalHours  = max(0, $mins / 60);

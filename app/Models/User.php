@@ -21,6 +21,7 @@ class User extends Authenticatable
         'status',
         'parent_id',
         'branch',
+        'permissions',
     ];
 
     protected $hidden = [
@@ -33,6 +34,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password'          => 'hashed',
+            'permissions'       => 'array',
         ];
     }
 
@@ -87,6 +89,12 @@ class User extends Authenticatable
     public function isActive(): bool
     {
         return $this->status === 'ACTIVE';
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        if ($this->isAdmin()) return true;
+        return in_array($permission, $this->permissions ?? []);
     }
 }
 

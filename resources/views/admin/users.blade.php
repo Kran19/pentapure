@@ -21,9 +21,9 @@
       </div>
       <div class="form-group">
         <label>Role *</label>
-        <select id="u-role" onchange="toggleBranchField(this.value)">
+        <select id="u-role" onchange="toggleRoleFields(this.value)">
           <option value="">-- Select Role --</option>
-          @foreach(['RAW','SEMI','FINISHED','CASHIER','SALES','DISPATCH','ATTENDANCE','ADMIN'] as $r)
+          @foreach(['RAW','SEMI','FINISHED','CASHIER','SALES','DISPATCH','ATTENDANCE','ADMIN','SUB_ADMIN'] as $r)
             <option value="{{ $r }}">{{ $r }}</option>
           @endforeach
         </select>
@@ -32,6 +32,35 @@
         <label>Assigned Branch (Cashier Only)</label>
         <input type="text" id="u-branch" placeholder="e.g. Main Factory">
       </div>
+    </div>
+    
+    <div id="permissions-container" style="display:none; margin-top:1rem; border:1px solid var(--glass-border); padding:1.2rem; border-radius:8px; background:var(--glass-bg);">
+      <h4 style="margin-top:0; margin-bottom:1rem; color:var(--primary); font-size:1.1rem; text-transform:none;">Sub-Admin Permissions</h4>
+      <div style="margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px solid var(--glass-border);">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <input type="checkbox" id="perm-can_manage" value="can_manage" style="width:20px; height:20px; margin:0; cursor:pointer;">
+          <span style="font-weight:bold; color:var(--danger); font-size:0.95rem; text-transform:none;">
+            Allow to Manage/Edit Data (If unchecked, user can only VIEW allowed panels)
+          </span>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:1rem;">
+        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_dashboard" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Dashboard</span></div>
+        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_users" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Users & Hierarchy</span></div>
+        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_products" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Products Master</span></div>
+        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_stock" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Live Stock</span></div>
+        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_po" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Purchase Orders</span></div>
+        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_logs" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Activity Logs</span></div>
+        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_grades" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Grades Master</span></div>
+        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_categories" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Expense Category Master</span></div>
+        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_dispatch" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Dispatch Activity</span></div>
+        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_cashier" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Cashier Overview</span></div>
+        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_notifications" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Notifications</span></div>
+        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_attendance" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Attendance & HR</span></div>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:1rem;">
       <div class="form-group">
         <label>Password *</label>
         <div class="password-wrapper">
@@ -114,13 +143,21 @@
 <script>
 let editingUserId = null;
 
-function toggleBranchField(role) {
-  const container = document.getElementById('branch-field-container');
+function toggleRoleFields(role) {
+  const branchContainer = document.getElementById('branch-field-container');
+  const permContainer = document.getElementById('permissions-container');
+  
   if (role === 'CASHIER') {
-    container.style.display = 'block';
+    branchContainer.style.display = 'block';
   } else {
-    container.style.display = 'none';
+    branchContainer.style.display = 'none';
     document.getElementById('u-branch').value = '';
+  }
+  
+  if (role === 'SUB_ADMIN') {
+    permContainer.style.display = 'block';
+  } else {
+    permContainer.style.display = 'none';
   }
 }
 
@@ -132,7 +169,14 @@ function adminEditUser(user) {
   document.getElementById('u-email').value = user.email;
   document.getElementById('u-role').value = user.role;
   document.getElementById('u-branch').value = user.branch || '';
-  toggleBranchField(user.role);
+  toggleRoleFields(user.role);
+  
+  // Set permissions if it's a SUB_ADMIN
+  const perms = user.permissions || [];
+  document.getElementById('perm-can_manage').checked = perms.includes('can_manage');
+  document.querySelectorAll('.sub-perm').forEach(cb => {
+      cb.checked = perms.includes(cb.value);
+  });
   
   document.getElementById('u-password').value = ''; 
   document.getElementById('u-password').placeholder = '(Leave blank to keep current)';
@@ -140,6 +184,10 @@ function adminEditUser(user) {
 }
 
 function adminSaveUser() {
+  const perms = [];
+  if (document.getElementById('perm-can_manage').checked) perms.push('can_manage');
+  document.querySelectorAll('.sub-perm:checked').forEach(cb => perms.push(cb.value));
+
   const payload = {
     user_id: editingUserId,
     name: document.getElementById('u-name').value,
@@ -147,6 +195,7 @@ function adminSaveUser() {
     role: document.getElementById('u-role').value,
     branch: document.getElementById('u-branch').value,
     password: document.getElementById('u-password').value,
+    permissions: perms
   };
   
   if (!payload.name || !payload.email || !payload.role) {
@@ -167,6 +216,9 @@ function adminSaveUser() {
     } else {
       Swal.fire('Error', d.message || 'Error', 'error');
     }
+  }).catch(e => {
+    Swal.fire('Error', 'A server error occurred while saving. Please try again.', 'error');
+    console.error('Save User Error:', e);
   });
 }
 

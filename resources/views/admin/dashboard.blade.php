@@ -51,50 +51,50 @@
 
   <!-- KPI Cards -->
   <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:1rem; margin-bottom:2rem;">
-    <a href="{{ route('admin.stock') }}" class="card clickable-card" style="text-align:center; padding:1.2rem;">
-      <div style="font-size:2rem; font-weight:bold; color:var(--primary-light);">
+    <a href="{{ route('admin.stock') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
+      <div style="font-size:1.6rem; font-weight:bold; color:var(--primary-light); word-break:break-word;">
         {{ number_format($pageData['rawQty'] ?? 0, 1) }}
       </div>
       <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Raw Stock (kg)</div>
     </a>
-    <a href="{{ route('admin.stock') }}" class="card clickable-card" style="text-align:center; padding:1.2rem;">
-      <div style="font-size:2rem; font-weight:bold; color:var(--secondary);">
+    <a href="{{ route('admin.stock') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
+      <div style="font-size:1.6rem; font-weight:bold; color:var(--secondary); word-break:break-word;">
         {{ number_format($pageData['semiQty'] ?? 0, 1) }}
       </div>
       <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Semi Stock (kg)</div>
     </a>
-    <a href="{{ route('admin.stock') }}" class="card clickable-card" style="text-align:center; padding:1.2rem;">
-      <div style="font-size:2rem; font-weight:bold; color:var(--warning);">
+    <a href="{{ route('admin.stock') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
+      <div style="font-size:1.6rem; font-weight:bold; color:var(--warning); word-break:break-word;">
         {{ number_format($pageData['finishedQty'] ?? 0, 1) }}
       </div>
       <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Finished Stock (kg)</div>
     </a>
-    <a href="{{ route('admin.logs') }}" class="card clickable-card" style="text-align:center; padding:1.2rem;">
-      <div style="font-size:2rem; font-weight:bold; color:var(--text-main);">
+    <a href="{{ route('admin.logs') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
+      <div style="font-size:1.6rem; font-weight:bold; color:var(--text-main); word-break:break-word;">
         {{ $pageData['totalOrders'] ?? 0 }}
       </div>
       <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Total Orders</div>
     </a>
-    <a href="{{ route('admin.logs') }}" class="card clickable-card" style="text-align:center; padding:1.2rem;">
-      <div style="font-size:2rem; font-weight:bold; color:var(--secondary);">
+    <a href="{{ route('admin.logs') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
+      <div style="font-size:1.6rem; font-weight:bold; color:var(--secondary); word-break:break-word;">
         ₹{{ number_format($pageData['totalRevenue'] ?? 0, 0) }}
       </div>
       <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Total Revenue</div>
     </a>
-    <a href="{{ route('admin.po') }}" class="card clickable-card" style="text-align:center; padding:1.2rem;">
-      <div style="font-size:2rem; font-weight:bold; color:var(--danger);">
+    <a href="{{ route('admin.po') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
+      <div style="font-size:1.6rem; font-weight:bold; color:var(--danger); word-break:break-word;">
         {{ $pageData['pendingPOs'] ?? 0 }}
       </div>
       <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Pending POs</div>
     </a>
-    <a href="{{ route('admin.attendance.workers') }}" class="card clickable-card" style="text-align:center; padding:1.2rem;">
-      <div style="font-size:2rem; font-weight:bold; color:var(--info);">
+    <a href="{{ route('admin.attendance.workers') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
+      <div style="font-size:1.6rem; font-weight:bold; color:var(--info); word-break:break-word;">
         {{ $pageData['totalWorkers'] ?? 0 }}
       </div>
       <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Total Employees</div>
     </a>
-    <a href="{{ route('admin.attendance.daily') }}" class="card clickable-card" style="text-align:center; padding:1.2rem;">
-      <div style="font-size:2rem; font-weight:bold; color:var(--secondary);">
+    <a href="{{ route('admin.attendance.daily') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
+      <div style="font-size:1.6rem; font-weight:bold; color:var(--secondary); word-break:break-word;">
         {{ $pageData['presentToday'] ?? 0 }}
       </div>
       <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Present Today</div>

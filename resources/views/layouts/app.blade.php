@@ -148,10 +148,24 @@
       DB.get = function(key) {
         const serverKey = '__server_' + key;
         const serverVal = localStorage.getItem(serverKey);
+        let result = null;
         if (serverVal !== null) {
-          try { return JSON.parse(serverVal); } catch(e) {}
+          try { result = JSON.parse(serverVal); } catch(e) {}
         }
-        return _originalGet(key);
+        if (!result) result = _originalGet(key);
+
+        if (Array.isArray(result)) {
+           if (key === 'products' || key === 'categories') {
+              result.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+           } else if (key === 'grades') {
+              result.sort((a,b) => {
+                 let nA = typeof a === 'string' ? a : a.name;
+                 let nB = typeof b === 'string' ? b : b.name;
+                 return (nA||'').localeCompare(nB||'');
+              });
+           }
+        }
+        return result;
       };
     })();
     @endif

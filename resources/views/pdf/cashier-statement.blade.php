@@ -192,7 +192,7 @@ body {
 <!-- ══════════════════════════════════════════════════════════════════════ -->
 <div class="header-bar">
     <div class="header-left">
-        <span class="logo-badge">P</span>
+        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 36px; height: 36px; border-radius: 6px; vertical-align: middle; margin-right: 10px; object-fit: contain;">
         <span style="display:inline-block; vertical-align:middle;">
             <span class="brand-name">PentaPure</span><br>
             <span class="brand-sub">Foods and Spices — Account Statement</span>
