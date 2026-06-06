@@ -484,18 +484,18 @@ class CashierController extends Controller
         $fpdi->SetFont('Helvetica', 'B', 11);
         $fpdi->SetTextColor(255, 255, 255);
         $fpdi->SetXY(5, 5);
-        $fpdi->Cell(140, 6, 'PentaPure - Bill Attachment');
+        $fpdi->Cell(140, 6, strtoupper('PentaPure - Bill Attachment'));
 
         $fpdi->SetFont('Helvetica', '', 8);
         $fpdi->SetXY(5, 13);
-        $fpdi->Cell(60, 5, 'Txn #' . $bill['tx_id'] . ' | ' . $bill['tx_date'] . ' | ' . $bill['tx_cat']);
+        $fpdi->Cell(60, 5, strtoupper('Txn #' . $bill['tx_id'] . ' | ' . $bill['tx_date'] . ' | ' . $bill['tx_cat']));
         $fpdi->SetXY(75, 13);
-        $fpdi->Cell(60, 5, 'Amount: ' . $bill['tx_amount']);
+        $fpdi->Cell(60, 5, strtoupper('Amount: ' . $bill['tx_amount']));
 
         // Bill number top-right
         $fpdi->SetFont('Helvetica', 'B', 9);
         $fpdi->SetXY(155, 8);
-        $fpdi->Cell(50, 6, 'Bill ' . $num . ' of ' . $total, 0, 0, 'R');
+        $fpdi->Cell(50, 6, strtoupper('Bill ' . $num . ' of ' . $total), 0, 0, 'R');
 
         // Reset text color
         $fpdi->SetTextColor(0, 0, 0);

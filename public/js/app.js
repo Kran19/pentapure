@@ -370,7 +370,7 @@ const app = {
     const csrfInput = document.createElement('input');
     csrfInput.type = 'hidden';
     csrfInput.name = '_token';
-    csrfInput.value = csrfToken; // from layouts/app.blade.php
+    csrfInput.value = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     
     form.appendChild(csrfInput);
     document.body.appendChild(form);
@@ -752,8 +752,7 @@ const app = {
         <div class="responsive-grid" style="grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); margin-bottom:1rem;">
           ${displayList.map(rm => `
             <div class="rm-card" onclick="app.selectRawMaterial('${rm.id}', this)" 
-              style="border:2px solid transparent; border-radius:10px; overflow:hidden; cursor:pointer; background:rgba(255,255,255,0.05); text-align:center; padding-bottom:4px; transition:0.2s;">
-              <img src="${rm.image_url}" style="width:100%; height:80px; object-fit:cover;" onerror="this.src='https://via.placeholder.com/100x60?text=IMG'">
+              style="border:2px solid transparent; border-radius:10px; overflow:hidden; cursor:pointer; background:rgba(255,255,255,0.05); text-align:center; padding:8px 4px; transition:0.2s;">
               <div style="font-size:0.75rem; font-weight:600; padding:4px 3px; line-height:1.2;">${rm.name}</div>
             </div>
           `).join('')}
@@ -1132,19 +1131,26 @@ const app = {
   },
 
   onFinishedOutputSelected() {
-    const productId = document.getElementById('finished-output-id').value;
-    const p = (DB.get('products') || []).find(x => x.id == productId);
-    
-    const gradeSelect = document.getElementById('finished-grade');
-    const gradeGroup = document.getElementById('finished-grade-selection-group');
-    
-    if (p && p.gradeNames && p.gradeNames.length > 0) {
-      gradeSelect.innerHTML = `<option value="" disabled selected>-- Select Grade --</option>` + 
-        p.gradeNames.map(g => `<option value="${g}">${g}</option>`).join('') + 
-        (p.gradeNames.includes('N/A') ? '' : `<option value="N/A">N/A</option>`);
-      gradeGroup.classList.remove('hidden');
-    } else {
-      gradeGroup.classList.add('hidden');
+    try {
+      const productId = document.getElementById('finished-output-id').value;
+      const allProds = DB.get('products') || [];
+      const p = allProds.find(x => x.id == productId);
+      console.log("onFinishedOutputSelected - productId:", productId, "Found product:", p);
+      
+      const gradeSelect = document.getElementById('finished-grade');
+      const gradeGroup = document.getElementById('finished-grade-selection-group');
+      
+      if (p && p.gradeNames && p.gradeNames.length > 0) {
+        gradeSelect.innerHTML = `<option value="" disabled selected>-- Select Grade --</option>` + 
+          p.gradeNames.map(g => `<option value="${g}">${g}</option>`).join('') + 
+          (p.gradeNames.includes('N/A') ? '' : `<option value="N/A">N/A</option>`);
+        gradeGroup.classList.remove('hidden');
+      } else {
+        gradeGroup.classList.add('hidden');
+      }
+    } catch (err) {
+      console.error("Error in onFinishedOutputSelected:", err);
+      this.toast("JS Error: " + err.message, "error");
     }
   },
 
@@ -2032,6 +2038,7 @@ const app = {
             <div style="font-size:0.85rem; color:var(--text-muted);">
               To: ${(DB.get('companies') || []).find(c=>c.id==o.companyId)?.name} <br>
               Via: ${(DB.get('transportCompanies') || []).find(t=>t.id==o.transportId)?.name}
+              ${o.notes ? `<div style="margin-top:6px; padding:6px 10px; background:rgba(244,180,0,0.08); border-left:3px solid var(--primary-light); border-radius:4px; font-size:0.8rem; color:#fff; word-break:break-word;"><strong>Notes:</strong> ${o.notes}</div>` : ''}
             </div>
             ${tab === 'PENDING' && totalQty > 0 ? `
               <div style="margin-top:10px;">
@@ -2107,7 +2114,7 @@ const app = {
         return `
         <div style="display:flex; flex-direction:column; gap:6px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-weight:500;">${i.productName} (${i.grade})</span>
+            <span style="font-weight:500;">${i.productName} (${i.grade}) (${i.productType || 'N/A'})</span>
             <span style="color:var(--text-muted); font-size:0.8rem;">
               Total: ${i.quantity} kg
               ${alreadyDispatched > 0 ? ` · Already sent: ${alreadyDispatched} kg` : ''}
@@ -2151,6 +2158,16 @@ const app = {
               <div style="font-size:0.8rem; background:rgba(255,107,107,0.1); color:var(--secondary); padding:4px 8px; border-radius:4px; display:inline-block; font-weight:bold;">Vehicles: ${o.transporter.vehicles || 'N/A'}</div>
             </div>
           </div>
+
+          ${o.notes ? `
+          <div style="margin-bottom:20px; background:rgba(244,180,0,0.06); border:1px dashed rgba(244,180,0,0.3); border-radius:8px; padding:15px; border-left:4px solid var(--primary-light);">
+            <div style="display:flex; align-items:center; gap:8px; color:var(--primary-light); font-size:0.75rem; text-transform:uppercase; margin-bottom:6px; font-weight:bold;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              Notes & Special Instructions (Sales)
+            </div>
+            <div style="font-size:0.95rem; color:#fff; line-height:1.5; font-style:italic;">"${o.notes}"</div>
+          </div>
+          ` : ''}
 
           <div style="background:rgba(0,0,0,0.2); border-radius:8px; padding:15px; border-left:4px solid var(--secondary);">
             <div style="display:flex; align-items:center; gap:8px; color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; margin-bottom:10px; font-weight:bold;">
@@ -2978,12 +2995,9 @@ const app = {
         const p = (DB.get('rawMaterialsList') || []).find(x=>x.id==l.productId) || {};
         const dateStr = l.date ? new Date(l.date).toLocaleString() : 'N/A';
         return `<div class="list-item" onclick="app.openRawDrawer(${idx})" style="cursor:pointer;">
-          <div style="display:flex; align-items:center; gap:10px; width:100%;">
-            <img src="${p.image_url||''}" style="width:36px; height:36px; border-radius:6px; object-fit:cover;" onerror="this.src='https://via.placeholder.com/100x60?text=IMG'">
-            <div class="list-item-content">
-              <div class="list-item-title">${l.quantity > 0 ? '+' : ''}${l.quantity} kg ${p.name||'Unknown'}</div>
-              <div class="list-item-meta">${l.grade !== 'NONE' ? l.grade + ' \u00b7 ' : ''}${dateStr}</div>
-            </div>
+          <div class="list-item-content">
+            <div class="list-item-title">${l.quantity > 0 ? '+' : ''}${l.quantity} kg ${p.name||'Unknown'}</div>
+            <div class="list-item-meta">${l.grade !== 'NONE' ? l.grade + ' \u00b7 ' : ''}${dateStr}</div>
           </div>
         </div>`;
       };
@@ -3153,7 +3167,6 @@ const app = {
     const p = DB.get('rawMaterialsList').find(x=>x.id===l.productId) || {};
     this.openDrawer(`
       <div style="text-align:center;">
-        <img src="${p.image||''}" style="width:100%; max-height:200px; object-fit:cover; border-radius:12px; margin-bottom:1rem;">
         <h3>${p.name||'Unknown'}</h3>
         <div style="font-size:1.5rem; font-weight:700; color:var(--secondary); margin:0.5rem 0;">+ ${l.quantity} ${p.unit||'kg'}</div>
         <div style="color:var(--text-muted); font-size:0.85rem;">${new Date(l.date).toLocaleString()}</div>
@@ -3230,8 +3243,158 @@ const app = {
           <tbody>${prodRows || '<tr><td colspan="4" style="text-align:center;">No products</td></tr>'}</tbody>
         </table>
       </div>
-      <button class="btn btn-secondary" onclick="app.closeDrawer()" style="width:100%;">Close</button>
+      <div style="display:flex; gap:10px; margin-top:10px;">
+        <button class="btn btn-secondary" onclick="app.closeDrawer()" style="flex:1;">Close</button>
+        ${o.dispatchStatus === 'PENDING' ? `<button class="btn" onclick="app.editSalesOrder(${o.id})" style="flex:1; background:var(--primary); color:var(--dark-brand) !important;">✏️ Edit Order</button>` : ''}
+      </div>
     `);
+  },
+
+  editSalesOrder(orderId) {
+    const orders = DB.get('orders') || [];
+    const o = orders.find(x => x.id == orderId);
+    if (!o) return this.toast('Order not found', 'error');
+
+    const companies = DB.get('companies') || [];
+    const transports = DB.get('transportCompanies') || [];
+    const allGrades = DB.get('grades') || [];
+    const finProds = DB.get('products') || [];
+
+    let rowsHtml = '';
+    (o.products || []).forEach(p => {
+      rowsHtml += `
+        <div class="dynamic-row edit-order-row" style="margin-bottom:8px;">
+          <div class="form-group" style="flex:1 1 100%; margin:0;">
+            <select class="edit-o-prod-id" style="width:100%;">
+              ${finProds.map(pr => `<option value="${pr.id}" ${pr.id == p.productId ? 'selected' : ''}>${pr.name} (${pr.type})</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group" style="flex:1 1 30%; margin:0;">
+            <select class="edit-o-prod-grade" style="width:100%;">
+              ${allGrades.map(g => `<option value="${g}" ${g === p.grade ? 'selected' : ''}>${g}</option>`).join('')}
+              <option value="N/A" ${p.grade === 'N/A' ? 'selected' : ''}>N/A</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1 1 25%; margin:0;">
+            <input type="number" class="edit-o-prod-qty" value="${p.quantity}" placeholder="Qty" style="padding:0.5rem;">
+          </div>
+          <div class="form-group" style="flex:1 1 25%; margin:0;">
+            <input type="number" class="edit-o-prod-price" value="${p.price}" placeholder="₹/Unit" style="padding:0.5rem;">
+          </div>
+          <button class="btn btn-danger" style="flex:0 0 36px; height:36px; padding:0; display:flex; align-items:center; justify-content:center;" onclick="this.parentElement.remove()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+      `;
+    });
+
+    this.openDrawer(`
+      <h3 style="margin-bottom:1rem; color:var(--primary);">Edit Order #${String(o.id).toUpperCase()}</h3>
+      <div style="max-height: 70vh; overflow-y: auto; padding-right: 5px;">
+        <div class="form-group">
+          <label>Customer Company</label>
+          <select id="edit-order-company" style="padding:0.7rem;">
+            ${companies.map(c => `<option value="${c.id}" ${c.id == o.companyId ? 'selected' : ''}>${c.name}</option>`).join('')}
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>Transport Partner</label>
+          <select id="edit-order-transport" style="padding:0.7rem;">
+            ${transports.map(t => `<option value="${t.id}" ${t.id == o.transportId ? 'selected' : ''}>${t.name}</option>`).join('')}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Notes / Instructions</label>
+          <textarea id="edit-order-notes" rows="2" placeholder="Optional notes..." style="padding:0.7rem;">${o.notes || ''}</textarea>
+        </div>
+
+        <label style="display:block; margin-top:1rem; font-size:0.85rem; color:var(--text-muted); margin-bottom:0.4rem;">Products</label>
+        <div id="edit-order-products-list" style="display:flex; flex-direction:column; gap:8px;">
+          ${rowsHtml}
+        </div>
+        <button class="btn btn-sm btn-secondary mb-1 mt-1" onclick="app.addEditOrderProductRow()" style="padding:0.6rem; width:100%;">+ Add Product</button>
+
+        <div style="display:flex; gap:10px; margin-top:1.5rem;">
+          <button class="btn btn-secondary" style="flex:1;" onclick="app.closeDrawer()">Cancel</button>
+          <button class="btn" style="flex:2;" onclick="app.submitOrderEdit(${o.id})">Save Changes</button>
+        </div>
+      </div>
+    `);
+  },
+
+  addEditOrderProductRow() {
+    const finProds = DB.get('products') || [];
+    const allGrades = DB.get('grades') || [];
+    const div = document.createElement('div');
+    div.className = 'dynamic-row edit-order-row';
+    div.style.marginBottom = '8px';
+    div.innerHTML = `
+      <div class="form-group" style="flex:1 1 100%; margin:0;">
+        <select class="edit-o-prod-id" style="width:100%;">
+          <option value="" disabled selected>Product</option>
+          ${finProds.map(p => `<option value="${p.id}">${p.name} (${p.type})</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group" style="flex:1 1 30%; margin:0;">
+        <select class="edit-o-prod-grade" style="width:100%;">
+          <option value="" disabled selected>Grade</option>
+          ${allGrades.map(g => `<option value="${g}">${g}</option>`).join('')}
+          ${allGrades.includes('N/A') ? '' : `<option value="N/A">N/A</option>`}
+        </select>
+      </div>
+      <div class="form-group" style="flex:1 1 25%; margin:0;">
+        <input type="number" class="edit-o-prod-qty" placeholder="Qty" style="padding:0.5rem;">
+      </div>
+      <div class="form-group" style="flex:1 1 25%; margin:0;">
+        <input type="number" class="edit-o-prod-price" placeholder="₹/Unit" style="padding:0.5rem;">
+      </div>
+      <button class="btn btn-danger" style="flex:0 0 36px; height:36px; padding:0; display:flex; align-items:center; justify-content:center;" onclick="this.parentElement.remove()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    `;
+    document.getElementById('edit-order-products-list').appendChild(div);
+  },
+
+  submitOrderEdit(orderId) {
+    const companyId = document.getElementById('edit-order-company').value;
+    const transportId = document.getElementById('edit-order-transport').value;
+    const notes = document.getElementById('edit-order-notes').value;
+
+    if (!companyId || !transportId) return this.toast('Select Company and Transport', 'error');
+
+    const items = [];
+    document.querySelectorAll('#edit-order-products-list .edit-order-row').forEach(row => {
+      const id = row.querySelector('.edit-o-prod-id').value;
+      const grade = row.querySelector('.edit-o-prod-grade').value;
+      const qty = Number(row.querySelector('.edit-o-prod-qty').value);
+      const price = Number(row.querySelector('.edit-o-prod-price').value);
+      if (id && grade && qty > 0 && price > 0) items.push({ product_id: id, grade, quantity: qty, price });
+    });
+
+    if (items.length === 0) return this.toast('Add valid products and grades', 'error');
+
+    fetch(`/sales/order/${orderId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': csrfToken
+      },
+      body: JSON.stringify({ company_id: companyId, transporter_id: transportId, notes, items })
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        this.toast(d.message);
+        this.closeDrawer();
+        setTimeout(() => location.reload(), 600);
+      } else {
+        this.toast(d.message || 'Error updating order', 'error');
+      }
+    })
+    .catch(() => this.toast('Network error.', 'error'));
   },
 
   openSalesCompanyDrawer(idx) {
@@ -3279,7 +3442,7 @@ const app = {
         <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">Items Dispatched in this Round</div>
         ${d.items.map(i => `
           <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.9rem;">
-            <span>${i.productName || 'Unknown'} <span style="color:var(--text-muted); font-size:0.75rem;">(${i.grade})</span></span>
+            <span>${i.productName || 'Unknown'} <span style="color:var(--text-muted); font-size:0.75rem;">(${i.grade}) (${i.productType || 'N/A'})</span></span>
             <span style="font-weight:bold; color:var(--secondary);">${i.quantity} kg</span>
           </div>
         `).join('')}
@@ -3315,6 +3478,9 @@ const app = {
         </div>
       `}
       <input type="file" id="late-lr-input" accept=".jpg,.jpeg,.png,.webp" style="display:none;" onchange="app.handleLateLRUpload(event, ${d.id}, ${idx})">
+      <a href="/dispatch/pdf/${d.id}" target="_blank" class="btn mt-1 mb-1" style="width:100%; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px;">
+        📄 Download Dispatch PDF
+      </a>
       <button class="btn btn-secondary" onclick="app.closeDrawer()" style="width:100%;">Close</button>
     `);
   },
@@ -3554,15 +3720,10 @@ const app = {
       </div>
       <div class="table-container">
         <table>
-          <thead><tr><th>Image</th><th>Name</th><th>Type</th><th>Active</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Name</th><th>Type</th><th>Active</th><th>Actions</th></tr></thead>
           <tbody>
             ${paginated.map(p => `
               <tr>
-                <td>
-                  <img src="${p.image || 'https://image.pollinations.ai/prompt/'+encodeURIComponent(p.name)+'?width=100&height=100&nologo=true'}" 
-                       onclick="app.viewImage(this.src)"
-                       style="width:40px; height:40px; object-fit:cover; border-radius:6px; cursor:pointer; border:1px solid rgba(255,255,255,0.1);">
-                </td>
                 <td><strong>${p.name}</strong></td>
                 <td><span class="badge ${p.type==='RAW'?'badge-open':(p.type==='SEMI'?'badge-pending':'badge-done')}">${p.type}</span></td>
                 <td>
@@ -3605,13 +3766,7 @@ const app = {
     
     this.openModal(`
       <h3 style="margin-bottom:1rem;">${p ? 'Edit Product' : 'Add New Product'}</h3>
-      <div class="form-group">
-        <div class="image-upload-wrapper" onclick="document.getElementById('new-prod-image').click()" style="padding:1rem;">
-          <img id="prod-img-preview" src="${p?.image || ''}" style="width:100px; height:100px; object-fit:cover; border-radius:8px; display:${p?.image ? 'block':'none'}; margin:0 auto;">
-          <div style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">Click to upload Image</div>
-          <input type="file" id="new-prod-image" accept="image/*" style="display:none;" onchange="app.previewProductImage(event)">
-        </div>
-      </div>
+
       <div class="form-group">
         <label>Product Name</label>
         <input type="text" id="new-prod-name" value="${p ? p.name : ''}">

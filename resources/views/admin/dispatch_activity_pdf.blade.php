@@ -3,7 +3,7 @@
 <head>
     <title>Dispatch Activity Report</title>
     <style>
-        body { font-family: sans-serif; font-size: 12px; color: #333; }
+        body { font-family: sans-serif; font-size: 12px; color: #333; text-transform: uppercase; }
         .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #444; padding-bottom: 10px; }
         .header h1 { margin: 0; color: #1a4a7c; }
         .header p { margin: 5px 0 0; color: #666; }

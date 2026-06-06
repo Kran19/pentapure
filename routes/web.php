@@ -71,6 +71,10 @@ Route::get('/history/{panel}/pdf', [HistoryPdfController::class, 'download'])
     ->middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE')
     ->name('history.pdf');
 
+Route::get('/dispatch/pdf/{id}', [HistoryPdfController::class, 'dispatchNotePdf'])
+    ->middleware('auth.role:ADMIN,SALES,DISPATCH')
+    ->name('dispatch.note.pdf');
+
 // ── RAW MATERIAL ROUTES ────────────────────────────────────────────────────
 Route::prefix('raw')->middleware('auth.role:RAW')->controller(RawController::class)->group(function () {
     Route::get('/home',    'home')->name('raw.home');
@@ -110,6 +114,7 @@ Route::prefix('sales')->middleware('auth.role:SALES')->controller(SalesControlle
     Route::get('/home',          'home')->name('sales.home');
     Route::get('/action',        'action')->name('sales.action');
     Route::post('/order',        'storeOrder');
+    Route::post('/order/{id}',   'updateOrder');
     Route::post('/company',      'storeCompany');
     Route::post('/transport',    'storeTransporter');
     Route::get('/history',       'history')->name('sales.history');
@@ -167,6 +172,7 @@ Route::prefix('admin')->middleware('auth.role:ADMIN')->controller(AdminControlle
     Route::get('/stock',              'stock')->name('admin.stock');
     Route::post('/stock/adjust',      'adjustStock');
     Route::post('/stock/limit',       'setStockLimit');
+    Route::post('/stock/pdf',         'downloadStockPdf')->name('admin.stock.pdf');
     Route::get('/po',                 'po')->name('admin.po');
     Route::post('/po/approve',        'approvePO');
     Route::delete('/po/{id}',         'destroyPO');

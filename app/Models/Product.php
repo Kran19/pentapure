@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
 {
-    protected $fillable = ['name', 'type', 'unit', 'image_url', 'is_active', 'allowed_roles'];
+    protected $fillable = ['name', 'type', 'unit', 'image_url', 'is_active', 'allowed_roles', 'rate'];
 
     protected $casts = [
         'is_active' => 'boolean',
-        'allowed_roles' => 'array'
+        'allowed_roles' => 'array',
+        'rate' => 'float'
     ];
 
     public function scopeRaw($query)   { return $query->where('type', 'RAW'); }

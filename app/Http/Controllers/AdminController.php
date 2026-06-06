@@ -228,6 +228,7 @@ class AdminController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|in:RAW,SEMI,FINISHED',
+            'rate' => 'nullable|numeric|min:0',
             'grades' => 'nullable', // Could be stringified JSON or array
             'allowed_roles' => 'nullable', // Could be stringified JSON or array
             'image' => 'nullable|image|max:2048'
@@ -247,6 +248,7 @@ class AdminController extends Controller
             'name' => $request->name,
             'type' => $request->type,
             'unit' => $request->unit ?? 'kg',
+            'rate' => $request->rate ?? 0.00,
             'allowed_roles' => $allowedRoles
         ];
         
@@ -338,6 +340,74 @@ class AdminController extends Controller
         return view('admin.stock', compact('pageData'));
     }
 
+    public function downloadStockPdf(Request $request)
+    {
+        $stages = $request->input('stages', ['RAW', 'SEMI', 'FINISHED']);
+        if (!is_array($stages)) {
+            $stages = explode(',', $stages);
+        }
+        $stages = array_map('strtoupper', $stages);
+
+        $locationsJson = $request->input('locations', '{}');
+        $locations = json_decode($locationsJson, true) ?: [];
+
+        $stockData = DB::table('stocks')
+            ->join('products', 'stocks.product_id', '=', 'products.id')
+            ->whereIn('stocks.stage', $stages)
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.rate')
+            ->selectRaw("
+                stocks.product_id as productId,
+                products.name,
+                products.unit,
+                products.rate,
+                stocks.stage,
+                stocks.grade,
+                SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
+            ")
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
+            ->orderBy('stocks.stage')
+            ->orderBy('products.name')
+            ->get();
+
+        $totalValuation = 0.0;
+        $items = [];
+        foreach ($stockData as $s) {
+            $key = "{$s->productId}_{$s->grade}_{$s->stage}";
+            $locMap = $locations[$key] ?? [];
+            
+            $locStrings = [];
+            foreach ($locMap as $loc => $qty) {
+                $locStrings[] = "{$loc} ({$qty} {$s->unit})";
+            }
+            $locationText = !empty($locStrings) ? implode(', ', $locStrings) : 'Not Specified';
+
+            $rate = (float) ($s->rate ?? 0.00);
+            $amount = $s->quantity * $rate;
+            $totalValuation += $amount;
+
+            $items[] = [
+                'name' => $s->name,
+                'stage' => $s->stage,
+                'grade' => $s->grade,
+                'quantity' => $s->quantity,
+                'unit' => $s->unit,
+                'location' => $locationText,
+                'rate' => $rate,
+                'amount' => $amount
+            ];
+        }
+
+        $pdfData = [
+            'items' => $items,
+            'totalValuation' => $totalValuation,
+            'generatedOn' => now()->format('d M Y, h:i A'),
+            'stages' => $stages,
+        ];
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.live-stock', $pdfData)->setPaper('A4', 'portrait');
+        return $pdf->download('PentaPure_Live_Stock_Valuation_Report_' . now()->format('Ymd_His') . '.pdf');
+    }
+
     public function liveStockApi()
     {
         $allStock = DB::table('stocks')
@@ -347,11 +417,12 @@ class AdminController extends Controller
                      ->on('stocks.stage', '=', 'stock_limits.stage')
                      ->on('stocks.grade', '=', 'stock_limits.grade');
             })
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'stock_limits.alert_limit')
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.rate', 'stock_limits.alert_limit')
             ->selectRaw("
                 stocks.product_id as productId,
                 products.name,
                 products.unit,
+                products.rate,
                 stocks.stage,
                 stocks.grade,
                 IFNULL(stock_limits.alert_limit, 0) as alert_limit,

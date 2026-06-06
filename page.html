@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="csrf-token" content="Cvk9b0Msd4GpTl36RpXdh3faDeJ3uPRZtN5x5uIR">
+  <title>Pentapure Factory Operations</title>
+  <link rel="stylesheet" href="http://localhost/css/style.css">
+  <link rel="stylesheet" href="http://localhost/css/tabulator-custom.css">
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+  <!-- Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  <!-- Bottom Drawer -->
+  <div id="bottom-drawer-overlay" class="bottom-drawer-overlay" onclick="if(event.target.id==='bottom-drawer-overlay') app.closeDrawer()">
+    <div class="bottom-drawer" id="bottom-drawer">
+      <div class="bottom-drawer-handle"></div>
+      <div id="drawer-content"></div>
+    </div>
+  </div>
+
+  <!-- Global Modal Overlay -->
+  <div id="modal-overlay" class="modal-overlay" onclick="if(event.target.id==='modal-overlay') app.closeModal()">
+    <div class="modal-content" id="modal-content">
+    </div>
+  </div>
+
+  <div class="app-container" id="app-root">
+    <div id="main-app" class="app-main-layout">
+
+      <!-- Navigation (Sidebar on Desktop, Bottom on Mobile) -->
+      <div class="bottom-nav" id="bottom-nav">
+        
+        <div class="nav-logo desktop-only">
+          <img src="https://pentapurefoods.com/wp-content/uploads/2025/11/logo.png" alt="Logo">
+          <span>Penta<span class="text-primary">Pure</span></span>
+        </div>
+
+        <a href="http://localhost/finished/home" class="nav-item " style="text-decoration:none;">
+          <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          <span>Home</span>
+        </a>
+        <a href="http://localhost/finished/action" class="nav-item active" style="text-decoration:none;">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+          <span>Action</span>
+        </a>
+        <a href="http://localhost/finished/history" class="nav-item " style="text-decoration:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          <span>Reports</span>
+        </a>
+                        <a href="http://localhost/finished/profile" class="nav-item " style="text-decoration:none;">
+          <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <span>Profile</span>
+        </a>
+
+        <div class="nav-footer desktop-only">
+          <button class="logout-btn" onclick="app.logout()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            <span>Logout</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="content-wrapper">
+        <!-- Standard Header (Except Admin) -->
+        <header id="app-header">
+          <div class="user-info">
+                        <span class="user-name" id="current-user-name">Vikram (Finished)</span>
+            <span class="role-badge" id="current-user-role">FINISHED</span>
+          </div>
+          <div class="header-actions" style="display:flex; align-items:center;">
+            <div id="notif-bell-container" style="position:relative; cursor:pointer; margin-right:15px; color:var(--text-main);" onclick="app.toggleNotifications()">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              <span id="notif-badge" style="position:absolute; top:-5px; right:-5px; background:var(--danger); color:white; font-size:10px; padding:2px 5px; border-radius:10px; display:none; min-width:16px; text-align:center;">0</span>
+            </div>
+            <a href="http://localhost/finished/profile" class="profile-link" style="color:var(--text-main);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </a>
+          </div>
+        </header>
+
+        <div class="main-content" id="content-area">
+          <!-- JS Router will render content here based on URL -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
+  <script src="http://localhost/js/tabulator-init.js"></script>
+  <script src="http://localhost/js/table-sorter.js"></script>
+  <script src="http://localhost/js/table-filter.js"></script>
+  <script src="http://localhost/js/mockData.js"></script>
+  <script src="http://localhost/js/app.js"></script>
+  <script>
+    // ── CSRF for all fetch() calls ─────────────────────────────────────────
+    window.csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+    // ── Bridge server data into the existing DB object ─────────────────────
+        (function() {
+      const serverData = {"semiStock":[{"productId":26,"id":26,"name":"Tomato Powder","unit":"kg","grade":"GOLD","quantity":"400.000"},{"productId":26,"id":26,"name":"Tomato Powder","unit":"kg","grade":"PPF","quantity":"200.000"},{"productId":43,"id":43,"name":"Garlic Powder","unit":"kg","grade":"REGULAR","quantity":"10200.000"}],"grades":["PPF","TPR","TPS","GOLD","PREMIUM","RICH","RICH+","EXTRA STRONG","REGULAR","DELUXE","N\/A","pure","test grade"],"products":[{"id":1,"name":"Fresh Garlic","type":"RAW","unit":"kg","gradeNames":[]},{"id":2,"name":"Fresh Onion","type":"RAW","unit":"kg","gradeNames":[]},{"id":3,"name":"Fresh Tomato","type":"RAW","unit":"kg","gradeNames":[]},{"id":4,"name":"Fresh Ginger","type":"RAW","unit":"kg","gradeNames":[]},{"id":5,"name":"Fresh Beetroot","type":"RAW","unit":"kg","gradeNames":[]},{"id":6,"name":"Fresh Carrot","type":"RAW","unit":"kg","gradeNames":[]},{"id":7,"name":"Fresh Potato","type":"RAW","unit":"kg","gradeNames":[]},{"id":8,"name":"Fresh Spinach","type":"RAW","unit":"kg","gradeNames":[]},{"id":9,"name":"Fresh Mint Leaves","type":"RAW","unit":"kg","gradeNames":[]},{"id":10,"name":"Fresh Coriander Leaves","type":"RAW","unit":"kg","gradeNames":[]},{"id":11,"name":"Fresh Curry Leaves","type":"RAW","unit":"kg","gradeNames":[]},{"id":12,"name":"Fresh Green Chili","type":"RAW","unit":"kg","gradeNames":[]},{"id":13,"name":"Fresh Cabbage","type":"RAW","unit":"kg","gradeNames":[]},{"id":14,"name":"Fresh Amla","type":"RAW","unit":"kg","gradeNames":[]},{"id":15,"name":"Fresh Mango","type":"RAW","unit":"kg","gradeNames":[]},{"id":16,"name":"Fresh Banana","type":"RAW","unit":"kg","gradeNames":[]},{"id":17,"name":"Fresh Papaya","type":"RAW","unit":"kg","gradeNames":[]},{"id":18,"name":"Fresh Guava","type":"RAW","unit":"kg","gradeNames":[]},{"id":19,"name":"Fresh Apple","type":"RAW","unit":"kg","gradeNames":[]},{"id":20,"name":"Fresh Pineapple","type":"RAW","unit":"kg","gradeNames":[]},{"id":21,"name":"Fresh Orange","type":"RAW","unit":"kg","gradeNames":[]},{"id":22,"name":"Fresh Pomegranate","type":"RAW","unit":"kg","gradeNames":[]},{"id":23,"name":"Fresh Jamun","type":"RAW","unit":"kg","gradeNames":[]},{"id":24,"name":"Fresh Chickoo","type":"RAW","unit":"kg","gradeNames":[]},{"id":25,"name":"Fresh Custard Apple","type":"RAW","unit":"kg","gradeNames":[]},{"id":26,"name":"Tomato Powder","type":"FINISHED","unit":"kg","gradeNames":["PPF","TPR","TPS","GOLD","PREMIUM","RICH","RICH+"]},{"id":27,"name":"Lemon Powder","type":"FINISHED","unit":"kg","gradeNames":["PPF","GOLD","PREMIUM","RICH","EXTRA STRONG"]},{"id":28,"name":"Tamarind Powder","type":"FINISHED","unit":"kg","gradeNames":["PREMIUM","EXTRA STRONG","REGULAR"]},{"id":29,"name":"Beetroot Powder","type":"FINISHED","unit":"kg","gradeNames":["PREMIUM","REGULAR"]},{"id":30,"name":"Green Chili Powder","type":"FINISHED","unit":"kg","gradeNames":["PREMIUM","EXTRA STRONG","REGULAR"]},{"id":31,"name":"Capsicum Powder","type":"FINISHED","unit":"kg","gradeNames":["PPF","REGULAR","DELUXE","pure"]},{"id":32,"name":"Cheese Powder \/ Cheddar Cheese","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM"]},{"id":33,"name":"Mango Powder","type":"FINISHED","unit":"kg","gradeNames":["PPF","TPR","TPS","GOLD","PREMIUM","RICH","RICH+"]},{"id":34,"name":"Fig Powder","type":"FINISHED","unit":"kg","gradeNames":["PPF","GOLD","PREMIUM","RICH"]},{"id":35,"name":"Pineapple Powder","type":"FINISHED","unit":"kg","gradeNames":["PPF","GOLD","PREMIUM","RICH"]},{"id":36,"name":"Papaya Powder","type":"FINISHED","unit":"kg","gradeNames":["PPF","GOLD","PREMIUM","RICH"]},{"id":37,"name":"Soya Sauce Powder","type":"FINISHED","unit":"kg","gradeNames":["PREMIUM","REGULAR"]},{"id":38,"name":"HVP Powder Groundnut Base","type":"FINISHED","unit":"kg","gradeNames":["PREMIUM","EXTRA STRONG","REGULAR"]},{"id":39,"name":"HVP Powder Soya Base","type":"FINISHED","unit":"kg","gradeNames":["PREMIUM","EXTRA STRONG","REGULAR"]},{"id":40,"name":"Onion Flakes","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","REGULAR"]},{"id":41,"name":"Onion Powder","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","REGULAR"]},{"id":42,"name":"Garlic Flakes","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","REGULAR"]},{"id":43,"name":"Garlic Powder","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","REGULAR"]},{"id":44,"name":"Dried Mango (Amchur) Powder","type":"FINISHED","unit":"kg","gradeNames":["PREMIUM","EXTRA STRONG","REGULAR"]},{"id":45,"name":"Potato Flakes","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM"]},{"id":46,"name":"Potato Powder","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM"]},{"id":47,"name":"Ginger Powder","type":"FINISHED","unit":"kg","gradeNames":["PPF","PREMIUM","pure"]},{"id":48,"name":"Spinach Powder","type":"FINISHED","unit":"kg","gradeNames":["PPF","PREMIUM","pure"]},{"id":49,"name":"Masala Tea","type":"FINISHED","unit":"kg","gradeNames":["PREMIUM","pure"]},{"id":50,"name":"Garam Masala","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":51,"name":"Cumin Powder","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":52,"name":"Turmeric Powder","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":53,"name":"Red Chili Powder","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":54,"name":"Coriander Powder","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":55,"name":"Black Pepper Powder","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":56,"name":"Coriander Cumin Powder","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":57,"name":"Red Chili Flakes (Pizza Cut)","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":58,"name":"Magic Masala","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":59,"name":"Chatpata Masala","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":60,"name":"Peri Peri Masala","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":61,"name":"Schezwan Masala","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":62,"name":"Masala Masti","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":63,"name":"Garlic in Brine","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":64,"name":"Packaged Tomato Powder","type":"FINISHED","unit":"kg","gradeNames":[]},{"id":65,"name":"Packaged Lemon Powder","type":"FINISHED","unit":"kg","gradeNames":[]},{"id":66,"name":"Packaged Tamarind Powder","type":"FINISHED","unit":"kg","gradeNames":[]},{"id":67,"name":"Premium Masala Pack (500g)","type":"FINISHED","unit":"kg","gradeNames":[]},{"id":68,"name":"Curry Base Mix (250g)","type":"FINISHED","unit":"kg","gradeNames":[]},{"id":69,"name":"Ready-to-use Garlic Paste Box","type":"FINISHED","unit":"kg","gradeNames":[]},{"id":80,"name":"KERI","type":"RAW","unit":"kg","gradeNames":[]},{"id":81,"name":"Chikoo powder","type":"FINISHED","unit":"kg","gradeNames":["PPF","TPR","TPS","GOLD","PREMIUM","RICH","RICH+","EXTRA STRONG","REGULAR","DELUXE","N\/A","pure","test grade"]},{"id":83,"name":"chickoo puree","type":"SEMI","unit":"kg","gradeNames":["PPF","TPR","TPS","GOLD","PREMIUM","RICH","RICH+","EXTRA STRONG","REGULAR","DELUXE","N\/A","pure","test grade"]}]};
+      // Merge server data into DB so app.js render functions use real data
+      Object.keys(serverData).forEach(key => {
+        localStorage.setItem('__server_' + key, JSON.stringify(serverData[key]));
+      });
+      // Override DB.get to prefer server data when available
+      const _originalGet = DB.get.bind(DB);
+      DB.get = function(key) {
+        const serverKey = '__server_' + key;
+        const serverVal = localStorage.getItem(serverKey);
+        let result = null;
+        if (serverVal !== null) {
+          try { result = JSON.parse(serverVal); } catch(e) {}
+        }
+        if (!result) result = _originalGet(key);
+
+        if (Array.isArray(result)) {
+           if (key === 'products' || key === 'categories') {
+              result.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+           } else if (key === 'grades') {
+              result.sort((a,b) => {
+                 let nA = typeof a === 'string' ? a : a.name;
+                 let nB = typeof b === 'string' ? b : b.name;
+                 return (nA||'').localeCompare(nB||'');
+              });
+           }
+        }
+        return result;
+      };
+    })();
+    
+    // Inject Server Data
+    const serverData = {"semiStock":[{"productId":26,"id":26,"name":"Tomato Powder","unit":"kg","grade":"GOLD","quantity":"400.000"},{"productId":26,"id":26,"name":"Tomato Powder","unit":"kg","grade":"PPF","quantity":"200.000"},{"productId":43,"id":43,"name":"Garlic Powder","unit":"kg","grade":"REGULAR","quantity":"10200.000"}],"grades":["PPF","TPR","TPS","GOLD","PREMIUM","RICH","RICH+","EXTRA STRONG","REGULAR","DELUXE","N\/A","pure","test grade"],"products":[{"id":1,"name":"Fresh Garlic","type":"RAW","unit":"kg","gradeNames":[]},{"id":2,"name":"Fresh Onion","type":"RAW","unit":"kg","gradeNames":[]},{"id":3,"name":"Fresh Tomato","type":"RAW","unit":"kg","gradeNames":[]},{"id":4,"name":"Fresh Ginger","type":"RAW","unit":"kg","gradeNames":[]},{"id":5,"name":"Fresh Beetroot","type":"RAW","unit":"kg","gradeNames":[]},{"id":6,"name":"Fresh Carrot","type":"RAW","unit":"kg","gradeNames":[]},{"id":7,"name":"Fresh Potato","type":"RAW","unit":"kg","gradeNames":[]},{"id":8,"name":"Fresh Spinach","type":"RAW","unit":"kg","gradeNames":[]},{"id":9,"name":"Fresh Mint Leaves","type":"RAW","unit":"kg","gradeNames":[]},{"id":10,"name":"Fresh Coriander Leaves","type":"RAW","unit":"kg","gradeNames":[]},{"id":11,"name":"Fresh Curry Leaves","type":"RAW","unit":"kg","gradeNames":[]},{"id":12,"name":"Fresh Green Chili","type":"RAW","unit":"kg","gradeNames":[]},{"id":13,"name":"Fresh Cabbage","type":"RAW","unit":"kg","gradeNames":[]},{"id":14,"name":"Fresh Amla","type":"RAW","unit":"kg","gradeNames":[]},{"id":15,"name":"Fresh Mango","type":"RAW","unit":"kg","gradeNames":[]},{"id":16,"name":"Fresh Banana","type":"RAW","unit":"kg","gradeNames":[]},{"id":17,"name":"Fresh Papaya","type":"RAW","unit":"kg","gradeNames":[]},{"id":18,"name":"Fresh Guava","type":"RAW","unit":"kg","gradeNames":[]},{"id":19,"name":"Fresh Apple","type":"RAW","unit":"kg","gradeNames":[]},{"id":20,"name":"Fresh Pineapple","type":"RAW","unit":"kg","gradeNames":[]},{"id":21,"name":"Fresh Orange","type":"RAW","unit":"kg","gradeNames":[]},{"id":22,"name":"Fresh Pomegranate","type":"RAW","unit":"kg","gradeNames":[]},{"id":23,"name":"Fresh Jamun","type":"RAW","unit":"kg","gradeNames":[]},{"id":24,"name":"Fresh Chickoo","type":"RAW","unit":"kg","gradeNames":[]},{"id":25,"name":"Fresh Custard Apple","type":"RAW","unit":"kg","gradeNames":[]},{"id":26,"name":"Tomato Powder","type":"FINISHED","unit":"kg","gradeNames":["PPF","TPR","TPS","GOLD","PREMIUM","RICH","RICH+"]},{"id":27,"name":"Lemon Powder","type":"FINISHED","unit":"kg","gradeNames":["PPF","GOLD","PREMIUM","RICH","EXTRA STRONG"]},{"id":28,"name":"Tamarind Powder","type":"FINISHED","unit":"kg","gradeNames":["PREMIUM","EXTRA STRONG","REGULAR"]},{"id":29,"name":"Beetroot Powder","type":"FINISHED","unit":"kg","gradeNames":["PREMIUM","REGULAR"]},{"id":30,"name":"Green Chili Powder","type":"FINISHED","unit":"kg","gradeNames":["PREMIUM","EXTRA STRONG","REGULAR"]},{"id":31,"name":"Capsicum Powder","type":"FINISHED","unit":"kg","gradeNames":["PPF","REGULAR","DELUXE","pure"]},{"id":32,"name":"Cheese Powder \/ Cheddar Cheese","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM"]},{"id":33,"name":"Mango Powder","type":"FINISHED","unit":"kg","gradeNames":["PPF","TPR","TPS","GOLD","PREMIUM","RICH","RICH+"]},{"id":34,"name":"Fig Powder","type":"FINISHED","unit":"kg","gradeNames":["PPF","GOLD","PREMIUM","RICH"]},{"id":35,"name":"Pineapple Powder","type":"FINISHED","unit":"kg","gradeNames":["PPF","GOLD","PREMIUM","RICH"]},{"id":36,"name":"Papaya Powder","type":"FINISHED","unit":"kg","gradeNames":["PPF","GOLD","PREMIUM","RICH"]},{"id":37,"name":"Soya Sauce Powder","type":"FINISHED","unit":"kg","gradeNames":["PREMIUM","REGULAR"]},{"id":38,"name":"HVP Powder Groundnut Base","type":"FINISHED","unit":"kg","gradeNames":["PREMIUM","EXTRA STRONG","REGULAR"]},{"id":39,"name":"HVP Powder Soya Base","type":"FINISHED","unit":"kg","gradeNames":["PREMIUM","EXTRA STRONG","REGULAR"]},{"id":40,"name":"Onion Flakes","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","REGULAR"]},{"id":41,"name":"Onion Powder","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","REGULAR"]},{"id":42,"name":"Garlic Flakes","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","REGULAR"]},{"id":43,"name":"Garlic Powder","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","REGULAR"]},{"id":44,"name":"Dried Mango (Amchur) Powder","type":"FINISHED","unit":"kg","gradeNames":["PREMIUM","EXTRA STRONG","REGULAR"]},{"id":45,"name":"Potato Flakes","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM"]},{"id":46,"name":"Potato Powder","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM"]},{"id":47,"name":"Ginger Powder","type":"FINISHED","unit":"kg","gradeNames":["PPF","PREMIUM","pure"]},{"id":48,"name":"Spinach Powder","type":"FINISHED","unit":"kg","gradeNames":["PPF","PREMIUM","pure"]},{"id":49,"name":"Masala Tea","type":"FINISHED","unit":"kg","gradeNames":["PREMIUM","pure"]},{"id":50,"name":"Garam Masala","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":51,"name":"Cumin Powder","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":52,"name":"Turmeric Powder","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":53,"name":"Red Chili Powder","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":54,"name":"Coriander Powder","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":55,"name":"Black Pepper Powder","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":56,"name":"Coriander Cumin Powder","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":57,"name":"Red Chili Flakes (Pizza Cut)","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":58,"name":"Magic Masala","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":59,"name":"Chatpata Masala","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":60,"name":"Peri Peri Masala","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":61,"name":"Schezwan Masala","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":62,"name":"Masala Masti","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":63,"name":"Garlic in Brine","type":"FINISHED","unit":"kg","gradeNames":["GOLD","PREMIUM","pure"]},{"id":64,"name":"Packaged Tomato Powder","type":"FINISHED","unit":"kg","gradeNames":[]},{"id":65,"name":"Packaged Lemon Powder","type":"FINISHED","unit":"kg","gradeNames":[]},{"id":66,"name":"Packaged Tamarind Powder","type":"FINISHED","unit":"kg","gradeNames":[]},{"id":67,"name":"Premium Masala Pack (500g)","type":"FINISHED","unit":"kg","gradeNames":[]},{"id":68,"name":"Curry Base Mix (250g)","type":"FINISHED","unit":"kg","gradeNames":[]},{"id":69,"name":"Ready-to-use Garlic Paste Box","type":"FINISHED","unit":"kg","gradeNames":[]},{"id":80,"name":"KERI","type":"RAW","unit":"kg","gradeNames":[]},{"id":81,"name":"Chikoo powder","type":"FINISHED","unit":"kg","gradeNames":["PPF","TPR","TPS","GOLD","PREMIUM","RICH","RICH+","EXTRA STRONG","REGULAR","DELUXE","N\/A","pure","test grade"]},{"id":83,"name":"chickoo puree","type":"SEMI","unit":"kg","gradeNames":["PPF","TPR","TPS","GOLD","PREMIUM","RICH","RICH+","EXTRA STRONG","REGULAR","DELUXE","N\/A","pure","test grade"]}]};
+    Object.keys(serverData).forEach(k => DB.set(k, serverData[k]));
+
+    // ── Set auth user ─────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+      const role    = "FINISHED";
+      const userId  = 4;
+      const users   = DB.get('users') || [];
+      app.currentUser = users.find(u => u.id == userId || u.role === role) || {
+        id: userId, name: 'Vikram', role: role
+      };
+      const lang = localStorage.getItem('pentapure_lang') || 'en';
+      app.currentLang = lang;
+      app.refreshAppTranslatables();
+    });
+  </script>
+</body>
+</html>

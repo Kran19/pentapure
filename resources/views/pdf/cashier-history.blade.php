@@ -10,6 +10,7 @@
             font-size: 11px;
             color: #1a1a2e;
             line-height: 1.5;
+            text-transform: uppercase;
         }
 
         /* ── HEADER BAR ── */

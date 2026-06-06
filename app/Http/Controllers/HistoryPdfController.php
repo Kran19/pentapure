@@ -26,8 +26,13 @@ class HistoryPdfController extends Controller
         $user = $this->authUser();
         abort_unless(($user['role'] ?? null) === 'ADMIN' || ($user['role'] ?? null) === $panel, 403);
 
-        $data = $this->buildReportData($request, $panel);
-        $pdf = Pdf::loadView('pdf.history-report', $data)->setPaper('A4', 'portrait');
+        if ($panel === 'DISPATCH') {
+            $data = $this->buildDispatchReportData($request);
+            $pdf = Pdf::loadView('pdf.dispatch-history-report', $data)->setPaper('A4', 'portrait');
+        } else {
+            $data = $this->buildReportData($request, $panel);
+            $pdf = Pdf::loadView('pdf.history-report', $data)->setPaper('A4', 'portrait');
+        }
 
         return $pdf->download('PentaPure_' . ucfirst(strtolower($panel)) . '_History_' . now()->format('Ymd_His') . '.pdf');
     }
@@ -169,5 +174,172 @@ class HistoryPdfController extends Controller
                     'description' => "{$w->name}: {$present} present, {$half} half day, {$absent} absent",
                 ];
             })->toArray();
+    }
+
+    public function dispatchNotePdf(Request $request, $id)
+    {
+        $log = DispatchLog::with([
+            'order.company',
+            'order.transporter',
+            'order.creator',
+            'user',
+            'transporter',
+            'dispatchItems.orderItem.product'
+        ])->findOrFail($id);
+
+        $order = $log->order;
+        
+        $totalOrderedQty = 0;
+        $totalDispatchedQty = 0;
+        $totalPendingQty = 0;
+        $totalAmount = 0;
+
+        foreach ($log->dispatchItems as $di) {
+            $orderItem = $di->orderItem;
+            if ($orderItem) {
+                $totalOrderedQty += (float) $orderItem->quantity;
+                $totalDispatchedQty += (float) $di->quantity;
+                // Pending quantity after this dispatch log round
+                $totalPendingQty += (float) max(0, $orderItem->quantity - $orderItem->dispatched_qty);
+                $totalAmount += (float) ($orderItem->price * $di->quantity);
+            }
+        }
+
+        $data = [
+            'log' => $log,
+            'order' => $order,
+            'company' => $order->company,
+            'transporter' => $log->transporter ?? $order->transporter,
+            'items' => $log->dispatchItems,
+            'dispatchNo' => 'DSP-' . str_pad($log->id, 4, '0', STR_PAD_LEFT),
+            'orderNo' => 'ORD-' . str_pad($log->order_id, 4, '0', STR_PAD_LEFT),
+            'dispatchDate' => $log->created_at->format('d-M-Y'),
+            'generatedOn' => $log->created_at->format('d-M-Y h:i A'),
+            'generatedBy' => $log->user?->name ?? 'System',
+            'orderGeneratedBy' => $order->creator?->name ?? 'N/A',
+            'status' => 'DISPATCHED',
+            'remarks' => $order->notes ?? "Material dispatched in good condition.\nAll items checked and verified before dispatch.",
+            'totalOrderedQty' => $totalOrderedQty,
+            'totalDispatchedQty' => $totalDispatchedQty,
+            'totalPendingQty' => $totalPendingQty,
+            'totalAmount' => $totalAmount,
+            'totalItems' => count($log->dispatchItems),
+            'dispatchType' => ($totalPendingQty <= 0) ? 'Full Dispatch' : 'Partial Dispatch',
+        ];
+
+        $pdf = Pdf::loadView('pdf.dispatch-note', $data)->setPaper('A4', 'portrait');
+
+        return $pdf->download($data['dispatchNo'] . '_Dispatch_Note_' . now()->format('Ymd_His') . '.pdf');
+    }
+
+    private function buildDispatchReportData(Request $request): array
+    {
+        $user = $this->authUser();
+        [$from, $to] = $this->dateRange($request);
+        
+        $logs = DispatchLog::with([
+            'order.company',
+            'order.transporter',
+            'order.creator',
+            'user',
+            'dispatchItems.orderItem.product'
+        ])->whereBetween('created_at', [$from, $to])->latest()->get();
+        
+        $rows = [];
+        $totalQty = 0;
+        $totalAmount = 0;
+        $completedCount = 0;
+        $pendingCount = 0;
+        
+        $uniqueOrders = [];
+
+        foreach ($logs as $log) {
+            $order = $log->order;
+            if ($order) {
+                $uniqueOrders[$order->id] = $order;
+            }
+            
+            $status = ($order && $order->dispatch_status === 'DONE') ? 'COMPLETED' : 'PENDING';
+            
+            foreach ($log->dispatchItems as $di) {
+                $orderItem = $di->orderItem;
+                if ($orderItem) {
+                    $qty = (float) $di->quantity;
+                    $rate = (float) $orderItem->price;
+                    $amount = $qty * $rate;
+                    $totalQty += $qty;
+                    $totalAmount += $amount;
+                    
+                    $rows[] = [
+                        'dispatch_id' => 'DSP-' . str_pad($log->id, 4, '0', STR_PAD_LEFT),
+                        'order_id' => 'ORD-' . str_pad($log->order_id, 4, '0', STR_PAD_LEFT),
+                        'date' => $log->created_at->format('d M Y'),
+                        'customer' => $order->company?->name ?? 'N/A',
+                        'product' => ($orderItem->product?->name ?? 'Product') . ' (' . $orderItem->grade . ')',
+                        'qty' => $qty,
+                        'rate' => $rate,
+                        'amount' => $amount,
+                        'status' => $status,
+                        'lr_copy' => $log->lr_image_path,
+                    ];
+                }
+            }
+        }
+
+        // Count statuses based on order state
+        foreach ($uniqueOrders as $order) {
+            if ($order->dispatch_status === 'DONE') {
+                $completedCount++;
+            } else {
+                $pendingCount++;
+            }
+        }
+
+        $customerSummary = [];
+        $productSummary = [];
+
+        foreach (collect($rows)->groupBy('customer') as $custName => $custRows) {
+            $customerSummary[] = [
+                'customer' => $custName,
+                'count' => $custRows->unique('dispatch_id')->count(),
+                'qty' => $custRows->sum('qty'),
+            ];
+        }
+
+        foreach (collect($rows)->groupBy('product') as $prodName => $prodRows) {
+            $productSummary[] = [
+                'product' => $prodName,
+                'count' => $prodRows->unique('dispatch_id')->count(),
+                'qty' => $prodRows->sum('qty'),
+            ];
+        }
+
+        // Fetch LR copies to show at the bottom
+        $lrCopies = $logs->filter(fn($l) => !empty($l->lr_image_path))
+            ->map(fn($l) => [
+                'dispatch_id' => 'DSP-' . str_pad($l->id, 4, '0', STR_PAD_LEFT),
+                'order_id' => 'ORD-' . str_pad($l->order_id, 4, '0', STR_PAD_LEFT),
+                'customer' => $l->order?->company?->name ?? 'N/A',
+                'path' => $l->lr_image_path
+            ])->toArray();
+
+        return [
+            'reportId' => 'HIS-' . now()->format('His'),
+            'generatedOn' => now()->format('d M Y h:i A'),
+            'fromDate' => $from->format('d M Y'),
+            'toDate' => $to->format('d M Y'),
+            'userName' => $user['name'] ?? 'User',
+            'userRole' => $user['role'] ?? 'DISPATCH',
+            'rows' => $rows,
+            'totalRecords' => $logs->count(),
+            'completedCount' => $completedCount,
+            'pendingCount' => $pendingCount,
+            'cancelledCount' => 0, // No cancelled status in DB schema currently
+            'totalValue' => $totalAmount,
+            'totalQuantity' => $totalQty,
+            'customerSummary' => $customerSummary,
+            'productSummary' => $productSummary,
+            'lrCopies' => $lrCopies,
+        ];
     }
 }

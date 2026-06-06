@@ -10,6 +10,7 @@ body {
     font-size: 10px;
     color: #1a1a2e;
     line-height: 1.4;
+    text-transform: uppercase;
 }
 
 /* ── HEADER ── */
@@ -108,11 +109,9 @@ body {
 .data-table tbody tr:hover { background: #eef2f9; }
 
 .td-date  { width: 11%; white-space: nowrap; }
-.td-desc  { width: 22%; }
-.td-acc   { width: 13%; }
+.td-desc  { width: 32%; }
+.td-acc   { width: 23%; }
 .td-amt   { width: 8%; text-align: right; font-weight: bold; }
-.td-obal  { width: 10%; text-align: right; }
-.td-cbal  { width: 10%; text-align: right; font-weight: bold; }
 .td-by    { width: 10%; }
 .td-site  { width: 10%; }
 .td-bill  { width: 6%; text-align: center; }
@@ -219,7 +218,7 @@ body {
     </div>
     <div class="meta-split" style="border-bottom:none;">
         <div class="meta-cell">Category: {{ $category }}</div>
-        <div class="meta-cell">Account: {{ $accountName }}</div>
+        <div class="meta-cell">Opening Balance: ₹{{ number_format($openingBalance, 2) }}</div>
     </div>
 </div>
 
@@ -254,10 +253,8 @@ body {
             <tr>
                 <th class="td-date">Date</th>
                 <th class="td-desc">Desc</th>
-                <th class="td-acc">Acc</th>
+                <th class="td-acc">Expense Category</th>
                 <th class="td-amt">Amt</th>
-                <th class="td-obal">Opening Bal</th>
-                <th class="td-cbal">Closing Bal</th>
                 <th class="td-by">Added By</th>
                 <th class="td-site">Site</th>
                 <th class="td-bill">Bill</th>
@@ -268,7 +265,6 @@ body {
             <tr>
                 <td class="td-date">
                     {{ \Carbon\Carbon::parse($row['date'])->format('d-M-Y') }}
-                    <span class="cat-label">{{ strtoupper(str_replace('_',' ', $row['category'])) }}</span>
                 </td>
                 <td class="td-desc">
                     {{ $row['note'] ?: ($row['description'] ?: '—') }}
@@ -276,13 +272,9 @@ body {
                         <span class="cat-label">Ref: {{ $row['reference'] }}</span>
                     @endif
                 </td>
-                <td class="td-acc">{{ $accountName }}</td>
+                <td class="td-acc">{{ strtoupper(str_replace('_',' ', $row['category'])) }}</td>
                 <td class="td-amt {{ $row['type'] === 'IN' ? 'amt-in' : 'amt-out' }}">
                     {{ number_format($row['amount'], 2) }}
-                </td>
-                <td class="td-obal bal-num">{{ number_format($row['opening_bal'], 2) }}</td>
-                <td class="td-cbal bal-num {{ $row['closing_bal'] >= 0 ? 'amt-in' : 'amt-out' }}">
-                    {{ number_format($row['closing_bal'], 2) }}
                 </td>
                 <td class="td-by">{{ $cashierName }}</td>
                 <td class="td-site">{{ $row['site'] ?: 'Pentapure' }}</td>
@@ -298,7 +290,7 @@ body {
             </tr>
             @empty
             <tr>
-                <td colspan="9" style="padding:20px; text-align:center; color:#888;">
+                <td colspan="7" style="padding:20px; text-align:center; color:#888;">
                     No transactions found for this period.
                 </td>
             </tr>

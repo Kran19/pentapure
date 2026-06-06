@@ -27,6 +27,10 @@
         <label>Unit</label>
         <input type="text" id="p-unit" value="kg" placeholder="kg, liters, pieces...">
       </div>
+      <div class="form-group">
+        <label>Rate (For Live Stock Ref)</label>
+        <input type="number" id="p-rate" step="0.01" value="0.00" placeholder="e.g. 150.00">
+      </div>
     </div>
 
     <div id="grade-selection-area" style="margin-top:1rem; border-top:1px solid var(--glass-border); padding-top:1rem;">
@@ -205,6 +209,7 @@ function adminEditProduct(prod) {
   document.getElementById('p-name').value = prod.name;
   document.getElementById('p-type').value = prod.type;
   document.getElementById('p-unit').value = prod.unit;
+  document.getElementById('p-rate').value = prod.rate || '0.00';
   
   // Reset and set grades
   document.querySelectorAll('input[name="p-grades"]').forEach(cb => cb.checked = false);
@@ -237,6 +242,7 @@ function adminSaveProduct() {
   formData.append('name', document.getElementById('p-name').value);
   formData.append('type', document.getElementById('p-type').value);
   formData.append('unit', document.getElementById('p-unit').value || 'kg');
+  formData.append('rate', document.getElementById('p-rate').value || '0.00');
   formData.append('grades', JSON.stringify(selectedGrades));
   formData.append('allowed_roles', JSON.stringify(selectedRoles));
   

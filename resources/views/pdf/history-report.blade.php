@@ -6,7 +6,7 @@
     <style>
         @page { margin: 18px; }
         * { box-sizing: border-box; }
-        body { font-family: DejaVu Sans, sans-serif; color: #101828; font-size: 13px; line-height: 1.45; }
+        body { font-family: DejaVu Sans, sans-serif; color: #101828; font-size: 13px; line-height: 1.45; text-transform: uppercase; }
         .page { border: 1px solid #1f2937; padding: 42px 46px 24px; min-height: 1060px; border-bottom: 7px solid #17406f; }
         .top { display: table; width: 100%; padding-bottom: 22px; border-bottom: 1px solid #667085; }
         .brand, .contact { display: table-cell; vertical-align: top; width: 50%; }

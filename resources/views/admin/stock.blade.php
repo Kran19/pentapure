@@ -4,15 +4,20 @@
 <div style="padding:1.5rem;">
   <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem;">
     <h2 style="margin:0;">📦 Live Stock Overview</h2>
-    <button class="btn" onclick="adminAddStock()" style="width:auto; padding:0.65rem 1.2rem;">+ Add Stock</button>
+    <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+      <button class="btn btn-secondary" onclick="adminExportStockPdf()" style="width:auto; padding:0.65rem 1.2rem; border-color:#DDCFAF !important;">📄 Generate PDF Report</button>
+      <button class="btn" onclick="adminAddStock()" style="width:auto; padding:0.65rem 1.2rem;">+ Add Stock</button>
+    </div>
   </div>
 
   @php
+    $typeFilter = request('type') ? strtoupper(request('type')) : null;
     $rawItems      = collect($pageData['allStock'])->where('stage', 'RAW');
     $semiItems     = collect($pageData['allStock'])->where('stage', 'SEMI');
     $finishedItems = collect($pageData['allStock'])->where('stage', 'FINISHED');
   @endphp
 
+  @if(!$typeFilter || $typeFilter === 'RAW')
   <!-- RAW Stock -->
   <div class="card" style="padding:1.2rem; margin-bottom:1rem;">
     <div class="card-title" style="color:var(--primary-light);">🌿 Raw Material Stock ({{ $rawItems->count() }} items)</div>
@@ -21,7 +26,7 @@
     @else
     <div class="table-container">
       <table>
-        <thead><tr><th>Product</th><th>Grade</th><th>Qty</th><th>Unit</th><th>Location</th><th>Action</th></tr></thead>
+        <thead><tr><th>Product</th><th>Grade</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="raw-stock-tbody">
           @foreach($rawItems as $s)
           @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
@@ -30,6 +35,7 @@
             <td><span class="badge badge-info">{{ $s->grade }}</span></td>
             <td @if($isLow) style="font-weight:bold; color:#fff;" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
+            <td style="font-weight:bold;">₹{{ number_format($s->rate ?? 0, 2) }}</td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="RAW" style="cursor:pointer; color:var(--primary-light); text-decoration:underline;" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
               <div style="display:flex; align-items:center; gap:0.4rem;">
@@ -49,7 +55,9 @@
     </div>
     @endif
   </div>
+  @endif
 
+  @if(!$typeFilter || $typeFilter === 'SEMI')
   <!-- SEMI Stock -->
   <div class="card" style="padding:1.2rem; margin-bottom:1rem;">
     <div class="card-title" style="color:var(--warning);">⚗️ Semi-Finished Stock ({{ $semiItems->count() }} items)</div>
@@ -58,7 +66,7 @@
     @else
     <div class="table-container">
       <table>
-        <thead><tr><th>Product</th><th>Grade</th><th>Qty</th><th>Unit</th><th>Location</th><th>Action</th></tr></thead>
+        <thead><tr><th>Product</th><th>Grade</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="semi-stock-tbody">
           @foreach($semiItems as $s)
           @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
@@ -67,6 +75,7 @@
             <td><span class="badge badge-info">{{ $s->grade }}</span></td>
             <td @if($isLow) style="font-weight:bold; color:#fff;" @else style="font-weight:bold; color:var(--warning);" @endif>{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
+            <td style="font-weight:bold;">₹{{ number_format($s->rate ?? 0, 2) }}</td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="SEMI" style="cursor:pointer; color:var(--primary-light); text-decoration:underline;" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
               <div style="display:flex; align-items:center; gap:0.4rem;">
@@ -86,7 +95,9 @@
     </div>
     @endif
   </div>
+  @endif
 
+  @if(!$typeFilter || $typeFilter === 'FINISHED')
   <!-- Finished Stock -->
   <div class="card" style="padding:1.2rem;">
     <div class="card-title" style="color:var(--secondary);">✅ Finished Goods Stock ({{ $finishedItems->count() }} items)</div>
@@ -95,7 +106,7 @@
     @else
     <div class="table-container">
       <table>
-        <thead><tr><th>Product</th><th>Grade</th><th>Total Qty</th><th>Unit</th><th>Location</th><th>Action</th></tr></thead>
+        <thead><tr><th>Product</th><th>Grade</th><th>Total Qty</th><th>Unit</th><th>Rate (Ref)</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="finished-stock-tbody">
           @foreach($finishedItems as $s)
           @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
@@ -105,6 +116,7 @@
 
             <td @if($isLow) style="font-weight:bold; color:#fff;" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
+            <td style="font-weight:bold;">₹{{ number_format($s->rate ?? 0, 2) }}</td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="FINISHED" style="cursor:pointer; color:var(--primary-light); text-decoration:underline;" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
               <div style="display:flex; align-items:center; gap:0.4rem;">
@@ -124,6 +136,7 @@
     </div>
     @endif
   </div>
+  @endif
 </div>
 
 <script>
@@ -227,15 +240,15 @@ function showStockDetails(productId, stage, grade, productName) {
     const sign = log.transaction_type === 'IN' ? '+' : '-';
     const color = log.transaction_type === 'IN' ? '#22c55e' : '#ef4444';
     return `
-      <tr>
-        <td style="padding:8px; border-bottom:1px solid #30363d; color:${color}; font-weight:700;">${sign}${Number(log.quantity).toLocaleString(undefined, { maximumFractionDigits: 3 })}</td>
-        <td style="padding:8px; border-bottom:1px solid #30363d;">${escapeHtml(log.transaction_type)}</td>
-        <td style="padding:8px; border-bottom:1px solid #30363d;">${escapeHtml(log.user_name)}</td>
-        <td style="padding:8px; border-bottom:1px solid #30363d;">${escapeHtml(log.created_at)}</td>
-        <td style="padding:8px; border-bottom:1px solid #30363d;">${escapeHtml(log.notes || '')}</td>
+      <tr style="background: #161b22 !important;">
+        <td style="padding:8px; border-bottom:1px solid #30363d; color:${color}; font-weight:700; background: #161b22 !important;">${sign}${Number(log.quantity).toLocaleString(undefined, { maximumFractionDigits: 3 })}</td>
+        <td style="padding:8px; border-bottom:1px solid #30363d; color:#e6edf3; background: #161b22 !important;">${escapeHtml(log.transaction_type)}</td>
+        <td style="padding:8px; border-bottom:1px solid #30363d; color:#e6edf3; background: #161b22 !important;">${escapeHtml(log.user_name)}</td>
+        <td style="padding:8px; border-bottom:1px solid #30363d; color:#e6edf3; background: #161b22 !important;">${escapeHtml(log.created_at)}</td>
+        <td style="padding:8px; border-bottom:1px solid #30363d; color:#e6edf3; background: #161b22 !important;">${escapeHtml(log.notes || '')}</td>
       </tr>
     `;
-  }).join('') || `<tr><td colspan="5" style="padding:1rem; text-align:center; color:#8b949e;">No stock details found.</td></tr>`;
+  }).join('') || `<tr style="background: #161b22 !important;"><td colspan="5" style="padding:1rem; text-align:center; color:#8b949e; background: #161b22 !important;">No stock details found.</td></tr>`;
 
   Swal.fire({
     title: 'Stock Details',
@@ -244,14 +257,14 @@ function showStockDetails(productId, stage, grade, productName) {
         <strong style="color:#e6edf3;">${escapeHtml(productName)}</strong> / ${escapeHtml(stage)} / ${escapeHtml(grade || 'NONE')}
       </div>
       <div style="max-height:360px; overflow:auto;">
-        <table style="width:100%; border-collapse:collapse; font-size:0.82rem; text-align:left;">
+        <table data-filterable="false" style="width:100%; border-collapse:collapse; font-size:0.82rem; text-align:left; background: #0d1117 !important;">
           <thead>
-            <tr style="color:#8b949e;">
-              <th style="padding:8px;">Qty</th>
-              <th style="padding:8px;">Type</th>
-              <th style="padding:8px;">By</th>
-              <th style="padding:8px;">Time</th>
-              <th style="padding:8px;">Notes</th>
+            <tr style="color:#8b949e; background: #21262d !important;">
+              <th style="padding:8px; background: #21262d !important; color: #8b949e !important; border-bottom:1px solid #30363d;">Qty</th>
+              <th style="padding:8px; background: #21262d !important; color: #8b949e !important; border-bottom:1px solid #30363d;">Type</th>
+              <th style="padding:8px; background: #21262d !important; color: #8b949e !important; border-bottom:1px solid #30363d;">By</th>
+              <th style="padding:8px; background: #21262d !important; color: #8b949e !important; border-bottom:1px solid #30363d;">Time</th>
+              <th style="padding:8px; background: #21262d !important; color: #8b949e !important; border-bottom:1px solid #30363d;">Notes</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
@@ -510,7 +523,7 @@ function updateStockTables(stockData) {
     // Update headers count (optional, but good for UI consistency if we have access, maybe skip for now or just replace table body)
     if (items.length === 0) {
       // Keep existing "No stock" message if handled by blade, or just leave empty table.
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No stock recorded yet.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">No stock recorded yet.</td></tr>`;
       continue;
     }
 
@@ -738,6 +751,82 @@ window.addLocationMapping = function(key, availableQty) {
     showConfirmButton: false
   }).then(() => {
     updateAllLocationLabels();
+  });
+}
+
+function adminExportStockPdf() {
+  Swal.fire({
+    title: 'Export Stock Valuation PDF',
+    html: `
+      <div style="text-align:left; font-size:0.95rem; color:#e6edf3;">
+        <p style="margin-bottom:12px; color:#8b949e;">Select the stock panels to include in the PDF report:</p>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:10px;">
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+            <input type="checkbox" id="export-stage-raw" checked style="width:20px; height:20px; cursor:pointer;"> 🌿 Raw Material Stock
+          </label>
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+            <input type="checkbox" id="export-stage-semi" checked style="width:20px; height:20px; cursor:pointer;"> ⚗️ Semi-Finished Stock
+          </label>
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+            <input type="checkbox" id="export-stage-finished" checked style="width:20px; height:20px; cursor:pointer;"> ✅ Finished Goods Stock
+          </label>
+        </div>
+      </div>
+    `,
+    background: '#0d1117',
+    color: '#e6edf3',
+    showCancelButton: true,
+    confirmButtonText: 'Generate Report',
+    confirmButtonColor: '#238636',
+    cancelButtonColor: '#30363d',
+    preConfirm: () => {
+      const raw = document.getElementById('export-stage-raw').checked;
+      const semi = document.getElementById('export-stage-semi').checked;
+      const finished = document.getElementById('export-stage-finished').checked;
+      
+      const stages = [];
+      if (raw) stages.push('RAW');
+      if (semi) stages.push('SEMI');
+      if (finished) stages.push('FINISHED');
+      
+      if (stages.length === 0) {
+        Swal.showValidationMessage('Please select at least one stock panel.');
+        return false;
+      }
+      return stages;
+    }
+  }).then(result => {
+    if (!result.isConfirmed) return;
+    
+    const stages = result.value;
+    const locations = localStorage.getItem('pentapure_product_locations') || '{}';
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ route("admin.stock.pdf") }}';
+    form.style.display = 'none';
+    
+    const tokenInput = document.createElement('input');
+    tokenInput.type = 'hidden';
+    tokenInput.name = '_token';
+    tokenInput.value = csrfToken;
+    form.appendChild(tokenInput);
+    
+    const stagesInput = document.createElement('input');
+    stagesInput.type = 'hidden';
+    stagesInput.name = 'stages';
+    stagesInput.value = stages.join(',');
+    form.appendChild(stagesInput);
+    
+    const locationsInput = document.createElement('input');
+    locationsInput.type = 'hidden';
+    locationsInput.name = 'locations';
+    locationsInput.value = locations;
+    form.appendChild(locationsInput);
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
   });
 }
 

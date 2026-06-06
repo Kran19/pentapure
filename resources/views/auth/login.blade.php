@@ -16,8 +16,7 @@
     {{-- Step 1: Role Selection (shown by default) --}}
     <div id="users-list" style="display:flex; flex-direction:column; gap:0.5rem; text-align:left;">
       @foreach($users as $u)
-        <button class="user-btn" onclick="selectUser({{ $u->id }}, '{{ $u->name }}', '{{ $u->role }}')"
-          style="display:flex; justify-content:space-between; align-items:center; width:100%; background:none; border:none; cursor:pointer;">
+        <button class="user-btn" onclick="selectUser({{ $u->id }}, '{{ $u->name }}', '{{ $u->role }}')">
           <div>
             <div style="font-weight:600;">{{ $u->name }}</div>
             <div style="font-size:0.8rem; color:var(--text-muted);">{{ $u->role }}</div>
@@ -88,12 +87,25 @@
   async function selectUser(id, name, role) {
     pendingUser = { id, name, role };
     
-    // Check if notification permission is already granted
+    // Safeguard Notification API
+    if (!window.Notification) {
+      console.warn('Notification API not supported by this browser.');
+      showPasswordStep();
+      return;
+    }
+
     if (Notification.permission === 'granted') {
-      const subscription = await app.subscribeUser();
-      if (subscription) {
-        document.getElementById('push_subscription_field').value = JSON.stringify(subscription);
+      try {
+        const subscription = await app.subscribeUser();
+        if (subscription) {
+          document.getElementById('push_subscription_field').value = JSON.stringify(subscription);
+        }
+      } catch (e) {
+        console.error('Push subscription failed:', e);
       }
+      showPasswordStep();
+    } else if (Notification.permission === 'denied') {
+      // Proceed anyway instead of locking the user out if they previously denied it
       showPasswordStep();
     } else {
       document.getElementById('notification-modal').classList.add('active');
@@ -102,17 +114,21 @@
 
   async function handleNotificationPermission(allow) {
     if (allow) {
-      const subscription = await app.requestNotificationPermission();
-      if (subscription) {
-        document.getElementById('push_subscription_field').value = JSON.stringify(subscription);
-        document.getElementById('notification-modal').classList.remove('active');
-        showPasswordStep();
-      } else {
-        Swal.fire('Permission Required', 'You must allow notifications in your browser settings to continue.', 'error');
+      try {
+        const subscription = await app.requestNotificationPermission();
+        if (subscription) {
+          document.getElementById('push_subscription_field').value = JSON.stringify(subscription);
+        }
+      } catch (e) {
+        console.error('Notification permission error:', e);
       }
-    } else {
-      Swal.fire('Access Denied', 'Notifications are mandatory for using the Pentapure system.', 'error');
       document.getElementById('notification-modal').classList.remove('active');
+      showPasswordStep();
+    } else {
+      // Allow them to proceed even if denied, but warn them
+      app.toast('Warning: You will not receive real-time updates.', 'warning');
+      document.getElementById('notification-modal').classList.remove('active');
+      showPasswordStep();
     }
   }
 

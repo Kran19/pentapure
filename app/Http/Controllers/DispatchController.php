@@ -56,6 +56,7 @@ class DispatchController extends Controller
                 'date'         => $o->created_at->toISOString(),
                 'totalQty'     => $o->items->sum('quantity'),
                 'dispatchedQty'=> $o->items->sum('dispatched_qty'),
+                'notes'        => $o->notes,
             ]),
             'completedOrders' => $completed->map(fn($o) => [
                 'id'           => $o->id,
@@ -63,6 +64,7 @@ class DispatchController extends Controller
                 'transportId'  => $o->transporter_id,
                 'total'        => $o->total,
                 'date'         => $o->created_at->toISOString(),
+                'notes'        => $o->notes,
             ]),
             'companies'           => Company::all(['id', 'name']),
             'transportCompanies'  => Transporter::all(['id', 'name']),
@@ -81,6 +83,7 @@ class DispatchController extends Controller
         $pageData = [
             'pendingOrders' => $pendingOrders->map(fn($o)=>[
                 'id'          => $o->id,
+                'notes'       => $o->notes,
                 'company'     => [
                     'name'    => $o->company?->name,
                     'gst'     => $o->company?->gst,
@@ -97,6 +100,7 @@ class DispatchController extends Controller
                     'id'            => $i->id,
                     'productName'   => $i->product?->name,
                     'productId'     => $i->product_id,
+                    'productType'   => $i->product?->type,
                     'quantity'      => (float) $i->quantity,
                     'dispatchedQty' => (float) $i->dispatched_qty,
                     'remainingQty'  => $i->remainingQty(),
@@ -261,9 +265,11 @@ class DispatchController extends Controller
                 'lrImage'       => $d->lr_image_path ? asset($d->lr_image_path) : null,
                 'orderTotal'    => $d->order?->total,
                 'date'          => $d->created_at->toISOString(),
+                'notes'         => $d->order?->notes,
                 'items'         => $d->dispatchItems->map(fn($di) => [
                     'productName' => $di->orderItem?->product?->name,
                     'grade'       => $di->orderItem?->grade,
+                    'productType' => $di->orderItem?->product?->type,
                     'quantity'    => (float) $di->quantity,
                 ]),
             ]);

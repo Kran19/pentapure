@@ -10,6 +10,7 @@
             padding: 20px;
             color: #333;
             font-size: 12px;
+            text-transform: uppercase;
         }
         .header {
             text-align: center;

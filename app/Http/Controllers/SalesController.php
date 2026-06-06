@@ -185,6 +185,58 @@ class SalesController extends Controller
         return view('sales.history', compact('pageData'));
     }
 
+    public function updateOrder(Request $request, $id)
+    {
+        $order = Order::findOrFail($id);
+
+        if ($order->status !== 'OPEN' || $order->dispatch_status !== 'PENDING') {
+            return response()->json(['success' => false, 'message' => 'Only open orders with pending dispatch can be edited.'], 422);
+        }
+
+        $request->validate([
+            'company_id'      => 'required|exists:companies,id',
+            'transporter_id'  => 'required|exists:transporters,id',
+            'items'           => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.grade'      => 'required|string',
+            'items.*.quantity'   => 'required|numeric|min:0.001',
+            'items.*.price'      => 'required|numeric|min:0',
+        ]);
+
+        $user = $this->authUser();
+        $visibleProductIds = Product::visibleTo($user['role'])->pluck('id')->toArray();
+        foreach ($request->items as $item) {
+            if (!in_array($item['product_id'], $visibleProductIds)) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized product access.'], 403);
+            }
+        }
+
+        $total = collect($request->items)->sum(fn($i) => $i['quantity'] * $i['price']);
+
+        DB::transaction(function () use ($request, $order, $total) {
+            $order->update([
+                'company_id'     => $request->company_id,
+                'transporter_id' => $request->transporter_id,
+                'total'          => $total,
+                'notes'          => $request->notes,
+            ]);
+
+            $order->items()->delete();
+
+            foreach ($request->items as $item) {
+                OrderItem::create([
+                    'order_id'   => $order->id,
+                    'product_id' => $item['product_id'],
+                    'grade'      => $item['grade'],
+                    'quantity'   => $item['quantity'],
+                    'price'      => $item['price'],
+                ]);
+            }
+        });
+
+        return response()->json(['success' => true, 'message' => 'Order updated successfully!']);
+    }
+
     public function profile()
     {
         return view('sales.profile');
