@@ -3,10 +3,13 @@
 <head>
     <meta charset="utf-8">
     <title>PentaPure - Live Stock Valuation Report</title>
-    <style>
+        <style>
         @page { margin: 18px; }
         * { box-sizing: border-box; }
         body { font-family: DejaVu Sans, sans-serif; color: #101828; font-size: 13px; line-height: 1.45; text-transform: uppercase; }
+        table td { color: #101828 !important; }
+        table th { color: #111827 !important; }
+
         .page { border: 1px solid #1f2937; padding: 42px 46px 24px; min-height: 1060px; border-bottom: 7px solid #f4b400; }
         .top { display: table; width: 100%; padding-bottom: 22px; border-bottom: 1px solid #667085; }
         .brand, .contact { display: table-cell; vertical-align: top; width: 50%; }
@@ -86,15 +89,16 @@
     <table>
         <thead>
             <tr>
-                <th style="width:25%;">Product Name</th>
-                <th style="width:10%;">Stage</th>
-                <th style="width:10%;">Grade</th>
-                <th style="width:20%;">Where Stock is Available</th>
-                <th style="width:15%; text-align: right;">Available Qty</th>
-                <th style="width:10%; text-align: right;">Rate / Unit</th>
-                <th style="width:10%; text-align: right;">Valuation (Rs.)</th>
+                <th style="width:25%; color:#111827;">Product Name</th>
+                <th style="width:10%; color:#111827;">Stage</th>
+                <th style="width:10%; color:#111827;">Grade</th>
+                <th style="width:20%; color:#111827;">Where Stock is Available</th>
+                <th style="width:15%; text-align: right; color:#111827;">Available Qty</th>
+                <th style="width:10%; text-align: right; color:#111827;">Rate / Unit</th>
+                <th style="width:10%; text-align: right; color:#111827;">Valuation (Rs.)</th>
             </tr>
         </thead>
+
         <tbody>
             @forelse($items as $item)
                 <tr>
@@ -128,9 +132,10 @@
 
     <div class="footer">
         <div class="notes">
-            <div class="notes-title">Disclaimer:</div>
+            <div class="notes-title">Notes:</div>
             <div>This is a system generated report representing live stock estimates.<br>Valuations are based on reference costs at product creation.</div>
         </div>
+
         <div class="sign">
             <div class="scribble">PentaPure</div>
             <div class="line"></div>

@@ -1,6 +1,7 @@
 @extends('layouts.admin')
 
 @section('content')
+
 <div style="padding:1.5rem;">
   <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem;">
     <h2 style="margin:0;">📦 Live Stock Overview</h2>
@@ -28,9 +29,9 @@
       <table>
         <thead><tr><th>Product</th><th>Grade</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="raw-stock-tbody">
-          @foreach($rawItems as $s)
+@foreach($rawItems as $s)
           @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
-          <tr @if($isLow) style="background-color: #e60000; color: #fff;" title="Low Stock! Limit is {{ $s->alert_limit }}" @endif>
+          <tr @if($isLow) style="background-color: #e60000; color: #fff; pointer-events:none;" title="Low Stock! Limit is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:600;">{{ $s->name }}</td>
             <td><span class="badge badge-info">{{ $s->grade }}</span></td>
             <td @if($isLow) style="font-weight:bold; color:#fff;" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
@@ -70,7 +71,8 @@
         <tbody id="semi-stock-tbody">
           @foreach($semiItems as $s)
           @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
-          <tr @if($isLow) style="background-color: #ff4d4d; color: #fff;" title="Low Stock! Limit is {{ $s->alert_limit }}" @endif>
+<tr @if($isLow) style="background-color: #ff4d4d; color: #fff; pointer-events:none;" title="Low Stock! Limit is {{ $s->alert_limit }}" @endif>
+
             <td style="font-weight:600;">{{ $s->name }}</td>
             <td><span class="badge badge-info">{{ $s->grade }}</span></td>
             <td @if($isLow) style="font-weight:bold; color:#fff;" @else style="font-weight:bold; color:var(--warning);" @endif>{{ number_format($s->quantity, 2) }}</td>
@@ -110,7 +112,8 @@
         <tbody id="finished-stock-tbody">
           @foreach($finishedItems as $s)
           @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
-          <tr @if($isLow) style="background-color: #ff4d4d; color:#fff;" title="Low Stock! Limit is {{ $s->alert_limit }}" @endif>
+<tr @if($isLow) style="background-color: #ff4d4d; color:#fff; pointer-events:none;" title="Low Stock! Limit is {{ $s->alert_limit }}" @endif>
+
             <td style="font-weight:600;">{{ $s->name }}</td>
             <td><span class="badge badge-info">{{ $s->grade }}</span></td>
 
@@ -532,8 +535,12 @@ function updateStockTables(stockData) {
       const limit = parseFloat(s.alert_limit) || 0;
       const qty = parseFloat(s.quantity);
       const isLow = limit > 0 && qty < limit;
-      const rowStyle = isLow ? 'background-color: #ff4d4d; color: #fff;' : '';
+const rowStyle = isLow ? 'background-color: #ff4d4d; color: #fff;' : '';
       const titleAttr = isLow ? `title="Low Stock! Limit is ${limit}"` : '';
+
+      // Disable hover ONLY visually for low rows without breaking the click buttons
+      const disableHoverClass = isLow ? 'low-stock-no-hover' : '';
+
       const formattedQty = qty.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
       
       let qtyColor = 'var(--text-color)';
@@ -542,13 +549,15 @@ function updateStockTables(stockData) {
       if (stage === 'FINISHED') qtyColor = 'var(--secondary)';
 
       html += `
-        <tr style="${rowStyle}" ${titleAttr}>
+        <tr style="${rowStyle}" ${titleAttr} class="${disableHoverClass}">
           <td style="font-weight:600;">${s.name}</td>
           <td><span class="badge badge-info">${s.grade}</span></td>
           <td style="font-weight:bold; color:${qtyColor};">${formattedQty}</td>
           <td>${s.unit || ''}</td>
+          <td style="font-weight:bold;">₹${number_format(parseFloat(s.rate ?? 0) || 0, 2)}</td>
           <td class="location-col" data-product="${s.productId}" data-grade="${s.grade}" data-stage="${stage}" style="cursor:pointer; color:var(--primary-light); text-decoration:underline;" onclick="showLocationBreakdown(this)">📍 View Locations</td>
           <td>
+
             <div style="display:flex; align-items:center; gap:0.4rem;">
               <button class="btn-icon edit" onclick="adminAdjustStock('${s.productId}', '${s.stage}', '${s.grade}')" title="Adjust">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
@@ -839,6 +848,12 @@ document.addEventListener('DOMContentLoaded', updateAllLocationLabels);
 #swal-qty:focus, #swal-reason:focus, #swal-adj-type:focus {
   border-color: #238636 !important;
   box-shadow: 0 0 0 3px rgba(35,134,54,0.25) !important;
+}
+
+/* Disable row hover effect for low stock (visual only, buttons remain clickable) */
+tr.low-stock-no-hover:hover {
+  background-color: inherit !important;
+  color: inherit !important;
 }
 </style>
 @endsection

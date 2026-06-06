@@ -14,7 +14,9 @@ class DatabaseSeeder extends Seeder
             ProductSeeder::class,
             GradeSeeder::class,
             ProductGradeSeeder::class,
+            DispatchGradeSeeder::class,
             StockSeeder::class,
+
             MonthlyAttendanceSeeder::class,
         ]);
     }
