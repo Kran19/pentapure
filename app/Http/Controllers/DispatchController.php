@@ -17,7 +17,7 @@ class DispatchController extends Controller
 
     public function home()
     {
-        $pending   = Order::with(['company', 'transporter', 'items'])->where('dispatch_status', 'PENDING')->orderByDesc('created_at')->get();
+        $pending   = Order::with(['company', 'transporter', 'items.product'])->where('dispatch_status', 'PENDING')->orderByDesc('created_at')->get();
         $completed = Order::with(['company', 'transporter'])->where('dispatch_status', 'DONE')->orderByDesc('created_at')->get();
 
         $rawStock = DB::table('stocks')
@@ -51,12 +51,24 @@ class DispatchController extends Controller
             'pendingOrders'   => $pending->map(fn($o) => [
                 'id'           => $o->id,
                 'companyId'    => $o->company_id,
+                'companyName'  => $o->company?->name,
                 'transportId'  => $o->transporter_id,
+                'transporterName' => $o->transporter?->name,
                 'total'        => $o->total,
                 'date'         => $o->created_at->toISOString(),
                 'totalQty'     => $o->items->sum('quantity'),
                 'dispatchedQty'=> $o->items->sum('dispatched_qty'),
                 'notes'        => $o->notes,
+                'items'        => $o->items->map(fn($i) => [
+                    'id'            => $i->id,
+                    'productId'     => $i->product_id,
+                    'productName'   => $i->product?->name,
+                    'productType'   => $i->product?->type,
+                    'quantity'      => (float) $i->quantity,
+                    'dispatchedQty' => (float) $i->dispatched_qty,
+                    'remainingQty'  => $i->remainingQty(),
+                    'grade'         => $i->grade,
+                ]),
             ]),
             'completedOrders' => $completed->map(fn($o) => [
                 'id'           => $o->id,

@@ -1950,6 +1950,10 @@ const app = {
     const page = window.currentPage || 1;
     const { paginated, totalPages } = this.paginate(filtered, page, 10);
 
+    const rawStock = DB.get('rawStock') || [];
+    const semiStock = DB.get('semiStock') || [];
+    const finishedStock = DB.get('finishedStock') || [];
+
     let html = `
       <div class="flex-between mb-1">
         <h2 style="margin:0;">Dispatches</h2>
@@ -2021,41 +2025,161 @@ const app = {
       </div>
     `;
 
-    if (paginated.length === 0) {
-      html += `<p class="text-center text-muted card">No ${tab.toLowerCase()} dispatches available.</p>`;
+    // Local card rendering helper
+    const renderOrderCard = (o, isReadySection) => {
+      const totalQty = Number(o.totalQty || 0);
+      const dispatchedQty = Number(o.dispatchedQty || 0);
+      const pct = totalQty > 0 ? Math.round((dispatchedQty / totalQty) * 100) : 0;
+      const progressColor = pct === 0 ? 'var(--warning)' : 'var(--secondary)';
+      
+      const companyName = (DB.get('companies') || []).find(c=>c.id==o.companyId)?.name || o.companyName || 'Unknown';
+      const transportName = (DB.get('transportCompanies') || []).find(t=>t.id==o.transportId)?.name || o.transporterName || 'Unknown';
+      
+      let shortItemsHtml = '';
+      if (!isReadySection && o.itemsShort && o.itemsShort.length > 0) {
+        shortItemsHtml = `
+          <div style="margin-top:10px; padding:10px; background:rgba(239,68,68,0.06); border-left:3px solid var(--danger); border-radius:6px; font-size:0.8rem;">
+            <div style="font-weight:bold; color:var(--danger); margin-bottom:4px; display:flex; align-items:center; gap:4px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              Short Stock (In Production):
+            </div>
+            <ul style="margin:0; padding-left:15px; display:grid; gap:3px; color:#fca5a5; list-style-type:disc;">
+              ${o.itemsShort.map(item => `
+                <li><strong>${item.name} (${item.grade || 'N/A'})</strong>: Need ${item.needed.toFixed(2)} kg (Available: ${item.available.toFixed(2)} kg)</li>
+              `).join('')}
+            </ul>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="card" style="border-left: 4px solid ${isReadySection ? 'var(--secondary)' : 'var(--warning)'}; background:rgba(255,255,255,0.02); transition: transform 0.2s; margin-bottom: 1rem;">
+          <div class="flex-between mb-1">
+            <span style="font-weight:bold; font-size:1.1rem; color:#fff;">Order #${String(o.id).toUpperCase()}</span>
+            <button class="btn btn-sm" style="width:auto; background:${isReadySection ? 'var(--secondary)' : 'var(--warning)'};" onclick="localStorage.setItem('auto_dispatch_id', '${o.id}'); app.navigate('action');">
+              ${isReadySection ? 'Dispatch' : 'Partial Dispatch'}
+            </button>
+          </div>
+          <div style="font-size:0.85rem; color:var(--text-muted); line-height:1.5;">
+            <strong>Customer:</strong> ${companyName} <br>
+            <strong>Transport:</strong> ${transportName}
+            ${o.notes ? `<div style="margin-top:8px; padding:8px 12px; background:rgba(244,180,0,0.06); border-left:3px solid var(--primary-light); border-radius:4px; font-size:0.8rem; color:#fff; word-break:break-word;"><strong>Notes:</strong> ${o.notes}</div>` : ''}
+          </div>
+          
+          ${shortItemsHtml}
+
+          <div style="margin-top:12px;">
+            <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:4px;">
+              <span style="color:var(--text-muted);">Dispatch Progress</span>
+              <span style="color:${progressColor}; font-weight:bold;">${dispatchedQty.toFixed(2)}/${totalQty.toFixed(2)} kg (${pct}%)</span>
+            </div>
+            <div style="background:rgba(255,255,255,0.1); border-radius:6px; height:6px; overflow:hidden;">
+              <div style="background:${progressColor}; height:100%; width:${pct}%; border-radius:6px; transition:width 0.3s;"></div>
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
+    if (tab === 'PENDING') {
+      const stockMap = {};
+      const populate = (items, stage) => {
+        (items || []).forEach(s => {
+          const key = `${stage}_${s.id}_${s.grade || 'NONE'}`;
+          stockMap[key] = (stockMap[key] || 0) + Number(s.quantity || 0);
+        });
+      };
+      populate(rawStock, 'RAW');
+      populate(semiStock, 'SEMI');
+      populate(finishedStock, 'FINISHED');
+
+      const readyOrders = [];
+      const notReadyOrders = [];
+
+      filtered.forEach(o => {
+        let isOrderReady = true;
+        const itemsShort = [];
+
+        (o.items || []).forEach(item => {
+          const remaining = Number(item.remainingQty ?? (item.quantity - (item.dispatchedQty || 0)));
+          if (remaining <= 0) return;
+
+          const stage = (item.productType || '').toUpperCase();
+          const grade = item.grade || 'NONE';
+          const key = `${stage}_${item.productId}_${grade}`;
+          const available = stockMap[key] || 0;
+
+          if (available < remaining) {
+            isOrderReady = false;
+            itemsShort.push({
+              name: item.productName || 'Unknown',
+              grade: item.grade,
+              needed: remaining,
+              available: available
+            });
+          }
+        });
+
+        o.itemsShort = itemsShort;
+        o.isReady = isOrderReady;
+
+        if (isOrderReady) {
+          readyOrders.push(o);
+        } else {
+          notReadyOrders.push(o);
+        }
+      });
+
+      html += `
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:1.2rem; margin-top:1rem; align-items: start;">
+          <div class="card" style="padding:1.2rem; background:rgba(0,0,0,0.15); border:1px solid rgba(255,255,255,0.05); border-radius:12px; margin-bottom: 0;">
+            <div class="card-title" style="margin-bottom:1.2rem; color:var(--secondary); font-size:1.1rem; display:flex; align-items:center; gap:8px; font-weight:700;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--secondary);"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              Ready to Dispatch (${readyOrders.length})
+            </div>
+            <div style="display:flex; flex-direction:column;">
+              ${readyOrders.map(o => renderOrderCard(o, true)).join('') || '<p class="text-center text-muted" style="padding:1.5rem 1rem; margin:0;">No ready orders found.</p>'}
+            </div>
+          </div>
+
+          <div class="card" style="padding:1.2rem; background:rgba(0,0,0,0.15); border:1px solid rgba(255,255,255,0.05); border-radius:12px; margin-bottom: 0;">
+            <div class="card-title" style="margin-bottom:1.2rem; color:var(--warning); font-size:1.1rem; display:flex; align-items:center; gap:8px; font-weight:700;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--warning);"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              Not Ready Yet (In Production) (${notReadyOrders.length})
+            </div>
+            <div style="display:flex; flex-direction:column;">
+              ${notReadyOrders.map(o => renderOrderCard(o, false)).join('') || '<p class="text-center text-muted" style="padding:1.5rem 1rem; margin:0;">All orders are ready.</p>'}
+            </div>
+          </div>
+        </div>
+      `;
     } else {
-      html += paginated.map(o => {
+      if (paginated.length === 0) {
+        html += `<p class="text-center text-muted card">No completed dispatches available.</p>`;
+      } else {
+        html += paginated.map(o => {
           const totalQty = o.totalQty || 0;
           const dispatchedQty = o.dispatchedQty || 0;
-          const pct = totalQty > 0 ? Math.round((dispatchedQty / totalQty) * 100) : 0;
-          const progressColor = pct === 0 ? 'var(--warning)' : 'var(--secondary)';
+          const companyName = (DB.get('companies') || []).find(c=>c.id==o.companyId)?.name || o.companyName || 'Unknown';
+          const transportName = (DB.get('transportCompanies') || []).find(t=>t.id==o.transportId)?.name || o.transporterName || 'Unknown';
           return `
-          <div class="card">
-            <div class="flex-between mb-1">
-              <span style="font-weight:bold;">Order #${String(o.id).toUpperCase()}</span>
-              ${tab === 'PENDING' ? `<button class="btn btn-sm" onclick="localStorage.setItem('auto_dispatch_id', '${o.id}'); app.navigate('action');">Dispatch</button>` : `<span class="badge badge-done">Done</span>`}
-            </div>
-            <div style="font-size:0.85rem; color:var(--text-muted);">
-              To: ${(DB.get('companies') || []).find(c=>c.id==o.companyId)?.name} <br>
-              Via: ${(DB.get('transportCompanies') || []).find(t=>t.id==o.transportId)?.name}
-              ${o.notes ? `<div style="margin-top:6px; padding:6px 10px; background:rgba(244,180,0,0.08); border-left:3px solid var(--primary-light); border-radius:4px; font-size:0.8rem; color:#fff; word-break:break-word;"><strong>Notes:</strong> ${o.notes}</div>` : ''}
-            </div>
-            ${tab === 'PENDING' && totalQty > 0 ? `
-              <div style="margin-top:10px;">
-                <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:4px;">
-                  <span style="color:var(--text-muted);">Dispatch Progress</span>
-                  <span style="color:${progressColor}; font-weight:bold;">${dispatchedQty}/${totalQty} kg (${pct}%)</span>
-                </div>
-                <div style="background:rgba(255,255,255,0.1); border-radius:6px; height:6px; overflow:hidden;">
-                  <div style="background:${progressColor}; height:100%; width:${pct}%; border-radius:6px; transition:width 0.3s;"></div>
-                </div>
+            <div class="card">
+              <div class="flex-between mb-1">
+                <span style="font-weight:bold;">Order #${String(o.id).toUpperCase()}</span>
+                <span class="badge badge-done">Done</span>
               </div>
-            ` : ''}
-          </div>
-        `}).join('');
+              <div style="font-size:0.85rem; color:var(--text-muted); line-height:1.5;">
+                <strong>Customer:</strong> ${companyName} <br>
+                <strong>Transport:</strong> ${transportName}
+                ${o.notes ? `<div style="margin-top:8px; padding:8px 12px; background:rgba(244,180,0,0.06); border-left:3px solid var(--primary-light); border-radius:4px; font-size:0.8rem; color:#fff; word-break:break-word;"><strong>Notes:</strong> ${o.notes}</div>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+      html += this.renderPaginationControls(page, totalPages);
     }
       
-    html += this.renderPaginationControls(page, totalPages);
     container.innerHTML = html;
   },
 
