@@ -126,11 +126,14 @@ class DispatchController extends Controller
     public function storeDispatch(Request $request)
     {
         $request->validate([
-            'order_id'              => 'required|exists:orders,id',
-            'items'                 => 'required|array|min:1',
-            'items.*.order_item_id' => 'required|exists:order_items,id',
-            'items.*.quantity'      => 'required|numeric|min:0.001',
-            'lr_image'              => 'nullable|string',
+            'order_id'                    => 'required|exists:orders,id',
+            'items'                       => 'required|array|min:1',
+            'items.*.order_item_id'       => 'required|exists:order_items,id',
+            'items.*.quantity'            => 'required|numeric|min:0.001',
+            'items.*.location_splits'             => 'nullable|array',
+            'items.*.location_splits.*.location_key' => 'required_with:items.*.location_splits|string',
+            'items.*.location_splits.*.dispatch_location_qty' => 'required_with:items.*.location_splits|numeric|min:0.001',
+            'lr_image'                    => 'nullable|string',
         ]);
 
         $user  = $this->authUser();
@@ -205,6 +208,15 @@ class DispatchController extends Controller
                     'quantity'        => $dispatchQty,
                 ]);
 
+                $locNotes = '';
+                if (!empty($dispatchItem['location_splits'])) {
+                    $splitStrings = [];
+                    foreach ($dispatchItem['location_splits'] as $split) {
+                        $splitStrings[] = $split['dispatch_location_qty'] . 'kg from ' . $split['location_key'];
+                    }
+                    $locNotes = ' [' . implode(', ', $splitStrings) . ']';
+                }
+
                 // Deduct from stock
                 Stock::create([
                     'product_id'       => $orderItem->product_id,
@@ -213,7 +225,7 @@ class DispatchController extends Controller
                     'grade'            => $orderItem->grade,
                     'quantity'         => $dispatchQty,
                     'transaction_type' => 'OUT',
-                    'notes'            => "Dispatched: Order #{$order->id} (Partial round #{$dispatchLog->id})",
+                    'notes'            => "Dispatched: Order #{$order->id} (Partial round #{$dispatchLog->id}){$locNotes}",
                 ]);
 
                 // Update dispatched_qty on the order item

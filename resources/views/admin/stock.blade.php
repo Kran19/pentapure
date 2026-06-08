@@ -687,6 +687,31 @@ function showLocationBreakdown(el) {
   // Admin can override/adjust locations manually
   const allLocations = JSON.parse(localStorage.getItem('pentapure_storage_locations')) || ['Warehouse A', 'Warehouse B', 'Rack 1', 'Cold Room'];
   let optionsHtml = allLocations.map(loc => `<option value="${loc}">${loc}</option>`).join('');
+  
+  let fromOptionsHtml = Object.keys(locMap).map(loc => `<option value="${loc}">${loc} (${locMap[loc]} kg)</option>`).join('');
+  let transferHtml = '';
+  if (Object.keys(locMap).length > 0) {
+    transferHtml = `
+      <div style="border-top:1px dashed #30363d; padding-top:1rem; margin-top:1rem; text-align:left;">
+        <label style="display:block; font-size:0.8rem; color:#8b949e; margin-bottom:0.5rem;">Transfer Stock Between Locations</label>
+        <div style="display:flex; gap:8px; margin-bottom:0.5rem;">
+          <select id="swal-transfer-from" style="flex:1; padding:0.55rem; background:#161b22; border:1px solid #30363d; color:#e6edf3; border-radius:8px; font-size:0.85rem;">
+            <option value="" disabled selected>From Location</option>
+            ${fromOptionsHtml}
+          </select>
+          <span style="color:#8b949e; align-self:center;">➡</span>
+          <select id="swal-transfer-to" style="flex:1; padding:0.55rem; background:#161b22; border:1px solid #30363d; color:#e6edf3; border-radius:8px; font-size:0.85rem;">
+            <option value="" disabled selected>To Location</option>
+            ${optionsHtml}
+          </select>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <input type="number" id="swal-transfer-qty" min="0.01" step="0.01" placeholder="Qty (kg)" style="width:100px; padding:0.55rem; background:#161b22; border:1px solid #30363d; color:#e6edf3; border-radius:8px;">
+          <button class="btn btn-sm" onclick="transferLocationMapping('${key}')" style="flex:1;">Transfer Stock</button>
+        </div>
+      </div>
+    `;
+  }
 
   Swal.fire({
     title: '📍 Stock Storage Locations',
@@ -721,6 +746,7 @@ function showLocationBreakdown(el) {
         </div>
         <button class="btn btn-sm" onclick="addLocationMapping('${key}', ${availableQty})" style="width:100%;">Save Location link</button>
       </div>
+      ${transferHtml}
     `,
     showConfirmButton: false,
     showCancelButton: true,
@@ -763,6 +789,48 @@ window.addLocationMapping = function(key, availableQty) {
   });
 }
 
+window.transferLocationMapping = function(key) {
+  const fromLoc = document.getElementById('swal-transfer-from').value;
+  const toLoc = document.getElementById('swal-transfer-to').value;
+  const qty = parseFloat(document.getElementById('swal-transfer-qty').value);
+  
+  if(!fromLoc || !toLoc || isNaN(qty) || qty <= 0) {
+    Swal.showValidationMessage('Please select both locations and enter a positive quantity.');
+    return;
+  }
+  if(fromLoc === toLoc) {
+    Swal.showValidationMessage('From and To locations must be different.');
+    return;
+  }
+  
+  const mappings = getStoredLocationMappings();
+  const availableInFrom = parseStockNumber(mappings[key][fromLoc]);
+  
+  if(qty > availableInFrom) {
+    Swal.showValidationMessage(`Quantity cannot exceed available stock in source location (${availableInFrom.toFixed(2)} kg).`);
+    return;
+  }
+
+  mappings[key][fromLoc] = availableInFrom - qty;
+  if (mappings[key][fromLoc] <= 0) {
+    delete mappings[key][fromLoc];
+  }
+  
+  mappings[key][toLoc] = (parseStockNumber(mappings[key][toLoc]) || 0) + qty;
+  saveStoredLocationMappings(mappings);
+  
+  Swal.fire({
+    icon: 'success',
+    title: 'Transferred',
+    background: '#0d1117',
+    color: '#e6edf3',
+    timer: 1000,
+    showConfirmButton: false
+  }).then(() => {
+    updateAllLocationLabels();
+  });
+}
+
 function adminExportStockPdf() {
   Swal.fire({
     title: 'Export Stock Valuation PDF',
@@ -782,8 +850,8 @@ function adminExportStockPdf() {
         </div>
       </div>
     `,
-    background: '#0d1117',
-    color: '#e6edf3',
+    background: '#e7e7e7',
+    color: '#000000',
     showCancelButton: true,
     confirmButtonText: 'Generate Report',
     confirmButtonColor: '#238636',

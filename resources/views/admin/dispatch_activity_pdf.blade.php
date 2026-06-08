@@ -28,47 +28,59 @@
     <table>
         <thead>
             <tr>
-                <th>ID</th>
-                <th>Date</th>
-                <th>Customer</th>
-                <th>Order Items</th>
-                <th>Status</th>
-                <th>Dispatch Info</th>
+                <th>Product (Grade)</th>
+                <th>Unit</th>
+                <th style="text-align:right;">Order Qty</th>
+                <th style="text-align:right;">Dispatch Rate</th>
+                <th style="text-align:right;">Total Product Revenue</th>
+                <th style="text-align:right;">Pending Qty</th>
+                <th> </th>
             </tr>
         </thead>
+
         <tbody>
             @foreach($orders as $order)
-            <tr>
-                <td>#{{ $order->id }}</td>
-                <td>{{ $order->created_at->format('d/m/Y') }}</td>
-                <td>
-                    <strong>{{ $order->company?->name ?? 'N/A' }}</strong><br>
-                    <small>By: {{ $order->creator?->name }}</small>
-                </td>
-                <td>
-                    <ul class="items-list">
-                        @foreach($order->items as $item)
-                            <li>{{ $item->product?->name }} ({{ $item->grade }}): {{ $item->quantity }} {{ $item->product?->unit }}</li>
-                        @endforeach
-                    </ul>
-                </td>
-                <td>
-                    <span class="badge {{ $order->dispatch_status === 'DONE' ? 'badge-done' : ($order->dispatch_status === 'PARTIAL' ? 'badge-partial' : 'badge-pending') }}">
-                        {{ $order->dispatch_status }}
-                    </span>
-                </td>
-                <td>
-                    @if($order->dispatchLog)
-                        Transporter: {{ $order->transporter?->name ?? '—' }}<br>
-                        By: {{ $order->dispatchLog->user?->name }}<br>
-                        <small>{{ $order->dispatchLog->created_at->format('d/m/Y H:i') }}</small>
-                    @else
-                        Not Dispatched
-                    @endif
-                </td>
-            </tr>
+                @php
+                    $orderTotalRevenue = 0;
+                @endphp
+
+                <tr>
+                    <td colspan="7" style="background:#fafafa;">
+                        <strong>#{{ $order->id }}</strong> | {{ $order->created_at->format('d/m/Y') }} | {{ $order->company?->name ?? 'N/A' }}
+                    </td>
+                </tr>
+
+                @foreach($order->items as $item)
+                    @php
+                        $qty = (float) ($item->quantity ?? 0);
+                        $sent = (float) ($item->dispatched_qty ?? 0);
+                        $pending = max(0, $qty - $sent);
+
+                        // dispatch rate/unit: use order item rate if present, otherwise fallback to 0
+                        $rate = (float) ($item->rate ?? $item->dispatch_rate ?? 0);
+                        $lineRevenue = $qty * $rate;
+                        $orderTotalRevenue += $lineRevenue;
+                    @endphp
+                    <tr>
+                        <td>{{ $item->product?->name }} ({{ $item->grade }})</td>
+                        <td>{{ $item->product?->unit ?? '' }}</td>
+                        <td style="text-align:right;">{{ number_format($qty, 2) }}</td>
+                        <td style="text-align:right;">{{ number_format($rate, 2) }}</td>
+                        <td style="text-align:right;">₹{{ number_format($lineRevenue, 2) }}</td>
+                        <td style="text-align:right;">
+                            {{ number_format($pending, 2) }}
+                        </td>
+                    </tr>
+                @endforeach
+
+                <tr>
+                    <td colspan="4" style="text-align:right; font-weight:bold;">Total Product Revenue</td>
+                    <td style="text-align:right; font-weight:bold;">₹{{ number_format($orderTotalRevenue, 2) }}</td>
+                    <td></td>
+                </tr>
             @endforeach
         </tbody>
+
     </table>
 
     <div class="footer">

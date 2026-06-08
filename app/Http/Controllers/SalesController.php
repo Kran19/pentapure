@@ -27,8 +27,10 @@ class SalesController extends Controller
                 'id'              => $o->id,
                 'companyId'       => $o->company_id,
                 'companyName'     => $o->company?->name,
+                'companyName'     => strtoupper($o->company?->name),
                 'transportId'     => $o->transporter_id,
                 'transportName'   => $o->transporter?->name,
+                'transportName'   => strtoupper($o->transporter?->name),
                 'total'           => $o->total,
                 'status'          => $o->status,
                 'dispatchStatus'  => $o->dispatch_status,
@@ -38,15 +40,19 @@ class SalesController extends Controller
                     'productId'   => $i->product_id,
                     'productName' => $i->product?->name,
                     'grade'       => $i->grade,
+                    'productName' => strtoupper($i->product?->name),
+                    'grade'       => strtoupper($i->grade),
                     'quantity'    => $i->quantity,
                     'price'       => $i->price,
                 ]),
             ]),
             'companies'          => Company::orderBy('name')->get()->map(fn($c)=>[
                 'id'=>$c->id,'name'=>$c->name,'gst'=>$c->gst,'address'=>$c->address,'contact'=>$c->contact,'date'=>$c->created_at->toISOString()
+                'id'=>$c->id,'name'=>strtoupper($c->name),'gst'=>$c->gst,'address'=>$c->address,'contact'=>$c->contact,'date'=>$c->created_at->toISOString()
             ]),
             'transportCompanies' => Transporter::orderBy('name')->get()->map(fn($t)=>[
                 'id'=>$t->id,'name'=>$t->name,'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
+                'id'=>$t->id,'name'=>strtoupper($t->name),'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
             ]),
             'products'           => Product::target()->active()->visibleTo($this->authUser()['role'])->get(['id', 'name', 'unit', 'type']),
             'stats'              => compact('totalOrders', 'openOrders', 'pendingDisp', 'totalValue'),
@@ -58,12 +64,18 @@ class SalesController extends Controller
     {
         $companies = Company::orderBy('name')->get()->map(fn($c)=>[
             'id'=>$c->id,'name'=>$c->name,'gst'=>$c->gst,'address'=>$c->address,'contact'=>$c->contact,'date'=>$c->created_at->toISOString()
+            'id'=>$c->id,'name'=>strtoupper($c->name),'gst'=>$c->gst,'address'=>$c->address,'contact'=>$c->contact,'date'=>$c->created_at->toISOString()
         ]);
         $transportCompanies = Transporter::orderBy('name')->get()->map(fn($t)=>[
             'id'=>$t->id,'name'=>$t->name,'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
+            'id'=>$t->id,'name'=>strtoupper($t->name),'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
         ]);
         $products = Product::active()->get(['id', 'name', 'unit', 'type']);
         $grades = \App\Models\Grade::where('is_active', true)->pluck('name')->toArray();
+        $products = Product::active()->get(['id', 'name', 'unit', 'type'])->map(fn($p) => [
+            'id' => $p->id, 'name' => strtoupper($p->name), 'unit' => $p->unit, 'type' => $p->type
+        ]);
+        $grades = \App\Models\Grade::where('is_active', true)->pluck('name')->map('strtoupper')->toArray();
 
         $pageData = compact('companies', 'transportCompanies', 'products', 'grades');
         return view('sales.action', compact('pageData'));
@@ -71,6 +83,20 @@ class SalesController extends Controller
 
     public function storeOrder(Request $request)
     {
+        // Convert grade to uppercase for consistency and case-insensitive validation/storage
+        $items = $request->input('items', []);
+        foreach ($items as &$item) {
+            if (isset($item['grade'])) {
+                $item['grade'] = strtoupper($item['grade']);
+            }
+        }
+        $request->merge(['items' => $items]);
+
+        // Prevent duplicate orders: if order_id is present, route to the update logic
+        if ($request->order_id) {
+            return $this->updateOrder($request, $request->order_id);
+        }
+
         $request->validate([
             'company_id'      => 'required|exists:companies,id',
             'transporter_id'  => 'required|exists:transporters,id',
@@ -119,6 +145,8 @@ class SalesController extends Controller
 
     public function storeCompany(Request $request)
     {
+        $request->merge(['name' => strtoupper($request->name)]);
+
         $request->validate([
             'name'    => 'required|string|max:255|unique:companies,name',
             'gst'     => 'required|string|regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/|unique:companies,gst',
@@ -137,6 +165,8 @@ class SalesController extends Controller
 
     public function storeTransporter(Request $request)
     {
+        $request->merge(['name' => strtoupper($request->name)]);
+
         $request->validate([
             'name'    => 'required|string|max:255|unique:transporters,name',
             'gst'     => 'required|string|regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/|unique:transporters,gst',
@@ -171,15 +201,19 @@ class SalesController extends Controller
                 'items'          => $o->items->map(fn($i)=>[
                     'productName' => $i->product?->name,
                     'grade'       => $i->grade,
+                    'productName' => strtoupper($i->product?->name),
+                    'grade'       => strtoupper($i->grade),
                     'quantity'    => $i->quantity,
                     'price'       => $i->price,
                 ]),
             ]),
             'companies'          => $companies->map(fn($c)=>[
                 'id'=>$c->id,'name'=>$c->name,'gst'=>$c->gst,'contact'=>$c->contact,'address'=>$c->address,'date'=>$c->created_at->toISOString()
+                'id'=>$c->id,'name'=>strtoupper($c->name),'gst'=>$c->gst,'contact'=>$c->contact,'address'=>$c->address,'date'=>$c->created_at->toISOString()
             ]),
             'transportCompanies' => $transporters->map(fn($t)=>[
                 'id'=>$t->id,'name'=>$t->name,'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
+                'id'=>$t->id,'name'=>strtoupper($t->name),'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
             ]),
         ];
         return view('sales.history', compact('pageData'));
@@ -187,16 +221,27 @@ class SalesController extends Controller
 
     public function updateOrder(Request $request, $id)
     {
+        // Convert grade to uppercase for consistency and case-insensitive validation/storage
+        $items = $request->input('items', []);
+        foreach ($items as &$item) {
+            if (isset($item['grade'])) {
+                $item['grade'] = strtoupper($item['grade']);
+            }
+        }
+        $request->merge(['items' => $items]);
+
         $order = Order::findOrFail($id);
 
-        if ($order->status !== 'OPEN' || $order->dispatch_status !== 'PENDING') {
-            return response()->json(['success' => false, 'message' => 'Only open orders with pending dispatch can be edited.'], 422);
+        // Allow editing unless the order is fully dispatched or closed
+        if ($order->status === 'CLOSED' || $order->dispatch_status === 'DONE') {
+            return response()->json(['success' => false, 'message' => 'Fully dispatched or closed orders cannot be edited.'], 422);
         }
 
         $request->validate([
             'company_id'      => 'required|exists:companies,id',
             'transporter_id'  => 'required|exists:transporters,id',
             'items'           => 'required|array|min:1',
+            'items.*.id'      => 'nullable|exists:order_items,id',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.grade'      => 'required|string',
             'items.*.quantity'   => 'required|numeric|min:0.001',
@@ -221,17 +266,39 @@ class SalesController extends Controller
                 'notes'          => $request->notes,
             ]);
 
-            $order->items()->delete();
+            $existingItemIds = [];
 
             foreach ($request->items as $item) {
-                OrderItem::create([
+                // Update existing item if ID is provided, maintaining dispatch history
+                if (!empty($item['id'])) {
+                    $orderItem = OrderItem::where('id', $item['id'])->where('order_id', $order->id)->first();
+                    if ($orderItem) {
+                        // Ensure we don't reduce quantity below what's already dispatched
+                        $newQty = max((float)$item['quantity'], (float)$orderItem->dispatched_qty);
+                        $orderItem->update([
+                            'product_id' => $item['product_id'],
+                            'grade'      => $item['grade'],
+                            'quantity'   => $newQty,
+                            'price'      => $item['price'],
+                        ]);
+                        $existingItemIds[] = $orderItem->id;
+                        continue;
+                    }
+                }
+
+                // Otherwise, create a new item attached to the same order
+                $newItem = OrderItem::create([
                     'order_id'   => $order->id,
                     'product_id' => $item['product_id'],
                     'grade'      => $item['grade'],
                     'quantity'   => $item['quantity'],
                     'price'      => $item['price'],
                 ]);
+                $existingItemIds[] = $newItem->id;
             }
+
+            // Only delete removed items if they haven't been dispatched
+            $order->items()->whereNotIn('id', $existingItemIds)->where('dispatched_qty', '<=', 0)->delete();
         });
 
         return response()->json(['success' => true, 'message' => 'Order updated successfully!']);

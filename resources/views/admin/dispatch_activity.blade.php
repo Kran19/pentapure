@@ -16,9 +16,13 @@
         <label style="display:block; font-size:0.85rem; margin-bottom:0.4rem; color:var(--text-muted);">Status</label>
         <select name="status" class="form-control" style="width:100%;" onchange="this.form.submit()">
           <option value="">All Statuses</option>
-          <option value="PENDING" {{ request('status') === 'PENDING' ? 'selected' : '' }}>Pending</option>
-          <option value="PARTIAL" {{ request('status') === 'PARTIAL' ? 'selected' : '' }}>Partial</option>
-          <option value="DONE" {{ request('status') === 'DONE' ? 'selected' : '' }}>Dispatched (Done)</option>
+          <option value="SINGLE_PENDING" {{ request('status') === 'SINGLE_PENDING' ? 'selected' : '' }}>Single Pending</option>
+          <option value="SINGLE_DONE" {{ request('status') === 'SINGLE_DONE' ? 'selected' : '' }}>Single Done</option>
+          <option value="PARTIAL" {{ request('status') === 'PARTIAL' ? 'selected' : '' }}>Partial Dispatch</option>
+          <option value="PENDING_PARTIAL" {{ request('status') === 'PENDING_PARTIAL' ? 'selected' : '' }}>Pending Partial Dispatch</option>
+          <option value="DONE_PARTIAL" {{ request('status') === 'DONE_PARTIAL' ? 'selected' : '' }}>Done Partial Dispatch</option>
+          <option value="ALL_DONE" {{ request('status') === 'ALL_DONE' ? 'selected' : '' }}>All Done Orders</option>
+          <option value="ALL_PARTIAL" {{ request('status') === 'ALL_PARTIAL' ? 'selected' : '' }}>All Partial Dispatch Orders</option>
         </select>
       </div>
       <div style="flex:1; min-width:150px;">
@@ -66,9 +70,25 @@
               <td>
                 <div style="max-width:300px;">
                   @foreach($order->items as $item)
-                    <div style="font-size:0.85rem; margin-bottom:2px;">
-                      • {{ $item->product?->name }} ({{ $item->grade }}): 
-                      <span style="font-weight:600;">{{ $item->quantity }} {{ $item->product?->unit }}</span>
+                    <div style="font-size:0.85rem; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid rgba(255,255,255,0.05);">
+                      <div style="margin-bottom:2px;">
+                        • {{ $item->product?->name }} ({{ $item->grade }}): 
+                        <span style="font-weight:600;">{{ $item->quantity }} {{ $item->product?->unit }}</span>
+                      </div>
+                      @if($order->dispatch_status === 'PARTIAL' || ($order->dispatch_status === 'DONE' && $order->dispatch_logs_count > 1))
+                        <div style="font-size:0.75rem; color:var(--text-muted); padding-left:12px;">
+                          Dispatched: <span style="color:var(--secondary); font-weight:600;">{{ $item->dispatched_qty ?? 0 }} {{ $item->product?->unit }}</span>
+                          &nbsp;|&nbsp;
+                          Pending: <span style="color:var(--danger); font-weight:600;">{{ max(0, $item->quantity - ($item->dispatched_qty ?? 0)) }} {{ $item->product?->unit }}</span>
+                        </div>
+                      @endif
+
+                      @if($order->dispatch_status === 'PENDING_PARTIAL' && $item->quantity > ($item->dispatched_qty ?? 0))
+                        <div style="font-size:0.75rem; color:var(--text-muted); padding-left:12px;">
+                          🚧 Pending Partial Qty: <span style="color:var(--danger); font-weight:600;">{{ max(0, $item->quantity - ($item->dispatched_qty ?? 0)) }} {{ $item->product?->unit }}</span>
+                        </div>
+                      @endif
+
                     </div>
                   @endforeach
                   @if($order->notes)
@@ -79,9 +99,19 @@
                 </div>
               </td>
               <td>
-                <span class="badge {{ $order->dispatch_status === 'DONE' ? 'badge-done' : ($order->dispatch_status === 'PARTIAL' ? 'badge-warning' : 'badge-pending') }}">
-                  {{ $order->dispatch_status }}
-                </span>
+                @php
+                    $badgeClass = 'badge-pending';
+                    $label = $order->dispatch_status;
+                    
+                    if ($order->dispatch_status === 'DONE') {
+                        $badgeClass = 'badge-done';
+                        $label = $order->dispatch_logs_count > 1 ? 'DONE (PARTIAL)' : 'DONE (SINGLE)';
+                    } elseif ($order->dispatch_status === 'PARTIAL') {
+                        $badgeClass = 'badge-warning';
+                        $label = 'PARTIAL (PENDING)';
+                    }
+                @endphp
+                <span class="badge {{ $badgeClass }}">{{ $label }}</span>
               </td>
               <td style="font-size:0.85rem;">
                 @if($order->dispatchLog)

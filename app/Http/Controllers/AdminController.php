@@ -729,10 +729,32 @@ class AdminController extends Controller
     public function dispatchActivity(Request $request)
     {
         $query = \App\Models\Order::with(['company', 'items.product', 'dispatchLog.user', 'transporter'])
+            ->select('orders.*')
+            ->addSelect(['dispatch_logs_count' => \App\Models\DispatchLog::selectRaw('COUNT(*)')
+                ->whereColumn('order_id', 'orders.id')
+            ])
             ->orderByDesc('created_at');
 
-        if ($request->status) {
-            $query->where('dispatch_status', $request->status);
+        $status = $request->status;
+        if ($status) {
+            if ($status === 'SINGLE_PENDING') {
+                $query->where('dispatch_status', 'PENDING');
+            } elseif ($status === 'SINGLE_DONE') {
+                $query->where('dispatch_status', 'DONE')
+                      ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) <= 1');
+            } elseif ($status === 'PARTIAL' || $status === 'PENDING_PARTIAL') {
+                $query->where('dispatch_status', 'PARTIAL');
+            } elseif ($status === 'DONE_PARTIAL') {
+                $query->where('dispatch_status', 'DONE')
+                      ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) > 1');
+            } elseif ($status === 'ALL_DONE') {
+                $query->where('dispatch_status', 'DONE');
+            } elseif ($status === 'ALL_PARTIAL') {
+                $query->where(function($q) {
+                    $q->where('dispatch_status', 'PARTIAL')
+                      ->orWhereRaw("dispatch_status = 'DONE' AND (SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) > 1");
+                });
+            }
         }
         if ($request->date_from) {
             $query->whereDate('created_at', '>=', $request->date_from);
@@ -758,10 +780,32 @@ class AdminController extends Controller
     public function dispatchActivityPdf(Request $request)
     {
         $query = \App\Models\Order::with(['company', 'items.product', 'dispatchLog.user', 'transporter'])
+            ->select('orders.*')
+            ->addSelect(['dispatch_logs_count' => \App\Models\DispatchLog::selectRaw('COUNT(*)')
+                ->whereColumn('order_id', 'orders.id')
+            ])
             ->orderByDesc('created_at');
 
-        if ($request->status) {
-            $query->where('dispatch_status', $request->status);
+        $status = $request->status;
+        if ($status) {
+            if ($status === 'SINGLE_PENDING') {
+                $query->where('dispatch_status', 'PENDING');
+            } elseif ($status === 'SINGLE_DONE') {
+                $query->where('dispatch_status', 'DONE')
+                      ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) <= 1');
+            } elseif ($status === 'PARTIAL' || $status === 'PENDING_PARTIAL') {
+                $query->where('dispatch_status', 'PARTIAL');
+            } elseif ($status === 'DONE_PARTIAL') {
+                $query->where('dispatch_status', 'DONE')
+                      ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) > 1');
+            } elseif ($status === 'ALL_DONE') {
+                $query->where('dispatch_status', 'DONE');
+            } elseif ($status === 'ALL_PARTIAL') {
+                $query->where(function($q) {
+                    $q->where('dispatch_status', 'PARTIAL')
+                      ->orWhereRaw("dispatch_status = 'DONE' AND (SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) > 1");
+                });
+            }
         }
         if ($request->date_from) {
             $query->whereDate('created_at', '>=', $request->date_from);
