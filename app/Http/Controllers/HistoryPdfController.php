@@ -247,6 +247,8 @@ class HistoryPdfController extends Controller
         
         $rows = [];
         $totalQty = 0;
+        $totalOrderedQty = 0;
+        $totalPendingQty = 0;
         $totalAmount = 0;
         $completedCount = 0;
         $pendingCount = 0;
@@ -261,22 +263,36 @@ class HistoryPdfController extends Controller
             
             $status = ($order && $order->dispatch_status === 'DONE') ? 'COMPLETED' : 'PENDING';
             
+            $formatQty = fn($q, $u) => number_format($q, floor($q) == $q ? 0 : 2) . ' ' . $u;
+
             foreach ($log->dispatchItems as $di) {
                 $orderItem = $di->orderItem;
                 if ($orderItem) {
                     $qty = (float) $di->quantity;
+                    $orderedQty = (float) $orderItem->quantity;
+                    $pendingQty = max(0, $orderedQty - (float) $orderItem->dispatched_qty);
                     $rate = (float) $orderItem->price;
                     $amount = $qty * $rate;
+                    $unit = strtoupper($orderItem->product?->unit ?? 'KG');
+
                     $totalQty += $qty;
+                    $totalOrderedQty += $orderedQty;
+                    $totalPendingQty += $pendingQty;
                     $totalAmount += $amount;
                     
                     $rows[] = [
                         'dispatch_id' => 'DSP-' . str_pad($log->id, 4, '0', STR_PAD_LEFT),
                         'order_id' => 'ORD-' . str_pad($log->order_id, 4, '0', STR_PAD_LEFT),
                         'date' => $log->created_at->format('d M Y'),
-                        'customer' => $order->company?->name ?? 'N/A',
-                        'product' => ($orderItem->product?->name ?? 'Product') . ' (' . $orderItem->grade . ')',
+                        'customer' => strtoupper($order->company?->name ?? 'N/A'),
+                        'product' => strtoupper($orderItem->product?->name ?? 'Product') . ' (' . strtoupper($orderItem->grade) . ')',
+                        'ordered_qty' => $orderedQty,
                         'qty' => $qty,
+                        'pending_qty' => $pendingQty,
+                        'unit' => $unit,
+                        'ordered_qty_formatted' => $formatQty($orderedQty, $unit),
+                        'dispatch_qty_formatted' => $formatQty($qty, $unit),
+                        'pending_qty_formatted' => $formatQty($pendingQty, $unit),
                         'rate' => $rate,
                         'amount' => $amount,
                         'status' => $status,
@@ -337,6 +353,8 @@ class HistoryPdfController extends Controller
             'cancelledCount' => 0, // No cancelled status in DB schema currently
             'totalValue' => $totalAmount,
             'totalQuantity' => $totalQty,
+            'totalOrderedQty' => $totalOrderedQty,
+            'totalPendingQty' => $totalPendingQty,
             'customerSummary' => $customerSummary,
             'productSummary' => $productSummary,
             'lrCopies' => $lrCopies,

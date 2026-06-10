@@ -89,7 +89,7 @@
                         </td>
                         <td style="vertical-align: middle; padding: 0 0 0 8px;">
                             <div class="brand-title">PENTAPURE</div>
-                            <div class="brand-tagline">The Pure Taste Of Nature</div>
+                            <div class="brand-tagline">PENTAPURE FOOD AND SPICES</div>
                         </td>
                     </tr>
                 </table>

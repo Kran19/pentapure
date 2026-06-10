@@ -2699,6 +2699,13 @@ const app = {
               📎 Include bill attachments as extra pages after statement
             </label>
           </div>
+
+          <div style="background:rgba(59,130,246,0.1); border:1px solid #3b82f6; border-radius:8px; padding:0.7rem; display:flex; align-items:center; gap:0.6rem; margin-top:0.8rem;">
+            <input type="checkbox" id="sp-balance" checked style="width:16px; height:16px; accent-color:#3b82f6;">
+            <label for="sp-balance" style="font-size:0.85rem; cursor:pointer;">
+              📊 Show running balance for every transaction
+            </label>
+          </div>
         </div>
       `,
       background: '#0d1117',
@@ -2719,13 +2726,14 @@ const app = {
           category: document.getElementById('sp-cat').value,
           site: document.getElementById('sp-site').value,
           include_bills: document.getElementById('sp-bills').checked ? 'yes' : 'no',
+          show_balance: document.getElementById('sp-balance').checked ? 'yes' : 'no',
           opening_balance: document.getElementById('sp-opening').value || '',
         };
       }
     }).then(result => {
       if (!result.isConfirmed) return;
       const p = result.value;
-      let url = `/cashier/history/pdf?from=${p.from}&to=${p.to}&include_bills=${p.include_bills}&category=${p.category}&site=${p.site}`;
+      let url = `/cashier/history/pdf?from=${p.from}&to=${p.to}&include_bills=${p.include_bills}&category=${p.category}&site=${p.site}&show_balance=${p.show_balance}`;
       if (p.opening_balance) url += `&opening_balance=${p.opening_balance}`;
       this.toast('Generating PDF... this may take a moment ⏳', 'info');
       window.open(url, '_blank');
@@ -3387,7 +3395,7 @@ const app = {
     let rowsHtml = '';
     (o.products || []).forEach(p => {
       rowsHtml += `
-        <div class="dynamic-row edit-order-row" style="margin-bottom:8px;">
+        <div class="dynamic-row edit-order-row" style="margin-bottom:8px;" data-item-id="${p.id || ''}">
           <div class="form-group" style="flex:1 1 100%; margin:0;">
             <select class="edit-o-prod-id" style="width:100%;">
               ${finProds.map(pr => `<option value="${pr.id}" ${pr.id == p.productId ? 'selected' : ''}>${pr.name} (${pr.type})</option>`).join('')}
@@ -3490,11 +3498,16 @@ const app = {
 
     const items = [];
     document.querySelectorAll('#edit-order-products-list .edit-order-row').forEach(row => {
-      const id = row.querySelector('.edit-o-prod-id').value;
+      const id = row.getAttribute('data-item-id') || null; // Get existing item ID if available
+      const product_id = row.querySelector('.edit-o-prod-id').value;
       const grade = row.querySelector('.edit-o-prod-grade').value;
       const qty = Number(row.querySelector('.edit-o-prod-qty').value);
       const price = Number(row.querySelector('.edit-o-prod-price').value);
-      if (id && grade && qty > 0 && price > 0) items.push({ product_id: id, grade, quantity: qty, price });
+      if (product_id && grade && qty > 0 && price > 0) {
+        const item = { product_id, grade, quantity: qty, price };
+        if (id) item.id = id; // Include ID only if it exists (for existing items)
+        items.push(item);
+      }
     });
 
     if (items.length === 0) return this.toast('Add valid products and grades', 'error');

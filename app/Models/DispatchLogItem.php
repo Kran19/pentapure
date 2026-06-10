@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DispatchLogItem extends Model
 {
@@ -19,5 +20,10 @@ class DispatchLogItem extends Model
     public function orderItem(): BelongsTo
     {
         return $this->belongsTo(OrderItem::class);
+    }
+
+    public function locationAllocations(): HasMany
+    {
+        return $this->hasMany(DispatchItemLocation::class);
     }
 }

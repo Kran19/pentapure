@@ -339,6 +339,7 @@ class CashierController extends Controller
         $sumOut = $txs->where('type', 'OUT')->sum('amount');
 
         $includeBills = $request->include_bills !== 'no';
+        $showBalance = $request->show_balance !== 'no';
 
         $data = [
             'reportId'       => $userId * 100 + rand(1, 99),
@@ -357,6 +358,7 @@ class CashierController extends Controller
             'sumOut'         => $sumOut,
             'totalRecords'   => count($rows),
             'includeBills'   => $includeBills,
+            'showBalance'    => $showBalance,
             'billPages'      => [], // no embedded blade bills, using FPDI
         ];
 

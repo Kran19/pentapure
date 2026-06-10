@@ -69,7 +69,7 @@
             <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 82px; height: 82px; vertical-align: middle; margin-right: 12px; object-fit: contain;">
             <div class="brand-text">
                 <div class="brand-title">PentaPure</div>
-                <div class="tagline">The Pure Taste Of Nature</div>
+                <div class="tagline">PENTAPURE FOOD AND SPICES</div>
             </div>
         </div>
         <div class="contact">

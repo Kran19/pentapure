@@ -104,7 +104,7 @@
                         </td>
                         <td style="vertical-align: middle; padding: 0 0 0 8px;">
                             <div class="brand-title">PENTAPURE</div>
-                            <div class="brand-tagline">The Pure Taste Of Nature</div>
+                            <div class="brand-tagline">PENTAPURE FOOD AND SPICES</div>
                         </td>
                     </tr>
                 </table>
@@ -186,29 +186,29 @@
     <table class="data-table">
         <thead>
             <tr>
-                <th style="width: 5%;" class="text-center">#</th>
-                <th style="width: 10%;">Dispatch ID</th>
-                <th style="width: 10%;">Order ID</th>
-                <th style="width: 11%;">Date</th>
+                <th style="width: 9%;">Dispatch ID</th>
+                <th style="width: 9%;">Order ID</th>
+                <th style="width: 10%;">Date</th>
                 <th style="width: 12%;">Customer</th>
-                <th style="width: 20%;">Product</th>
-                <th style="width: 10%;" class="text-right">Qty</th>
-                <th style="width: 10%;" class="text-right">Rate (Rs.)</th>
-                <th style="width: 12%;" class="text-right">Amount (Rs.)</th>
-                <th style="width: 10%;" class="text-center">Status</th>
+                <th style="width: 16%;">Product</th>
+                <th style="width: 9%; color: #027a48;" class="text-right">Ord. Qty</th>
+                <th style="width: 9%; color: #175cd3;" class="text-right">Disp. Qty</th>
+                <th style="width: 9%; color: #b42318;" class="text-right">Pend. Qty</th>
+                <th style="width: 9%;" class="text-right">Revenue</th>
+                <th style="width: 8%;" class="text-center">Status</th>
             </tr>
         </thead>
         <tbody>
             @forelse($rows as $idx => $row)
                 <tr>
-                    <td class="text-center">{{ $idx + 1 }}</td>
-                    <td><strong>{{ $row['dispatch_id'] }}</strong></td>
+                    <td>{{ $row['dispatch_id'] }}</td>
                     <td>{{ $row['order_id'] }}</td>
                     <td>{{ $row['date'] }}</td>
                     <td>{{ $row['customer'] }}</td>
                     <td>{{ $row['product'] }}</td>
-                    <td class="text-right text-green">{{ number_format($row['qty']) }} KG</td>
-                    <td class="text-right">₹{{ number_format($row['rate'], 2) }}</td>
+                    <td class="text-right text-green"><strong>{{ $row['ordered_qty_formatted'] ?? number_format($row['ordered_qty'] ?? 0) . ' KG' }}</strong></td>
+                    <td class="text-right" style="color: #175cd3;"><strong>{{ $row['dispatch_qty_formatted'] ?? number_format($row['qty'] ?? 0) . ' KG' }}</strong></td>
+                    <td class="text-right" style="color: {{ ($row['pending_qty'] ?? 0) > 0 ? '#b42318' : 'inherit' }};"><strong>{{ $row['pending_qty_formatted'] ?? number_format($row['pending_qty'] ?? 0) . ' KG' }}</strong></td>
                     <td class="text-right"><strong>₹{{ number_format($row['amount'], 2) }}</strong></td>
                     <td class="text-center">
                         <span class="badge {{ $row['status'] === 'COMPLETED' ? 'badge-completed' : ($row['status'] === 'CANCELLED' ? 'badge-cancelled' : 'badge-pending') }}">
@@ -218,14 +218,15 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="10" class="text-center" style="padding: 15px; color: #667085;">No dispatch history found for the selected filters.</td>
+                    <td colspan="9" class="text-center" style="padding: 15px; color: #667085;">No dispatch history found for the selected filters.</td>
                 </tr>
             @endforelse
             @if(count($rows) > 0)
                 <tr class="total-row">
-                    <td colspan="6">TOTAL</td>
-                    <td class="text-right text-green">{{ number_format($totalQuantity) }} KG</td>
-                    <td></td>
+                    <td colspan="5">TOTAL</td>
+                    <td class="text-right text-green">{{ number_format($totalOrderedQty ?? 0) }} KG</td>
+                    <td class="text-right" style="color: #175cd3;">{{ number_format($totalQuantity) }} KG</td>
+                    <td class="text-right" style="color: {{ ($totalPendingQty ?? 0) > 0 ? '#b42318' : 'inherit' }};">{{ number_format($totalPendingQty ?? 0) }} KG</td>
                     <td class="text-right">₹{{ number_format($totalValue, 2) }}</td>
                     <td></td>
                 </tr>

@@ -26,35 +26,32 @@ class SalesController extends Controller
             'orders'         => $orders->map(fn($o) => [
                 'id'              => $o->id,
                 'companyId'       => $o->company_id,
-                'companyName'     => $o->company?->name,
-                'companyName'     => strtoupper($o->company?->name),
+                'companyName'     => strtoupper($o->company?->name ?? ''),
                 'transportId'     => $o->transporter_id,
-                'transportName'   => $o->transporter?->name,
-                'transportName'   => strtoupper($o->transporter?->name),
+                'transportName'   => strtoupper($o->transporter?->name ?? ''),
                 'total'           => $o->total,
                 'status'          => $o->status,
                 'dispatchStatus'  => $o->dispatch_status,
                 'notes'           => $o->notes,
                 'date'            => $o->created_at->toISOString(),
                 'products'        => $o->items->map(fn($i) => [
+                    'id'          => $i->id,
                     'productId'   => $i->product_id,
-                    'productName' => $i->product?->name,
-                    'grade'       => $i->grade,
-                    'productName' => strtoupper($i->product?->name),
-                    'grade'       => strtoupper($i->grade),
+                    'productName' => strtoupper($i->product?->name ?? ''),
+                    'grade'       => strtoupper($i->grade ?? ''),
                     'quantity'    => $i->quantity,
                     'price'       => $i->price,
                 ]),
             ]),
             'companies'          => Company::orderBy('name')->get()->map(fn($c)=>[
-                'id'=>$c->id,'name'=>$c->name,'gst'=>$c->gst,'address'=>$c->address,'contact'=>$c->contact,'date'=>$c->created_at->toISOString()
-                'id'=>$c->id,'name'=>strtoupper($c->name),'gst'=>$c->gst,'address'=>$c->address,'contact'=>$c->contact,'date'=>$c->created_at->toISOString()
+                'id'=>$c->id,'name'=>strtoupper($c->name ?? ''),'gst'=>$c->gst,'address'=>$c->address,'contact'=>$c->contact,'date'=>$c->created_at->toISOString()
             ]),
             'transportCompanies' => Transporter::orderBy('name')->get()->map(fn($t)=>[
-                'id'=>$t->id,'name'=>$t->name,'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
-                'id'=>$t->id,'name'=>strtoupper($t->name),'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
+                'id'=>$t->id,'name'=>strtoupper($t->name ?? ''),'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
             ]),
-            'products'           => Product::target()->active()->visibleTo($this->authUser()['role'])->get(['id', 'name', 'unit', 'type']),
+            'products'           => Product::target()->active()->visibleTo($this->authUser()['role'])->get(['id', 'name', 'unit', 'type'])->map(fn($p) => [
+                'id' => $p->id, 'name' => strtoupper($p->name ?? ''), 'unit' => $p->unit, 'type' => $p->type
+            ]),
             'stats'              => compact('totalOrders', 'openOrders', 'pendingDisp', 'totalValue'),
         ];
         return view('sales.home', compact('pageData'));
@@ -63,17 +60,13 @@ class SalesController extends Controller
     public function action()
     {
         $companies = Company::orderBy('name')->get()->map(fn($c)=>[
-            'id'=>$c->id,'name'=>$c->name,'gst'=>$c->gst,'address'=>$c->address,'contact'=>$c->contact,'date'=>$c->created_at->toISOString()
-            'id'=>$c->id,'name'=>strtoupper($c->name),'gst'=>$c->gst,'address'=>$c->address,'contact'=>$c->contact,'date'=>$c->created_at->toISOString()
+            'id'=>$c->id,'name'=>strtoupper($c->name ?? ''),'gst'=>$c->gst,'address'=>$c->address,'contact'=>$c->contact,'date'=>$c->created_at->toISOString()
         ]);
         $transportCompanies = Transporter::orderBy('name')->get()->map(fn($t)=>[
-            'id'=>$t->id,'name'=>$t->name,'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
-            'id'=>$t->id,'name'=>strtoupper($t->name),'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
+            'id'=>$t->id,'name'=>strtoupper($t->name ?? ''),'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
         ]);
-        $products = Product::active()->get(['id', 'name', 'unit', 'type']);
-        $grades = \App\Models\Grade::where('is_active', true)->pluck('name')->toArray();
         $products = Product::active()->get(['id', 'name', 'unit', 'type'])->map(fn($p) => [
-            'id' => $p->id, 'name' => strtoupper($p->name), 'unit' => $p->unit, 'type' => $p->type
+            'id' => $p->id, 'name' => strtoupper($p->name ?? ''), 'unit' => $p->unit, 'type' => $p->type
         ]);
         $grades = \App\Models\Grade::where('is_active', true)->pluck('name')->map('strtoupper')->toArray();
 
@@ -92,9 +85,10 @@ class SalesController extends Controller
         }
         $request->merge(['items' => $items]);
 
-        // Prevent duplicate orders: if order_id is present, route to the update logic
-        if ($request->order_id) {
-            return $this->updateOrder($request, $request->order_id);
+        // Prevent duplicate orders: route to the update logic if an order ID is provided
+        $orderId = $request->input('order_id') ?? $request->input('id');
+        if ($orderId) {
+            return $this->updateOrder($request, $orderId);
         }
 
         $request->validate([
@@ -199,21 +193,17 @@ class SalesController extends Controller
                 'date'           => $o->created_at->toISOString(),
                 'notes'          => $o->notes,
                 'items'          => $o->items->map(fn($i)=>[
-                    'productName' => $i->product?->name,
-                    'grade'       => $i->grade,
-                    'productName' => strtoupper($i->product?->name),
-                    'grade'       => strtoupper($i->grade),
+                    'productName' => strtoupper($i->product?->name ?? ''),
+                    'grade'       => strtoupper($i->grade ?? ''),
                     'quantity'    => $i->quantity,
                     'price'       => $i->price,
                 ]),
             ]),
             'companies'          => $companies->map(fn($c)=>[
-                'id'=>$c->id,'name'=>$c->name,'gst'=>$c->gst,'contact'=>$c->contact,'address'=>$c->address,'date'=>$c->created_at->toISOString()
-                'id'=>$c->id,'name'=>strtoupper($c->name),'gst'=>$c->gst,'contact'=>$c->contact,'address'=>$c->address,'date'=>$c->created_at->toISOString()
+                'id'=>$c->id,'name'=>strtoupper($c->name ?? ''),'gst'=>$c->gst,'contact'=>$c->contact,'address'=>$c->address,'date'=>$c->created_at->toISOString()
             ]),
             'transportCompanies' => $transporters->map(fn($t)=>[
-                'id'=>$t->id,'name'=>$t->name,'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
-                'id'=>$t->id,'name'=>strtoupper($t->name),'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
+                'id'=>$t->id,'name'=>strtoupper($t->name ?? ''),'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
             ]),
         ];
         return view('sales.history', compact('pageData'));
@@ -253,6 +243,20 @@ class SalesController extends Controller
         foreach ($request->items as $item) {
             if (!in_array($item['product_id'], $visibleProductIds)) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized product access.'], 403);
+            }
+        }
+
+        // Validate that quantities don't go below dispatched amounts
+        foreach ($request->items as $item) {
+            if (!empty($item['id'])) {
+                $orderItem = OrderItem::find($item['id']);
+                if ($orderItem && $item['quantity'] < $orderItem->dispatched_qty) {
+                    $product = $orderItem->product;
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Cannot reduce {$product->name} quantity to {$item['quantity']} kg. Already dispatched: {$orderItem->dispatched_qty} kg. Minimum allowed: {$orderItem->dispatched_qty} kg."
+                    ], 422);
+                }
             }
         }
 

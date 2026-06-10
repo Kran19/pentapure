@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Stock extends Model
 {
     protected $fillable = [
-        'product_id', 'user_id', 'stage', 'grade', 'quantity', 'transaction_type', 'notes'
+        'product_id', 'user_id', 'stage', 'grade', 'location_id', 'quantity', 'transaction_type', 'notes'
     ];
 
     protected $casts = [
@@ -24,6 +24,11 @@ class Stock extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
     }
 
     // Scope: only IN (inward) transactions

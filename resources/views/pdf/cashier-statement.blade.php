@@ -109,11 +109,12 @@ body {
 .data-table tbody tr:hover { background: #eef2f9; }
 
 .td-date  { width: 11%; white-space: nowrap; }
-.td-desc  { width: 32%; }
-.td-acc   { width: 23%; }
+.td-desc  { width: 25%; }
+.td-acc   { width: 18%; }
 .td-amt   { width: 8%; text-align: right; font-weight: bold; }
-.td-by    { width: 10%; }
-.td-site  { width: 10%; }
+.td-bal   { width: 10%; text-align: right; font-weight: bold; }
+.td-by    { width: 8%; }
+.td-site  { width: 8%; }
 .td-bill  { width: 6%; text-align: center; }
 
 .cat-label { font-size: 7.5px; color: #777; display: block; margin-top: 2px; text-transform: uppercase; }
@@ -194,7 +195,7 @@ body {
         <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 36px; height: 36px; border-radius: 6px; vertical-align: middle; margin-right: 10px; object-fit: contain;">
         <span style="display:inline-block; vertical-align:middle;">
             <span class="brand-name">PentaPure</span><br>
-            <span class="brand-sub">Foods and Spices — Account Statement</span>
+            <span class="brand-sub">PENTAPURE FOOD AND SPICES</span>
         </span>
     </div>
     <div class="header-right">
@@ -216,9 +217,15 @@ body {
         <div class="meta-cell">Duration: {{ $fromDate }} - {{ $toDate }}</div>
         <div class="meta-cell">Site: {{ $site }}</div>
     </div>
-    <div class="meta-split" style="border-bottom:none;">
+    <div class="meta-split">
         <div class="meta-cell">Category: {{ $category }}</div>
         <div class="meta-cell">Opening Balance: ₹{{ number_format($openingBalance, 2) }}</div>
+    </div>
+    <div class="meta-split" style="border-bottom:none;">
+        <div class="meta-cell" style="color: {{ $closingBalance >= 0 ? '#15803d' : '#b91c1c' }};">
+            <strong>Closing Balance: ₹{{ number_format(abs($closingBalance), 2) }}</strong>
+        </div>
+        <div class="meta-cell"></div>
     </div>
 </div>
 
@@ -255,6 +262,7 @@ body {
                 <th class="td-desc">Desc</th>
                 <th class="td-acc">Expense Category</th>
                 <th class="td-amt">Amt</th>
+                <th class="td-bal">Available Balance</th>
                 <th class="td-by">Added By</th>
                 <th class="td-site">Site</th>
                 <th class="td-bill">Bill</th>
@@ -276,6 +284,9 @@ body {
                 <td class="td-amt {{ $row['type'] === 'IN' ? 'amt-in' : 'amt-out' }}">
                     {{ number_format($row['amount'], 2) }}
                 </td>
+                <td class="td-bal">
+                    <strong>₹{{ number_format($row['closing_bal'], 2) }}</strong>
+                </td>
                 <td class="td-by">{{ $cashierName }}</td>
                 <td class="td-site">{{ $row['site'] ?: 'Pentapure' }}</td>
                 <td class="td-bill">
@@ -290,7 +301,7 @@ body {
             </tr>
             @empty
             <tr>
-                <td colspan="7" style="padding:20px; text-align:center; color:#888;">
+                <td colspan="8" style="padding:20px; text-align:center; color:#888;">
                     No transactions found for this period.
                 </td>
             </tr>
