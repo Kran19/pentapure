@@ -19,8 +19,7 @@
         <label>Type *</label>
         <select id="p-type" onchange="toggleGradeDisplay()">
           <option value="RAW">RAW (Input Material)</option>
-          <option value="SEMI">SEMI (Intermediate / Powder)</option>
-          <option value="FINISHED">FINISHED (Packaged Goods)</option>
+          <option value="FINISHED">FINISHED (Packaged / Intermediate Goods)</option>
         </select>
       </div>
       <div class="form-group">
@@ -57,22 +56,20 @@
     </div>
 
     <div style="display:flex; gap:1rem; margin-top:1.5rem;">
-      <button class="btn" onclick="adminSaveProduct()" style="width:auto; padding:0.6rem 1.5rem;">Save Product</button>
+      <button class="btn" id="btn-save-prod" onclick="adminSaveProduct()" style="width:auto; padding:0.6rem 1.5rem;">Save Product</button>
       <button class="btn btn-secondary" onclick="document.getElementById('prod-form').style.display='none'" style="width:auto; padding:0.6rem 1.5rem;">Cancel</button>
     </div>
     </div>
   </div>
 
   @php 
-    $items = collect($pageData['products']);
-    $rawProds = $items->where('type','RAW');
-    $semiProds = $items->where('type','SEMI');
-    $finishedProds = $items->where('type','FINISHED');
+    $rawProds = $pageData['rawProducts'];
+    $finishedProds = $pageData['finishedProducts'];
   @endphp
 
   <!-- RAW Products -->
   <div class="card" style="padding:1.2rem; margin-bottom:1.5rem;">
-    <div class="card-title" style="color:var(--primary-light);">🌿 RAW Materials ({{ $rawProds->count() }})</div>
+    <div class="card-title" style="color:var(--primary-light);">🌿 RAW Materials ({{ $rawProds->total() }})</div>
     <div class="table-container">
       <table>
         <thead><tr><th>#</th><th>Name</th><th>Unit</th><th>Active</th><th>Actions</th></tr></thead>
@@ -103,11 +100,14 @@
         </tbody>
       </table>
     </div>
+    <div style="margin-top:1rem; display:flex; justify-content:flex-end;">
+      {{ $rawProds->appends(request()->except('raw_page'))->links() }}
+    </div>
   </div>
 
   <!-- FINISHED Products -->
   <div class="card" style="padding:1.2rem; margin-bottom:1.5rem;">
-    <div class="card-title" style="color:var(--secondary);">📦 FINISHED Products ({{ $finishedProds->count() }})</div>
+    <div class="card-title" style="color:var(--secondary);">📦 FINISHED Products ({{ $finishedProds->total() }})</div>
     <div class="table-container">
       <table>
         <thead><tr><th>#</th><th>Name</th><th>Grades</th><th>Unit</th><th>Active</th><th>Actions</th></tr></thead>
@@ -143,55 +143,14 @@
         </tbody>
       </table>
     </div>
-  </div>
-
-  <!-- SEMI Products -->
-  <div class="card" style="padding:1.2rem; margin-bottom:1.5rem;">
-    <div class="card-title" style="color:var(--warning);">🏭 FINAL Products (SEMI) ({{ $semiProds->count() }})</div>
-    <div class="table-container">
-      <table>
-        <thead><tr><th>#</th><th>Name</th><th>Grades</th><th>Unit</th><th>Active</th><th>Actions</th></tr></thead>
-        <tbody>
-          @foreach($semiProds as $p)
-          <tr>
-            <td>{{ $loop->iteration }}</td>
-            <td style="font-weight:600;">{{ $p['name'] }}</td>
-            <td style="white-space:normal; min-width:200px;">
-                @foreach($p['gradeNames'] as $gn)
-                    <span style="font-size:0.75rem; background:var(--bg-hover); color:var(--primary); padding:4px 8px; border-radius:6px; margin:2px; display:inline-block; border:1px solid var(--primary); font-weight:600;">{{ $gn }}</span>
-                @endforeach
-            </td>
-            <td>{{ $p['unit'] }}</td>
-            <td>
-              <label class="switch">
-                <input type="checkbox" {{ $p['is_active'] ? 'checked' : '' }} onchange="adminToggleProduct({{ $p['id'] }})">
-                <span class="slider"></span>
-              </label>
-            </td>
-            <td>
-              <div class="action-btns">
-                <button class="btn-icon edit" onclick="adminEditProduct({{ json_encode($p) }})" title="Edit">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
-                </button>
-                <button class="btn-icon delete" onclick="adminDeleteProduct({{ $p['id'] }})" title="Delete">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                </button>
-              </div>
-            </td>
-          </tr>
-          @endforeach
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Pagination Links -->
-    <div style="margin-top:1.5rem; display:flex; justify-content:center;">
-      @if($pageData['paginator'])
-        {{ $pageData['paginator']->links() }}
-      @endif
+    <div style="margin-top:1rem; display:flex; justify-content:flex-end;">
+      {{ $finishedProds->appends(request()->except('fin_page'))->links() }}
     </div>
   </div>
-</div>
+
+
+
+
 
 <script>
 function toggleGradeDisplay() {
@@ -234,6 +193,10 @@ function adminEditProduct(prod) {
 }
 
 function adminSaveProduct() {
+  const btn = document.getElementById('btn-save-prod');
+  btn.disabled = true;
+  btn.style.opacity = '0.7';
+
   const selectedGrades = Array.from(document.querySelectorAll('input[name="p-grades"]:checked')).map(cb => cb.value);
   const selectedRoles = Array.from(document.querySelectorAll('input[name="p-roles"]:checked')).map(cb => cb.value);
   
@@ -248,7 +211,7 @@ function adminSaveProduct() {
   
   fetch('/admin/products', {
     method: 'POST',
-    headers: { 'X-CSRF-TOKEN': csrfToken }, // Don't set Content-Type for FormData, fetch sets it automatically with boundary
+    headers: { 'X-CSRF-TOKEN': csrfToken },
     body: formData
   }).then(r => r.json()).then(d => {
     if (d.success) { 
@@ -256,7 +219,12 @@ function adminSaveProduct() {
         setTimeout(() => location.reload(), 800); 
     } else {
         Swal.fire('Error', d.message || 'Error', 'error');
+        btn.disabled = false;
+        btn.style.opacity = '1';
     }
+  }).catch(() => {
+    btn.disabled = false;
+    btn.style.opacity = '1';
   });
 }
 

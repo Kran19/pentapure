@@ -57,7 +57,7 @@ class SalesController extends Controller
         return view('sales.home', compact('pageData'));
     }
 
-    public function action()
+    public function action(Request $request)
     {
         $companies = Company::orderBy('name')->get()->map(fn($c)=>[
             'id'=>$c->id,'name'=>strtoupper($c->name ?? ''),'gst'=>$c->gst,'address'=>$c->address,'contact'=>$c->contact,'date'=>$c->created_at->toISOString()
@@ -70,7 +70,12 @@ class SalesController extends Controller
         ]);
         $grades = \App\Models\Grade::where('is_active', true)->pluck('name')->map('strtoupper')->toArray();
 
-        $pageData = compact('companies', 'transportCompanies', 'products', 'grades');
+        $editOrder = null;
+        if ($request->edit) {
+            $editOrder = Order::with('items.product')->findOrFail($request->edit);
+        }
+
+        $pageData = compact('companies', 'transportCompanies', 'products', 'grades', 'editOrder');
         return view('sales.action', compact('pageData'));
     }
 
@@ -186,6 +191,7 @@ class SalesController extends Controller
             'orders'             => $orders->map(fn($o)=>[
                 'id'             => $o->id,
                 'companyId'      => $o->company_id,
+                'companyName'    => strtoupper($o->company?->name ?? ''),
                 'transportId'    => $o->transporter_id,
                 'total'          => $o->total,
                 'status'         => $o->status,
@@ -193,6 +199,8 @@ class SalesController extends Controller
                 'date'           => $o->created_at->toISOString(),
                 'notes'          => $o->notes,
                 'items'          => $o->items->map(fn($i)=>[
+                    'id'          => $i->id,
+                    'productId'   => $i->product_id,
                     'productName' => strtoupper($i->product?->name ?? ''),
                     'grade'       => strtoupper($i->grade ?? ''),
                     'quantity'    => $i->quantity,

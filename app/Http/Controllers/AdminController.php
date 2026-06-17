@@ -205,20 +205,27 @@ class AdminController extends Controller
     // ── PRODUCTS ───────────────────────────────────────────────────────────
     public function products()
     {
-        $products = Product::with('grades')
-            ->orderBy('type')->orderBy('name')
-            ->get();
+        $rawProducts = Product::where('type', 'RAW')
+            ->orderBy('name')
+            ->paginate(10, ['*'], 'raw_page');
+            
+        $finishedProducts = Product::with('grades')
+            ->where('type', 'FINISHED')
+            ->orderBy('name')
+            ->paginate(10, ['*'], 'fin_page');
+            
+        $finishedProducts->getCollection()->transform(function($p) {
+            $p->gradeIds = $p->grades->pluck('id')->toArray();
+            $p->gradeNames = $p->grades->pluck('name')->toArray();
+            return $p;
+        });
             
         $allActiveGrades = \App\Models\Grade::where('is_active', true)->orderBy('name')->get();
         
         $pageData = [
-            'products' => $products->map(function($p) {
-                $p->gradeIds = $p->grades->pluck('id')->toArray();
-                $p->gradeNames = $p->grades->pluck('name')->toArray();
-                return $p;
-            }),
+            'rawProducts' => $rawProducts,
+            'finishedProducts' => $finishedProducts,
             'allGrades' => $allActiveGrades,
-            'paginator' => null
         ];
         return view('admin.products', compact('pageData'));
     }
@@ -227,7 +234,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'type' => 'required|in:RAW,SEMI,FINISHED',
+            'type' => 'required|in:RAW,FINISHED',
             'rate' => 'nullable|numeric|min:0',
             'grades' => 'nullable', // Could be stringified JSON or array
             'allowed_roles' => 'nullable', // Could be stringified JSON or array
@@ -309,9 +316,9 @@ class AdminController extends Controller
             ->orderBy('products.name')
             ->get();
 
-        $allProducts = Product::orderBy('type')
+        $allProducts = Product::with('grades')->orderBy('type')
             ->orderBy('name')
-            ->get(['id', 'name', 'type', 'unit', 'is_active']);
+            ->get();
 
         $stockLogsByKey = Stock::with(['user:id,name', 'product:id,name,unit'])
             ->latest()
@@ -332,10 +339,31 @@ class AdminController extends Controller
                 'created_at' => optional($log->created_at)->format('d M Y, h:i A'),
             ])->values());
 
+        // Fetch location mappings from DB
+        $locationStock = DB::table('stocks')
+            ->join('locations', 'stocks.location_id', '=', 'locations.id')
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'locations.name')
+            ->selectRaw("
+                stocks.product_id,
+                stocks.stage,
+                stocks.grade,
+                locations.name as location_name,
+                SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity
+            ")
+            ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
+            ->get();
+
+        $locationMappings = [];
+        foreach ($locationStock as $ls) {
+            $key = "{$ls->product_id}_{$ls->grade}_{$ls->stage}";
+            $locationMappings[$key][$ls->location_name] = (float) $ls->quantity;
+        }
+
         $pageData = [
             'allStock' => $allStock,
             'allProducts' => $allProducts,
             'stockLogsByKey' => $stockLogsByKey,
+            'locationMappings' => $locationMappings,
         ];
         return view('admin.stock', compact('pageData'));
     }
@@ -347,9 +375,6 @@ class AdminController extends Controller
             $stages = explode(',', $stages);
         }
         $stages = array_map('strtoupper', $stages);
-
-        $locationsJson = $request->input('locations', '{}');
-        $locations = json_decode($locationsJson, true) ?: [];
 
         $stockData = DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
@@ -372,13 +397,35 @@ class AdminController extends Controller
         $totalValuation = 0.0;
         $items = [];
         foreach ($stockData as $s) {
-            $key = "{$s->productId}_{$s->grade}_{$s->stage}";
-            $locMap = $locations[$key] ?? [];
-            
+            // Fetch live locations for this item from DB
             $locStrings = [];
-            foreach ($locMap as $loc => $qty) {
-                $locStrings[] = "{$loc} ({$qty} {$s->unit})";
+            $assignedSum = 0;
+            $locs = DB::table('stocks')
+                ->leftJoin('locations', 'stocks.location_id', '=', 'locations.id')
+                ->where('stocks.product_id', $s->productId)
+                ->where('stocks.stage', $s->stage)
+                ->where('stocks.grade', $s->grade)
+                ->groupBy('stocks.location_id', 'locations.name')
+                ->selectRaw("
+                    stocks.location_id,
+                    IFNULL(locations.name, 'Unspecified') as name,
+                    SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity
+                ")
+                ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
+                ->get();
+            
+            foreach ($locs as $l) {
+                if ($l->location_id) {
+                    $locStrings[] = "{$l->name} ({$l->quantity} {$s->unit})";
+                    $assignedSum += $l->quantity;
+                }
             }
+            
+            $unassigned = $s->quantity - $assignedSum;
+            if ($unassigned > 0.01) {
+                $locStrings[] = "Unspecified ({$unassigned} {$s->unit})";
+            }
+            
             $locationText = !empty($locStrings) ? implode(', ', $locStrings) : 'Not Specified';
 
             $rate = (float) ($s->rate ?? 0.00);
@@ -433,7 +480,31 @@ class AdminController extends Controller
             ->orderBy('products.name')
             ->get();
 
-        return response()->json(['success' => true, 'data' => $allStock]);
+        // Fetch location mappings from DB
+        $locationStock = DB::table('stocks')
+            ->join('locations', 'stocks.location_id', '=', 'locations.id')
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'locations.name')
+            ->selectRaw("
+                stocks.product_id,
+                stocks.stage,
+                stocks.grade,
+                locations.name as location_name,
+                SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity
+            ")
+            ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
+            ->get();
+
+        $locationMappings = [];
+        foreach ($locationStock as $ls) {
+            $key = "{$ls->product_id}_{$ls->grade}_{$ls->stage}";
+            $locationMappings[$key][$ls->location_name] = (float) $ls->quantity;
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $allStock,
+            'locationMappings' => $locationMappings
+        ]);
     }
 
     public function setStockLimit(Request $request)
@@ -471,20 +542,22 @@ class AdminController extends Controller
 
     public function approvePO(Request $request)
     {
-        $po = PurchaseOrder::findOrFail($request->po_id);
-        $po->status = 'DONE';
-        $po->save();
+        DB::transaction(function() use ($request) {
+            $po = PurchaseOrder::findOrFail($request->po_id);
+            $po->status = 'DONE';
+            $po->save();
 
-        // Auto-inward to RAW stock when admin marks as arrived
-        Stock::create([
-            'product_id'       => $po->product_id,
-            'user_id'          => session('auth_user')['id'],
-            'stage'            => 'RAW',
-            'grade'            => 'NONE',
-            'quantity'         => $po->quantity,
-            'transaction_type' => 'IN',
-            'notes'            => "PO #{$po->id} approved & auto-inwarded",
-        ]);
+            // Auto-inward to RAW stock when admin marks as arrived
+            Stock::create([
+                'product_id'       => $po->product_id,
+                'user_id'          => session('auth_user')['id'],
+                'stage'            => 'RAW',
+                'grade'            => 'NONE',
+                'quantity'         => $po->quantity,
+                'transaction_type' => 'IN',
+                'notes'            => "PO #{$po->id} approved & auto-inwarded",
+            ]);
+        });
 
         return response()->json(['success' => true, 'message' => 'PO marked as arrived and stock updated!']);
     }
@@ -924,5 +997,128 @@ class AdminController extends Controller
         $cashier = User::findOrFail($userId);
         $controller = new \App\Http\Controllers\CashierController();
         return $controller->generateCashierPdf($request, (int) $userId, $cashier->name);
+    }
+
+    // ── LOCATIONS API ENDPOINTS ──────────────────────────────────────────────
+    public function getLocationsApi()
+    {
+        $locations = \App\Models\Location::orderBy('name')->get(['id', 'name', 'description']);
+        return response()->json(['success' => true, 'locations' => $locations]);
+    }
+
+    public function storeLocationApi(\Illuminate\Http\Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|unique:locations,name|max:255',
+            'description' => 'nullable|string|max:500',
+        ]);
+
+        $location = \App\Models\Location::create([
+            'name' => $request->name,
+            'description' => $request->description,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Location added successfully!', 'location' => $location]);
+    }
+
+    public function destroyLocationApi($id)
+    {
+        \App\Models\Location::destroy($id);
+        return response()->json(['success' => true, 'message' => 'Location deleted successfully!']);
+    }
+
+    public function stockLocationsBreakdownApi(\Illuminate\Http\Request $request)
+    {
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'stage' => 'required|string',
+            'grade' => 'required|string',
+        ]);
+
+        // Query net stock grouped by location
+        $breakdown = DB::table('stocks')
+            ->join('locations', 'stocks.location_id', '=', 'locations.id')
+            ->where('stocks.product_id', $request->product_id)
+            ->where('stocks.stage', $request->stage)
+            ->where('stocks.grade', $request->grade)
+            ->groupBy('stocks.location_id', 'locations.name')
+            ->selectRaw("
+                stocks.location_id as location_id,
+                locations.name as name,
+                SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity
+            ")
+            ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
+            ->get();
+
+        return response()->json(['success' => true, 'breakdown' => $breakdown]);
+    }
+
+    public function transferStockLocationsApi(\Illuminate\Http\Request $request)
+    {
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'stage' => 'required|string',
+            'grade' => 'required|string',
+            'from_location' => 'nullable|string', // If null/unspecified, deducts from null location_id stock
+            'to_location' => 'required|string',
+            'quantity' => 'required|numeric|min:0.01',
+        ]);
+
+        $qty = (float) $request->quantity;
+
+        // Resolve locations
+        $fromLocationId = null;
+        if ($request->from_location) {
+            $fromLocationId = \App\Models\Location::firstOrCreate(['name' => $request->from_location])->id;
+        }
+
+        $toLocationId = \App\Models\Location::firstOrCreate(['name' => $request->to_location])->id;
+
+        if ($fromLocationId === $toLocationId) {
+            return response()->json(['success' => false, 'message' => 'Source and destination locations must be different.'], 422);
+        }
+
+        // Validate stock availability in the source location
+        $available = DB::table('stocks')
+            ->where('product_id', $request->product_id)
+            ->where('stage', $request->stage)
+            ->where('grade', $request->grade)
+            ->where('location_id', $fromLocationId)
+            ->selectRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as net")
+            ->value('net') ?? 0;
+
+        if ($qty > $available) {
+            return response()->json(['success' => false, 'message' => "Insufficient stock at source location. Available: {$available} kg"], 422);
+        }
+
+        DB::transaction(function () use ($request, $fromLocationId, $toLocationId, $qty) {
+            $userId = session('auth_user')['id'] ?? null;
+
+            // 1. Create OUT transaction for source location
+            Stock::create([
+                'product_id' => $request->product_id,
+                'user_id' => $userId,
+                'stage' => $request->stage,
+                'grade' => $request->grade,
+                'location_id' => $fromLocationId,
+                'quantity' => $qty,
+                'transaction_type' => 'OUT',
+                'notes' => 'Transfer: Moved to location "' . $request->to_location . '"',
+            ]);
+
+            // 2. Create IN transaction for destination location
+            Stock::create([
+                'product_id' => $request->product_id,
+                'user_id' => $userId,
+                'stage' => $request->stage,
+                'grade' => $request->grade,
+                'location_id' => $toLocationId,
+                'quantity' => $qty,
+                'transaction_type' => 'IN',
+                'notes' => 'Transfer: Received from location "' . ($request->from_location ?: 'Unspecified') . '"',
+            ]);
+        });
+
+        return response()->json(['success' => true, 'message' => 'Stock transferred successfully!']);
     }
 }

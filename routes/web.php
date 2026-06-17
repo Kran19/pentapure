@@ -51,7 +51,12 @@ Route::middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTE
     Route::get('/api/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
     Route::post('/api/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
     Route::post('/api/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);
-    
+
+    // Shared Location endpoints
+    Route::get('/api/locations', [AdminController::class, 'getLocationsApi']);
+    Route::get('/api/stock/locations', [AdminController::class, 'stockLocationsBreakdownApi']);
+    Route::post('/api/stock/locations/transfer', [AdminController::class, 'transferStockLocationsApi']);
+
     // Admin specific notification send route
     Route::post('/admin/notifications/send', [AdminController::class, 'sendNotification'])->middleware('auth.role:ADMIN');
 });
@@ -80,7 +85,7 @@ Route::prefix('raw')->middleware('auth.role:RAW')->controller(RawController::cla
     Route::get('/home',    'home')->name('raw.home');
     Route::get('/action',  'action')->name('raw.action');
     Route::post('/action', 'storeInward')->name('raw.action.store');
-    Route::get('/po',      'home')->name('raw.po');
+    Route::get('/po',      'po')->name('raw.po');
     Route::post('/po',     'storePO');
     Route::get('/history', 'history')->name('raw.history');
     Route::get('/profile', 'profile')->name('raw.profile');
@@ -90,7 +95,7 @@ Route::prefix('raw')->middleware('auth.role:RAW')->controller(RawController::cla
 Route::prefix('semi')->middleware('auth.role:SEMI')->controller(SemiController::class)->group(function () {
     Route::get('/home',    'home')->name('semi.home');
     Route::get('/action',  'action')->name('semi.action');
-    Route::get('/po',      'home')->name('semi.po');
+    Route::get('/po',      'po')->name('semi.po');
     Route::post('/po',     [RawController::class, 'storePO']); // Shared logic from RawController
     Route::post('/action', 'storeProduction');
     Route::get('/history', 'history')->name('semi.history');
@@ -101,7 +106,7 @@ Route::prefix('semi')->middleware('auth.role:SEMI')->controller(SemiController::
 Route::prefix('finished')->middleware('auth.role:FINISHED')->controller(FinishedController::class)->group(function () {
     Route::get('/home',    'home')->name('finished.home');
     Route::get('/action',  'action')->name('finished.action');
-    Route::get('/po',      'home')->name('finished.po');
+    Route::get('/po',      'po')->name('finished.po');
     Route::post('/po',     [RawController::class, 'storePO']); // Shared logic from RawController
     Route::post('/action', 'storeProduction');
     Route::post('/quick-product', [AdminController::class, 'storeProduct']);
@@ -164,6 +169,10 @@ Route::prefix('admin')->middleware('auth.role:ADMIN')->controller(AdminControlle
     Route::get('/users',              'users')->name('admin.users');
     Route::post('/users',             'storeUser');
     Route::post('/users/toggle',      'toggleUserStatus');
+
+    // Locations admin management
+    Route::post('/locations',         'storeLocationApi');
+    Route::delete('/locations/{id}',  'destroyLocationApi');
     Route::delete('/users/{id}',      'destroyUser');
     Route::get('/products',           'products')->name('admin.products');
     Route::post('/products',          'storeProduct');
@@ -220,23 +229,23 @@ Route::prefix('attendance')->middleware('auth.role:ATTENDANCE')->controller(Atte
     Route::get('/departments',        'departments')->name('attendance.departments');
     Route::post('/departments',       'storeDepartment');
     Route::delete('/departments/{id}','destroyDepartment');
-    
+
     Route::get('/workers',            'workers')->name('attendance.workers');
     Route::post('/workers',           'storeWorker');
     Route::delete('/workers/{id}',    'destroyWorker');
-    
+
     Route::get('/daily',              'daily')->name('attendance.daily');
     Route::post('/daily',             'storeDailyAttendance');
     Route::get('/team',               'team')->name('attendance.team');
-    
+
     // JSON APIs for SPA views
     Route::get('/api/workers',        'workersJson');
     Route::get('/api/departments',    'departmentsJson');
     Route::get('/api/daily',          'dailyJson');
-    
+
     Route::get('/reports',            'reports')->name('attendance.reports');
     Route::get('/reports/worker/{id}','workerReport');
-    
+
     // Standard mobile nav aliases
     Route::get('/action',             'daily')->name('attendance.action');
     Route::get('/history',            'reports')->name('attendance.history');

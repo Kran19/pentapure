@@ -56,21 +56,24 @@ class CashierController extends Controller
         $userArray = $this->authUser();
         $userModel = User::find($userArray['id']);
 
-        $tx = Transaction::create([
-            'user_id'     => $userArray['id'],
-            'type'        => $request->type,
-            'amount'      => $request->amount,
-            'category'    => $request->category ?? 'general',
-            'note'        => $request->note,
-            'reference'   => $request->reference,
-            'site'        => $userModel ? $userModel->branch : null,
-            'description' => $request->description,
-        ]);
+        $tx = \DB::transaction(function() use ($request, $userArray, $userModel) {
+            $tx = Transaction::create([
+                'user_id'     => $userArray['id'],
+                'type'        => $request->type,
+                'amount'      => $request->amount,
+                'category'    => $request->category ?? 'general',
+                'note'        => $request->note,
+                'reference'   => $request->reference,
+                'site'        => $userModel ? $userModel->branch : null,
+                'description' => $request->description,
+            ]);
 
-        // Handle optional bill file on creation
-        if ($request->hasFile('bill_file')) {
-            $this->saveBillFile($request->file('bill_file'), $tx->id, 0);
-        }
+            // Handle optional bill file on creation
+            if ($request->hasFile('bill_file')) {
+                $this->saveBillFile($request->file('bill_file'), $tx->id, 0);
+            }
+            return $tx;
+        });
 
         return response()->json(['success' => true, 'message' => "Transaction ({$request->type}) saved!", 'transaction_id' => $tx->id]);
     }
@@ -88,19 +91,21 @@ class CashierController extends Controller
 
         $oldData = $tx->toArray();
 
-        $tx->update([
-            'amount'   => $request->amount,
-            'category' => $request->category ?? $tx->category,
-            'note'     => $request->note,
-        ]);
+        \DB::transaction(function() use ($request, $tx, $user, $oldData) {
+            $tx->update([
+                'amount'   => $request->amount,
+                'category' => $request->category ?? $tx->category,
+                'note'     => $request->note,
+            ]);
 
-        \App\Models\TransactionLog::create([
-            'transaction_id' => $tx->id,
-            'user_id'        => $user['id'],
-            'action'         => 'EDITED',
-            'old_data'       => $oldData,
-            'new_data'       => $tx->toArray(),
-        ]);
+            \App\Models\TransactionLog::create([
+                'transaction_id' => $tx->id,
+                'user_id'        => $user['id'],
+                'action'         => 'EDITED',
+                'old_data'       => $oldData,
+                'new_data'       => $tx->toArray(),
+            ]);
+        });
 
         return response()->json(['success' => true, 'message' => 'Transaction updated!']);
     }
@@ -112,22 +117,24 @@ class CashierController extends Controller
 
         $oldData = $tx->toArray();
 
-        // Also delete attached bills physically
-        foreach ($tx->bills as $bill) {
-            if ($bill->file_path && file_exists(storage_path('app/public/' . $bill->file_path))) {
-                @unlink(storage_path('app/public/' . $bill->file_path));
+        \DB::transaction(function() use ($tx, $user, $oldData) {
+            // Also delete attached bills physically
+            foreach ($tx->bills as $bill) {
+                if ($bill->file_path && file_exists(storage_path('app/public/' . $bill->file_path))) {
+                    @unlink(storage_path('app/public/' . $bill->file_path));
+                }
             }
-        }
 
-        $tx->delete();
+            $tx->delete();
 
-        \App\Models\TransactionLog::create([
-            'transaction_id' => null, // Since it's deleted, or keep it but the FK must be nullable
-            'user_id'        => $user['id'],
-            'action'         => 'DELETED',
-            'old_data'       => $oldData,
-            'new_data'       => null,
-        ]);
+            \App\Models\TransactionLog::create([
+                'transaction_id' => null, // Since it's deleted, or keep it but the FK must be nullable
+                'user_id'        => $user['id'],
+                'action'         => 'DELETED',
+                'old_data'       => $oldData,
+                'new_data'       => null,
+            ]);
+        });
 
         return response()->json(['success' => true, 'message' => 'Transaction deleted!']);
     }

@@ -74,14 +74,46 @@ class HistoryPdfController extends Controller
 
     private function dateRange(Request $request): array
     {
-        $from = $request->from ? Carbon::parse($request->from)->startOfDay() : now()->subDays(30)->startOfDay();
-        $to = $request->to ? Carbon::parse($request->to)->endOfDay() : now()->endOfDay();
+        $fromInput = $request->from ?: $request->start;
+        $toInput = $request->to ?: $request->end;
+
+        if ($request->range && $request->range !== 'all' && !$fromInput && !$toInput) {
+            $range = $request->range;
+            if ($range === 'today') {
+                $from = now()->startOfDay();
+                $to = now()->endOfDay();
+            } elseif ($range === 'this_week') {
+                $from = now()->startOfWeek();
+                $to = now()->endOfDay();
+            } elseif ($range === 'last_week') {
+                $from = now()->subWeek()->startOfWeek();
+                $to = now()->subWeek()->endOfWeek();
+            } elseif ($range === 'this_month') {
+                $from = now()->startOfMonth();
+                $to = now()->endOfDay();
+            } elseif ($range === 'last_month') {
+                $from = now()->subMonth()->startOfMonth();
+                $to = now()->subMonth()->endOfWeek();
+            }
+        }
+
+        $from = isset($from) ? $from : ($fromInput ? Carbon::parse($fromInput)->startOfDay() : now()->subDays(30)->startOfDay());
+        $to = isset($to) ? $to : ($toInput ? Carbon::parse($toInput)->endOfDay() : now()->endOfDay());
         return [$from, $to];
     }
 
     private function rawRows(Carbon $from, Carbon $to): array
     {
-        return Stock::with('product')->where('stage', 'RAW')->where('transaction_type', 'IN')->whereBetween('created_at', [$from, $to])->latest()->get()
+        $q = request('q');
+        $query = Stock::with('product')->where('stage', 'RAW')->where('transaction_type', 'IN')->whereBetween('created_at', [$from, $to]);
+        if ($q) {
+            $query->where(function($sub) use ($q) {
+                $sub->whereHas('product', function($qp) use ($q) {
+                    $qp->where('name', 'like', "%{$q}%");
+                })->orWhere('grade', 'like', "%{$q}%");
+            });
+        }
+        return $query->latest()->get()
             ->map(fn ($s) => [
                 'id' => 'RAW-' . str_pad($s->id, 4, '0', STR_PAD_LEFT),
                 'type' => 'Raw Inward',
@@ -94,7 +126,16 @@ class HistoryPdfController extends Controller
 
     private function productionRows(string $type, Carbon $from, Carbon $to): array
     {
-        return ProductionLog::with(['outputProduct', 'inputs.inputProduct'])->where('type', $type)->whereBetween('created_at', [$from, $to])->latest()->get()
+        $q = request('q');
+        $query = ProductionLog::with(['outputProduct', 'inputs.inputProduct'])->where('type', $type)->whereBetween('created_at', [$from, $to]);
+        if ($q) {
+            $query->where(function($sub) use ($q) {
+                $sub->whereHas('outputProduct', function($qp) use ($q) {
+                    $qp->where('name', 'like', "%{$q}%");
+                })->orWhere('output_grade', 'like', "%{$q}%");
+            });
+        }
+        return $query->latest()->get()
             ->map(fn ($l) => [
                 'id' => $type . '-' . str_pad($l->id, 4, '0', STR_PAD_LEFT),
                 'type' => ucfirst(strtolower($type)) . ' Production',
@@ -107,7 +148,17 @@ class HistoryPdfController extends Controller
 
     private function salesRows(Carbon $from, Carbon $to): array
     {
-        return Order::with('company')->whereBetween('created_at', [$from, $to])->latest()->get()
+        $q = request('q');
+        $query = Order::with('company')->whereBetween('created_at', [$from, $to]);
+        if ($q) {
+            $query->where(function($sub) use ($q) {
+                $sub->whereHas('company', function($qc) use ($q) {
+                    $qc->where('name', 'like', "%{$q}%");
+                })->orWhere('notes', 'like', "%{$q}%")
+                  ->orWhere('id', 'like', "%{$q}%");
+            });
+        }
+        return $query->latest()->get()
             ->map(fn ($o) => [
                 'id' => 'ORD-' . str_pad($o->id, 4, '0', STR_PAD_LEFT),
                 'type' => 'Order',
@@ -120,7 +171,16 @@ class HistoryPdfController extends Controller
 
     private function dispatchRows(Carbon $from, Carbon $to): array
     {
-        return DispatchLog::with(['order.company', 'dispatchItems'])->whereBetween('created_at', [$from, $to])->latest()->get()
+        $q = request('q');
+        $query = DispatchLog::with(['order.company', 'dispatchItems'])->whereBetween('created_at', [$from, $to]);
+        if ($q) {
+            $query->where(function($sub) use ($q) {
+                $sub->whereHas('order.company', function($qc) use ($q) {
+                    $qc->where('name', 'like', "%{$q}%");
+                })->orWhere('order_id', 'like', "%{$q}%");
+            });
+        }
+        return $query->latest()->get()
             ->map(fn ($d) => [
                 'id' => 'DSP-' . str_pad($d->id, 4, '0', STR_PAD_LEFT),
                 'type' => 'Dispatch',
@@ -190,6 +250,7 @@ class HistoryPdfController extends Controller
         $order = $log->order;
         
         $totalOrderedQty = 0;
+        $totalPrevDispatchedQty = 0;
         $totalDispatchedQty = 0;
         $totalPendingQty = 0;
         $totalAmount = 0;
@@ -199,6 +260,8 @@ class HistoryPdfController extends Controller
             if ($orderItem) {
                 $totalOrderedQty += (float) $orderItem->quantity;
                 $totalDispatchedQty += (float) $di->quantity;
+                $prevDispatched = (float) $orderItem->dispatched_qty - (float) $di->quantity;
+                $totalPrevDispatchedQty += $prevDispatched;
                 // Pending quantity after this dispatch log round
                 $totalPendingQty += (float) max(0, $orderItem->quantity - $orderItem->dispatched_qty);
                 $totalAmount += (float) ($orderItem->price * $di->quantity);
@@ -220,6 +283,7 @@ class HistoryPdfController extends Controller
             'status' => 'DISPATCHED',
             'remarks' => $order->notes ?? "Material dispatched in good condition.\nAll items checked and verified before dispatch.",
             'totalOrderedQty' => $totalOrderedQty,
+            'totalPrevDispatchedQty' => $totalPrevDispatchedQty,
             'totalDispatchedQty' => $totalDispatchedQty,
             'totalPendingQty' => $totalPendingQty,
             'totalAmount' => $totalAmount,
@@ -237,13 +301,26 @@ class HistoryPdfController extends Controller
         $user = $this->authUser();
         [$from, $to] = $this->dateRange($request);
         
-        $logs = DispatchLog::with([
+        $query = DispatchLog::with([
             'order.company',
             'order.transporter',
             'order.creator',
             'user',
             'dispatchItems.orderItem.product'
-        ])->whereBetween('created_at', [$from, $to])->latest()->get();
+        ])->whereBetween('created_at', [$from, $to]);
+
+        $q = $request->q;
+        if ($q) {
+            $query->where(function($sub) use ($q) {
+                $sub->whereHas('order.company', function($qc) use ($q) {
+                    $qc->where('name', 'like', "%{$q}%");
+                })->orWhere('order_id', 'like', "%{$q}%")
+                  ->orWhereHas('dispatchItems.orderItem.product', function($qp) use ($q) {
+                      $qp->where('name', 'like', "%{$q}%");
+                  });
+            });
+        }
+        $logs = $query->latest()->get();
         
         $rows = [];
         $totalQty = 0;

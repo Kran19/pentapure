@@ -94,12 +94,25 @@ class SemiController extends Controller
         $pageData = [
             'rawStock' => $rawStock,
             'grades'   => $grades,
-            'products' => Product::with('grades')->active()->visibleTo($this->authUser()['role'])->get()->map(fn($p)=>[
+            'products' => Product::with('grades')->whereIn('type', ['SEMI', 'FINISHED'])->active()->visibleTo($this->authUser()['role'])->get()->map(fn($p)=>[
                 'id'=>$p->id,'name'=>$p->name,'type'=>$p->type,'unit'=>$p->unit,
                 'gradeNames'=>$p->grades->pluck('name')
             ]),
         ];
         return view('semi.action', compact('pageData'));
+    }
+
+    // ── PO ─────────────────────────────────────────────────────────────────
+    public function po()
+    {
+        $user = $this->authUser();
+        $pos = PurchaseOrder::with('product')
+            ->where('user_id', $user['id'])
+            ->orderByDesc('created_at')
+            ->paginate(15);
+            
+        $pageData = ['purchaseOrders' => $pos];
+        return view('raw.po', compact('pageData')); // Share view with raw
     }
 
     // POST: Log semi production — deduct raw inputs, add semi output
@@ -109,6 +122,7 @@ class SemiController extends Controller
             'output_product_id' => 'required|exists:products,id',
             'output_grade'      => 'required|string',
             'output_qty'        => 'required|numeric|min:0.001',
+            'location'          => 'nullable|string',
             'inputs'            => 'required|array|min:1',
             'inputs.*.product_id' => 'required|exists:products,id',
             'inputs.*.grade'      => 'required|string',
@@ -147,7 +161,12 @@ class SemiController extends Controller
             }
         }
 
-        DB::transaction(function () use ($request, $user) {
+        $locationId = null;
+        if ($request->location) {
+            $locationId = \App\Models\Location::firstOrCreate(['name' => $request->location])->id;
+        }
+
+        DB::transaction(function () use ($request, $user, $locationId) {
             // 1. Create production log
             $log = ProductionLog::create([
                 'user_id'           => $user['id'],
@@ -183,6 +202,7 @@ class SemiController extends Controller
                 'user_id'          => $user['id'],
                 'stage'            => 'SEMI',
                 'grade'            => $request->output_grade,
+                'location_id'      => $locationId,
                 'quantity'         => $request->output_qty,
                 'transaction_type' => 'IN',
                 'notes'            => "Produced: Production log #{$log->id}",

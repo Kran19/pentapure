@@ -129,58 +129,21 @@
   <script src="{{ asset('js/tabulator-init.js') }}"></script>
   <script src="{{ asset('js/table-sorter.js') }}"></script>
   <script src="{{ asset('js/table-filter.js') }}"></script>
-  <script src="{{ asset('js/mockData.js') }}"></script>
   <script src="{{ asset('js/app.js') }}"></script>
   <script>
     // ── CSRF for all fetch() calls ─────────────────────────────────────────
     window.csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
-    // ── Bridge server data into the existing DB object ─────────────────────
-    @if(isset($pageData))
-    (function() {
-      const serverData = @json($pageData);
-      // Merge server data into DB so app.js render functions use real data
-      Object.keys(serverData).forEach(key => {
-        localStorage.setItem('__server_' + key, JSON.stringify(serverData[key]));
-      });
-      // Override DB.get to prefer server data when available
-      const _originalGet = DB.get.bind(DB);
-      DB.get = function(key) {
-        const serverKey = '__server_' + key;
-        const serverVal = localStorage.getItem(serverKey);
-        let result = null;
-        if (serverVal !== null) {
-          try { result = JSON.parse(serverVal); } catch(e) {}
-        }
-        if (!result) result = _originalGet(key);
-
-        if (Array.isArray(result)) {
-           if (key === 'products' || key === 'categories') {
-              result.sort((a,b) => (a.name||'').localeCompare(b.name||''));
-           } else if (key === 'grades') {
-              result.sort((a,b) => {
-                 let nA = typeof a === 'string' ? a : a.name;
-                 let nB = typeof b === 'string' ? b : b.name;
-                 return (nA||'').localeCompare(nB||'');
-              });
-           }
-        }
-        return result;
-      };
-    })();
-    @endif
-
-    // Inject Server Data
-    const serverData = {!! json_encode($pageData ?? []) !!};
-    Object.keys(serverData).forEach(k => DB.set(k, serverData[k]));
+    // ── Global Server Page Data ───────────────────────────────────────────
+    window.serverPageData = {!! json_encode($pageData ?? []) !!};
 
     // ── Set auth user ─────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
       const role    = "{{ $authUser['role'] ?? '' }}";
       const userId  = {{ $authUser['id'] ?? 'null' }};
-      const users   = DB.get('users') || [];
-      app.currentUser = users.find(u => u.id == userId || u.role === role) || {
-        id: userId, name: '{{ $authUser["name"] ?? "" }}', role: role
+      const name    = "{{ $authUser['name'] ?? '' }}";
+      app.currentUser = {
+        id: userId, name: name, role: role
       };
       const lang = localStorage.getItem('pentapure_lang') || 'en';
       app.currentLang = lang;

@@ -17,7 +17,7 @@ class DispatchController extends Controller
 
     public function home()
     {
-        $pending   = Order::with(['company', 'transporter', 'items.product'])->where('dispatch_status', 'PENDING')->orderByDesc('created_at')->get();
+        $pending   = Order::with(['company', 'transporter', 'items.product'])->whereIn('dispatch_status', ['PENDING', 'PARTIAL'])->orderByDesc('created_at')->get();
         $completed = Order::with(['company', 'transporter'])->where('dispatch_status', 'DONE')->orderByDesc('created_at')->get();
 
         $rawStock = DB::table('stocks')
@@ -88,7 +88,7 @@ class DispatchController extends Controller
     public function action()
     {
         $pendingOrders = Order::with(['company', 'transporter', 'items.product'])
-            ->where('dispatch_status', 'PENDING')
+            ->whereIn('dispatch_status', ['PENDING', 'PARTIAL'])
             ->orderByDesc('created_at')
             ->get();
 
@@ -131,8 +131,8 @@ class DispatchController extends Controller
             'items.*.order_item_id'       => 'required|exists:order_items,id',
             'items.*.quantity'            => 'required|numeric|min:0.001',
             'items.*.location_splits'             => 'nullable|array',
-            'items.*.location_splits.*.location_id' => 'required_with:items.*.location_splits|integer',
-            'items.*.location_splits.*.dispatch_qty' => 'required_with:items.*.location_splits|numeric|min:0.001',
+            'items.*.location_splits.*.location_key' => 'required_with:items.*.location_splits|string',
+            'items.*.location_splits.*.dispatch_location_qty' => 'required_with:items.*.location_splits|numeric|min:0.001',
             'lr_image'                    => 'nullable|string',
         ]);
 
@@ -162,7 +162,7 @@ class DispatchController extends Controller
 
             // If location splits provided, validate them
             if (!empty($dispatchItem['location_splits'])) {
-                $totalAllocated = collect($dispatchItem['location_splits'])->sum(fn($s) => (float)$s['dispatch_qty']);
+                $totalAllocated = collect($dispatchItem['location_splits'])->sum(fn($s) => (float)$s['dispatch_location_qty']);
                 if (abs($totalAllocated - $dispatchQty) > 0.001) { // Allow small floating point differences
                     return response()->json([
                         'success' => false,
@@ -172,8 +172,10 @@ class DispatchController extends Controller
 
                 // Validate stock availability per location
                 foreach ($dispatchItem['location_splits'] as $split) {
-                    $locationId = $split['location_id'];
-                    $allocQty = (float) $split['dispatch_qty'];
+                    $locationName = $split['location_key'];
+                    $allocQty = (float) $split['dispatch_location_qty'];
+                    
+                    $locationId = \App\Models\Location::firstOrCreate(['name' => $locationName])->id;
                     
                     $availableAtLocation = DB::table('stocks')
                         ->where('product_id', $orderItem->product_id)
@@ -246,8 +248,9 @@ class DispatchController extends Controller
                 if (!empty($locationSplits)) {
                     // Deduct from specific locations and track allocations
                     foreach ($locationSplits as $split) {
-                        $locationId = $split['location_id'];
-                        $allocQty = (float) $split['dispatch_qty'];
+                        $locationName = $split['location_key'];
+                        $allocQty = (float) $split['dispatch_location_qty'];
+                        $locationId = \App\Models\Location::firstOrCreate(['name' => $locationName])->id;
 
                         // Create stock OUT transaction for this location
                         $stock = Stock::create([
@@ -298,6 +301,7 @@ class DispatchController extends Controller
                 $order->update(['status' => 'CLOSED', 'dispatch_status' => 'DONE']);
                 $message = 'Order fully dispatched! All items delivered.';
             } else {
+                $order->update(['dispatch_status' => 'PARTIAL']);
                 $message = 'Partial dispatch recorded. Remaining items can be dispatched in the next round.';
             }
         });
@@ -312,8 +316,8 @@ class DispatchController extends Controller
             'items.*.dispatch_item_id'    => 'required|exists:dispatch_log_items,id',
             'items.*.quantity'            => 'required|numeric|min:0.001',
             'items.*.location_splits'     => 'nullable|array',
-            'items.*.location_splits.*.location_id' => 'required_with:items.*.location_splits|integer',
-            'items.*.location_splits.*.dispatch_qty' => 'required_with:items.*.location_splits|numeric|min:0.001',
+            'items.*.location_splits.*.location_key' => 'required_with:items.*.location_splits|string',
+            'items.*.location_splits.*.dispatch_location_qty' => 'required_with:items.*.location_splits|numeric|min:0.001',
         ]);
 
         $user = $this->authUser();
@@ -365,8 +369,9 @@ class DispatchController extends Controller
                 $locationSplits = $dispatchItem['location_splits'] ?? [];
                 if (!empty($locationSplits)) {
                     foreach ($locationSplits as $split) {
-                        $locationId = $split['location_id'];
-                        $allocQty = (float) $split['dispatch_qty'];
+                        $locationName = $split['location_key'];
+                        $allocQty = (float) $split['dispatch_location_qty'];
+                        $locationId = \App\Models\Location::firstOrCreate(['name' => $locationName])->id;
 
                         $stock = Stock::create([
                             'product_id'       => $orderItem->product_id,
@@ -409,6 +414,12 @@ class DispatchController extends Controller
 
             if ($allDone) {
                 $order->update(['status' => 'CLOSED', 'dispatch_status' => 'DONE']);
+            } else {
+                $anyDispatched = $order->items->filter(fn($item) => $item->dispatched_qty > 0)->isNotEmpty();
+                $order->update([
+                    'status' => 'OPEN',
+                    'dispatch_status' => $anyDispatched ? 'PARTIAL' : 'PENDING'
+                ]);
             }
         });
 
@@ -434,7 +445,9 @@ class DispatchController extends Controller
             @unlink(public_path($log->lr_image_path));
         }
 
-        $log->update(['lr_image_path' => $lrPath]);
+        DB::transaction(function() use ($log, $lrPath) {
+            $log->update(['lr_image_path' => $lrPath]);
+        });
 
         return response()->json([
             'success' => true, 

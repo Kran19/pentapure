@@ -107,6 +107,7 @@ class FinishedController extends Controller
             'output_product_id' => 'required|exists:products,id',
             'output_grade'      => 'required|string',
             'output_qty'        => 'required|numeric|min:0.001',
+            'location'          => 'nullable|string',
             'notes'             => 'nullable|string',
             'inputs'            => 'required|array|min:1',
             'inputs.*.product_id' => 'required|exists:products,id',
@@ -146,7 +147,12 @@ class FinishedController extends Controller
             }
         }
 
-        DB::transaction(function () use ($request, $user) {
+        $locationId = null;
+        if ($request->location) {
+            $locationId = \App\Models\Location::firstOrCreate(['name' => $request->location])->id;
+        }
+
+        DB::transaction(function () use ($request, $user, $locationId) {
             // Auto-update product type to FINISHED if it was SEMI, ensuring it becomes visible to Sales
             $product = Product::find($request->output_product_id);
             if ($product && $product->type === 'SEMI') {
@@ -189,6 +195,7 @@ class FinishedController extends Controller
                 'user_id'          => $user['id'],
                 'stage'            => 'FINISHED',
                 'grade'            => $request->output_grade,
+                'location_id'      => $locationId,
                 'quantity'         => $request->output_qty,
                 'transaction_type' => 'IN',
                 'notes'            => $request->notes ? "Produced: Production log #{$log->id}. Notes: " . $request->notes : "Produced: Production log #{$log->id}",
@@ -222,6 +229,18 @@ class FinishedController extends Controller
 
         $pageData = ['productionLogs' => $logs];
         return view('finished.history', compact('pageData'));
+    }
+
+    public function po()
+    {
+        $user = $this->authUser();
+        $pos = \App\Models\PurchaseOrder::with('product')
+            ->where('user_id', $user['id'])
+            ->orderByDesc('created_at')
+            ->paginate(15);
+
+        $pageData = ['purchaseOrders' => $pos];
+        return view('raw.po', compact('pageData')); // Share view with raw
     }
 
     public function profile()

@@ -162,12 +162,13 @@
     <table class="items-table">
         <thead>
             <tr>
-                <th style="width: 8%;" class="text-center">Sr. No.</th>
-                <th style="width: 37%;">Product Name & Grade</th>
-                <th style="width: 15%;" class="text-right">Rate (INR)</th>
-                <th style="width: 13%;" class="text-right">Ordered Qty</th>
-                <th style="width: 13%;" class="text-right">Dispatch Qty</th>
-                <th style="width: 14%;" class="text-right">Pending Qty</th>
+                <th style="width: 6%;" class="text-center">Sr. No.</th>
+                <th style="width: 32%;">Product Name & Grade</th>
+                <th style="width: 12%;" class="text-right">Rate (INR)</th>
+                <th style="width: 12%;" class="text-right">Ordered Qty</th>
+                <th style="width: 13%;" class="text-right">Prev. Dispatched</th>
+                <th style="width: 13%;" class="text-right">Current Dispatch</th>
+                <th style="width: 12%;" class="text-right">Remaining Qty</th>
             </tr>
         </thead>
         <tbody>
@@ -175,6 +176,7 @@
                 @php
                     $orderItem = $di->orderItem;
                     $pendingQty = max(0, $orderItem->quantity - $orderItem->dispatched_qty);
+                    $prevDispatched = max(0, (float)$orderItem->dispatched_qty - (float)$di->quantity);
                 @endphp
                 <tr>
                     <td class="text-center">{{ $idx + 1 }}</td>
@@ -190,6 +192,7 @@
                         @endif
                     </td>
                     <td class="text-right text-green">{{ number_format($orderItem->quantity) }} KG</td>
+                    <td class="text-right">{{ number_format($prevDispatched) }} KG</td>
                     <td class="text-right"><strong>{{ number_format($di->quantity) }} KG</strong></td>
                     <td class="text-right text-red">{{ number_format($pendingQty) }} KG</td>
                 </tr>
@@ -198,7 +201,8 @@
                 <td colspan="2">TOTAL</td>
                 <td class="text-right">₹{{ number_format($totalAmount, 2) }}</td>
                 <td class="text-right text-green">{{ number_format($totalOrderedQty) }} KG</td>
-                <td class="text-right">{{ number_format($totalDispatchedQty) }} KG</td>
+                <td class="text-right">{{ number_format($totalPrevDispatchedQty) }} KG</td>
+                <td class="text-right"><strong>{{ number_format($totalDispatchedQty) }} KG</strong></td>
                 <td class="text-right text-red">{{ number_format($totalPendingQty) }} KG</td>
             </tr>
         </tbody>
@@ -215,9 +219,11 @@
                     <div class="section-box" style="min-height: 110px;">
                         <table>
                             <tr><td class="lbl">Total Items</td><td class="val">: {{ $totalItems }}</td></tr>
-                            <tr><td class="lbl">Total Dispatch Qty</td><td class="val">: <strong>{{ number_format($totalDispatchedQty) }} KG</strong></td></tr>
-                            <tr><td class="lbl">Dispatch Type</td><td class="val">: <span class="badge {{ $totalPendingQty <= 0 ? 'badge-dispatched' : 'badge-pending' }}">{{ $dispatchType }}</span></td></tr>
+                            <tr><td class="lbl">Ordered Quantity</td><td class="val">: {{ number_format($totalOrderedQty) }} KG</td></tr>
+                            <tr><td class="lbl">Prev. Dispatched</td><td class="val">: {{ number_format($totalPrevDispatchedQty) }} KG</td></tr>
+                            <tr><td class="lbl">Current Dispatch</td><td class="val">: <strong>{{ number_format($totalDispatchedQty) }} KG</strong></td></tr>
                             <tr><td class="lbl">Pending Quantity</td><td class="val">: <strong class="text-red">{{ number_format($totalPendingQty) }} KG</strong></td></tr>
+                            <tr><td class="lbl">Dispatch Type</td><td class="val">: <span class="badge {{ $totalPendingQty <= 0 ? 'badge-dispatched' : 'badge-pending' }}">{{ $dispatchType }}</span></td></tr>
                         </table>
                     </div>
                 </td>

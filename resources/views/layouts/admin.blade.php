@@ -191,7 +191,6 @@
   <script src="{{ asset('js/tabulator-init.js') }}"></script>
   <script src="{{ asset('js/table-sorter.js') }}"></script>
   <script src="{{ asset('js/table-filter.js') }}"></script>
-  <script src="{{ asset('js/mockData.js') }}"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="{{ asset('js/app.js') }}"></script>
   <script>
@@ -239,71 +238,98 @@
         if (menu) { menu.style.display = 'block'; arrow.style.transform = 'rotate(180deg)'; }
       });
     }
-    function getLocations() {
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      }[char]));
+    }
+
+    async function openLocationsAdminModal() {
       try {
-        return JSON.parse(localStorage.getItem('pentapure_storage_locations')) || ['Warehouse A', 'Warehouse B', 'Rack 1', 'Cold Room'];
-      } catch(e) {
-        return ['Warehouse A', 'Warehouse B', 'Rack 1', 'Cold Room'];
+        const response = await fetch('/api/locations');
+        const data = await response.json();
+        if (!data.success) throw new Error(data.message);
+        
+        const locs = data.locations;
+        let listHtml = locs.map(loc => `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:8px; margin-bottom:6px;">
+            <span style="font-weight:600; color:var(--primary-light);">${escapeHtml(loc.name)}</span>
+            <button class="btn btn-danger btn-sm" onclick="deleteLocation(${loc.id})" style="padding:4px 8px; width:auto; font-size:0.75rem;">Delete</button>
+          </div>
+        `).join('') || '<p style="text-align:center;color:#8b949e;">No locations added yet.</p>';
+
+        app.openModal(`
+          <div class="card" style="margin:0; width:100%; max-width:400px; text-align:left;">
+            <div class="card-title" style="margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
+              <span>📍 Storage Locations</span>
+              <button onclick="app.closeModal()" style="background:none; border:none; color:#8b949e; cursor:pointer; font-size:1.2rem;">&times;</button>
+            </div>
+            <div class="form-group" style="margin-bottom:1rem; display:flex; gap:8px;">
+              <input type="text" id="new-location-name" placeholder="e.g. Warehouse C" style="flex:1; padding:0.6rem 0.8rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+              <button class="btn" onclick="addLocation()" style="width:auto; padding:0.6rem 1rem;">Add</button>
+            </div>
+            <div style="max-height:250px; overflow-y:auto; padding-right:4px;">
+              ${listHtml}
+            </div>
+          </div>
+        `);
+      } catch (e) {
+        app.toast('Failed to load locations: ' + e.message, 'error');
       }
     }
 
-    function saveLocations(locs) {
-      localStorage.setItem('pentapure_storage_locations', JSON.stringify(locs));
-    }
-
-    function openLocationsAdminModal() {
-      const locs = getLocations();
-      let listHtml = locs.map((loc, idx) => `
-        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:8px; margin-bottom:6px;">
-          <span style="font-weight:600; color:var(--primary-light);">${loc}</span>
-          <button class="btn btn-danger btn-sm" onclick="deleteLocation(${idx})" style="padding:4px 8px; width:auto; font-size:0.75rem;">Delete</button>
-        </div>
-      `).join('') || '<p style="text-align:center;color:#8b949e;">No locations added yet.</p>';
-
-      app.openModal(`
-        <div class="card" style="margin:0; width:100%; max-width:400px; text-align:left;">
-          <div class="card-title" style="margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
-            <span>📍 Storage Locations</span>
-            <button onclick="app.closeModal()" style="background:none; border:none; color:#8b949e; cursor:pointer; font-size:1.2rem;">&times;</button>
-          </div>
-          <div class="form-group" style="margin-bottom:1rem; display:flex; gap:8px;">
-            <input type="text" id="new-location-name" placeholder="e.g. Warehouse C" style="flex:1; padding:0.6rem 0.8rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
-            <button class="btn" onclick="addLocation()" style="width:auto; padding:0.6rem 1rem;">Add</button>
-          </div>
-          <div style="max-height:250px; overflow-y:auto; padding-right:4px;">
-            ${listHtml}
-          </div>
-        </div>
-      `);
-    }
-
-    window.addLocation = function() {
+    async function addLocation() {
       const input = document.getElementById('new-location-name');
       const val = input.value.trim();
       if(!val) return app.toast('Enter location name', 'error');
-      const locs = getLocations();
-      if(locs.includes(val)) return app.toast('Location already exists', 'error');
-      locs.push(val);
-      saveLocations(locs);
-      app.toast('Location added');
-      openLocationsAdminModal();
+
+      try {
+        const response = await fetch('/admin/locations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
+          body: JSON.stringify({ name: val })
+        });
+        const data = await response.json();
+        if (data.success) {
+          app.toast('Location added');
+          openLocationsAdminModal();
+        } else {
+          app.toast(data.message || 'Failed to add location', 'error');
+        }
+      } catch(e) {
+        app.toast('Network error', 'error');
+      }
     }
 
-    window.deleteLocation = function(idx) {
+    function deleteLocation(id) {
       Swal.fire({
         title: 'Delete location?',
-        text: 'This will remove the option from future entries.',
+        text: 'This will permanently remove the location and any associated stock constraints.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
         confirmButtonText: 'Yes, delete'
-      }).then(res => {
+      }).then(async res => {
         if(res.isConfirmed) {
-          const locs = getLocations();
-          locs.splice(idx, 1);
-          saveLocations(locs);
-          app.toast('Location deleted');
-          openLocationsAdminModal();
+          try {
+            const response = await fetch(`/admin/locations/${id}`, {
+              method: 'DELETE',
+              headers: { 'X-CSRF-TOKEN': window.csrfToken }
+            });
+            const data = await response.json();
+            if (data.success) {
+              app.toast('Location deleted');
+              openLocationsAdminModal();
+            } else {
+              app.toast(data.message || 'Failed to delete location', 'error');
+            }
+          } catch(e) {
+            app.toast('Network error', 'error');
+          }
         }
       });
     }

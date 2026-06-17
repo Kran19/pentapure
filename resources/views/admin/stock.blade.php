@@ -145,6 +145,7 @@
 <script>
 const adminStockProducts = @json($pageData['allProducts']);
 const adminStockLogsByKey = @json($pageData['stockLogsByKey']);
+let locationMappings = @json($pageData['locationMappings'] ?? (object)[]);
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -157,30 +158,28 @@ function escapeHtml(value) {
 }
 
 function adminAddStock() {
-  const productOptions = adminStockProducts.map(p =>
-    `<option value="${p.id}" data-type="${p.type}" data-unit="${escapeHtml(p.unit || 'kg')}">${escapeHtml(p.type)} - ${escapeHtml(p.name)} (${escapeHtml(p.unit || 'kg')})</option>`
-  ).join('');
-
   Swal.fire({
     title: 'Add Stock',
     html: `
       <div style="text-align:left;">
-        <label style="font-size:0.82rem; font-weight:600; color:#8b949e;">Product</label>
-        <select id="add-stock-product" onchange="syncAddStockStage()" style="width:100%; padding:0.65rem; margin:0.35rem 0 0.85rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
-          ${productOptions}
-        </select>
-
         <label style="font-size:0.82rem; font-weight:600; color:#8b949e;">Stock Type</label>
-        <select id="add-stock-stage" style="width:100%; padding:0.65rem; margin:0.35rem 0 0.85rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+        <select id="add-stock-stage" onchange="onStockStageChange()" style="width:100%; padding:0.65rem; margin:0.35rem 0 0.85rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
           <option value="RAW">RAW</option>
           <option value="SEMI">SEMI</option>
           <option value="FINISHED">FINISHED</option>
         </select>
 
-        <label style="font-size:0.82rem; font-weight:600; color:#8b949e;">Grade</label>
-        <input id="add-stock-grade" value="NONE" style="width:100%; padding:0.65rem; margin:0.35rem 0 0.85rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+        <label style="font-size:0.82rem; font-weight:600; color:#8b949e;">Product</label>
+        <select id="add-stock-product" onchange="onStockProductChange()" style="width:100%; padding:0.65rem; margin:0.35rem 0 0.85rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+          <!-- Populated dynamically -->
+        </select>
 
-        <label style="font-size:0.82rem; font-weight:600; color:#8b949e;">Quantity</label>
+        <label style="font-size:0.82rem; font-weight:600; color:#8b949e;">Grade</label>
+        <div id="add-stock-grade-container">
+          <!-- Populated dynamically -->
+        </div>
+
+        <label style="font-size:0.82rem; font-weight:600; color:#8b949e; margin-top:0.85rem; display:block;">Quantity</label>
         <input id="add-stock-qty" type="number" min="0.001" step="0.001" placeholder="e.g. 200" style="width:100%; padding:0.65rem; margin:0.35rem 0 0.85rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
 
         <label style="font-size:0.82rem; font-weight:600; color:#8b949e;">Note</label>
@@ -193,11 +192,93 @@ function adminAddStock() {
     confirmButtonText: 'Add Stock',
     confirmButtonColor: '#238636',
     cancelButtonColor: '#30363d',
-    didOpen: syncAddStockStage,
+    didOpen: () => {
+      window.onStockStageChange = function() {
+        const stage = document.getElementById('add-stock-stage').value;
+        const productSelect = document.getElementById('add-stock-product');
+        const targetType = stage === 'RAW' ? 'RAW' : 'FINISHED';
+        const filteredProducts = adminStockProducts.filter(p => p.type === targetType && p.is_active);
+        
+        productSelect.innerHTML = filteredProducts.map(p => 
+          `<option value="${p.id}" data-unit="${escapeHtml(p.unit || 'kg')}">${escapeHtml(p.name)} (${escapeHtml(p.unit || 'kg')})</option>`
+        ).join('');
+        
+        onStockProductChange();
+      };
+
+      window.onStockProductChange = function() {
+        const productSelect = document.getElementById('add-stock-product');
+        const productId = productSelect.value;
+        const product = adminStockProducts.find(p => p.id == productId);
+        const gradeContainer = document.getElementById('add-stock-grade-container');
+        
+        if (!product) {
+          gradeContainer.innerHTML = `<input id="add-stock-grade" value="NONE" style="width:100%; padding:0.65rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">`;
+          return;
+        }
+
+        const stage = document.getElementById('add-stock-stage').value;
+        if (stage === 'RAW') {
+          gradeContainer.innerHTML = `
+            <select id="add-stock-grade" style="width:100%; padding:0.65rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+              <option value="NONE">NONE</option>
+              <option value="CUSTOM">Type custom grade...</option>
+            </select>
+            <input id="add-stock-grade-custom" placeholder="Enter custom grade" style="display:none; width:100%; padding:0.65rem; margin-top:0.5rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+          `;
+          
+          const select = document.getElementById('add-stock-grade');
+          const customInput = document.getElementById('add-stock-grade-custom');
+          select.onchange = function() {
+            customInput.style.display = select.value === 'CUSTOM' ? 'block' : 'none';
+          };
+          return;
+        }
+
+        const grades = product.grades || [];
+        if (grades.length > 0) {
+          const options = grades.map(g => `<option value="${escapeHtml(g.name)}">${escapeHtml(g.name)}</option>`).join('');
+          gradeContainer.innerHTML = `
+            <select id="add-stock-grade" style="width:100%; padding:0.65rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+              ${options}
+              <option value="CUSTOM">Type custom grade...</option>
+            </select>
+            <input id="add-stock-grade-custom" placeholder="Enter custom grade" style="display:none; width:100%; padding:0.65rem; margin-top:0.5rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+          `;
+        } else {
+          gradeContainer.innerHTML = `<input id="add-stock-grade" placeholder="e.g. PREMIUM" style="width:100%; padding:0.65rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">`;
+        }
+
+        const select = document.getElementById('add-stock-grade');
+        const customInput = document.getElementById('add-stock-grade-custom');
+        if (select && customInput) {
+          select.onchange = function() {
+            customInput.style.display = select.value === 'CUSTOM' ? 'block' : 'none';
+          };
+        }
+      };
+
+      onStockStageChange();
+    },
     preConfirm: () => {
       const productId = document.getElementById('add-stock-product').value;
       const stage = document.getElementById('add-stock-stage').value;
-      const grade = document.getElementById('add-stock-grade').value.trim() || 'NONE';
+      
+      let grade = 'NONE';
+      const gradeEl = document.getElementById('add-stock-grade');
+      if (gradeEl) {
+        if (gradeEl.tagName === 'SELECT') {
+          if (gradeEl.value === 'CUSTOM') {
+            grade = document.getElementById('add-stock-grade-custom').value.trim();
+          } else {
+            grade = gradeEl.value;
+          }
+        } else {
+          grade = gradeEl.value.trim();
+        }
+      }
+      grade = grade || 'NONE';
+
       const quantity = parseFloat(document.getElementById('add-stock-qty').value);
       const reason = document.getElementById('add-stock-note').value.trim();
 
@@ -227,13 +308,6 @@ function adminAddStock() {
       }
     });
   });
-}
-
-function syncAddStockStage() {
-  const productSelect = document.getElementById('add-stock-product');
-  const stageSelect = document.getElementById('add-stock-stage');
-  const productType = productSelect?.selectedOptions?.[0]?.dataset?.type;
-  if (productType && stageSelect) stageSelect.value = productType;
 }
 
 function showStockDetails(productId, stage, grade, productName) {
@@ -502,6 +576,9 @@ setInterval(() => {
   .then(res => res.json())
   .then(data => {
     if (data.success && data.data) {
+      if (data.locationMappings) {
+        locationMappings = data.locationMappings;
+      }
       updateStockTables(data.data);
     }
   })
@@ -577,15 +654,7 @@ const rowStyle = isLow ? 'background-color: #ff4d4d; color: #fff;' : '';
 }
 
 function getStoredLocationMappings() {
-  try {
-    return JSON.parse(localStorage.getItem('pentapure_product_locations')) || {};
-  } catch(e) {
-    return {};
-  }
-}
-
-function saveStoredLocationMappings(mappings) {
-  localStorage.setItem('pentapure_product_locations', JSON.stringify(mappings));
+  return locationMappings;
 }
 
 function parseStockNumber(value) {
@@ -597,98 +666,63 @@ function getAvailableStockForLocationCell(el) {
   return row ? parseStockNumber(row.children[2]?.textContent) : 0;
 }
 
-function sumLocationQuantities(locMap) {
-  return Object.values(locMap || {}).reduce((total, qty) => total + parseStockNumber(qty), 0);
-}
-
-function trimLocationMapToAvailable(locMap, availableQty) {
-  const cleaned = {};
-  let usedQty = 0;
-
-  Object.entries(locMap || {}).forEach(([loc, rawQty]) => {
-    const qty = parseStockNumber(rawQty);
-    const remaining = availableQty - usedQty;
-    if (!loc || qty <= 0 || remaining <= 0) return;
-    const safeQty = Math.min(qty, remaining);
-    cleaned[loc] = parseFloat(safeQty.toFixed(2));
-    usedQty += safeQty;
-  });
-
-  return cleaned;
-}
-
-function cleanupLocationMappingsForVisibleStock() {
-  const mappings = getStoredLocationMappings();
-  let changed = false;
-
-  document.querySelectorAll('.location-col').forEach(td => {
-    const pId = td.getAttribute('data-product');
-    const grade = td.getAttribute('data-grade') || 'NONE';
-    const stage = td.getAttribute('data-stage');
-    const key = `${pId}_${grade}_${stage}`;
-    const availableQty = getAvailableStockForLocationCell(td);
-    const originalMap = mappings[key] || {};
-    const cleanedMap = trimLocationMapToAvailable(originalMap, availableQty);
-
-    if (JSON.stringify(originalMap) !== JSON.stringify(cleanedMap)) {
-      changed = true;
-      if (Object.keys(cleanedMap).length) {
-        mappings[key] = cleanedMap;
-      } else {
-        delete mappings[key];
-      }
-    }
-  });
-
-  if (changed) saveStoredLocationMappings(mappings);
-}
-
 function updateAllLocationLabels() {
-  cleanupLocationMappingsForVisibleStock();
-  const mappings = getStoredLocationMappings();
   document.querySelectorAll('.location-col').forEach(td => {
     const pId = td.getAttribute('data-product');
     const grade = td.getAttribute('data-grade') || 'NONE';
     const stage = td.getAttribute('data-stage');
     const key = `${pId}_${grade}_${stage}`;
-    const locMap = mappings[key] || {};
+    const locMap = locationMappings[key] || {};
     const count = Object.keys(locMap).length;
     if(count === 0) {
       td.innerHTML = `📍 <span style="font-size:0.75rem; color:#8b949e;">Not Set</span>`;
     } else if(count === 1) {
-      td.innerHTML = `📍 <span style="font-weight:600; color:var(--secondary);">${Object.keys(locMap)[0]}</span>`;
+      td.innerHTML = `📍 <span style="font-weight:600; color:var(--secondary);">${escapeHtml(Object.keys(locMap)[0])}</span>`;
     } else {
       td.innerHTML = `📍 <span class="badge badge-info" style="cursor:pointer; font-size:0.75rem;">${count} Locations</span>`;
     }
   });
 }
 
-function showLocationBreakdown(el) {
+async function showLocationBreakdown(el) {
   const pId = el.getAttribute('data-product');
   const grade = el.getAttribute('data-grade') || 'NONE';
   const stage = el.getAttribute('data-stage');
   const key = `${pId}_${grade}_${stage}`;
   
+  // Fetch available locations from DB
+  let allLocations = [];
+  try {
+    const locRes = await fetch('/api/locations');
+    const locData = await locRes.json();
+    if (locData.success) {
+      allLocations = locData.locations;
+    }
+  } catch (e) {
+    console.error('Failed to load locations', e);
+  }
+
+  if (allLocations.length === 0) {
+    allLocations = [{ id: null, name: 'No locations available' }];
+  }
+  
   const mappings = getStoredLocationMappings();
   const availableQty = getAvailableStockForLocationCell(el);
-  const locMap = trimLocationMapToAvailable(mappings[key] || {}, availableQty);
-  mappings[key] = locMap;
-  saveStoredLocationMappings(mappings);
-  const assignedQty = sumLocationQuantities(locMap);
+  const locMap = mappings[key] || {};
+  
+  const assignedQty = Object.values(locMap).reduce((t, q) => t + q, 0);
   const remainingQty = Math.max(availableQty - assignedQty, 0);
 
   let locationsListHtml = Object.entries(locMap).map(([loc, qty]) => `
     <div style="display:flex; justify-content:space-between; padding:8px 12px; background:rgba(255,255,255,0.05); border-radius:8px; margin-bottom:6px;">
-      <span style="font-weight:600; color:#e6edf3;">📍 ${loc}</span>
-      <span style="font-weight:bold; color:var(--secondary);">${qty} kg</span>
+      <span style="font-weight:600; color:#e6edf3;">📍 ${escapeHtml(loc)}</span>
+      <span style="font-weight:bold; color:var(--secondary);">${qty.toFixed(2)} kg</span>
     </div>
   `).join('') || '<p style="text-align:center; color:#8b949e; margin: 1rem 0;">No locations linked yet.</p>';
 
-  // Admin can override/adjust locations manually
-  const allLocations = JSON.parse(localStorage.getItem('pentapure_storage_locations')) || ['Warehouse A', 'Warehouse B', 'Rack 1', 'Cold Room'];
-  let optionsHtml = allLocations.map(loc => `<option value="${loc}">${loc}</option>`).join('');
+  let optionsHtml = allLocations.map(loc => `<option value="${escapeHtml(loc.name)}">${escapeHtml(loc.name)}</option>`).join('');
   
-  let fromOptionsHtml = Object.keys(locMap).map(loc => `<option value="${loc}">${loc} (${locMap[loc]} kg)</option>`).join('');
+  let fromOptionsHtml = Object.entries(locMap).map(([loc, qty]) => `<option value="${escapeHtml(loc)}">${escapeHtml(loc)} (${qty} kg)</option>`).join('');
   let transferHtml = '';
   if (Object.keys(locMap).length > 0) {
     transferHtml = `
@@ -707,7 +741,7 @@ function showLocationBreakdown(el) {
         </div>
         <div style="display:flex; gap:8px;">
           <input type="number" id="swal-transfer-qty" min="0.01" step="0.01" placeholder="Qty (kg)" style="width:100px; padding:0.55rem; background:#161b22; border:1px solid #30363d; color:#e6edf3; border-radius:8px;">
-          <button class="btn btn-sm" onclick="transferLocationMapping('${key}')" style="flex:1;">Transfer Stock</button>
+          <button class="btn btn-sm" onclick="transferLocationMapping('${pId}', '${stage}', '${grade}', this)" style="flex:1;">Transfer Stock</button>
         </div>
       </div>
     `;
@@ -729,7 +763,7 @@ function showLocationBreakdown(el) {
           <div style="font-weight:700; color:var(--secondary);">${assignedQty.toFixed(2)} kg</div>
         </div>
         <div style="background:#161b22; border-radius:8px; padding:8px;">
-          <div style="font-size:0.7rem; color:#8b949e;">Remaining</div>
+          <div style="font-size:0.7rem; color:#8b949e;">Unassigned</div>
           <div style="font-weight:700; color:#e6edf3;">${remainingQty.toFixed(2)} kg</div>
         </div>
       </div>
@@ -744,7 +778,7 @@ function showLocationBreakdown(el) {
           </select>
           <input type="number" id="swal-loc-qty" min="0.01" max="${remainingQty.toFixed(2)}" step="0.01" placeholder="Qty (kg)" style="width:100px; padding:0.55rem; background:#161b22; border:1px solid #30363d; color:#e6edf3; border-radius:8px;">
         </div>
-        <button class="btn btn-sm" onclick="addLocationMapping('${key}', ${availableQty})" style="width:100%;">Save Location link</button>
+        <button class="btn btn-sm" onclick="addLocationMapping('${pId}', '${stage}', '${grade}', ${remainingQty}, this)" style="width:100%;">Save Location link</button>
       </div>
       ${transferHtml}
     `,
@@ -757,78 +791,96 @@ function showLocationBreakdown(el) {
   });
 }
 
-window.addLocationMapping = function(key, availableQty) {
-  const loc = document.getElementById('swal-loc-select').value;
-  const qty = parseFloat(document.getElementById('swal-loc-qty').value);
-  if(!loc || isNaN(qty) || qty <= 0) {
+window.addLocationMapping = async function(productId, stage, grade, remainingQty, buttonEl) {
+  const toLocation = document.getElementById('swal-loc-select').value;
+  const quantity = parseFloat(document.getElementById('swal-loc-qty').value);
+  if(!toLocation || isNaN(quantity) || quantity <= 0) {
     Swal.showValidationMessage('Please select location and enter positive quantity');
     return;
   }
-  const mappings = getStoredLocationMappings();
-  if(!mappings[key]) mappings[key] = {};
-  const currentQtyForLocation = parseStockNumber(mappings[key][loc]);
-  const assignedExcludingLocation = sumLocationQuantities(mappings[key]) - currentQtyForLocation;
-  const maxAllowed = Math.max(availableQty - assignedExcludingLocation, 0);
-
-  if(qty > maxAllowed) {
-    Swal.showValidationMessage(`Quantity cannot exceed remaining stock (${maxAllowed.toFixed(2)} kg).`);
+  if(quantity > remainingQty) {
+    Swal.showValidationMessage(`Quantity cannot exceed remaining stock (${remainingQty.toFixed(2)} kg).`);
     return;
   }
 
-  mappings[key][loc] = qty;
-  saveStoredLocationMappings(mappings);
-  Swal.fire({
-    icon: 'success',
-    title: 'Saved',
-    background: '#0d1117',
-    color: '#e6edf3',
-    timer: 1000,
-    showConfirmButton: false
-  }).then(() => {
-    updateAllLocationLabels();
-  });
+  try {
+    const res = await fetch('/api/stock/locations/transfer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+      body: JSON.stringify({
+        product_id: productId,
+        stage: stage,
+        grade: grade,
+        from_location: null,
+        to_location: toLocation,
+        quantity: quantity
+      })
+    });
+    const data = await res.json();
+    if(data.success) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Saved',
+        background: '#0d1117',
+        color: '#e6edf3',
+        timer: 1000,
+        showConfirmButton: false
+      }).then(() => {
+        location.reload();
+      });
+    } else {
+      Swal.showValidationMessage(data.message || 'Failed to save mapping');
+    }
+  } catch(e) {
+    Swal.showValidationMessage('Network error: ' + e.message);
+  }
 }
 
-window.transferLocationMapping = function(key) {
-  const fromLoc = document.getElementById('swal-transfer-from').value;
-  const toLoc = document.getElementById('swal-transfer-to').value;
-  const qty = parseFloat(document.getElementById('swal-transfer-qty').value);
+window.transferLocationMapping = async function(productId, stage, grade, buttonEl) {
+  const fromLocation = document.getElementById('swal-transfer-from').value;
+  const toLocation = document.getElementById('swal-transfer-to').value;
+  const quantity = parseFloat(document.getElementById('swal-transfer-qty').value);
   
-  if(!fromLoc || !toLoc || isNaN(qty) || qty <= 0) {
+  if(!fromLocation || !toLocation || isNaN(quantity) || quantity <= 0) {
     Swal.showValidationMessage('Please select both locations and enter a positive quantity.');
     return;
   }
-  if(fromLoc === toLoc) {
+  if(fromLocation === toLocation) {
     Swal.showValidationMessage('From and To locations must be different.');
     return;
   }
-  
-  const mappings = getStoredLocationMappings();
-  const availableInFrom = parseStockNumber(mappings[key][fromLoc]);
-  
-  if(qty > availableInFrom) {
-    Swal.showValidationMessage(`Quantity cannot exceed available stock in source location (${availableInFrom.toFixed(2)} kg).`);
-    return;
-  }
 
-  mappings[key][fromLoc] = availableInFrom - qty;
-  if (mappings[key][fromLoc] <= 0) {
-    delete mappings[key][fromLoc];
+  try {
+    const res = await fetch('/api/stock/locations/transfer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+      body: JSON.stringify({
+        product_id: productId,
+        stage: stage,
+        grade: grade,
+        from_location: fromLocation,
+        to_location: toLocation,
+        quantity: quantity
+      })
+    });
+    const data = await res.json();
+    if(data.success) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Transferred',
+        background: '#0d1117',
+        color: '#e6edf3',
+        timer: 1000,
+        showConfirmButton: false
+      }).then(() => {
+        location.reload();
+      });
+    } else {
+      Swal.showValidationMessage(data.message || 'Failed to transfer stock');
+    }
+  } catch(e) {
+    Swal.showValidationMessage('Network error: ' + e.message);
   }
-  
-  mappings[key][toLoc] = (parseStockNumber(mappings[key][toLoc]) || 0) + qty;
-  saveStoredLocationMappings(mappings);
-  
-  Swal.fire({
-    icon: 'success',
-    title: 'Transferred',
-    background: '#0d1117',
-    color: '#e6edf3',
-    timer: 1000,
-    showConfirmButton: false
-  }).then(() => {
-    updateAllLocationLabels();
-  });
 }
 
 function adminExportStockPdf() {
@@ -876,7 +928,6 @@ function adminExportStockPdf() {
     if (!result.isConfirmed) return;
     
     const stages = result.value;
-    const locations = localStorage.getItem('pentapure_product_locations') || '{}';
     
     const form = document.createElement('form');
     form.method = 'POST';
@@ -894,12 +945,6 @@ function adminExportStockPdf() {
     stagesInput.name = 'stages';
     stagesInput.value = stages.join(',');
     form.appendChild(stagesInput);
-    
-    const locationsInput = document.createElement('input');
-    locationsInput.type = 'hidden';
-    locationsInput.name = 'locations';
-    locationsInput.value = locations;
-    form.appendChild(locationsInput);
     
     document.body.appendChild(form);
     form.submit();

@@ -82,6 +82,7 @@ class RawController extends Controller
             'product_id' => 'required|exists:products,id',
             'quantity'   => 'required|numeric|min:0.001',
             'grade'      => 'nullable|string|max:50',
+            'location'   => 'nullable|string',
         ]);
 
         $user = $this->authUser();
@@ -91,21 +92,42 @@ class RawController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized product access.'], 403);
         }
 
-        Stock::create([
-            'product_id'       => $request->product_id,
-            'user_id'          => $user['id'],
-            'stage'            => 'RAW',
-            'grade'            => $request->grade ?? 'NONE',
-            'quantity'         => $request->quantity,
-            'transaction_type' => 'IN',
-            'notes'            => $request->notes,
-        ]);
+        $stock = DB::transaction(function() use ($request, $user) {
+            $locationId = null;
+            if ($request->location) {
+                $locationId = \App\Models\Location::firstOrCreate(['name' => $request->location])->id;
+            }
+
+            return Stock::create([
+                'product_id'       => $request->product_id,
+                'user_id'          => $user['id'],
+                'stage'            => 'RAW',
+                'grade'            => $request->grade ?? 'NONE',
+                'location_id'      => $locationId,
+                'quantity'         => $request->quantity,
+                'transaction_type' => 'IN',
+                'notes'            => $request->notes,
+            ]);
+        });
 
         if ($request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'Raw material added to stock!']);
         }
 
         return redirect('/raw/home')->with('success', 'Raw material added to stock!');
+    }
+
+    // ── PO ─────────────────────────────────────────────────────────────────
+    public function po()
+    {
+        $user = $this->authUser();
+        $pos = PurchaseOrder::with('product')
+            ->where('user_id', $user['id'])
+            ->orderByDesc('created_at')
+            ->paginate(15);
+            
+        $pageData = ['purchaseOrders' => $pos];
+        return view('raw.po', compact('pageData'));
     }
 
     // ── POST: Purchase Order Request ───────────────────────────────────────
@@ -135,7 +157,10 @@ class RawController extends Controller
             return response()->json(['success' => true, 'message' => 'Purchase request sent to Admin!']);
         }
 
-        return redirect('/raw/home')->with('success', 'Purchase request sent!');
+        // Redirect to role-appropriate home page
+        $role = strtolower($user['role']);
+        $homeUrl = in_array($role, ['raw', 'semi', 'finished']) ? "/{$role}/home" : '/raw/home';
+        return redirect($homeUrl)->with('success', 'Purchase request sent!');
     }
 
     // ── HISTORY ────────────────────────────────────────────────────────────
