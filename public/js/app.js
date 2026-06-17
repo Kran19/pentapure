@@ -182,17 +182,16 @@ const app = {
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
       Generating...
     </span>`;
-    // Create a hidden iframe to download PDF without page navigation
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = url;
-    document.body.appendChild(iframe);
-    // After ~4s assume download started, re-enable button
+
+    // Direct window location change is the most reliable way to trigger a file download 
+    // without navigating away when Content-Disposition: attachment is returned.
+    window.location.href = url;
+
+    // After 4s assume download started/completed, re-enable button
     setTimeout(() => {
       btn.disabled = false;
       btn.innerHTML = orig;
       this.toast('📄 PDF downloaded successfully!', 'success');
-      document.body.removeChild(iframe);
     }, 4000);
   },
 
