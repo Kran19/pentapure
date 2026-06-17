@@ -210,6 +210,44 @@
 
     <!-- Use a wrapper to prevent orphan/broken page layouts on signatures and summary boxes -->
     <div class="page-break-avoid">
+        
+        <!-- Dispatch Timeline for Order -->
+        @if(count($dispatchHistory) > 1)
+        <div class="section-header" style="border-radius: 4px 4px 0 0; margin-bottom: 0; margin-top: 10px;">⏱️ Dispatch Timeline for this Order</div>
+        <table class="items-table" style="margin-bottom: 10px;">
+            <thead>
+                <tr>
+                    <th style="width: 10%;" class="text-center">Round</th>
+                    <th style="width: 20%;">Date & Time</th>
+                    <th style="width: 15%;">Dispatch ID</th>
+                    <th style="width: 55%;">Items Dispatched</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($dispatchHistory as $historyLog)
+                    <tr style="{{ $historyLog->id === $log->id ? 'background-color: #f6fef9;' : '' }}">
+                        <td class="text-center">
+                            <strong>#{{ $loop->iteration }}</strong>
+                            @if($historyLog->id === $log->id)
+                                <br><span style="color:#027a48; font-size: 8px;">(Current)</span>
+                            @endif
+                        </td>
+                        <td>{{ $historyLog->created_at->format('d-M-Y h:i A') }}</td>
+                        <td><strong>DSP-{{ str_pad($historyLog->id, 4, '0', STR_PAD_LEFT) }}</strong></td>
+                        <td>
+                            @foreach($historyLog->dispatchItems as $hItem)
+                                <div style="margin-bottom: 2px;">
+                                    &bull; {{ $hItem->orderItem->product->name }} <span style="color: #667085;">({{ $hItem->orderItem->grade }})</span>: 
+                                    <strong style="color: #175cd3;">{{ number_format($hItem->quantity) }} KG</strong>
+                                </div>
+                            @endforeach
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+        @endif
+
         <!-- Summary & LR Block -->
         <table class="details-table">
             <tr>

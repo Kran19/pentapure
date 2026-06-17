@@ -268,12 +268,19 @@ class HistoryPdfController extends Controller
             }
         }
 
+        $dispatchHistory = \App\Models\DispatchLog::with(['dispatchItems.orderItem.product', 'user'])
+            ->where('order_id', $order->id)
+            ->where('id', '<=', $log->id)
+            ->orderBy('created_at', 'asc')
+            ->get();
+
         $data = [
             'log' => $log,
             'order' => $order,
             'company' => $order->company,
             'transporter' => $log->transporter ?? $order->transporter,
             'items' => $log->dispatchItems,
+            'dispatchHistory' => $dispatchHistory,
             'dispatchNo' => 'DSP-' . str_pad($log->id, 4, '0', STR_PAD_LEFT),
             'orderNo' => 'ORD-' . str_pad($log->order_id, 4, '0', STR_PAD_LEFT),
             'dispatchDate' => $log->created_at->format('d-M-Y'),
@@ -306,7 +313,8 @@ class HistoryPdfController extends Controller
             'order.transporter',
             'order.creator',
             'user',
-            'dispatchItems.orderItem.product'
+            'dispatchItems.orderItem.product',
+            'dispatchItems.locationAllocations.location'
         ])->whereBetween('created_at', [$from, $to]);
 
         $q = $request->q;
@@ -356,22 +364,33 @@ class HistoryPdfController extends Controller
                     $totalOrderedQty += $orderedQty;
                     $totalPendingQty += $pendingQty;
                     $totalAmount += $amount;
+
+                    $locations = $di->locationAllocations
+                        ->map(fn($loc) => $loc->location->name ?? 'Unknown')
+                        ->unique()
+                        ->implode(', ');
+                    
+                    if (empty($locations)) {
+                        $locations = 'N/A';
+                    }
                     
                     $rows[] = [
                         'dispatch_id' => 'DSP-' . str_pad($log->id, 4, '0', STR_PAD_LEFT),
-                        'order_id' => 'ORD-' . str_pad($log->order_id, 4, '0', STR_PAD_LEFT),
+                        'order_id' => 'ORD-' . str_pad($order->id ?? 0, 4, '0', STR_PAD_LEFT),
                         'date' => $log->created_at->format('d M Y'),
-                        'customer' => strtoupper($order->company?->name ?? 'N/A'),
-                        'product' => strtoupper($orderItem->product?->name ?? 'Product') . ' (' . strtoupper($orderItem->grade) . ')',
+                        'customer' => strtoupper($order?->company?->name ?? 'N/A'),
+                        'product' => strtoupper($orderItem->product?->name ?? 'Unknown'),
+                        'grade' => strtoupper($orderItem->grade ?? 'NONE'),
+                        'locations' => $locations,
                         'ordered_qty' => $orderedQty,
-                        'qty' => $qty,
-                        'pending_qty' => $pendingQty,
-                        'unit' => $unit,
                         'ordered_qty_formatted' => $formatQty($orderedQty, $unit),
+                        'qty' => $qty,
                         'dispatch_qty_formatted' => $formatQty($qty, $unit),
+                        'pending_qty' => $pendingQty,
                         'pending_qty_formatted' => $formatQty($pendingQty, $unit),
-                        'rate' => $rate,
                         'amount' => $amount,
+                        'rate' => $rate,
+                        'unit' => $unit,
                         'status' => $status,
                         'lr_copy' => $log->lr_image_path,
                     ];

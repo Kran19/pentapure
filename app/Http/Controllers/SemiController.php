@@ -161,10 +161,8 @@ class SemiController extends Controller
             }
         }
 
-        $locationId = null;
-        if ($request->location) {
-            $locationId = \App\Models\Location::firstOrCreate(['name' => $request->location])->id;
-        }
+        $locationName = $request->location ?: 'Main Warehouse';
+        $locationId = \App\Models\Location::firstOrCreate(['name' => $locationName])->id;
 
         DB::transaction(function () use ($request, $user, $locationId) {
             // 1. Create production log
@@ -185,15 +183,14 @@ class SemiController extends Controller
                     'quantity'          => $inp['quantity'],
                 ]);
 
-                Stock::create([
-                    'product_id'       => $inp['product_id'],
-                    'user_id'          => $user['id'],
-                    'stage'            => 'RAW',
-                    'grade'            => $inp['grade'],
-                    'quantity'         => $inp['quantity'],
-                    'transaction_type' => 'OUT',
-                    'notes'            => "Consumed in SEMI production log #{$log->id}",
-                ]);
+                Stock::deductStock(
+                    $inp['product_id'],
+                    'RAW',
+                    $inp['grade'],
+                    $inp['quantity'],
+                    $user['id'],
+                    "Consumed in SEMI production log #{$log->id}"
+                );
             }
 
             // 3. Add output to SEMI stock

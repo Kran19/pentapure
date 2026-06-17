@@ -40,6 +40,7 @@ class FinishedController extends Controller
     public function home()
     {
         $finishedStock = $this->getLiveStock('FINISHED');
+        $semiStock = $this->getLiveStock('SEMI');
         $user = $this->authUser();
         $ledger = Stock::with('product')
             ->where(function($q) use ($user) {
@@ -72,6 +73,7 @@ class FinishedController extends Controller
             ]);
 
         $pageData = [
+            'semiStock'      => $semiStock,
             'finishedStock'  => $finishedStock,
             'finishedLedger' => $ledger,
             'purchaseOrders' => $myPOs,
@@ -88,10 +90,12 @@ class FinishedController extends Controller
     {
         $semiStock = $this->getLiveStock('SEMI');
         $grades    = \App\Models\Grade::where('is_active', true)->pluck('name')->toArray();
+        $locations = \App\Models\Location::orderBy('name')->pluck('name')->toArray();
 
         $pageData = [
             'semiStock' => $semiStock,
             'grades'    => $grades,
+            'locations' => $locations,
             'products'  => Product::with('grades')->active()->visibleTo($this->authUser()['role'])->get()->map(fn($p)=>[
                 'id'=>$p->id,'name'=>$p->name,'type'=>$p->type,'unit'=>$p->unit,
                 'gradeNames'=>$p->grades->pluck('name')
@@ -147,10 +151,8 @@ class FinishedController extends Controller
             }
         }
 
-        $locationId = null;
-        if ($request->location) {
-            $locationId = \App\Models\Location::firstOrCreate(['name' => $request->location])->id;
-        }
+        $locationName = $request->location ?: 'Main Warehouse';
+        $locationId = \App\Models\Location::firstOrCreate(['name' => $locationName])->id;
 
         DB::transaction(function () use ($request, $user, $locationId) {
             // Auto-update product type to FINISHED if it was SEMI, ensuring it becomes visible to Sales
@@ -178,15 +180,14 @@ class FinishedController extends Controller
                 ]);
 
                 // Deduct from SEMI
-                Stock::create([
-                    'product_id'       => $inp['product_id'],
-                    'user_id'          => $user['id'],
-                    'stage'            => 'SEMI',
-                    'grade'            => $inp['grade'],
-                    'quantity'         => $inp['quantity'],
-                    'transaction_type' => 'OUT',
-                    'notes'            => "Consumed in FINISHED production log #{$log->id}",
-                ]);
+                Stock::deductStock(
+                    $inp['product_id'],
+                    'SEMI',
+                    $inp['grade'],
+                    $inp['quantity'],
+                    $user['id'],
+                    "Consumed in FINISHED production log #{$log->id}"
+                );
             }
 
             // Add to FINISHED

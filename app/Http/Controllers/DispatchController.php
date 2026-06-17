@@ -278,15 +278,14 @@ class DispatchController extends Controller
                     $locNotes = " [" . $locNotes . "]";
                 } else {
                     // Deduct from total stock without location tracking
-                    $stock = Stock::create([
-                        'product_id'       => $orderItem->product_id,
-                        'user_id'          => $user['id'],
-                        'stage'            => $orderItem->product->type,
-                        'grade'            => $orderItem->grade,
-                        'quantity'         => $dispatchQty,
-                        'transaction_type' => 'OUT',
-                        'notes'            => "Dispatched: Order #{$order->id} (Partial round #{$dispatchLog->id}){$locNotes}",
-                    ]);
+                    Stock::deductStock(
+                        $orderItem->product_id,
+                        $orderItem->product->type,
+                        $orderItem->grade,
+                        $dispatchQty,
+                        $user['id'],
+                        "Dispatched: Order #{$order->id} (Partial round #{$dispatchLog->id}){$locNotes}"
+                    );
                 }
 
                 // Update dispatched_qty on the order item
@@ -393,15 +392,14 @@ class DispatchController extends Controller
                     }
                 } else {
                     // Create single stock transaction without location
-                    Stock::create([
-                        'product_id'       => $orderItem->product_id,
-                        'user_id'          => $user['id'],
-                        'stage'            => $orderItem->product->type,
-                        'grade'            => $orderItem->grade,
-                        'quantity'         => $newQty,
-                        'transaction_type' => 'OUT',
-                        'notes'            => "Dispatch Updated: Order #{$order->id}",
-                    ]);
+                    Stock::deductStock(
+                        $orderItem->product_id,
+                        $orderItem->product->type,
+                        $orderItem->grade,
+                        $newQty,
+                        $user['id'],
+                        "Dispatch Updated: Order #{$order->id} (No specific location)"
+                    );
                 }
 
                 // Update order item dispatched_qty

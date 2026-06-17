@@ -10,7 +10,7 @@ class GradeSeeder extends Seeder
     public function run(): void
     {
         $grades = [
-            'PPF', 'TPR', 'TPS', 'GOLD', 'PREMIUM', 'RICH', 'RICH+', 'EXTRA STRONG', 'REGULAR', 'DELUXE', 'PURE'
+            'Grade A', 'Grade B', 'Grade C'
         ];
 
         foreach ($grades as $g) {

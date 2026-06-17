@@ -30,7 +30,14 @@
   <div class="form-group mt-1">
     <label>Storage Location</label>
     <select id="finished-storage-location" style="padding:0.7rem;">
-      <!-- Injected by JS -->
+      @forelse($pageData['locations'] as $loc)
+        <option value="{{ $loc }}">{{ $loc }}</option>
+      @empty
+        <option value="Warehouse A">Warehouse A</option>
+        <option value="Warehouse B">Warehouse B</option>
+        <option value="Rack 1">Rack 1</option>
+        <option value="Cold Room">Cold Room</option>
+      @endforelse
     </select>
   </div>
   
@@ -41,11 +48,6 @@
 </div>
 
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const select = document.getElementById('finished-storage-location');
-    const locs = app.storageLocations || ['Warehouse A', 'Warehouse B', 'Rack 1', 'Cold Room'];
-    select.innerHTML = locs.map(l => `<option value="\${l}">\${l}</option>`).join('');
-  });
 
   function updateSemiMaxHint() {
     const select = document.getElementById('semi-stock-select');

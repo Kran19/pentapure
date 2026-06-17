@@ -31,7 +31,7 @@ class DispatchGradeSeeder extends Seeder
 
         // Guarantee grades referenced in pivot exist (defensive)
         $allGrades = [
-            'PPF','TPR','TPS','GOLD','PREMIUM','RICH','RICH+','EXTRA STRONG','REGULAR','DELUXE','PURE'
+            'Grade A', 'Grade B', 'Grade C'
         ];
         foreach ($allGrades as $name) {
             Grade::firstOrCreate(['name' => $name]);

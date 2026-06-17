@@ -548,11 +548,13 @@ class AdminController extends Controller
             $po->save();
 
             // Auto-inward to RAW stock when admin marks as arrived
+            $defaultLocId = \App\Models\Location::firstOrCreate(['name' => 'Main Warehouse'])->id;
             Stock::create([
                 'product_id'       => $po->product_id,
                 'user_id'          => session('auth_user')['id'],
                 'stage'            => 'RAW',
                 'grade'            => 'NONE',
+                'location_id'      => $defaultLocId,
                 'quantity'         => $po->quantity,
                 'transaction_type' => 'IN',
                 'notes'            => "PO #{$po->id} approved & auto-inwarded",
@@ -786,15 +788,28 @@ class AdminController extends Controller
             $summary = "Subtracted {$qty} kg (was {$current} kg)";
         }
 
-        Stock::create([
-            'product_id'       => $request->product_id,
-            'user_id'          => session('auth_user')['id'],
-            'stage'            => $request->stage,
-            'grade'            => $request->grade,
-            'quantity'         => $txnQty,
-            'transaction_type' => $txnType,
-            'notes'            => "{$note} [{$summary}]",
-        ]);
+        if ($txnType === 'OUT') {
+            Stock::deductStock(
+                $request->product_id,
+                $request->stage,
+                $request->grade,
+                $txnQty,
+                session('auth_user')['id'],
+                "{$note} [{$summary}]"
+            );
+        } else {
+            $defaultLocId = \App\Models\Location::firstOrCreate(['name' => 'Main Warehouse'])->id;
+            Stock::create([
+                'product_id'       => $request->product_id,
+                'user_id'          => session('auth_user')['id'],
+                'stage'            => $request->stage,
+                'grade'            => $request->grade,
+                'location_id'      => $defaultLocId,
+                'quantity'         => $txnQty,
+                'transaction_type' => 'IN',
+                'notes'            => "{$note} [{$summary}]",
+            ]);
+        }
 
         return response()->json(['success' => true, 'message' => "Stock updated! {$summary}."]);
     }
@@ -1067,10 +1082,8 @@ class AdminController extends Controller
         $qty = (float) $request->quantity;
 
         // Resolve locations
-        $fromLocationId = null;
-        if ($request->from_location) {
-            $fromLocationId = \App\Models\Location::firstOrCreate(['name' => $request->from_location])->id;
-        }
+        $fromLocationName = $request->from_location ?: 'Main Warehouse';
+        $fromLocationId = \App\Models\Location::firstOrCreate(['name' => $fromLocationName])->id;
 
         $toLocationId = \App\Models\Location::firstOrCreate(['name' => $request->to_location])->id;
 

@@ -15,14 +15,17 @@ class StockSeeder extends Seeder
         $semiUser = User::where('role', 'SEMI')->first();
         $finishedUser = User::where('role', 'FINISHED')->first();
 
+        $location = \App\Models\Location::firstOrCreate(['name' => 'Main Warehouse']);
+
         // 1. Seed some Raw Stock
-        $tomatoes = Product::where('name', 'Fresh Tomato')->first();
-        if ($tomatoes) {
+        $rawMaterial = Product::where('name', 'Raw Material A')->first();
+        if ($rawMaterial) {
             Stock::create([
-                'product_id' => $tomatoes->id,
+                'product_id' => $rawMaterial->id,
                 'user_id'    => $rawUser->id,
                 'stage'      => 'RAW',
                 'grade'      => 'NONE',
+                'location_id'=> $location->id,
                 'quantity'   => 500,
                 'transaction_type' => 'IN',
                 'date'       => now(),
@@ -30,24 +33,26 @@ class StockSeeder extends Seeder
         }
 
         // 2. Seed some Semi Stock with GRADES
-        $tomatoPowder = Product::where('name', 'Tomato Powder')->first();
-        if ($tomatoPowder && $semiUser) {
-            // Semi in GOLD grade
+        $processedProduct = Product::where('name', 'Product A (Processed)')->first();
+        if ($processedProduct && $semiUser) {
+            // Semi in Grade A
             Stock::create([
-                'product_id' => $tomatoPowder->id,
+                'product_id' => $processedProduct->id,
                 'user_id'    => $semiUser->id,
                 'stage'      => 'SEMI',
-                'grade'      => 'GOLD',
-                'quantity'   => 100,
+                'grade'      => 'Grade A',
+                'location_id'=> $location->id,
+                'quantity'   => 200,
                 'transaction_type' => 'IN',
                 'date'       => now(),
             ]);
-            // Semi in PPF grade
+            // Semi in Grade B
             Stock::create([
-                'product_id' => $tomatoPowder->id,
+                'product_id' => $processedProduct->id,
                 'user_id'    => $semiUser->id,
                 'stage'      => 'SEMI',
-                'grade'      => 'PPF',
+                'grade'      => 'Grade B',
+                'location_id'=> $location->id,
                 'quantity'   => 50,
                 'transaction_type' => 'IN',
                 'date'       => now(),
@@ -55,14 +60,14 @@ class StockSeeder extends Seeder
         }
 
         // 3. Seed some Finished Stock
-        $pkgTomatoPowder = Product::where('name', 'Packaged Tomato Powder')->first();
-        if ($pkgTomatoPowder && $finishedUser) {
+        if ($processedProduct && $finishedUser) {
             Stock::create([
-                'product_id' => $pkgTomatoPowder->id,
+                'product_id' => $processedProduct->id,
                 'user_id'    => $finishedUser->id,
                 'stage'      => 'FINISHED',
-                'grade'      => 'GOLD',
-                'quantity'   => 20,
+                'grade'      => 'Grade A',
+                'location_id'=> $location->id,
+                'quantity'   => 100,
                 'transaction_type' => 'IN',
                 'date'       => now(),
             ]);

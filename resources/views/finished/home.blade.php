@@ -21,7 +21,7 @@
   </div>
   <div id="finished-scroll-container" style="display:flex; overflow-x:auto; gap:12px; padding-bottom:10px; scrollbar-width:none; -ms-overflow-style:none;">
     <style>#finished-scroll-container::-webkit-scrollbar { display: none; }</style>
-    @forelse($pageData['finishedStock'] as $s)
+    @forelse($pageData['semiStock'] as $s)
       @php $lowStock = $s['quantity'] < 500; @endphp
       <div class="animation-fadeIn" style="flex:0 0 200px; background:rgba(255,255,255,0.04); padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.05); position:relative; overflow:hidden;">
         <div style="font-size:0.8rem; font-weight:700; color:var(--text-main); margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ $s['name'] }}</div>

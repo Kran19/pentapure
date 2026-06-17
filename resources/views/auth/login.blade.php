@@ -1,6 +1,12 @@
 @extends('layouts.guest')
 
 @section('content')
+<style>
+  /* Disable auto-capitalization on the login screen */
+  #login-screen, #login-screen * {
+    text-transform: none !important;
+  }
+</style>
 <div id="login-screen">
   <div class="login-card">
     <img src="https://pentapurefoods.com/wp-content/uploads/2025/11/logo.png" alt="Logo" style="width:120px; margin-bottom:1rem; object-fit:contain;">

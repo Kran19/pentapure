@@ -871,8 +871,6 @@ const app = {
     const allProds = (window.serverPageData && window.serverPageData.products) || [];
     if (type === 'ALL') {
       window.currentFinProds = allProds;
-    } else if (type === 'FINISHED' || type === 'SEMI') {
-      window.currentFinProds = allProds.filter(p => p.type === 'FINISHED' || p.type === 'SEMI');
     } else {
       window.currentFinProds = allProds.filter(p => p.type === type);
     }

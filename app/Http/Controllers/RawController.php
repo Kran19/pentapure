@@ -93,10 +93,8 @@ class RawController extends Controller
         }
 
         $stock = DB::transaction(function() use ($request, $user) {
-            $locationId = null;
-            if ($request->location) {
-                $locationId = \App\Models\Location::firstOrCreate(['name' => $request->location])->id;
-            }
+            $locationName = $request->location ?: 'Main Warehouse';
+            $locationId = \App\Models\Location::firstOrCreate(['name' => $locationName])->id;
 
             return Stock::create([
                 'product_id'       => $request->product_id,

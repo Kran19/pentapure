@@ -186,14 +186,14 @@
     <table class="data-table">
         <thead>
             <tr>
-                <th style="width: 9%;">Dispatch ID</th>
-                <th style="width: 9%;">Order ID</th>
-                <th style="width: 10%;">Date</th>
+                <th style="width: 8%;">Dispatch ID</th>
+                <th style="width: 8%;">Order ID</th>
+                <th style="width: 9%;">Date</th>
                 <th style="width: 12%;">Customer</th>
-                <th style="width: 16%;">Product</th>
-                <th style="width: 9%; color: #027a48;" class="text-right">Ord. Qty</th>
-                <th style="width: 9%; color: #175cd3;" class="text-right">Disp. Qty</th>
-                <th style="width: 9%; color: #b42318;" class="text-right">Pend. Qty</th>
+                <th style="width: 22%;">Product Details</th>
+                <th style="width: 8%; color: #027a48;" class="text-right">Ord. Qty</th>
+                <th style="width: 8%; color: #175cd3;" class="text-right">Disp. Qty</th>
+                <th style="width: 8%; color: #b42318;" class="text-right">Pend. Qty</th>
                 <th style="width: 9%;" class="text-right">Revenue</th>
                 <th style="width: 8%;" class="text-center">Status</th>
             </tr>
@@ -205,7 +205,13 @@
                     <td>{{ $row['order_id'] }}</td>
                     <td>{{ $row['date'] }}</td>
                     <td>{{ $row['customer'] }}</td>
-                    <td>{{ $row['product'] }}</td>
+                    <td>
+                        <div style="font-weight: bold;">{{ $row['product'] }}</div>
+                        <div style="color: #667085; font-size: 7px; margin-top: 2px;">
+                            <span style="color: #344054;">Grade:</span> {{ $row['grade'] }} | 
+                            <span style="color: #344054;">Loc:</span> {{ $row['locations'] }}
+                        </div>
+                    </td>
                     <td class="text-right text-green"><strong>{{ $row['ordered_qty_formatted'] ?? number_format($row['ordered_qty'] ?? 0) . ' KG' }}</strong></td>
                     <td class="text-right" style="color: #175cd3;"><strong>{{ $row['dispatch_qty_formatted'] ?? number_format($row['qty'] ?? 0) . ' KG' }}</strong></td>
                     <td class="text-right" style="color: {{ ($row['pending_qty'] ?? 0) > 0 ? '#b42318' : 'inherit' }};"><strong>{{ $row['pending_qty_formatted'] ?? number_format($row['pending_qty'] ?? 0) . ' KG' }}</strong></td>

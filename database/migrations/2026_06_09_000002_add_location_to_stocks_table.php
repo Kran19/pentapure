@@ -9,11 +9,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('stocks', function (Blueprint $table) {
-            $table->unsignedBigInteger('location_id')->nullable()->after('grade');
+            $table->unsignedBigInteger('location_id')->after('grade');
             $table->foreign('location_id')
                 ->references('id')
                 ->on('locations')
-                ->onDelete('set null');
+                ->onDelete('restrict');
             $table->index('location_id');
         });
     }
