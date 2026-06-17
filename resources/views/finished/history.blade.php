@@ -131,6 +131,36 @@
   </div>
 @endif
 
+<h3 style="margin-top: 2rem; margin-bottom: 1rem;">🛒 Purchase Request History</h3>
+<div class="table-container">
+  <table>
+    <thead>
+      <tr>
+        <th>Material</th>
+        <th>Quantity</th>
+        <th>Status</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      @forelse($pageData['purchaseOrders'] ?? [] as $po)
+        <tr>
+          <td style="font-weight:600;">{{ $po->product?->name }}</td>
+          <td>{{ $po->quantity }} kg</td>
+          <td>
+             <span class="badge {{ $po->status === 'DONE' ? 'badge-done' : 'badge-pending' }}">
+                {{ $po->status === 'DONE' ? 'READ' : $po->status }}
+             </span>
+          </td>
+          <td style="font-size:0.8rem;">{{ \Carbon\Carbon::parse($po->created_at)->format('d M Y') }}</td>
+        </tr>
+      @empty
+        <tr><td colspan="4" class="text-center text-muted">No purchase orders found.</td></tr>
+      @endforelse
+    </tbody>
+  </table>
+</div>
+
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     // Populate the global _historyLogs so JS app.openProductionDrawer() can read it

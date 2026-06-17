@@ -6,13 +6,15 @@
   $dateRange = request('range', 'this_month');
   $startDate = request('start', '');
   $endDate = request('end', '');
+  $activeTab = request('tab', 'personal'); // personal or team
 
-  $filtered = collect($pageData['transactions'] ?? []);
+  $sourceData = $activeTab === 'team' ? ($pageData['teamTransactions'] ?? []) : ($pageData['transactions'] ?? []);
+  $filtered = collect($sourceData);
 
   if ($q) {
     $filtered = $filtered->filter(function($t) use ($q) {
       $query = strtolower($q);
-      $details = ($t['note'] ?? '') . ' ' . ($t['description'] ?? '') . ' ' . ($t['reference'] ?? '') . ' ' . ($t['category'] ?? '');
+      $details = ($t['note'] ?? '') . ' ' . ($t['description'] ?? '') . ' ' . ($t['reference'] ?? '') . ' ' . ($t['category'] ?? '') . ' ' . ($t['cashier_name'] ?? '');
       return str_contains(strtolower($details), $query) || str_contains((string)$t['amount'], $query);
     });
   }
@@ -56,15 +58,31 @@
   $paginated = $filtered->slice(($page - 1) * $perPage, $perPage);
   $paginatedArray = $paginated->values()->toArray();
 
-  $summary = $pageData['summary'] ?? ['totalIn' => 0, 'totalOut' => 0, 'balance' => 0];
+  $summary = $activeTab === 'team' 
+    ? ($pageData['teamSummary'] ?? ['totalIn' => 0, 'totalOut' => 0, 'balance' => 0]) 
+    : ($pageData['summary'] ?? ['totalIn' => 0, 'totalOut' => 0, 'balance' => 0]);
 @endphp
 
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
-  <h2 style="margin:0;">💰 Account Ledger</h2>
+  <div style="display:flex; align-items:center; gap:15px;">
+    <h2 style="margin:0;">💰 Account Ledger</h2>
+  </div>
   <button class="btn btn-sm" style="width:auto; padding:0.5rem 1.1rem; display:flex; align-items:center; gap:0.4rem;" onclick="app.downloadCashierPdf()">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
     Export PDF
   </button>
+</div>
+
+<!-- Tabs -->
+<div style="display:flex; gap:10px; margin-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px;">
+  <a href="?tab=personal&range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&q={{ $q }}" 
+     style="text-decoration:none; padding:6px 12px; border-radius:6px; {{ $activeTab === 'personal' ? 'background:var(--primary); color:#fff;' : 'color:var(--text-muted);' }}">
+    Personal Ledger
+  </a>
+  <a href="?tab=team&range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&q={{ $q }}" 
+     style="text-decoration:none; padding:6px 12px; border-radius:6px; {{ $activeTab === 'team' ? 'background:var(--primary); color:#fff;' : 'color:var(--text-muted);' }}">
+    Team Ledger
+  </a>
 </div>
 
 <!-- Summary Cards -->
@@ -84,6 +102,7 @@
 </div>
 
 <form method="GET" action="" style="margin-bottom:1rem; display:flex; flex-direction:column; gap:10px;">
+  <input type="hidden" name="tab" value="{{ $activeTab }}">
   <div class="filter-bar" style="flex-wrap:wrap; gap:8px; padding: 0.5rem; background:rgba(0,0,0,0.2); border-radius:8px; display:flex;">
     <select name="range" onchange="this.form.submit()" style="width:auto; flex:1; padding:0.4rem; border-radius:4px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
       <option value="today" {{ $dateRange==='today'?'selected':'' }}>Today</option>
@@ -134,6 +153,9 @@
               @if($t['reference'])
                 <div style="font-size:0.72rem; color:var(--text-muted);">Ref: {{ $t['reference'] }}</div>
               @endif
+              @if($activeTab === 'team' && isset($t['cashier_name']))
+                <div style="font-size:0.75rem; color:var(--primary-light); margin-top:4px;">👤 {{ $t['cashier_name'] }}</div>
+              @endif
             </td>
             <td style="padding:12px;">
               <span style="font-size:0.75rem; background:rgba(0,0,0,0.2); padding:2px 8px; border-radius:10px; font-weight:bold; white-space:nowrap;">
@@ -162,18 +184,22 @@
             </td>
             <td style="padding:12px; text-align:center; min-width:60px;">
               <div style="display:flex; justify-content:center; gap:4px;">
-                <button onclick="app.showBillUpload({{ $t['id'] }})" title="Attach/Manage Bills"
-                  style="background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); color:#4ade80; border-radius:6px; padding:4px 8px; font-size:0.75rem; cursor:pointer;">
-                  📎
-                </button>
-                <button onclick="app.editTransaction({{ $t['id'] }})" title="Edit"
-                  style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.3); color:#60a5fa; border-radius:6px; padding:4px 8px; font-size:0.75rem; cursor:pointer;">
-                  ✏️
-                </button>
-                <button onclick="app.deleteTransaction({{ $t['id'] }})" title="Delete"
-                  style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#f87171; border-radius:6px; padding:4px 8px; font-size:0.75rem; cursor:pointer;">
-                  🗑️
-                </button>
+                @if($activeTab === 'personal' || (isset($t['user_id']) && $t['user_id'] === session('auth_user')['id']))
+                  <button onclick="app.showBillUpload({{ $t['id'] }})" title="Attach/Manage Bills"
+                    style="background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); color:#4ade80; border-radius:6px; padding:4px 8px; font-size:0.75rem; cursor:pointer;">
+                    📎
+                  </button>
+                  <button onclick="app.editTransaction({{ $t['id'] }})" title="Edit"
+                    style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.3); color:#60a5fa; border-radius:6px; padding:4px 8px; font-size:0.75rem; cursor:pointer;">
+                    ✏️
+                  </button>
+                  <button onclick="app.deleteTransaction({{ $t['id'] }})" title="Delete"
+                    style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#f87171; border-radius:6px; padding:4px 8px; font-size:0.75rem; cursor:pointer;">
+                    🗑️
+                  </button>
+                @else
+                  <span style="font-size:0.7rem; color:var(--text-muted);">View Only</span>
+                @endif
               </div>
             </td>
           </tr>

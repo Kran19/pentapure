@@ -36,7 +36,7 @@
             <td style="font-size:0.85rem; color:var(--text-muted);">{{ $po->note ?? '—' }}</td>
             <td>
               <span class="badge {{ $po->status === 'DONE' ? 'badge-done' : 'badge-pending' }}">
-                {{ $po->status }}
+                {{ $po->status === 'DONE' ? 'READ' : $po->status }}
               </span>
             </td>
             <td>
@@ -44,10 +44,10 @@
                 @if($po->status === 'PENDING')
                 <button class="btn btn-sm" style="width:auto; padding:0.3rem 0.8rem; background:var(--secondary);"
                   onclick="adminApprovePO({{ $po->id }}, this)">
-                  ✅ Mark Arrived
+                  ✅ Mark as Read
                 </button>
                 @else
-                  <span style="font-size:0.8rem; color:var(--secondary); margin-right:8px;">✓ Done</span>
+                  <span style="font-size:0.8rem; color:var(--secondary); margin-right:8px;">✓ Read</span>
                 @endif
                 <button class="btn-icon delete" onclick="adminDeletePO({{ $po->id }})" title="Delete">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
@@ -96,11 +96,11 @@ function adminDeletePO(id) {
 
 function adminApprovePO(id, btn) {
   Swal.fire({
-    title: 'Mark as Arrived?',
-    text: "This will add the quantity to Raw Material stock.",
+    title: 'Mark as Read?',
+    text: "This will acknowledge the request without modifying stock.",
     icon: 'question',
     showCancelButton: true,
-    confirmButtonText: 'Yes, confirm receipt'
+    confirmButtonText: 'Yes, mark as read'
   }).then((result) => {
     if (result.isConfirmed) {
       btn.disabled = true;
@@ -111,12 +111,12 @@ function adminApprovePO(id, btn) {
         body: JSON.stringify({ po_id: id })
       }).then(r => r.json()).then(d => {
         if (d.success) {
-          Swal.fire('Approved!', d.message, 'success');
+          Swal.fire('Read!', d.message, 'success');
           setTimeout(() => location.reload(), 800);
         } else {
           Swal.fire('Error!', d.message || 'Error', 'error');
           btn.disabled = false;
-          btn.textContent = '✅ Mark Arrived';
+          btn.textContent = '✅ Mark as Read';
         }
       });
     }

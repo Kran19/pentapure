@@ -50,6 +50,22 @@ class HistoryPdfController extends Controller
             default => $this->cashierRows($user, $from, $to),
         };
 
+        $purchaseOrders = [];
+        if (in_array($panel, ['RAW', 'SEMI', 'FINISHED'], true)) {
+            $purchaseOrders = \App\Models\PurchaseOrder::with('product')
+                ->where('user_id', $user['id'])
+                ->whereBetween('created_at', [$from, $to])
+                ->latest()
+                ->get()
+                ->map(fn($po) => [
+                    'id' => 'PO-' . str_pad($po->id, 4, '0', STR_PAD_LEFT),
+                    'date' => $po->created_at->format('d M Y'),
+                    'material' => $po->product?->name ?? '-',
+                    'quantity' => $po->quantity,
+                    'status' => $po->status === 'DONE' ? 'FULFILLED BY ADMIN' : $po->status,
+                ])->toArray();
+        }
+
         $amountTotal = collect($rows)->sum(fn ($row) => (float) ($row['amount'] ?? 0));
         $completed = collect($rows)->whereIn('status', ['DONE', 'CLOSED', 'COMPLETED', 'PRESENT'])->count();
         $pending = collect($rows)->whereIn('status', ['PENDING', 'OPEN', 'ABSENT'])->count();
@@ -64,6 +80,7 @@ class HistoryPdfController extends Controller
             'userName' => $user['name'] ?? 'User',
             'userRole' => $user['role'] ?? $panel,
             'rows' => $rows,
+            'purchaseOrders' => $purchaseOrders,
             'totalRecords' => count($rows),
             'completed' => $completed,
             'pending' => $pending,
@@ -105,12 +122,15 @@ class HistoryPdfController extends Controller
     private function rawRows(Carbon $from, Carbon $to): array
     {
         $q = request('q');
-        $query = Stock::with('product')->where('stage', 'RAW')->where('transaction_type', 'IN')->whereBetween('created_at', [$from, $to]);
+        $query = Stock::with(['product', 'location'])->where('stage', 'RAW')->where('transaction_type', 'IN')->whereBetween('created_at', [$from, $to]);
         if ($q) {
             $query->where(function($sub) use ($q) {
                 $sub->whereHas('product', function($qp) use ($q) {
                     $qp->where('name', 'like', "%{$q}%");
-                })->orWhere('grade', 'like', "%{$q}%");
+                })->orWhere('grade', 'like', "%{$q}%")
+                  ->orWhereHas('location', function($ql) use ($q) {
+                      $ql->where('name', 'like', "%{$q}%");
+                  });
             });
         }
         return $query->latest()->get()
@@ -120,7 +140,11 @@ class HistoryPdfController extends Controller
                 'date' => $s->created_at->format('d M Y'),
                 'status' => 'COMPLETED',
                 'amount' => 0,
-                'description' => ($s->product?->name ?? 'Material') . ' - ' . $s->quantity . ' ' . ($s->product?->unit ?? 'kg') . ' (' . $s->grade . ')',
+                'product_name' => $s->product?->name ?? '-',
+                'grade' => $s->grade ?? '-',
+                'location' => $s->location?->name ?? 'Unassigned',
+                'quantity' => $s->quantity ?? 0,
+                'unit' => $s->product?->unit ?? 'kg',
             ])->toArray();
     }
 
@@ -142,14 +166,22 @@ class HistoryPdfController extends Controller
                 'date' => $l->created_at->format('d M Y'),
                 'status' => 'COMPLETED',
                 'amount' => 0,
-                'description' => 'Produced ' . $l->output_qty . ' kg ' . ($l->outputProduct?->name ?? 'Product') . ' (' . $l->output_grade . ')',
+                'output_product' => $l->outputProduct?->name ?? '-',
+                'output_grade' => $l->output_grade ?? '-',
+                'output_qty' => $l->output_qty ?? 0,
+                'unit' => $l->outputProduct?->unit ?? 'kg',
+                'inputs' => collect($l->inputs)->map(fn($input) => [
+                    'name' => $input->inputProduct?->name ?? '-',
+                    'grade' => $input->input_grade ?? '-',
+                    'quantity' => $input->quantity ?? 0,
+                ])->toArray(),
             ])->toArray();
     }
 
     private function salesRows(Carbon $from, Carbon $to): array
     {
         $q = request('q');
-        $query = Order::with('company')->whereBetween('created_at', [$from, $to]);
+        $query = Order::with(['company', 'orderItems'])->whereBetween('created_at', [$from, $to]);
         if ($q) {
             $query->where(function($sub) use ($q) {
                 $sub->whereHas('company', function($qc) use ($q) {
@@ -164,8 +196,11 @@ class HistoryPdfController extends Controller
                 'type' => 'Order',
                 'date' => $o->created_at->format('d M Y'),
                 'status' => $o->status,
+                'dispatch_status' => $o->dispatch_status,
                 'amount' => (float) $o->total,
-                'description' => ($o->company?->name ?? 'Company') . ' - Dispatch ' . $o->dispatch_status,
+                'company_name' => $o->company?->name ?? '-',
+                'total_items' => count($o->orderItems),
+                'total_qty' => collect($o->orderItems)->sum('quantity'),
             ])->toArray();
     }
 
@@ -201,7 +236,9 @@ class HistoryPdfController extends Controller
                 'date' => $t->created_at->format('d M Y'),
                 'status' => 'COMPLETED',
                 'amount' => $t->type === 'OUT' ? -1 * (float) $t->amount : (float) $t->amount,
-                'description' => trim(($t->category ?? 'General') . ' - ' . ($t->note ?: $t->reference)),
+                'category' => $t->category ?? 'General',
+                'note' => $t->note ?? '',
+                'reference' => $t->reference ?? '',
             ])->toArray();
     }
 

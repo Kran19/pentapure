@@ -180,7 +180,15 @@ class RawController extends Controller
                 'date'        => $s->created_at->toISOString(),
             ]);
 
-        $pageData = ['rawStockHistory' => $ledger];
+        $purchaseOrders = PurchaseOrder::with('product')
+            ->where('user_id', $this->authUser()['id'])
+            ->orderByDesc('created_at')
+            ->get();
+
+        $pageData = [
+            'rawStockHistory' => $ledger,
+            'purchaseOrders' => $purchaseOrders
+        ];
         return view('raw.history', compact('pageData'));
     }
 

@@ -50,7 +50,11 @@
     <div class="card" style="padding: 1rem; margin-bottom: 0;">
       <div class="flex-between">
         <div>
-          <div style="font-weight:600; font-size:1.1rem;">{{ $s['name'] }}</div>
+          <div style="font-weight:600; font-size:1.1rem;">
+            <a href="{{ route('product.stock.history', ['productId' => $s['productId'] ?? $s['id'], 'stage' => 'FINISHED', 'grade' => $s['grade']]) }}" style="color: inherit; text-decoration: none; border-bottom: 1px dashed rgba(255,255,255,0.5);">
+              {{ $s['name'] }}
+            </a>
+          </div>
           <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Grade: <span class="badge badge-info">{{ $s['grade'] }}</span></div>
         </div>
         <div style="text-align:right;">

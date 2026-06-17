@@ -92,7 +92,7 @@
                 <th style="width:25%; color:#111827;">Product Name</th>
                 <th style="width:10%; color:#111827;">Stage</th>
                 <th style="width:10%; color:#111827;">Grade</th>
-                <th style="width:20%; color:#111827;">location</th>
+                <th style="width:20%; color:#111827;">Location</th>
                 <th style="width:15%; text-align: right; color:#111827;">Available Qty</th>
                 <th style="width:10%; text-align: right; color:#111827;">Rate / Unit</th>
                 <th style="width:10%; text-align: right; color:#111827;">Valuation (Rs.)</th>

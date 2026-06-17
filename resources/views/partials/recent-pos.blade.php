@@ -7,7 +7,7 @@
         <div style="font-size:0.85rem; font-weight:600;">{{ $p['materialName'] }}</div>
         <div style="font-size:0.7rem; color:var(--text-muted);">{{ \Carbon\Carbon::parse($p['date'])->format('d M Y') }} · {{ $p['quantity'] }} kg</div>
       </div>
-      <span class="badge {{ $p['status'] === 'DONE' ? 'badge-done' : 'badge-pending' }}" style="font-size:0.65rem; padding:0.2rem 0.5rem;">{{ $p['status'] }}</span>
+      <span class="badge {{ $p['status'] === 'DONE' ? 'badge-done' : 'badge-pending' }}" style="font-size:0.65rem; padding:0.2rem 0.5rem;">{{ $p['status'] === 'DONE' ? 'READ' : $p['status'] }}</span>
     </div>
   @endforeach
 </div>

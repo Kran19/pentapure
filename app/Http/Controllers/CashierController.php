@@ -258,9 +258,25 @@ class CashierController extends Controller
             'balance'  => $txs->where('type', 'IN')->sum('amount') - $txs->where('type', 'OUT')->sum('amount'),
         ];
 
+        // Team Ledger (All cashiers)
+        $teamTxs = Transaction::with(['bills', 'user'])
+            ->whereHas('user', function($q) {
+                $q->where('role', 'CASHIER');
+            })
+            ->orderByDesc('created_at')
+            ->get();
+            
+        $teamSummary = [
+            'totalIn'  => $teamTxs->where('type', 'IN')->sum('amount'),
+            'totalOut' => $teamTxs->where('type', 'OUT')->sum('amount'),
+            'balance'  => $teamTxs->where('type', 'IN')->sum('amount') - $teamTxs->where('type', 'OUT')->sum('amount'),
+        ];
+
         $pageData = [
             'transactions' => $txs->map(fn($t) => $this->txToArray($t)),
             'summary'      => $summary,
+            'teamTransactions' => $teamTxs->map(fn($t) => array_merge($this->txToArray($t), ['cashier_name' => $t->user?->name ?? 'Unknown'])),
+            'teamSummary'  => $teamSummary,
         ];
 
         return view('cashier.ledger', compact('pageData'));
@@ -534,6 +550,7 @@ class CashierController extends Controller
     {
         return [
             'id'          => $t->id,
+            'user_id'     => $t->user_id,
             'type'        => $t->type,
             'amount'      => $t->amount,
             'category'    => $t->category,

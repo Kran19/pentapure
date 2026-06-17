@@ -60,6 +60,8 @@
         .sign { text-align: center; padding-left: 130px; }
         .scribble { font-family: cursive; font-size: 28px; margin-bottom: 6px; }
         .line { border-top: 1px solid #667085; margin: 0 auto 8px; width: 210px; }
+        .text-green { color: #1f7a1f; font-weight: bold; }
+        .text-red { color: #c76a00; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -146,6 +148,153 @@
                 @endforelse
             </tbody>
         </table>
+    @elseif($panel === 'RAW')
+        <div class="section-label">Raw Material Inward History</div>
+        <table>
+            <thead>
+                <tr>
+                    <th class="center" style="width:6%;">#</th>
+                    <th style="width:14%;">ID</th>
+                    <th style="width:14%;">Date</th>
+                    <th style="width:20%;">Product</th>
+                    <th style="width:12%;">Grade</th>
+                    <th style="width:18%;">Location</th>
+                    <th style="width:16%;">Quantity Inward</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($rows as $index => $row)
+                    <tr>
+                        <td class="center">{{ $index + 1 }}</td>
+                        <td>{{ $row['id'] }}</td>
+                        <td>{{ $row['date'] }}</td>
+                        <td><strong>{{ $row['product_name'] ?? '-' }}</strong></td>
+                        <td>{{ $row['grade'] ?? '-' }}</td>
+                        <td>{{ $row['location'] ?? '-' }}</td>
+                        <td class="amount text-green">+{{ number_format((float) ($row['quantity'] ?? 0), 2) }} <span style="font-size:10px; color:#667085;">{{ $row['unit'] ?? 'kg' }}</span></td>
+                    </tr>
+                @empty
+                    <tr><td colspan="7" class="center">No raw material inward history found for this period.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+    @elseif($panel === 'SEMI' || $panel === 'FINISHED')
+        <div class="section-label">Production History ({{ $panel }})</div>
+        <table>
+            <thead>
+                <tr>
+                    <th class="center" style="width:6%;">#</th>
+                    <th style="width:14%;">Batch ID</th>
+                    <th style="width:14%;">Date</th>
+                    <th style="width:25%;">Produced Item & Grade</th>
+                    <th style="width:15%;">Produced Qty</th>
+                    <th>Inputs Consumed</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($rows as $index => $row)
+                    <tr>
+                        <td class="center">{{ $index + 1 }}</td>
+                        <td>{{ $row['id'] }}</td>
+                        <td>{{ $row['date'] }}</td>
+                        <td>
+                            <strong>{{ $row['output_product'] ?? '-' }}</strong><br>
+                            <span style="font-size: 11px; color: #475467;">Grade: {{ $row['output_grade'] ?? '-' }}</span>
+                        </td>
+                        <td class="amount text-green">+{{ number_format((float) ($row['output_qty'] ?? 0), 2) }} <span style="font-size:10px; color:#667085;">{{ $row['unit'] ?? 'kg' }}</span></td>
+                        <td style="font-size: 11px; line-height: 1.6;">
+                            @if(!empty($row['inputs']))
+                                @foreach($row['inputs'] as $input)
+                                    <div>&bull; {{ $input['name'] ?? '-' }} ({{ $input['grade'] ?? '-' }}): <span class="text-red">-{{ number_format((float) ($input['quantity'] ?? 0), 2) }} kg</span></div>
+                                @endforeach
+                            @else
+                                <span style="color: #667085; font-style: italic;">No inputs recorded</span>
+                            @endif
+                        </td>
+                    </tr>
+                @empty
+                    <tr><td colspan="6" class="center">No production history found for this period.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+    @elseif($panel === 'SALES')
+        <div class="section-label">Sales / Order History</div>
+        <table>
+            <thead>
+                <tr>
+                    <th class="center" style="width:6%;">#</th>
+                    <th style="width:14%;">Order ID</th>
+                    <th style="width:14%;">Date</th>
+                    <th style="width:20%;">Customer</th>
+                    <th style="width:14%;">Status</th>
+                    <th style="width:17%;">Order Items (Qty)</th>
+                    <th style="width:15%;">Order Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($rows as $index => $row)
+                    <tr>
+                        <td class="center">{{ $index + 1 }}</td>
+                        <td>{{ $row['id'] }}</td>
+                        <td>{{ $row['date'] }}</td>
+                        <td><strong>{{ $row['company_name'] ?? '-' }}</strong></td>
+                        <td>
+                            <div style="margin-bottom: 4px;">
+                                <span class="badge {{ in_array($row['status'] ?? '', ['PENDING', 'OPEN']) ? 'badge-warn' : 'badge-ok' }}">{{ $row['status'] ?? '-' }}</span>
+                            </div>
+                            <div style="font-size: 10px; color: #475467;">Dispatch: {{ $row['dispatch_status'] ?? '-' }}</div>
+                        </td>
+                        <td class="center">
+                            <strong>{{ $row['total_items'] ?? 0 }}</strong> Items<br>
+                            <span style="font-size: 10px; color: #667085;">Total {{ number_format((float) ($row['total_qty'] ?? 0), 2) }} KG</span>
+                        </td>
+                        <td class="amount">₹{{ number_format((float) ($row['amount'] ?? 0), 2) }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="7" class="center">No sales history found for this period.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+    @elseif($panel === 'CASHIER')
+        <div class="section-label">Cashier History</div>
+        <table>
+            <thead>
+                <tr>
+                    <th class="center" style="width:6%;">#</th>
+                    <th style="width:14%;">TXN ID</th>
+                    <th style="width:14%;">Date</th>
+                    <th style="width:16%;">Category</th>
+                    <th style="width:20%;">Note / Reference</th>
+                    <th style="width:15%; text-align: right;">Income (+)</th>
+                    <th style="width:15%; text-align: right;">Expense (-)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($rows as $index => $row)
+                    <tr>
+                        <td class="center">{{ $index + 1 }}</td>
+                        <td>{{ $row['id'] }}</td>
+                        <td>{{ $row['date'] }}</td>
+                        <td>{{ strtoupper(str_replace('_', ' ', $row['category'] ?? '-')) }}</td>
+                        <td style="font-size: 11px;">
+                            <strong>{{ $row['note'] ?? '-' }}</strong>
+                            @if(!empty($row['reference']))
+                                <br><span style="color: #667085;">Ref: {{ $row['reference'] }}</span>
+                            @endif
+                        </td>
+                        @if(($row['type'] ?? '') === 'Income' || (isset($row['amount']) && $row['amount'] >= 0))
+                            <td class="amount text-green">₹{{ number_format(abs((float) ($row['amount'] ?? 0)), 2) }}</td>
+                            <td class="amount">-</td>
+                        @else
+                            <td class="amount">-</td>
+                            <td class="amount text-red">₹{{ number_format(abs((float) ($row['amount'] ?? 0)), 2) }}</td>
+                        @endif
+                    </tr>
+                @empty
+                    <tr><td colspan="7" class="center">No cashier history found for this period.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
     @else
         <div class="section-label">History Details</div>
         <table>
@@ -165,14 +314,14 @@
                     <tr>
                         <td class="center">{{ $index + 1 }}</td>
                         <td>{{ $row['id'] }}</td>
-                        <td>{{ $row['type'] }}</td>
+                        <td>{{ $row['type'] ?? '-' }}</td>
                         <td>{{ $row['date'] }}</td>
                         <td class="center">
-                            <span class="badge {{ in_array($row['status'], ['PENDING', 'OPEN', 'ABSENT']) ? 'badge-warn' : 'badge-ok' }}">{{ $row['status'] }}</span>
+                            <span class="badge {{ in_array($row['status'] ?? '', ['PENDING', 'OPEN', 'ABSENT']) ? 'badge-warn' : 'badge-ok' }}">{{ $row['status'] ?? '-' }}</span>
                         </td>
-                        <td class="amount">{{ number_format((float) $row['amount'], 2) }}</td>
+                        <td class="amount">{{ number_format((float) ($row['amount'] ?? 0), 2) }}</td>
                         <td>
-                            {{ $row['description'] }}
+                            {{ $row['description'] ?? '-' }}
                             @if(isset($row['lr_copy']) && $row['lr_copy'])
                                 <div style="margin-top: 8px;">
                                     <img src="{{ public_path($row['lr_copy']) }}" style="max-width: 140px; max-height: 100px; border: 1px solid #d0d5dd; border-radius: 4px; object-fit: contain;">
@@ -183,6 +332,38 @@
                 @empty
                     <tr><td colspan="7" class="center">No history found for this period.</td></tr>
                 @endforelse
+            </tbody>
+        </table>
+    @endif
+
+    @if(!empty($purchaseOrders))
+        <div class="section-label" style="margin-top: 30px; background: #2b241c;">Purchase Request History</div>
+        <table>
+            <thead>
+                <tr>
+                    <th class="center" style="width:6%;">#</th>
+                    <th style="width:14%;">PO ID</th>
+                    <th style="width:14%;">Date</th>
+                    <th style="width:30%;">Material</th>
+                    <th style="width:16%;">Quantity</th>
+                    <th style="width:20%;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($purchaseOrders as $index => $po)
+                    <tr>
+                        <td class="center">{{ $index + 1 }}</td>
+                        <td>{{ $po['id'] }}</td>
+                        <td>{{ $po['date'] }}</td>
+                        <td><strong>{{ $po['material'] }}</strong></td>
+                        <td class="amount">{{ number_format((float) $po['quantity'], 2) }} kg</td>
+                        <td class="center">
+                            <span class="badge {{ $po['status'] === 'PENDING' ? 'badge-warn' : 'badge-ok' }}">
+                                {{ $po['status'] }}
+                            </span>
+                        </td>
+                    </tr>
+                @endforeach
             </tbody>
         </table>
     @endif

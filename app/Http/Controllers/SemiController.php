@@ -231,7 +231,15 @@ class SemiController extends Controller
                 ]),
             ]);
 
-        $pageData = ['productionLogs' => $logs];
+        $purchaseOrders = PurchaseOrder::with('product')
+            ->where('user_id', $this->authUser()['id'])
+            ->orderByDesc('created_at')
+            ->get();
+
+        $pageData = [
+            'productionLogs' => $logs,
+            'purchaseOrders' => $purchaseOrders
+        ];
         return view('semi.history', compact('pageData'));
     }
 

@@ -46,7 +46,7 @@
                 <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" style="color:var(--danger);">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 </button>
-                <button class="btn btn-sm" onclick="showStockDetails('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}')" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
+                <button class="btn btn-sm" onclick="window.location.href='/product/{{ $s->productId }}/{{ $s->stage }}/{{ $s->grade }}/history'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
               </div>
             </td>
           </tr>
@@ -87,7 +87,7 @@
                 <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" style="color:var(--danger);">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 </button>
-                <button class="btn btn-sm" onclick="showStockDetails('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}')" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
+                <button class="btn btn-sm" onclick="window.location.href='/product/{{ $s->productId }}/{{ $s->stage }}/{{ $s->grade }}/history'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
               </div>
             </td>
           </tr>
@@ -129,7 +129,7 @@
                 <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" style="color:var(--danger);">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 </button>
-                <button class="btn btn-sm" onclick="showStockDetails('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}')" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
+                <button class="btn btn-sm" onclick="window.location.href='/product/{{ $s->productId }}/{{ $s->stage }}/{{ $s->grade }}/history'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
               </div>
             </td>
           </tr>
@@ -307,52 +307,6 @@ function adminAddStock() {
         Swal.fire('Error', d.message || 'Could not add stock.', 'error');
       }
     });
-  });
-}
-
-function showStockDetails(productId, stage, grade, productName) {
-  const key = `${productId}_${grade || 'NONE'}_${stage}`;
-  const logs = adminStockLogsByKey[key] || [];
-  const rows = logs.map(log => {
-    const sign = log.transaction_type === 'IN' ? '+' : '-';
-    const color = log.transaction_type === 'IN' ? '#22c55e' : '#ef4444';
-    return `
-      <tr style="background: #161b22 !important;">
-        <td style="padding:8px; border-bottom:1px solid #30363d; color:${color}; font-weight:700; background: #161b22 !important;">${sign}${Number(log.quantity).toLocaleString(undefined, { maximumFractionDigits: 3 })}</td>
-        <td style="padding:8px; border-bottom:1px solid #30363d; color:#e6edf3; background: #161b22 !important;">${escapeHtml(log.transaction_type)}</td>
-        <td style="padding:8px; border-bottom:1px solid #30363d; color:#e6edf3; background: #161b22 !important;">${escapeHtml(log.user_name)}</td>
-        <td style="padding:8px; border-bottom:1px solid #30363d; color:#e6edf3; background: #161b22 !important;">${escapeHtml(log.created_at)}</td>
-        <td style="padding:8px; border-bottom:1px solid #30363d; color:#e6edf3; background: #161b22 !important;">${escapeHtml(log.notes || '')}</td>
-      </tr>
-    `;
-  }).join('') || `<tr style="background: #161b22 !important;"><td colspan="5" style="padding:1rem; text-align:center; color:#8b949e; background: #161b22 !important;">No stock details found.</td></tr>`;
-
-  Swal.fire({
-    title: 'Stock Details',
-    html: `
-      <div style="text-align:left; color:#8b949e; margin-bottom:0.8rem;">
-        <strong style="color:#e6edf3;">${escapeHtml(productName)}</strong> / ${escapeHtml(stage)} / ${escapeHtml(grade || 'NONE')}
-      </div>
-      <div style="max-height:360px; overflow:auto;">
-        <table data-filterable="false" style="width:100%; border-collapse:collapse; font-size:0.82rem; text-align:left; background: #0d1117 !important;">
-          <thead>
-            <tr style="color:#8b949e; background: #21262d !important;">
-              <th style="padding:8px; background: #21262d !important; color: #8b949e !important; border-bottom:1px solid #30363d;">Qty</th>
-              <th style="padding:8px; background: #21262d !important; color: #8b949e !important; border-bottom:1px solid #30363d;">Type</th>
-              <th style="padding:8px; background: #21262d !important; color: #8b949e !important; border-bottom:1px solid #30363d;">By</th>
-              <th style="padding:8px; background: #21262d !important; color: #8b949e !important; border-bottom:1px solid #30363d;">Time</th>
-              <th style="padding:8px; background: #21262d !important; color: #8b949e !important; border-bottom:1px solid #30363d;">Notes</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
-    `,
-    width: '850px',
-    background: '#0d1117',
-    color: '#e6edf3',
-    confirmButtonText: 'Close',
-    confirmButtonColor: '#30363d'
   });
 }
 
@@ -642,7 +596,7 @@ const rowStyle = isLow ? 'background-color: #ff4d4d; color: #fff;' : '';
               <button class="btn-icon edit" onclick="adminSetLimit('${s.productId}', '${s.stage}', '${s.grade}', '${limit}')" title="Set Alert Limit" style="color:var(--danger);">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
               </button>
-              <button class="btn btn-sm" onclick="showStockDetails('${s.productId}', '${s.stage}', '${String(s.grade).replace(/'/g, "\\'")}', '${String(s.name).replace(/'/g, "\\'")}')" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
+              <button class="btn btn-sm" onclick="window.location.href='/product/${s.productId}/${s.stage}/${s.grade}/history'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
             </div>
           </td>
         </tr>

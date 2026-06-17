@@ -546,22 +546,9 @@ class AdminController extends Controller
             $po = PurchaseOrder::findOrFail($request->po_id);
             $po->status = 'DONE';
             $po->save();
-
-            // Auto-inward to RAW stock when admin marks as arrived
-            $defaultLocId = \App\Models\Location::firstOrCreate(['name' => 'Main Warehouse'])->id;
-            Stock::create([
-                'product_id'       => $po->product_id,
-                'user_id'          => session('auth_user')['id'],
-                'stage'            => 'RAW',
-                'grade'            => 'NONE',
-                'location_id'      => $defaultLocId,
-                'quantity'         => $po->quantity,
-                'transaction_type' => 'IN',
-                'notes'            => "PO #{$po->id} approved & auto-inwarded",
-            ]);
         });
 
-        return response()->json(['success' => true, 'message' => 'PO marked as arrived and stock updated!']);
+        return response()->json(['success' => true, 'message' => 'PO marked as read!']);
     }
 
     public function destroyPO($id)
@@ -1133,5 +1120,25 @@ class AdminController extends Controller
         });
 
         return response()->json(['success' => true, 'message' => 'Stock transferred successfully!']);
+    }
+
+    public function productStockHistory($productId, $stage, $grade)
+    {
+        $product = \App\Models\Product::findOrFail($productId);
+        
+        $stockLogs = \App\Models\Stock::with(['user:id,name', 'location:id,name'])
+            ->where('product_id', $productId)
+            ->where('stage', strtoupper($stage))
+            ->where('grade', $grade)
+            ->latest()
+            ->paginate(25);
+
+        $currentTotal = \App\Models\Stock::where('product_id', $productId)
+            ->where('stage', strtoupper($stage))
+            ->where('grade', $grade)
+            ->selectRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as total")
+            ->value('total') ?? 0;
+
+        return view('shared.product-history', compact('product', 'stage', 'grade', 'stockLogs', 'currentTotal'));
     }
 }

@@ -228,7 +228,15 @@ class FinishedController extends Controller
                 ]),
             ]);
 
-        $pageData = ['productionLogs' => $logs];
+        $purchaseOrders = \App\Models\PurchaseOrder::with('product')
+            ->where('user_id', $this->authUser()['id'])
+            ->orderByDesc('created_at')
+            ->get();
+
+        $pageData = [
+            'productionLogs' => $logs,
+            'purchaseOrders' => $purchaseOrders
+        ];
         return view('finished.history', compact('pageData'));
     }
 
