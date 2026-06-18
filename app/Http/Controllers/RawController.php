@@ -84,6 +84,7 @@ class RawController extends Controller
             'quantity'   => 'required|numeric|min:0.001',
             'grade'      => 'nullable|string|max:50',
             'location'   => 'nullable|string',
+            'notes'      => 'nullable|string',
         ]);
 
         $user = $this->authUser();
@@ -97,6 +98,11 @@ class RawController extends Controller
             $locationName = $request->location ?: 'Main Warehouse';
             $locationId = \App\Models\Location::firstOrCreate(['name' => $locationName])->id;
 
+            $notes = trim($request->notes ?? '');
+            if ($notes === '') {
+                $notes = 'ADD BY SELF';
+            }
+
             return Stock::create([
                 'product_id'       => $request->product_id,
                 'user_id'          => $user['id'],
@@ -105,7 +111,7 @@ class RawController extends Controller
                 'location_id'      => $locationId,
                 'quantity'         => $request->quantity,
                 'transaction_type' => 'IN',
-                'notes'            => $request->notes,
+                'notes'            => $notes,
             ]);
         });
 

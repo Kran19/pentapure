@@ -31,6 +31,11 @@
       <select id="raw-storage-location" name="location" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
       </select>
     </div>
+
+    <div class="form-group" style="margin-bottom:1.5rem;">
+      <label style="font-weight:600;">Notes</label>
+      <textarea id="raw-notes" name="notes" placeholder="Enter notes (optional)..." style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff; height:70px; resize:vertical;"></textarea>
+    </div>
     
     <button type="submit" class="btn mt-1" id="raw-submit-btn">Add to Stock</button>
   </form>
@@ -61,6 +66,7 @@ function submitRawInward(e) {
   const prodId = document.getElementById('raw-prod').value;
   const qty = Number(document.getElementById('raw-qty').value);
   const loc = document.getElementById('raw-storage-location').value;
+  const notes = document.getElementById('raw-notes').value;
   const btn = document.getElementById('raw-submit-btn');
 
   if (!prodId) {
@@ -82,7 +88,7 @@ function submitRawInward(e) {
       'Accept': 'application/json',
       'X-CSRF-TOKEN': csrfToken 
     },
-    body: JSON.stringify({ product_id: prodId, quantity: qty, grade: 'NONE', location: loc })
+    body: JSON.stringify({ product_id: prodId, quantity: qty, grade: 'NONE', location: loc, notes: notes })
   })
   .then(r => r.json())
   .then(data => {
@@ -91,6 +97,7 @@ function submitRawInward(e) {
       document.getElementById('raw-qty').value = '';
       document.getElementById('raw-prod').value = '';
       document.getElementById('raw-selected-name').innerText = '';
+      document.getElementById('raw-notes').value = '';
       document.querySelectorAll('.rm-card').forEach(c => c.style.borderColor = 'transparent');
     } else {
       app.toast(data.message || 'Failed to add stock', 'error');
