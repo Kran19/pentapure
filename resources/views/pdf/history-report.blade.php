@@ -7,7 +7,7 @@
         @page { margin: 18px; }
         * { box-sizing: border-box; }
         body { font-family: DejaVu Sans, sans-serif; color: #101828; font-size: 13px; line-height: 1.45; text-transform: uppercase; }
-        .page { border: 1px solid #1f2937; padding: 42px 46px 24px; min-height: 1060px; border-bottom: 7px solid #17406f; }
+        .page { border: 1px solid #1f2937; padding: 42px 46px 24px; min-height: 1060px; border-bottom: 7px solid #f8c300; }
         .top { display: table; width: 100%; padding-bottom: 22px; border-bottom: 1px solid #667085; }
         .brand, .contact { display: table-cell; vertical-align: top; width: 50%; }
         .contact { text-align: left; padding-left: 110px; font-size: 14px; }
@@ -15,7 +15,7 @@
         .logo-mark {
             width: 82px;
             height: 82px;
-            border: 5px solid #f4b400;
+            border: 5px solid #f8c300;
             border-radius: 50%;
             display: inline-block;
             vertical-align: middle;
@@ -36,14 +36,14 @@
         .meta-row { margin-bottom: 11px; }
         .label { display: inline-block; min-width: 112px; font-weight: 600; }
         .colon { display: inline-block; width: 20px; text-align: center; }
-        .section-label { background: #174a86; color: #fff; display: inline-block; padding: 8px 28px; border-radius: 4px; font-weight: 700; text-transform: uppercase; font-size: 15px; }
+        .section-label { background: #f8c300; color: #101828; display: inline-block; padding: 8px 28px; border-radius: 4px; font-weight: 700; text-transform: uppercase; font-size: 15px; }
         .box { border: 1px solid #9db5d8; border-radius: 5px; padding: 28px 30px; margin-top: -1px; margin-bottom: 30px; }
         .details { display: table; width: 100%; }
         .details-col { display: table-cell; width: 50%; vertical-align: top; }
         .divider { border-left: 1px solid #d0d5dd; padding-left: 34px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-        th { background: #111c31; color: #fff; padding: 14px 10px; border: 1px solid #667085; font-size: 14px; }
-        td { padding: 13px 10px; border: 1px solid #d9dee7; vertical-align: top; }
+        th { background: #f8c300; color: #101828; padding: 10px 6px; border: 1px solid #667085; font-size: 12px; }
+        td { padding: 10px 6px; border: 1px solid #d9dee7; vertical-align: top; font-size: 12px; }
         td.center, th.center { text-align: center; }
         td.amount { text-align: right; font-weight: 700; }
         .badge { display: inline-block; padding: 5px 12px; border-radius: 5px; font-weight: 700; font-size: 12px; }
@@ -56,9 +56,9 @@
         .summary-label { font-size: 12px; }
         .footer { margin-top: 38px; padding-top: 26px; border-top: 1px solid #98a2b3; display: table; width: 100%; }
         .notes, .sign { display: table-cell; width: 50%; vertical-align: bottom; }
-        .notes-title { color: #174a86; font-weight: 800; margin-bottom: 12px; }
+        .notes-title { color: #f8c300; font-weight: 800; margin-bottom: 12px; text-shadow: 0.5px 0.5px 0 #000; }
         .sign { text-align: center; padding-left: 130px; }
-        .scribble { font-family: cursive; font-size: 28px; margin-bottom: 6px; }
+        .scribble { font-family: DejaVu Sans, sans-serif; font-size: 28px; margin-bottom: 6px; }
         .line { border-top: 1px solid #667085; margin: 0 auto 8px; width: 210px; }
         .text-green { color: #1f7a1f; font-weight: bold; }
         .text-red { color: #c76a00; font-weight: bold; }
@@ -71,7 +71,7 @@
             <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 82px; height: 82px; vertical-align: middle; margin-right: 12px; object-fit: contain;">
             <div class="brand-text">
                 <div class="brand-title">PentaPure</div>
-                <div class="tagline">PENTAPURE FOOD AND SPICES</div>
+                <div class="tagline">PENTAPURE FOOD &amp; SPICES PVT.LTD.</div>
             </div>
         </div>
         <div class="contact">
@@ -118,14 +118,14 @@
         <table>
             <thead>
                 <tr>
-                    <th style="width:22%;">Employee Name</th>
-                    <th style="width:15%;">Department</th>
-                    <th style="width:13%;">Salary</th>
-                    <th class="center" style="width:10%;">Present</th>
+                    <th style="width:20%;">Employee Name</th>
+                    <th style="width:14%;">Department</th>
+                    <th style="width:12%;">Salary</th>
+                    <th class="center" style="width:9%;">Present</th>
                     <th class="center" style="width:10%;">Half Days</th>
-                    <th class="center" style="width:10%;">Absent</th>
-                    <th class="center" style="width:10%;">Total OT Hrs</th>
-                    <th style="width:10%;">Total Payable (Rs.)</th>
+                    <th class="center" style="width:9%;">Absent</th>
+                    <th class="center" style="width:11%;">Total OT Hrs</th>
+                    <th style="width:15%;">Total Payable (Rs.)</th>
                 </tr>
             </thead>
             <tbody>
@@ -337,7 +337,7 @@
     @endif
 
     @if(!empty($purchaseOrders))
-        <div class="section-label" style="margin-top: 30px; background: #2b241c;">Purchase Request History</div>
+        <div class="section-label" style="margin-top: 30px;">Purchase Request History</div>
         <table>
             <thead>
                 <tr>

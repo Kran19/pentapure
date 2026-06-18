@@ -5,25 +5,23 @@
     <title>Cashier Overview Statement</title>
     <style>
         body {
-            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-family: DejaVu Sans, 'Helvetica', 'Arial', sans-serif;
             margin: 0;
             padding: 20px;
             color: #333;
             font-size: 12px;
             text-transform: uppercase;
+            background-color: #ffffff;
         }
         .header {
             text-align: center;
             margin-bottom: 30px;
-            border-bottom: 2px solid #1a2744;
+            border-bottom: 3px solid #f8c300;
             padding-bottom: 15px;
         }
-        .header h1 {
-            color: #1a2744;
-            margin: 0 0 5px 0;
-            font-size: 24px;
-            text-transform: uppercase;
-        }
+        .header .brand-title { font-size: 24px; font-weight: bold; color: #101828; margin: 0; }
+        .header .tagline { font-size: 14px; font-weight: bold; color: #101828; margin-top: 5px; }
+        .header .report-title { margin-top: 15px; padding-top: 10px; border-top: 1px solid #ccc; font-size: 14px; font-weight: bold; color: #344054; text-transform: uppercase; }
         .header p {
             margin: 0;
             color: #666;
@@ -51,7 +49,7 @@
         }
         .value.income { color: #22c55e; }
         .value.expense { color: #ef4444; }
-        .value.balance { color: #1a2744; }
+        .value.balance { color: #344054; }
         
         .cashier-breakdown {
             width: 100%;
@@ -64,8 +62,8 @@
             text-align: left;
         }
         .cashier-breakdown th {
-            background-color: #f8fafc;
-            color: #1a2744;
+            background-color: #f8c300;
+            color: #101828;
             font-weight: bold;
         }
 
@@ -80,8 +78,8 @@
             text-align: left;
         }
         .tx-table th {
-            background-color: #1a2744;
-            color: white;
+            background-color: #f8c300;
+            color: #101828;
         }
         .tx-table tr:nth-child(even) { background-color: #f9fafb; }
         .text-right { text-align: right; }
@@ -100,7 +98,25 @@
 <body>
 
     <div class="header">
-        <h1>Cashier Overview Statement</h1>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 0; margin-bottom: 10px;">
+            <tr>
+                <td style="width: 20%; text-align: left; vertical-align: middle; border: none; background: transparent;">
+                    @if(file_exists(public_path('logo.png')))
+                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 50px; height: 50px; object-fit: contain;">
+                    @endif
+                </td>
+                <td style="width: 60%; text-align: center; vertical-align: middle; border: none; background: transparent;">
+                    <div class="brand-title">PENTAPURE</div>
+                    <div class="tagline">PENTAPURE FOOD &amp; SPICES PVT.LTD.</div>
+                </td>
+                <td style="width: 20%; text-align: right; vertical-align: middle; border: none; background: transparent;">
+                    @if(file_exists(public_path('logo.png')))
+                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 50px; height: 50px; object-fit: contain;">
+                    @endif
+                </td>
+            </tr>
+        </table>
+        <div class="report-title">Cashier Overview Statement</div>
         <p>Generated on: {{ now()->format('d M Y, h:i A') }}</p>
     </div>
 
@@ -121,7 +137,7 @@
         </tr>
     </table>
 
-    <h3 style="color:#1a2744; border-bottom:1px solid #ddd; padding-bottom:5px;">Cashier Breakdown</h3>
+    <h3 style="color:#344054; border-bottom:1px solid #ddd; padding-bottom:5px;">Cashier Breakdown</h3>
     <table class="cashier-breakdown">
         <thead>
             <tr>
@@ -137,7 +153,7 @@
                 <td><strong>{{ strtoupper($c['name']) }}</strong></td>
                 <td class="text-right" style="color:#22c55e;">₹{{ number_format($c['in'], 2) }}</td>
                 <td class="text-right" style="color:#ef4444;">₹{{ number_format($c['out'], 2) }}</td>
-                <td class="text-right" style="font-weight:bold; color:{{ $c['balance'] >= 0 ? '#1a2744' : '#ef4444' }};">
+                <td class="text-right" style="font-weight:bold; color:{{ $c['balance'] >= 0 ? '#344054' : '#ef4444' }};">
                     ₹{{ number_format($c['balance'], 2) }}
                 </td>
             </tr>
@@ -145,7 +161,7 @@
         </tbody>
     </table>
 
-    <h3 style="color:#1a2744; border-bottom:1px solid #ddd; padding-bottom:5px;">Transaction Ledger</h3>
+    <h3 style="color:#344054; border-bottom:1px solid #ddd; padding-bottom:5px;">Transaction Ledger</h3>
     <table class="tx-table">
         <thead>
             <tr>

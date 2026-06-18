@@ -62,7 +62,7 @@ class HistoryPdfController extends Controller
                     'date' => $po->created_at->format('d M Y'),
                     'material' => $po->product?->name ?? '-',
                     'quantity' => $po->quantity,
-                    'status' => $po->status === 'DONE' ? 'FULFILLED BY ADMIN' : $po->status,
+                    'status' => $po->status === 'DONE' ? 'READ BY ADMIN' : $po->status,
                 ])->toArray();
         }
 

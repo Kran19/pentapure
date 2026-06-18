@@ -13,10 +13,10 @@
         .header-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; border-bottom: 2px solid #e4e7ec; padding-bottom: 5px; }
         .header-logo-cell { width: 60%; vertical-align: middle; }
         .header-contact-cell { width: 40%; text-align: right; vertical-align: middle; font-size: 9px; color: #475467; }
-        .brand-title { font-size: 22px; font-weight: 800; color: #111c31; line-height: 1.1; }
-        .brand-tagline { font-size: 10px; color: #f4b400; font-weight: bold; margin-top: 1px; }
+        .brand-title { font-size: 22px; font-weight: 800; color: #101828; line-height: 1.1; }
+        .brand-tagline { font-size: 10px; color: #f8c300; font-weight: bold; margin-top: 1px; }
         
-        .title { text-align: center; margin: 8px 0; font-size: 18px; font-weight: 800; letter-spacing: 2px; color: #111c31; }
+        .title { text-align: center; margin: 8px 0; font-size: 18px; font-weight: 800; letter-spacing: 2px; color: #101828; }
         
         /* Top Metadata Grid */
         .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; border: 1px solid #d0d5dd; }
@@ -34,7 +34,7 @@
         .details-cell { width: 49%; vertical-align: top; }
         .details-spacer { width: 2%; }
         
-        .section-header { background: #111c31; color: #ffffff; padding: 4px 8px; font-weight: bold; font-size: 11px; border-radius: 4px 4px 0 0; text-transform: uppercase; }
+        .section-header { background: #f8c300; color: #101828; padding: 4px 8px; font-weight: bold; font-size: 11px; border-radius: 4px 4px 0 0; text-transform: uppercase; }
         .section-box { border: 1px solid #d0d5dd; border-top: none; border-radius: 0 0 4px 4px; padding: 6px 8px; min-height: 90px; }
         .section-box table { width: 100%; border-collapse: collapse; }
         .section-box td { padding: 3px 0; vertical-align: top; }
@@ -43,9 +43,9 @@
         
         /* Items Table */
         .items-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-        .items-table th { background: #111c31; color: #ffffff; padding: 6px 8px; font-weight: bold; text-align: left; font-size: 10px; border: 1px solid #344054; }
+        .items-table th { background: #f8c300; color: #101828; padding: 6px 8px; font-weight: bold; text-align: left; font-size: 10px; border: 1px solid #344054; }
         .items-table td { padding: 6px 8px; border: 1px solid #d0d5dd; font-size: 10px; }
-        .items-table tr.total-row td { font-weight: bold; background: #f9fafb; border-top: 2px solid #111c31; }
+        .items-table tr.total-row td { font-weight: bold; background: #f9fafb; border-top: 2px solid #f8c300; }
         
         /* Summary & LR Block */
         .summary-lr-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
@@ -56,7 +56,7 @@
         .lr-empty { padding-top: 30px; color: #667085; font-style: italic; }
         
         /* Remarks Section */
-        .remarks-header { background: #111c31; color: #ffffff; padding: 4px 8px; font-weight: bold; font-size: 10px; border-radius: 4px 4px 0 0; text-transform: uppercase; }
+        .remarks-header { background: #f8c300; color: #101828; padding: 4px 8px; font-weight: bold; font-size: 10px; border-radius: 4px 4px 0 0; text-transform: uppercase; }
         .remarks-box { border: 1px solid #d0d5dd; border-top: none; border-radius: 0 0 4px 4px; padding: 8px 10px; min-height: 45px; color: #344054; font-size: 10px; background: #fff; line-height: 1.4; }
         
         /* Footer signatures */
@@ -89,7 +89,7 @@
                         </td>
                         <td style="vertical-align: middle; padding: 0 0 0 8px;">
                             <div class="brand-title">PENTAPURE</div>
-                            <div class="brand-tagline">PENTAPURE FOOD AND SPICES</div>
+                            <div class="brand-tagline">PENTAPURE FOOD &amp; SPICES PVT.LTD.</div>
                         </td>
                     </tr>
                 </table>
@@ -137,6 +137,14 @@
                         <tr><td class="lbl">GST Number</td><td class="val">: {{ $company->gst ?? 'N/A' }}</td></tr>
                     </table>
                 </div>
+                <div style="margin-top: 10px; padding: 6px 8px; border: 1px solid #d0d5dd; border-radius: 4px; background: #fff;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="width: 100px; font-weight: bold; color: #475467; font-size: 10px;">Dispatch Type</td>
+                            <td style="font-size: 10px; color: #101828;">: <span class="badge {{ $totalPendingQty <= 0 ? 'badge-dispatched' : 'badge-pending' }}">{{ $dispatchType }}</span></td>
+                        </tr>
+                    </table>
+                </div>
             </td>
             
             <td class="details-spacer"></td>
@@ -162,13 +170,14 @@
     <table class="items-table">
         <thead>
             <tr>
-                <th style="width: 6%;" class="text-center">Sr. No.</th>
-                <th style="width: 32%;">Product Name & Grade</th>
-                <th style="width: 12%;" class="text-right">Rate (INR)</th>
-                <th style="width: 12%;" class="text-right">Ordered Qty</th>
-                <th style="width: 13%;" class="text-right">Prev. Dispatched</th>
-                <th style="width: 13%;" class="text-right">Current Dispatch</th>
-                <th style="width: 12%;" class="text-right">Remaining Qty</th>
+                <th style="width: 5%;" class="text-center">No.</th>
+                <th style="width: 25%;">Product Name</th>
+                <th style="width: 11%;" class="text-right">Ordered Qty</th>
+                <th style="width: 12%;" class="text-right">Prev. Dispatched Qty.</th>
+                <th style="width: 12%;" class="text-right">Current Dispatch Qty.</th>
+                <th style="width: 11%;" class="text-right">Rate (₹)</th>
+                <th style="width: 12%;" class="text-right">Amount (₹)</th>
+                <th style="width: 12%;" class="text-right">Pending Qty</th>
             </tr>
         </thead>
         <tbody>
@@ -184,25 +193,33 @@
                         <strong>{{ $orderItem->product->name }}</strong>
                         <div style="font-size: 8px; color: #475467;">Grade: {{ $orderItem->grade }}</div>
                     </td>
+                    <td class="text-right text-green">{{ number_format($orderItem->quantity) }} KG</td>
+                    <td class="text-right">{{ number_format($prevDispatched) }} KG</td>
+                    <td class="text-right"><strong>{{ number_format($di->quantity) }} KG</strong></td>
                     <td class="text-right">
                         @if($orderItem->price > 0)
                             ₹{{ number_format($orderItem->price, 2) }}
                         @else
-                            <span class="text-red">₹0.00 (Sample)</span>
+                            <span class="text-red">₹0.00</span>
                         @endif
                     </td>
-                    <td class="text-right text-green">{{ number_format($orderItem->quantity) }} KG</td>
-                    <td class="text-right">{{ number_format($prevDispatched) }} KG</td>
-                    <td class="text-right"><strong>{{ number_format($di->quantity) }} KG</strong></td>
+                    <td class="text-right">
+                        @if($orderItem->price > 0)
+                            ₹{{ number_format($orderItem->price * $di->quantity, 2) }}
+                        @else
+                            <span class="text-red">₹0.00</span>
+                        @endif
+                    </td>
                     <td class="text-right text-red">{{ number_format($pendingQty) }} KG</td>
                 </tr>
             @endforeach
             <tr class="total-row">
                 <td colspan="2">TOTAL</td>
-                <td class="text-right">₹{{ number_format($totalAmount, 2) }}</td>
                 <td class="text-right text-green">{{ number_format($totalOrderedQty) }} KG</td>
                 <td class="text-right">{{ number_format($totalPrevDispatchedQty) }} KG</td>
                 <td class="text-right"><strong>{{ number_format($totalDispatchedQty) }} KG</strong></td>
+                <td class="text-right"></td>
+                <td class="text-right">₹{{ number_format($totalAmount, 2) }}</td>
                 <td class="text-right text-red">{{ number_format($totalPendingQty) }} KG</td>
             </tr>
         </tbody>
@@ -248,39 +265,7 @@
         </table>
         @endif
 
-        <!-- Summary & LR Block -->
-        <table class="details-table">
-            <tr>
-                <!-- Dispatch Summary Box -->
-                <td class="details-cell">
-                    <div class="section-header">📄 Dispatch Summary</div>
-                    <div class="section-box" style="min-height: 110px;">
-                        <table>
-                            <tr><td class="lbl">Total Items</td><td class="val">: {{ $totalItems }}</td></tr>
-                            <tr><td class="lbl">Ordered Quantity</td><td class="val">: {{ number_format($totalOrderedQty) }} KG</td></tr>
-                            <tr><td class="lbl">Prev. Dispatched</td><td class="val">: {{ number_format($totalPrevDispatchedQty) }} KG</td></tr>
-                            <tr><td class="lbl">Current Dispatch</td><td class="val">: <strong>{{ number_format($totalDispatchedQty) }} KG</strong></td></tr>
-                            <tr><td class="lbl">Pending Quantity</td><td class="val">: <strong class="text-red">{{ number_format($totalPendingQty) }} KG</strong></td></tr>
-                            <tr><td class="lbl">Dispatch Type</td><td class="val">: <span class="badge {{ $totalPendingQty <= 0 ? 'badge-dispatched' : 'badge-pending' }}">{{ $dispatchType }}</span></td></tr>
-                        </table>
-                    </div>
-                </td>
-                
-                <td class="details-spacer"></td>
-                
-                <!-- LR Copy Preview -->
-                <td class="details-cell">
-                    <div class="section-header">📄 LR Copy (Lorry Receipt)</div>
-                    <div class="lr-box">
-                        @if($log->lr_image_path && file_exists(public_path($log->lr_image_path)))
-                            <img class="lr-img" src="data:image/jpeg;base64,{{ base64_encode(file_get_contents(public_path($log->lr_image_path))) }}">
-                        @else
-                            <div class="lr-empty">LR Copy Image Not Uploaded Yet</div>
-                        @endif
-                    </div>
-                </td>
-            </tr>
-        </table>
+
 
         <!-- Remarks -->
         <div class="remarks-header">💬 Remarks / Special Instructions</div>

@@ -6,7 +6,7 @@
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
-    font-family: 'Helvetica', 'Arial', sans-serif;
+    font-family: DejaVu Sans, sans-serif;
     font-size: 10px;
     color: #1a1a2e;
     line-height: 1.4;
@@ -16,11 +16,11 @@ body {
 /* ── HEADER ── */
 .header-table {
     width: 100%;
-    background: #1a2744;
+    background: #f8c300;
     padding: 14px 20px;
 }
-.brand-name { font-size: 22px; font-weight: bold; color: #fff; letter-spacing: 1px; }
-.brand-sub  { font-size: 9px; color: #7ec8e3; margin-top: 2px; }
+.brand-name { font-size: 22px; font-weight: bold; color: #101828; letter-spacing: 1px; }
+.brand-sub  { font-size: 9px; color: #101828; margin-top: 2px; }
 
 /* ── META BOX ── */
 .meta-table {
@@ -67,12 +67,12 @@ body {
     font-size: 9px;
 }
 .data-table thead th {
-    background: #1a2744;
-    color: #fff;
+    background: #f8c300;
+    color: #101828;
     padding: 7px 5px;
     font-weight: bold;
     text-align: left;
-    border: 1px solid #1a2744;
+    border: 1px solid #667085;
 }
 .data-table tbody td {
     padding: 7px 5px;
@@ -119,11 +119,22 @@ body {
 
 <table class="header-table">
     <tr>
-        <td style="width: 65%; color: white;">
-            <div class="brand-name">PentaPure</div>
-            <div class="brand-sub">PENTAPURE FOOD AND SPICES</div>
+        <td style="width: 65%; color: #101828;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="width: 60px; padding: 0; vertical-align: middle; border: none; background: transparent;">
+                        @if(file_exists(public_path('logo.png')))
+                            <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 50px; height: 50px; object-fit: contain;">
+                        @endif
+                    </td>
+                    <td style="text-align: left; padding-left: 10px; vertical-align: middle; border: none; background: transparent;">
+                        <div class="brand-name">PentaPure</div>
+                        <div class="brand-sub">PENTAPURE FOOD &amp; SPICES PVT.LTD.</div>
+                    </td>
+                </tr>
+            </table>
         </td>
-        <td style="width: 35%; text-align: right; color: #a8c6e0; font-size: 9px;">
+        <td style="width: 35%; text-align: right; color: #101828; font-size: 9px; vertical-align: middle;">
             <div>Report ID: RPT-{{ str_pad($reportId, 4, '0', STR_PAD_LEFT) }}</div>
             <div>Generated: {{ $generatedOn }}</div>
             <div>Cashier: {{ $cashierName }}</div>
@@ -181,10 +192,10 @@ body {
         <thead>
             <tr>
                 <th>Date</th>
-                <th>Desc</th>
+                <th>Description</th>
                 <th>Category</th>
                 <th style="text-align: right;">Amt</th>
-                <th style="text-align: right;">Available Bal</th>
+                <th style="text-align: right;">Balance</th>
                 <th>Added By</th>
                 <th>Site</th>
             </tr>
@@ -248,7 +259,7 @@ body {
                 </div>
             </td>
             <td style="width: 40%; text-align: right; vertical-align: bottom;">
-                <div style="font-family: serif; font-size:16px; color:#1a2744; margin-bottom:3px;">PentaPure</div>
+                <div style="font-family: DejaVu Sans, sans-serif; font-size:16px; color:#1a2744; margin-bottom:3px;">PentaPure</div>
                 <div class="sig-line"></div><br>
                 <div class="sig-name">Authorized Signature</div>
                 <div class="sig-role">PentaPure Admin</div>

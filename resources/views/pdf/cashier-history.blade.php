@@ -6,7 +6,7 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'DejaVu Sans', sans-serif;
+            font-family: DejaVu Sans, sans-serif;
             font-size: 11px;
             color: #1a1a2e;
             line-height: 1.5;
@@ -281,7 +281,7 @@
             <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 40px; height: 40px; vertical-align: middle; margin-right: 12px; object-fit: contain;">
             <span style="display:inline-block; vertical-align:middle;">
                 <span class="brand-name">PentaPure</span><br>
-                <span class="brand-tagline">PENTAPURE FOOD AND SPICES</span>
+                <span class="brand-tagline">PENTAPURE FOOD &amp; SPICES PVT.LTD.</span>
             </span>
         </div>
         <div class="header-right">
@@ -414,7 +414,7 @@
                 </div>
             </div>
             <div class="footer-right">
-                <div style="font-family: cursive; font-size:18px; color:#333; margin-bottom:2px;">PentaPure</div>
+                <div style="font-family: DejaVu Sans, sans-serif; font-size:18px; color:#333; margin-bottom:2px;">PentaPure</div>
                 <div class="signature-line"></div><br>
                 <span class="signature-text">Authorized Signature</span><br>
                 <span class="signature-role">PentaPure Admin</span>

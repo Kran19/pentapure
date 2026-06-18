@@ -13,12 +13,12 @@
         .header-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; border-bottom: 2px solid #e4e7ec; padding-bottom: 4px; }
         .header-logo-cell { width: 60%; vertical-align: middle; }
         .header-contact-cell { width: 40%; text-align: right; vertical-align: middle; font-size: 8.5px; color: #475467; }
-        .brand-title { font-size: 20px; font-weight: 800; color: #111c31; line-height: 1.1; }
-        .brand-tagline { font-size: 9px; color: #f4b400; font-weight: bold; margin-top: 1px; }
+        .brand-title { font-size: 20px; font-weight: 800; color: #101828; line-height: 1.1; }
+        .brand-tagline { font-size: 9px; color: #f8c300; font-weight: bold; margin-top: 1px; }
         
         .title-container { text-align: center; margin: 10px 0; }
-        .title-line { display: inline-block; width: 60px; border-top: 2px solid #111c31; vertical-align: middle; margin: 0 10px; }
-        .title { display: inline-block; font-size: 16px; font-weight: 800; letter-spacing: 1.5px; color: #111c31; vertical-align: middle; }
+        .title-line { display: inline-block; width: 60px; border-top: 2px solid #f8c300; vertical-align: middle; margin: 0 10px; }
+        .title { display: inline-block; font-size: 16px; font-weight: 800; letter-spacing: 1.5px; color: #101828; vertical-align: middle; }
         
         /* Top Metadata Grid */
         .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; border: 1px solid #d0d5dd; }
@@ -44,11 +44,11 @@
         .stats-label { font-size: 7px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px; }
         .stats-value { font-size: 11px; font-weight: 800; }
         
-        .section-header { background: #111c31; color: #ffffff; padding: 4px 8px; font-weight: bold; font-size: 10px; border-radius: 3px 3px 0 0; text-transform: uppercase; margin-top: 8px; }
+        .section-header { background: #f8c300; color: #101828; padding: 4px 8px; font-weight: bold; font-size: 10px; border-radius: 3px 3px 0 0; text-transform: uppercase; margin-top: 8px; }
         
         /* Main table styling */
         .data-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-        .data-table th { background: #111c31; color: #ffffff; padding: 5px 6px; font-weight: bold; text-align: left; font-size: 8.5px; border: 1px solid #344054; }
+        .data-table th { background: #f8c300; color: #101828; padding: 5px 6px; font-weight: bold; text-align: left; font-size: 8.5px; border: 1px solid #344054; }
         .data-table td { padding: 5px 6px; border: 1px solid #d0d5dd; font-size: 8px; vertical-align: middle; }
         .data-table tr.total-row td { font-weight: bold; background: #f9fafb; border-top: 1.5px solid #111c31; }
         
@@ -70,7 +70,7 @@
         
         /* Note block */
         .note-box { border: 1px solid #d0d5dd; border-radius: 4px; padding: 8px; background: #f9fafb; margin-top: 10px; line-height: 1.4; color: #344054; }
-        .note-title { font-weight: bold; color: #111c31; margin-bottom: 3px; }
+        .note-title { font-weight: bold; color: #101828; margin-bottom: 3px; }
         .note-list { margin: 0; padding-left: 12px; }
         
         /* Footer signature */
@@ -104,7 +104,7 @@
                         </td>
                         <td style="vertical-align: middle; padding: 0 0 0 8px;">
                             <div class="brand-title">PENTAPURE</div>
-                            <div class="brand-tagline">PENTAPURE FOOD AND SPICES</div>
+                            <div class="brand-tagline">PENTAPURE FOOD &amp; SPICES PVT.LTD.</div>
                         </td>
                     </tr>
                 </table>
@@ -169,7 +169,7 @@
             <td class="stats-card-cell">
                 <div class="stats-card stats-purple">
                     <div class="stats-label">Total Value</div>
-                    <div class="stats-value">₹{{ number_format($totalValue) }}</div>
+                    <div class="stats-value">Rs. {{ number_format($totalValue) }}</div>
                 </div>
             </td>
             <td class="stats-card-cell">
@@ -215,7 +215,7 @@
                     <td class="text-right text-green"><strong>{{ $row['ordered_qty_formatted'] ?? number_format($row['ordered_qty'] ?? 0) . ' KG' }}</strong></td>
                     <td class="text-right" style="color: #175cd3;"><strong>{{ $row['dispatch_qty_formatted'] ?? number_format($row['qty'] ?? 0) . ' KG' }}</strong></td>
                     <td class="text-right" style="color: {{ ($row['pending_qty'] ?? 0) > 0 ? '#b42318' : 'inherit' }};"><strong>{{ $row['pending_qty_formatted'] ?? number_format($row['pending_qty'] ?? 0) . ' KG' }}</strong></td>
-                    <td class="text-right"><strong>₹{{ number_format($row['amount'], 2) }}</strong></td>
+                    <td class="text-right"><strong>Rs. {{ number_format($row['amount'], 2) }}</strong></td>
                     <td class="text-center">
                         <span class="badge {{ $row['status'] === 'COMPLETED' ? 'badge-completed' : ($row['status'] === 'CANCELLED' ? 'badge-cancelled' : 'badge-pending') }}">
                             {{ $row['status'] }}
@@ -233,7 +233,7 @@
                     <td class="text-right text-green">{{ number_format($totalOrderedQty ?? 0) }} KG</td>
                     <td class="text-right" style="color: #175cd3;">{{ number_format($totalQuantity) }} KG</td>
                     <td class="text-right" style="color: {{ ($totalPendingQty ?? 0) > 0 ? '#b42318' : 'inherit' }};">{{ number_format($totalPendingQty ?? 0) }} KG</td>
-                    <td class="text-right">₹{{ number_format($totalValue, 2) }}</td>
+                    <td class="text-right">Rs. {{ number_format($totalValue, 2) }}</td>
                     <td></td>
                 </tr>
             @endif
@@ -351,7 +351,7 @@
             @foreach($lrCopies as $lr)
                 @if(file_exists(public_path($lr['path'])))
                     <div class="page-break-avoid" style="margin-bottom: 25px; text-align: center; border: 1px solid #d0d5dd; border-radius: 6px; padding: 10px; background: #f9fafb;">
-                        <div style="font-size: 10px; font-weight: bold; color: #111c31; margin-bottom: 8px; border-bottom: 1px solid #e4e7ec; padding-bottom: 4px;">
+                        <div style="font-size: 10px; font-weight: bold; color: #101828; margin-bottom: 8px; border-bottom: 1px solid #e4e7ec; padding-bottom: 4px;">
                             Dispatch: {{ $lr['dispatch_id'] }} | Order: {{ $lr['order_id'] }} | Customer: {{ $lr['customer'] }}
                         </div>
                         <img src="data:image/jpeg;base64,{{ base64_encode(file_get_contents(public_path($lr['path']))) }}" style="max-height: 400px; max-width: 100%; border: 1px solid #eaecf0; border-radius: 4px; padding: 4px; object-fit: contain;">

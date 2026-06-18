@@ -10,7 +10,7 @@
         table td { color: #101828 !important; }
         table th { color: #e3c203 !important; }
 
-        .page { border: 1px solid #1f2937; padding: 42px 46px 24px; min-height: 1060px; border-bottom: 7px solid #f4b400; }
+        .page { border: 1px solid #1f2937; padding: 42px 46px 24px; min-height: 1060px; border-bottom: 7px solid #f8c300; }
         .top { display: table; width: 100%; padding-bottom: 22px; border-bottom: 1px solid #667085; }
         .brand, .contact { display: table-cell; vertical-align: top; width: 50%; }
         .contact { text-align: left; padding-left: 110px; font-size: 14px; }
@@ -24,13 +24,13 @@
         .meta-row { margin-bottom: 11px; }
         .label { display: inline-block; min-width: 130px; font-weight: 600; }
         .colon { display: inline-block; width: 20px; text-align: center; }
-        .section-label { background: #f4b400; color: #2b241c; display: inline-block; padding: 8px 28px; border-radius: 4px; font-weight: 700; text-transform: uppercase; font-size: 15px; }
+        .section-label { background: #f8c300; color: #2b241c; display: inline-block; padding: 8px 28px; border-radius: 4px; font-weight: 700; text-transform: uppercase; font-size: 15px; }
         .box { border: 1px solid #d0d5dd; border-radius: 5px; padding: 28px 30px; margin-top: -1px; margin-bottom: 30px; background-color: #fffdf5; }
         .details { display: table; width: 100%; }
         .details-col { display: table-cell; width: 50%; vertical-align: top; }
         .divider { border-left: 1px solid #d0d5dd; padding-left: 34px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-        th { background: #2b241c; color: #f4b400; padding: 14px 10px; border: 1px solid #667085; font-size: 14px; text-align: left; }
+        th { background: #2b241c; color: #f8c300; padding: 14px 10px; border: 1px solid #667085; font-size: 14px; text-align: left; }
         td { padding: 13px 10px; border: 1px solid #d9dee7; vertical-align: top; }
         td.center, th.center { text-align: center; }
         td.amount { text-align: right; font-weight: 700; }
@@ -47,7 +47,7 @@
         .notes, .sign { display: table-cell; width: 50%; vertical-align: bottom; }
         .notes-title { color: #2b241c; font-weight: 800; margin-bottom: 12px; }
         .sign { text-align: center; padding-left: 130px; }
-        .scribble { font-family: cursive; font-size: 28px; margin-bottom: 6px; }
+        .scribble { font-family: DejaVu Sans, sans-serif; font-size: 28px; margin-bottom: 6px; }
         .line { border-top: 1px solid #667085; margin: 0 auto 8px; width: 210px; }
     </style>
 </head>
@@ -58,7 +58,7 @@
             <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 82px; height: 82px; vertical-align: middle; margin-right: 12px; object-fit: contain;">
             <div class="brand-text">
                 <div class="brand-title">PentaPure</div>
-                <div class="tagline">PENTAPURE FOOD AND SPICES</div>
+                <div class="tagline">PENTAPURE FOOD &amp; SPICES PVT.LTD.</div>
             </div>
         </div>
         <div class="contact">
