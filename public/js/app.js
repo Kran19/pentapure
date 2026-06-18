@@ -871,6 +871,8 @@ const app = {
     const allProds = (window.serverPageData && window.serverPageData.products) || [];
     if (type === 'ALL') {
       window.currentFinProds = allProds;
+    } else if (type === 'SEMI' || type === 'FINISHED') {
+      window.currentFinProds = allProds.filter(p => p.type === 'SEMI' || p.type === 'FINISHED');
     } else {
       window.currentFinProds = allProds.filter(p => p.type === type);
     }
@@ -960,8 +962,7 @@ const app = {
     
     if (!name || !gst || !address || !contact) return this.toast('All fields are required', 'error');
 
-    const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-    if(!gstRegex.test(gst)) return this.toast('Invalid GST format (e.g. 22AAAAA0000A1Z5)', 'error');
+    if(gst.length > 15) return this.toast('GST number cannot exceed 15 characters', 'error');
     if(!/^[0-9]{10}$/.test(contact)) return this.toast('Mobile number must be 10 digits', 'error');
 
     const exists = ((window.serverPageData && window.serverPageData.companies) || []).find(c => c.name.toLowerCase() === name.toLowerCase() || c.gst === gst);
@@ -991,6 +992,7 @@ const app = {
     const vehicles = document.getElementById('trans-vehicles').value;
     
     if (!name || !gst || !contact) return this.toast('Name, GST and Contact are required', 'error');
+    if(gst.length > 15) return this.toast('GST number cannot exceed 15 characters', 'error');
     if(!/^[0-9]{10}$/.test(contact)) return this.toast('Mobile number must be 10 digits', 'error');
 
     fetch('/sales/transport', {

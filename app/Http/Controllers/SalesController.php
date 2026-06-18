@@ -148,11 +148,11 @@ class SalesController extends Controller
 
         $request->validate([
             'name'    => 'required|string|max:255|unique:companies,name',
-            'gst'     => 'required|string|regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/|unique:companies,gst',
+            'gst'     => 'required|string|max:15|unique:companies,gst',
             'contact' => 'required|string|regex:/^[0-9]{10}$/',
             'address' => 'required|string|max:500',
         ], [
-            'gst.regex'     => 'Invalid GST format (e.g. 22AAAAA0000A1Z5)',
+            'gst.max'       => 'GST number cannot exceed 15 characters',
             'contact.regex' => 'Mobile number must be exactly 10 digits',
             'name.unique'    => 'Company name already exists',
             'gst.unique'     => 'GST number already registered'
@@ -168,13 +168,14 @@ class SalesController extends Controller
 
         $request->validate([
             'name'    => 'required|string|max:255|unique:transporters,name',
-            'gst'     => 'required|string|regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/|unique:transporters,gst',
+            'gst'     => 'required|string|max:15|unique:transporters,gst',
             'contact' => 'required|string|regex:/^[0-9]{10}$/',
             'vehicles' => 'nullable|string',
         ], [
-            'gst.regex'     => 'Invalid GST format',
+            'gst.max'       => 'GST number cannot exceed 15 characters',
             'contact.regex' => 'Mobile number must be 10 digits',
-            'name.unique'    => 'Transporter already exists'
+            'name.unique'    => 'Transporter already exists',
+            'gst.unique'     => 'GST number already registered'
         ]);
 
         Transporter::create($request->only('name', 'gst', 'contact', 'vehicles'));

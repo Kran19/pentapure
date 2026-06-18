@@ -31,6 +31,7 @@ class FinishedController extends Controller
                 products.name,
                 products.unit,
                 stocks.grade,
+                '{$stage}' as stage,
                 SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
             ")
             ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
@@ -89,11 +90,13 @@ class FinishedController extends Controller
     public function action()
     {
         $semiStock = $this->getLiveStock('SEMI');
+        $rawStock  = $this->getLiveStock('RAW');
         $grades    = \App\Models\Grade::where('is_active', true)->pluck('name')->toArray();
         $locations = \App\Models\Location::orderBy('name')->pluck('name')->toArray();
 
         $pageData = [
             'semiStock' => $semiStock,
+            'rawStock'  => $rawStock,
             'grades'    => $grades,
             'locations' => $locations,
             'products'  => Product::with('grades')->active()->visibleTo($this->authUser()['role'])->get()->map(fn($p)=>[
@@ -104,7 +107,7 @@ class FinishedController extends Controller
         return view('finished.action', compact('pageData'));
     }
 
-    // POST: Finished production — consumes SEMI stock, adds FINISHED stock
+    // POST: Finished production — consumes SEMI/RAW stock, adds FINISHED stock
     public function storeProduction(Request $request)
     {
         $request->validate([
@@ -116,6 +119,7 @@ class FinishedController extends Controller
             'inputs'            => 'required|array|min:1',
             'inputs.*.product_id' => 'required|exists:products,id',
             'inputs.*.grade'      => 'required|string',
+            'inputs.*.stage'      => 'required|string|in:RAW,SEMI',
             'inputs.*.quantity'   => 'required|numeric|min:0.001',
         ]);
 
@@ -133,11 +137,11 @@ class FinishedController extends Controller
             }
         }
 
-        // Validate SEMI stock availability
+        // Validate stock availability
         foreach ($request->inputs as $inp) {
             $available = DB::table('stocks')
                 ->where('product_id', $inp['product_id'])
-                ->where('stage', 'SEMI')
+                ->where('stage', $inp['stage'])
                 ->where('grade', $inp['grade'])
                 ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
                 ->value('net') ?? 0;
@@ -146,7 +150,7 @@ class FinishedController extends Controller
                 $pName = Product::find($inp['product_id'])?->name;
                 return response()->json([
                     'success' => false,
-                    'message' => "Insufficient SEMI stock for {$pName} ({$inp['grade']}). Available: {$available} kg"
+                    'message' => "Insufficient {$inp['stage']} stock for {$pName} ({$inp['grade']}). Available: {$available} kg"
                 ], 422);
             }
         }
@@ -179,10 +183,10 @@ class FinishedController extends Controller
                     'quantity'          => $inp['quantity'],
                 ]);
 
-                // Deduct from SEMI
+                // Deduct from RAW or SEMI depending on the input stage
                 Stock::deductStock(
                     $inp['product_id'],
-                    'SEMI',
+                    $inp['stage'],
                     $inp['grade'],
                     $inp['quantity'],
                     $user['id'],
