@@ -83,33 +83,33 @@
   </div>
 </form>
 
-<div class="table-container">
-  <table>
+<div class="table-container" style="overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch;">
+  <table style="width: 100%; min-width: 800px; border-collapse: collapse;">
     <thead>
       <tr>
-        <th>Product Name</th>
-        <th>Type</th>
-        <th>Quantity</th>
-        <th>Notes</th>
-        <th>Date</th>
+        <th style="white-space: nowrap;">Product Name</th>
+        <th style="white-space: nowrap;">Type</th>
+        <th style="white-space: nowrap;">Quantity</th>
+        <th style="white-space: nowrap;">Date</th>
+        <th style="white-space: nowrap;">Notes</th>
       </tr>
     </thead>
     <tbody>
       @forelse($paginated as $s)
         <tr>
-          <td style="font-weight:600;">{{ $s['productName'] }}</td>
-          <td>
+          <td style="font-weight:600; white-space: nowrap;">{{ $s['productName'] }}</td>
+          <td style="white-space: nowrap;">
             @if($s['transaction_type'] === 'IN')
               <span class="badge" style="background:#2ecc71; color:#fff;">IN</span>
             @else
               <span class="badge" style="background:#f1c40f; color:#000;">OUT</span>
             @endif
           </td>
-          <td style="font-weight:bold; color:{{ $s['transaction_type'] === 'IN' ? '#2ecc71' : '#f1c40f' }};">
+          <td style="font-weight:bold; color:{{ $s['transaction_type'] === 'IN' ? '#2ecc71' : '#f1c40f' }}; white-space: nowrap;">
             {{ $s['transaction_type'] === 'IN' ? '+' : '-' }}{{ number_format($s['quantity'], 2) }} {{ $s['unit'] }}
           </td>
-          <td style="font-size:0.9rem; max-width:250px; overflow-wrap:break-word;">{{ $s['notes'] ?? '—' }}</td>
-          <td style="font-size:0.8rem;">{{ \Carbon\Carbon::parse($s['date'])->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}</td>
+          <td style="font-size:0.8rem; white-space: nowrap;">{{ \Carbon\Carbon::parse($s['date'])->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}</td>
+          <td style="font-size:0.9rem; min-width: 300px; max-width: 500px; overflow-wrap: break-word; white-space: normal; word-break: break-word; vertical-align: middle;">{{ $s['notes'] ?? '—' }}</td>
         </tr>
       @empty
         <tr><td colspan="5" class="text-center text-muted">No historical logs found.</td></tr>

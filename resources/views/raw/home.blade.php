@@ -119,20 +119,25 @@
     </div>
   </form>
 
-  <div class="table-container">
-    <table>
+  <div class="table-container" style="overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch;">
+    <table style="width: 100%; min-width: 800px; border-collapse: collapse;">
       <thead>
-        <tr><th>Product</th><th>Qty</th><th>Notes</th><th>Date</th></tr>
+        <tr>
+          <th style="white-space: nowrap;">Product</th>
+          <th style="white-space: nowrap;">Qty</th>
+          <th style="white-space: nowrap;">Date</th>
+          <th style="white-space: nowrap;">Notes</th>
+        </tr>
       </thead>
       <tbody>
         @forelse($paginated as $s)
           <tr>
-            <td>{{ $s['productName'] }}</td>
-            <td style="font-weight:bold; color:{{ $s['quantity'] > 0 ? 'var(--secondary)' : 'var(--danger)' }}">
+            <td style="white-space: nowrap;">{{ $s['productName'] }}</td>
+            <td style="font-weight:bold; color:{{ $s['quantity'] > 0 ? 'var(--secondary)' : 'var(--danger)' }}; white-space: nowrap;">
               {{ $s['quantity'] > 0 ? '+' : '' }}{{ number_format($s['quantity'], 2) }} kg
             </td>
-            <td style="font-size:0.9rem; max-width:250px; overflow-wrap:break-word;">{{ $s['notes'] ?? '—' }}</td>
-            <td style="font-size:0.8rem;">{{ \Carbon\Carbon::parse($s['date'])->format('d M Y, h:i A') }}</td>
+            <td style="font-size:0.8rem; white-space: nowrap;">{{ \Carbon\Carbon::parse($s['date'])->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}</td>
+            <td style="font-size:0.9rem; min-width: 300px; max-width: 500px; overflow-wrap: break-word; white-space: normal; word-break: break-word; vertical-align: middle;">{{ $s['notes'] ?? '—' }}</td>
           </tr>
         @empty
           <tr><td colspan="4" class="text-center text-muted">No records found.</td></tr>
