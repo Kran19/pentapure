@@ -48,34 +48,37 @@ class CashierController extends Controller
     public function storeTransaction(Request $request)
     {
         $request->validate([
-            'type'        => 'required|in:IN,OUT',
-            'amount'      => 'required|numeric|min:0.01',
-            'bill_file'   => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+            'transactions' => 'required|array|min:1',
+            'transactions.*.type' => 'required|in:IN,OUT',
+            'transactions.*.amount' => 'required|numeric|min:0.01',
+            'transactions.*.category' => 'nullable|string',
+            'transactions.*.note' => 'nullable|string',
+            'transactions.*.reference' => 'nullable|string',
         ]);
 
         $userArray = $this->authUser();
         $userModel = User::find($userArray['id']);
 
-        $tx = \DB::transaction(function() use ($request, $userArray, $userModel) {
-            $tx = Transaction::create([
-                'user_id'     => $userArray['id'],
-                'type'        => $request->type,
-                'amount'      => $request->amount,
-                'category'    => $request->category ?? 'general',
-                'note'        => $request->note,
-                'reference'   => $request->reference,
-                'site'        => $userModel ? $userModel->branch : null,
-                'description' => $request->description,
-            ]);
+        \DB::transaction(function() use ($request, $userArray, $userModel) {
+            foreach ($request->transactions as $idx => $tData) {
+                $tx = Transaction::create([
+                    'user_id'     => $userArray['id'],
+                    'type'        => $tData['type'],
+                    'amount'      => $tData['amount'],
+                    'category'    => $tData['category'] ?? 'general',
+                    'note'        => $tData['note'] ?? null,
+                    'reference'   => $tData['reference'] ?? null,
+                    'site'        => $userModel ? $userModel->branch : null,
+                ]);
 
-            // Handle optional bill file on creation
-            if ($request->hasFile('bill_file')) {
-                $this->saveBillFile($request->file('bill_file'), $tx->id, 0);
+                // Handle optional bill file on creation via index
+                if ($request->hasFile("bills.{$idx}")) {
+                    $this->saveBillFile($request->file("bills.{$idx}"), $tx->id, 0);
+                }
             }
-            return $tx;
         });
 
-        return response()->json(['success' => true, 'message' => "Transaction ({$request->type}) saved!", 'transaction_id' => $tx->id]);
+        return response()->json(['success' => true, 'message' => 'All transactions saved successfully!']);
     }
 
     public function updateTransaction(Request $request, $id)
