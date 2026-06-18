@@ -105,7 +105,7 @@
               <span class="badge" style="background:#f1c40f; color:#000;">OUT</span>
             @endif
           </td>
-          <td style="font-weight:bold; color:{{ $s['transaction_type'] === 'IN' ? 'var(--secondary)' : 'var(--warning)' }};">
+          <td style="font-weight:bold; color:{{ $s['transaction_type'] === 'IN' ? '#2ecc71' : '#f1c40f' }};">
             {{ $s['transaction_type'] === 'IN' ? '+' : '-' }}{{ number_format($s['quantity'], 2) }} {{ $s['unit'] }}
           </td>
           <td style="font-size:0.9rem; max-width:250px; overflow-wrap:break-word;">{{ $s['notes'] ?? '—' }}</td>
