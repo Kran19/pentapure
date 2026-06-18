@@ -28,7 +28,6 @@
                 {{ $s['name'] }}
               </a>
             </div>
-            <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Grade: <span class="badge badge-info">{{ $s['grade'] }}</span></div>
           </div>
           <div style="text-align:right;">
             <div style="font-size:1.4rem; font-weight:bold; color:var(--primary-light);">{{ number_format($s['quantity'], 2) }} <span style="font-size:0.9rem; color:var(--text-muted);">{{ $s['unit'] }}</span></div>
@@ -123,19 +122,20 @@
   <div class="table-container">
     <table>
       <thead>
-        <tr><th>Product</th><th>Qty</th><th>Date</th></tr>
+        <tr><th>Product</th><th>Qty</th><th>Notes</th><th>Date</th></tr>
       </thead>
       <tbody>
         @forelse($paginated as $s)
           <tr>
-            <td>{{ $s['productName'] }} <br><small class="text-muted">{{ $s['grade'] }}</small></td>
+            <td>{{ $s['productName'] }}</td>
             <td style="font-weight:bold; color:{{ $s['quantity'] > 0 ? 'var(--secondary)' : 'var(--danger)' }}">
               {{ $s['quantity'] > 0 ? '+' : '' }}{{ number_format($s['quantity'], 2) }} kg
             </td>
+            <td style="font-size:0.9rem; max-width:250px; overflow-wrap:break-word;">{{ $s['notes'] ?? '—' }}</td>
             <td style="font-size:0.8rem;">{{ \Carbon\Carbon::parse($s['date'])->format('d M Y, h:i A') }}</td>
           </tr>
         @empty
-          <tr><td colspan="3" class="text-center text-muted">No records found.</td></tr>
+          <tr><td colspan="4" class="text-center text-muted">No records found.</td></tr>
         @endforelse
       </tbody>
     </table>

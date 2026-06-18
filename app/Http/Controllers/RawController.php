@@ -37,6 +37,7 @@ class RawController extends Controller
                 'transaction_type' => $s->transaction_type,
                 'date'             => $s->created_at->toISOString(),
                 'unit'             => $s->product?->unit ?? 'kg',
+                'notes'            => $s->notes,
             ]);
 
         $rawMaterials = Product::raw()->active()->visibleTo($user['role'])->get(['id', 'name', 'unit', 'image_url']);

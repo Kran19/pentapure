@@ -88,7 +88,6 @@
     <thead>
       <tr>
         <th>Product Name</th>
-        <th>Grade</th>
         <th>Type</th>
         <th>Quantity</th>
         <th>Notes</th>
@@ -99,7 +98,6 @@
       @forelse($paginated as $s)
         <tr>
           <td style="font-weight:600;">{{ $s['productName'] }}</td>
-          <td><span class="badge badge-info">{{ $s['grade'] }}</span></td>
           <td>
             @if($s['transaction_type'] === 'IN')
               <span class="badge" style="background:#2ecc71; color:#fff;">IN</span>
@@ -114,7 +112,7 @@
           <td style="font-size:0.8rem;">{{ \Carbon\Carbon::parse($s['date'])->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}</td>
         </tr>
       @empty
-        <tr><td colspan="6" class="text-center text-muted">No historical logs found.</td></tr>
+        <tr><td colspan="5" class="text-center text-muted">No historical logs found.</td></tr>
       @endforelse
     </tbody>
   </table>
