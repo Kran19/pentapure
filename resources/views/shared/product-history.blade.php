@@ -44,7 +44,7 @@
                         @endif
                     </td>
 
-                    <td style="font-weight:bold; color:{{ $log->transaction_type === 'IN' ? 'var(--secondary)' : 'var(--danger)' }}">
+                    <td style="font-weight:bold; color:{{ $log->transaction_type === 'IN' ? '#2ecc71' : '#e11d48' }}">
                         {{ $log->transaction_type === 'IN' ? '+' : '-' }}{{ number_format($log->quantity, 2) }}
                     </td>
                     <td>{{ $log->location->name ?? 'Default' }}</td>
