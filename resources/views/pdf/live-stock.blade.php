@@ -5,12 +5,11 @@
     <title>PentaPure - Live Stock Valuation Report</title>
         <style>
         @page { margin: 18px; }
-        * { box-sizing: border-box; }
-        body { font-family: DejaVu Sans, sans-serif; color: #101828; font-size: 13px; line-height: 1.45; text-transform: uppercase; }
+        * { box-sizing: border-box; }        body { font-family: DejaVu Sans, sans-serif; color: #101828; font-size: 13px; line-height: 1.45; text-transform: uppercase; }
         table td { color: #101828 !important; }
-        table th { color: #e3c203 !important; }
+        table th { color: #f8c300 !important; }
 
-        .page { border: 1px solid #1f2937; padding: 42px 46px 24px; min-height: 1060px; border-bottom: 7px solid #f8c300; }
+        .page { border: 1px solid #1e40af; padding: 42px 46px 24px; min-height: 1060px; border-bottom: 7px solid #f8c300; }
         .top { display: table; width: 100%; padding-bottom: 22px; border-bottom: 1px solid #667085; }
         .brand, .contact { display: table-cell; vertical-align: top; width: 50%; }
         .contact { text-align: left; padding-left: 110px; font-size: 14px; }
@@ -24,13 +23,13 @@
         .meta-row { margin-bottom: 11px; }
         .label { display: inline-block; min-width: 130px; font-weight: 600; }
         .colon { display: inline-block; width: 20px; text-align: center; }
-        .section-label { background: #f8c300; color: #2b241c; display: inline-block; padding: 8px 28px; border-radius: 4px; font-weight: 700; text-transform: uppercase; font-size: 15px; }
+        .section-label { background: #1e40af; color: #ffffff; display: inline-block; padding: 8px 28px; border-radius: 4px; font-weight: 700; text-transform: uppercase; font-size: 15px; }
         .box { border: 1px solid #d0d5dd; border-radius: 5px; padding: 28px 30px; margin-top: -1px; margin-bottom: 30px; background-color: #fffdf5; }
         .details { display: table; width: 100%; }
         .details-col { display: table-cell; width: 50%; vertical-align: top; }
         .divider { border-left: 1px solid #d0d5dd; padding-left: 34px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-        th { background: #2b241c; color: #f8c300; padding: 14px 10px; border: 1px solid #667085; font-size: 14px; text-align: left; }
+        th { background: #1e40af; color: #f8c300; padding: 14px 10px; border: 1px solid #1e40af; font-size: 14px; text-align: left; }
         td { padding: 13px 10px; border: 1px solid #d9dee7; vertical-align: top; }
         td.center, th.center { text-align: center; }
         td.amount { text-align: right; font-weight: 700; }
@@ -45,7 +44,8 @@
         .summary-label { font-size: 12px; margin-top: 4px; color: #667085; }
         .footer { margin-top: 38px; padding-top: 26px; border-top: 1px solid #98a2b3; display: table; width: 100%; }
         .notes, .sign { display: table-cell; width: 50%; vertical-align: bottom; }
-        .notes-title { color: #2b241c; font-weight: 800; margin-bottom: 12px; }
+        .notes-title { color: #1e40af; font-weight: 800; margin-bottom: 12px; }
+
         .sign { text-align: center; padding-left: 130px; }
         .scribble { font-family: DejaVu Sans, sans-serif; font-size: 28px; margin-bottom: 6px; }
         .line { border-top: 1px solid #667085; margin: 0 auto 8px; width: 210px; }
@@ -67,12 +67,26 @@
             <div>www.pentapure.com</div>
         </div>
     </div>
-
-    <div class="title">Live Stock Valuation Report</div>
+    <div class="title">
+        @if(!empty($startDate) || !empty($endDate))
+            Stock Valuation Report <br>
+            <span style="font-size: 16px; font-weight: normal; color: #667085; text-transform: none;">
+                @if(!empty($startDate) && !empty($endDate))
+                    From {{ \Carbon\Carbon::parse($startDate)->format('d M Y') }} To {{ \Carbon\Carbon::parse($endDate)->format('d M Y') }}
+                @elseif(!empty($startDate))
+                    From {{ \Carbon\Carbon::parse($startDate)->format('d M Y') }} Onwards
+                @else
+                    Up To {{ \Carbon\Carbon::parse($endDate)->format('d M Y') }}
+                @endif
+            </span>
+        @else
+            Live Stock Valuation Report
+        @endif
+    </div>
 
     <div class="meta">
         <div class="meta-col">
-            <div class="meta-row"><span class="label">Report Type</span><span class="colon">:</span>Stock Valuation</div>
+            <div class="meta-row"><span class="label">Report Type</span><span class="colon">:</span>{{ (empty($startDate) && empty($endDate)) ? 'Stock Valuation (Live)' : 'Stock Valuation (Historical)' }}</div>
             <div class="meta-row"><span class="label">Generated On</span><span class="colon">:</span>{{ $generatedOn }}</div>
         </div>
         <div class="meta-col">
@@ -123,8 +137,8 @@
             @endforelse
             @if(!empty($items))
                 <tr style="background-color: #fffdf5; font-weight: bold; font-size: 14px;">
-                    <td colspan="6" style="text-align: right; border-top: 2px solid #2b241c; padding: 15px 10px;">Total Stock Valuation (Ref):</td>
-                    <td class="amount" style="border-top: 2px solid #2b241c; padding: 15px 10px; color: #b37400;">₹{{ number_format($totalValuation, 2) }}</td>
+                    <td colspan="6" style="text-align: right; border-top: 2px solid #1e40af; padding: 15px 10px;">Total Stock Valuation (Ref):</td>
+                    <td class="amount" style="border-top: 2px solid #1e40af; padding: 15px 10px; color: #b37400;">₹{{ number_format($totalValuation, 2) }}</td>
                 </tr>
             @endif
         </tbody>
@@ -133,7 +147,14 @@
     <div class="footer">
         <div class="notes">
             <div class="notes-title">Notes:</div>
-            <div>This is a system generated report representing live stock estimates.<br>Valuations are based on reference costs at product creation.</div>
+            <div>
+                @if(!empty($startDate) || !empty($endDate))
+                    This is a system generated report representing stock estimates for the selected period.<br>
+                @else
+                    This is a system generated report representing live stock estimates.<br>
+                @endif
+                Valuations are based on reference costs at product creation.
+            </div>
         </div>
 
         <div class="sign">

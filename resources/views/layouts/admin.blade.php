@@ -85,9 +85,15 @@
             🏷️ Products Master
           </a>
           @endif
+
           @if($can('module_stock'))
           <a href="{{ url('admin/stock') }}" class="nav-item {{ $seg=='stock'?'active':'' }}">
             📦 Live Stock
+          </a>
+          @endif
+          @if($can('module_grades'))
+          <a href="{{ url('admin/grades') }}" class="nav-item {{ $seg=='grades'?'active':'' }}">
+            ✅ Grades Master
           </a>
           @endif
           @if($can('module_po'))
@@ -98,11 +104,6 @@
           @if($can('module_logs'))
           <a href="{{ url('admin/logs') }}" class="nav-item {{ $seg=='logs'?'active':'' }}">
             🕐 Activity Logs
-          </a>
-          @endif
-          @if($can('module_grades'))
-          <a href="{{ url('admin/grades') }}" class="nav-item {{ $seg=='grades'?'active':'' }}">
-            ✅ Grades Master
           </a>
           @endif
 

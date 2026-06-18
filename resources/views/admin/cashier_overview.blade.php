@@ -32,8 +32,34 @@
         </div>
     </div>
 
+    <!-- Cashier Breakdown -->
+    <div style="margin-top:0.5rem; margin-bottom:2rem;">
+        <h3 class="mb-1">Cashier Breakdown</h3>
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:1rem;">
+            @foreach($pageData['summary']['byCashier'] as $vals)
+            <div class="card" style="padding:1rem;">
+                <div style="font-weight:600; color:var(--primary-light); margin-bottom:8px; border-bottom:1px solid var(--glass-border); padding-bottom:5px;">
+                    {{ strtoupper($vals['name']) }}
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
+                    <span style="color:var(--text-muted);">In:</span>
+                    <span style="color:var(--secondary); font-weight:600;">₹{{ number_format($vals['in'], 2) }}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
+                    <span style="color:var(--text-muted);">Out:</span>
+                    <span style="color:var(--danger); font-weight:600;">₹{{ number_format($vals['out'], 2) }}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-top:5px; padding-top:5px; border-top:1px dashed var(--glass-border);">
+                    <span style="color:var(--text-muted);">Balance:</span>
+                    <span style="font-weight:bold; color:{{ $vals['balance'] >= 0 ? 'var(--secondary)' : 'var(--danger)' }};">₹{{ number_format($vals['balance'], 2) }}</span>
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
+
     <!-- Details Table -->
-    <div class="card" style="padding:1.2rem;">
+    <div class="card" style="padding:1.2rem; margin-bottom:2rem;">
         <div class="card-title">Transaction Ledger</div>
         <div class="table-container">
             <table id="admin-cashier-table">
@@ -68,32 +94,6 @@
                     @endforeach
                 </tbody>
             </table>
-        </div>
-    </div>
-
-    <!-- Cashier Breakdown -->
-    <div style="margin-top:2rem;">
-        <h3 class="mb-1">Cashier Breakdown</h3>
-        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:1rem;">
-            @foreach($pageData['summary']['byCashier'] as $vals)
-            <div class="card" style="padding:1rem;">
-                <div style="font-weight:600; color:var(--primary-light); margin-bottom:8px; border-bottom:1px solid var(--glass-border); padding-bottom:5px;">
-                    {{ strtoupper($vals['name']) }}
-                </div>
-                <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
-                    <span style="color:var(--text-muted);">In:</span>
-                    <span style="color:var(--secondary); font-weight:600;">₹{{ number_format($vals['in'], 2) }}</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
-                    <span style="color:var(--text-muted);">Out:</span>
-                    <span style="color:var(--danger); font-weight:600;">₹{{ number_format($vals['out'], 2) }}</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-top:5px; padding-top:5px; border-top:1px dashed var(--glass-border);">
-                    <span style="color:var(--text-muted);">Balance:</span>
-                    <span style="font-weight:bold; color:{{ $vals['balance'] >= 0 ? 'var(--secondary)' : 'var(--danger)' }};">₹{{ number_format($vals['balance'], 2) }}</span>
-                </div>
-            </div>
-            @endforeach
         </div>
     </div>
 

@@ -69,12 +69,14 @@
       </div>
       <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Finished Stock (kg)</div>
     </a>
-    <a href="{{ route('admin.logs') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
+
+    <a href="{{ route('admin.dispatch.activity') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
       <div style="font-size:1.6rem; font-weight:bold; color:var(--text-main); word-break:break-word;">
         {{ $pageData['totalOrders'] ?? 0 }}
       </div>
       <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Total Orders</div>
     </a>
+
     <a href="{{ route('admin.logs') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
       <div style="font-size:1.6rem; font-weight:bold; color:var(--secondary); word-break:break-word;">
         ₹{{ number_format($pageData['totalRevenue'] ?? 0, 0) }}

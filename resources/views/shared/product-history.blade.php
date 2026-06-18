@@ -38,11 +38,12 @@
                     <td>{{ $log->user->name ?? 'System' }}</td>
                     <td>
                         @if($log->transaction_type === 'IN')
-                            <span class="badge badge-success" style="background:var(--secondary); color:#000;">IN</span>
+                            <span class="badge" style="background:#2ecc71; color:#fff;">IN</span>
                         @else
-                            <span class="badge badge-danger" style="background:var(--danger); color:#fff;">OUT</span>
+                            <span class="badge" style="background:#f1c40f; color:#000;">OUT</span>
                         @endif
                     </td>
+
                     <td style="font-weight:bold; color:{{ $log->transaction_type === 'IN' ? 'var(--secondary)' : 'var(--danger)' }}">
                         {{ $log->transaction_type === 'IN' ? '+' : '-' }}{{ number_format($log->quantity, 2) }}
                     </td>

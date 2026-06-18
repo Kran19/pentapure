@@ -375,11 +375,22 @@ class AdminController extends Controller
             $stages = explode(',', $stages);
         }
         $stages = array_map('strtoupper', $stages);
+        
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
 
-        $stockData = DB::table('stocks')
+        $stockQuery = DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
-            ->whereIn('stocks.stage', $stages)
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.rate')
+            ->whereIn('stocks.stage', $stages);
+
+        if ($startDate) {
+            $stockQuery->where('stocks.created_at', '>=', $startDate . ' 00:00:00');
+        }
+        if ($endDate) {
+            $stockQuery->where('stocks.created_at', '<=', $endDate . ' 23:59:59');
+        }
+
+        $stockData = $stockQuery->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.rate')
             ->selectRaw("
                 stocks.product_id as productId,
                 products.name,
@@ -400,12 +411,21 @@ class AdminController extends Controller
             // Fetch live locations for this item from DB
             $locStrings = [];
             $assignedSum = 0;
-            $locs = DB::table('stocks')
+
+            $locQuery = DB::table('stocks')
                 ->leftJoin('locations', 'stocks.location_id', '=', 'locations.id')
                 ->where('stocks.product_id', $s->productId)
                 ->where('stocks.stage', $s->stage)
-                ->where('stocks.grade', $s->grade)
-                ->groupBy('stocks.location_id', 'locations.name')
+                ->where('stocks.grade', $s->grade);
+
+            if ($startDate) {
+                $locQuery->where('stocks.created_at', '>=', $startDate . ' 00:00:00');
+            }
+            if ($endDate) {
+                $locQuery->where('stocks.created_at', '<=', $endDate . ' 23:59:59');
+            }
+
+            $locs = $locQuery->groupBy('stocks.location_id', 'locations.name')
                 ->selectRaw("
                     stocks.location_id,
                     IFNULL(locations.name, 'Unspecified') as name,
@@ -449,10 +469,23 @@ class AdminController extends Controller
             'totalValuation' => $totalValuation,
             'generatedOn' => now()->format('d M Y, h:i A'),
             'stages' => $stages,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
         ];
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.live-stock', $pdfData)->setPaper('A4', 'portrait');
-        return $pdf->download('PentaPure_Live_Stock_Valuation_Report_' . now()->format('Ymd_His') . '.pdf');
+        
+        if ($startDate && $endDate) {
+            $filename = 'PentaPure_Stock_Valuation_Report_' . \Carbon\Carbon::parse($startDate)->format('Ymd') . '_to_' . \Carbon\Carbon::parse($endDate)->format('Ymd') . '.pdf';
+        } elseif ($startDate) {
+            $filename = 'PentaPure_Stock_Valuation_Report_From_' . \Carbon\Carbon::parse($startDate)->format('Ymd') . '.pdf';
+        } elseif ($endDate) {
+            $filename = 'PentaPure_Stock_Valuation_Report_Up_To_' . \Carbon\Carbon::parse($endDate)->format('Ymd') . '.pdf';
+        } else {
+            $filename = 'PentaPure_Live_Stock_Valuation_Report_' . now()->format('Ymd_His') . '.pdf';
+        }
+
+        return $pdf->download($filename);
     }
 
     public function liveStockApi()

@@ -166,18 +166,19 @@ class RawController extends Controller
     {
         $ledger = Stock::with('product')
             ->where('stage', 'RAW')
-            ->where('transaction_type', 'IN')
             ->orderByDesc('created_at')
             ->get()
             ->map(fn($s) => [
-                'id'          => $s->id,
-                'productId'   => $s->product_id,
-                'productName' => $s->product?->name,
-                'image'       => $s->product?->image_url,
-                'quantity'    => $s->quantity,
-                'unit'        => $s->product?->unit ?? 'kg',
-                'grade'       => $s->grade,
-                'date'        => $s->created_at->toISOString(),
+                'id'               => $s->id,
+                'productId'        => $s->product_id,
+                'productName'      => $s->product?->name,
+                'image'            => $s->product?->image_url,
+                'quantity'         => $s->quantity,
+                'unit'             => $s->product?->unit ?? 'kg',
+                'grade'            => $s->grade,
+                'date'             => $s->created_at->toISOString(),
+                'transaction_type' => $s->transaction_type,
+                'notes'            => $s->notes,
             ]);
 
         $purchaseOrders = PurchaseOrder::with('product')

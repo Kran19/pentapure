@@ -843,7 +843,7 @@ function adminExportStockPdf() {
     html: `
       <div style="text-align:left; font-size:0.95rem; color:#e6edf3;">
         <p style="margin-bottom:12px; color:#8b949e;">Select the stock panels to include in the PDF report:</p>
-        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:10px;">
+        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
           <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
             <input type="checkbox" id="export-stage-raw" checked style="width:20px; height:20px; cursor:pointer;"> 🌿 Raw Material Stock
           </label>
@@ -854,10 +854,34 @@ function adminExportStockPdf() {
             <input type="checkbox" id="export-stage-finished" checked style="width:20px; height:20px; cursor:pointer;"> ✅ Finished Goods Stock
           </label>
         </div>
+        
+        <div style="display:flex; gap:10px; margin-bottom:8px;">
+          <div style="flex:1;">
+            <label style="display:block; text-align:left; font-size:0.82rem; font-weight:600; color:#8b949e; margin-bottom:0.35rem;">
+              From Date (Optional)
+            </label>
+            <input type="date" id="export-start-date" style="
+              width:100%; padding:0.65rem 0.8rem; border-radius:8px;
+              background:#161b22; border:1px solid #30363d; color:#e6edf3;
+              font-size:0.95rem; outline:none; box-sizing:border-box;
+            ">
+          </div>
+          <div style="flex:1;">
+            <label style="display:block; text-align:left; font-size:0.82rem; font-weight:600; color:#8b949e; margin-bottom:0.35rem;">
+              To Date (Optional)
+            </label>
+            <input type="date" id="export-end-date" style="
+              width:100%; padding:0.65rem 0.8rem; border-radius:8px;
+              background:#161b22; border:1px solid #30363d; color:#e6edf3;
+              font-size:0.95rem; outline:none; box-sizing:border-box;
+            ">
+          </div>
+        </div>
+        <p style="margin-top:6px; font-size:0.8rem; color:#8b949e;">Leave empty to generate live stock report.</p>
       </div>
     `,
-    background: '#e7e7e7',
-    color: '#000000',
+    background: '#0d1117',
+    color: '#e6edf3',
     showCancelButton: true,
     confirmButtonText: 'Generate Report',
     confirmButtonColor: '#238636',
@@ -866,6 +890,8 @@ function adminExportStockPdf() {
       const raw = document.getElementById('export-stage-raw').checked;
       const semi = document.getElementById('export-stage-semi').checked;
       const finished = document.getElementById('export-stage-finished').checked;
+      const startDate = document.getElementById('export-start-date').value;
+      const endDate = document.getElementById('export-end-date').value;
       
       const stages = [];
       if (raw) stages.push('RAW');
@@ -876,12 +902,18 @@ function adminExportStockPdf() {
         Swal.showValidationMessage('Please select at least one stock panel.');
         return false;
       }
-      return stages;
+
+      if (startDate && endDate && startDate > endDate) {
+        Swal.showValidationMessage('From Date cannot be later than To Date.');
+        return false;
+      }
+
+      return { stages, startDate, endDate };
     }
   }).then(result => {
     if (!result.isConfirmed) return;
     
-    const stages = result.value;
+    const { stages, startDate, endDate } = result.value;
     
     const form = document.createElement('form');
     form.method = 'POST';
@@ -899,6 +931,22 @@ function adminExportStockPdf() {
     stagesInput.name = 'stages';
     stagesInput.value = stages.join(',');
     form.appendChild(stagesInput);
+    
+    if (startDate) {
+      const startInput = document.createElement('input');
+      startInput.type = 'hidden';
+      startInput.name = 'start_date';
+      startInput.value = startDate;
+      form.appendChild(startInput);
+    }
+
+    if (endDate) {
+      const endInput = document.createElement('input');
+      endInput.type = 'hidden';
+      endInput.name = 'end_date';
+      endInput.value = endDate;
+      form.appendChild(endInput);
+    }
     
     document.body.appendChild(form);
     form.submit();

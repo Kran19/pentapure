@@ -86,18 +86,35 @@
 <div class="table-container">
   <table>
     <thead>
-      <tr><th>Product Name</th><th>Grade</th><th>Quantity</th><th>Date</th></tr>
+      <tr>
+        <th>Product Name</th>
+        <th>Grade</th>
+        <th>Type</th>
+        <th>Quantity</th>
+        <th>Notes</th>
+        <th>Date</th>
+      </tr>
     </thead>
     <tbody>
       @forelse($paginated as $s)
         <tr>
           <td style="font-weight:600;">{{ $s['productName'] }}</td>
           <td><span class="badge badge-info">{{ $s['grade'] }}</span></td>
-          <td style="font-weight:bold; color:var(--secondary);">+{{ number_format($s['quantity'], 2) }} {{ $s['unit'] }}</td>
+          <td>
+            @if($s['transaction_type'] === 'IN')
+              <span class="badge" style="background:#2ecc71; color:#fff;">IN</span>
+            @else
+              <span class="badge" style="background:#f1c40f; color:#000;">OUT</span>
+            @endif
+          </td>
+          <td style="font-weight:bold; color:{{ $s['transaction_type'] === 'IN' ? 'var(--secondary)' : 'var(--warning)' }};">
+            {{ $s['transaction_type'] === 'IN' ? '+' : '-' }}{{ number_format($s['quantity'], 2) }} {{ $s['unit'] }}
+          </td>
+          <td style="font-size:0.9rem; max-width:250px; overflow-wrap:break-word;">{{ $s['notes'] ?? '—' }}</td>
           <td style="font-size:0.8rem;">{{ \Carbon\Carbon::parse($s['date'])->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}</td>
         </tr>
       @empty
-        <tr><td colspan="4" class="text-center text-muted">No historical logs found.</td></tr>
+        <tr><td colspan="6" class="text-center text-muted">No historical logs found.</td></tr>
       @endforelse
     </tbody>
   </table>
