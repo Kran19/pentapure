@@ -94,7 +94,7 @@ class SemiController extends Controller
         $pageData = [
             'rawStock' => $rawStock,
             'grades'   => $grades,
-            'products' => Product::with('grades')->whereIn('type', ['SEMI', 'FINISHED'])->active()->visibleTo($this->authUser()['role'])->get()->map(fn($p)=>[
+            'products' => Product::with('grades')->active()->visibleTo($this->authUser()['role'])->get()->map(fn($p)=>[
                 'id'=>$p->id,'name'=>$p->name,'type'=>$p->type,'unit'=>$p->unit,
                 'gradeNames'=>$p->grades->pluck('name')
             ]),
