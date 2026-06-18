@@ -8,7 +8,7 @@
     <label>Target Product</label>
     <select id="prod-output" onchange="app.onTargetProductSelected()">
       <option value="" disabled selected>-- Select Product --</option>
-      @foreach($pageData['products'] as $p)
+      @foreach(collect($pageData['products'])->filter(fn($p) => $p['type'] !== 'RAW') as $p)
         <option value="{{ $p['id'] }}">{{ $p['name'] }}</option>
       @endforeach
     </select>
