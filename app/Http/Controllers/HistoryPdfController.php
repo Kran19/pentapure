@@ -181,7 +181,7 @@ class HistoryPdfController extends Controller
     private function salesRows(Carbon $from, Carbon $to): array
     {
         $q = request('q');
-        $query = Order::with(['company', 'orderItems'])->whereBetween('created_at', [$from, $to]);
+        $query = Order::with(['company', 'items'])->whereBetween('created_at', [$from, $to]);
         if ($q) {
             $query->where(function($sub) use ($q) {
                 $sub->whereHas('company', function($qc) use ($q) {
@@ -199,8 +199,8 @@ class HistoryPdfController extends Controller
                 'dispatch_status' => $o->dispatch_status,
                 'amount' => (float) $o->total,
                 'company_name' => $o->company?->name ?? '-',
-                'total_items' => count($o->orderItems),
-                'total_qty' => collect($o->orderItems)->sum('quantity'),
+                'total_items' => count($o->items),
+                'total_qty' => collect($o->items)->sum('quantity'),
             ])->toArray();
     }
 

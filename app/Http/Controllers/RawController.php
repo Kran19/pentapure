@@ -112,7 +112,7 @@ class RawController extends Controller
             return response()->json(['success' => true, 'message' => 'Raw material added to stock!']);
         }
 
-        return redirect('/raw/home')->with('success', 'Raw material added to stock!');
+        return redirect()->route('raw.home')->with('success', 'Raw material added to stock!');
     }
 
     // ── PO ─────────────────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             StockSeeder::class,
 
             MonthlyAttendanceSeeder::class,
+            SimulationSeeder::class,
         ]);
     }
 }

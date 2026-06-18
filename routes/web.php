@@ -13,7 +13,7 @@ use App\Http\Controllers\AttendanceController;
 use Illuminate\Support\Facades\Route;
 
 // ── Root Redirect ──────────────────────────────────────────────────────────
-Route::get('/', fn () => redirect('/login'));
+Route::get('/', fn () => redirect()->route('login'));
 
 // Push Subscription Routes
 Route::post('/notifications/subscribe', [\App\Http\Controllers\PushSubscriptionController::class, 'subscribe']);

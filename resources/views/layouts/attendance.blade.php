@@ -64,7 +64,7 @@
 
           <!-- Logout -->
           <div style="margin-top:auto;border-top:1px solid var(--glass-border);padding-top:0.5rem;">
-            <form method="POST" action="/logout" style="margin:0;">
+            <form method="POST" action="{{ route('logout') }}" style="margin:0;">
               @csrf
               <button type="submit" class="nav-item"
                 style="width:100%;background:none;border:none;cursor:pointer;color:var(--danger);display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1.2rem;font-size:1rem;">

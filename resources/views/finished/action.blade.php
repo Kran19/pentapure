@@ -105,7 +105,7 @@
     .then(res => {
       if (res.success) {
         app.toast(res.message || 'Finished Production logged successfully!');
-        setTimeout(() => window.location.href = '/finished/home', 1000);
+        setTimeout(() => window.location.href = '{{ route('finished.home') }}', 1000);
       } else {
         app.toast(res.message || 'Error logging production', 'error');
         btn.disabled = false;

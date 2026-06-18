@@ -17,11 +17,11 @@ class UserActivityNotification extends Notification
     public $message;
     public $url;
 
-    public function __construct($title, $message, $url = '/admin/logs')
+    public function __construct($title, $message, $url = null)
     {
         $this->title = $title;
         $this->message = $message;
-        $this->url = $url;
+        $this->url = $url ?? route('admin.logs');
     }
 
     public function via($notifiable): array

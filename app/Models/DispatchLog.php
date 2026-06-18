@@ -36,7 +36,7 @@ class DispatchLog extends Model
             $admins = \App\Models\User::where('role', 'ADMIN')->get();
             $message = "{$log->user->name} dispatched order #{$log->order_id}";
             foreach ($admins as $admin) {
-                $admin->notify(new \App\Notifications\UserActivityNotification('Dispatch Alert', $message, '/admin/logs'));
+                $admin->notify(new \App\Notifications\UserActivityNotification('Dispatch Alert', $message, route('admin.logs')));
             }
         });
     }

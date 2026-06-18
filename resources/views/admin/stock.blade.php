@@ -46,7 +46,7 @@
                 <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" style="color:var(--danger);">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 </button>
-                <button class="btn btn-sm" onclick="window.location.href='/product/{{ $s->productId }}/{{ $s->stage }}/{{ $s->grade }}/history'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
+                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
               </div>
             </td>
           </tr>
@@ -87,7 +87,7 @@
                 <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" style="color:var(--danger);">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 </button>
-                <button class="btn btn-sm" onclick="window.location.href='/product/{{ $s->productId }}/{{ $s->stage }}/{{ $s->grade }}/history'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
+                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
               </div>
             </td>
           </tr>
@@ -129,7 +129,7 @@
                 <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" style="color:var(--danger);">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 </button>
-                <button class="btn btn-sm" onclick="window.location.href='/product/{{ $s->productId }}/{{ $s->stage }}/{{ $s->grade }}/history'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
+                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
               </div>
             </td>
           </tr>
@@ -596,7 +596,7 @@ const rowStyle = isLow ? 'background-color: #ff4d4d; color: #fff;' : '';
               <button class="btn-icon edit" onclick="adminSetLimit('${s.productId}', '${s.stage}', '${s.grade}', '${limit}')" title="Set Alert Limit" style="color:var(--danger);">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
               </button>
-              <button class="btn btn-sm" onclick="window.location.href='/product/${s.productId}/${s.stage}/${s.grade}/history'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
+              <button class="btn btn-sm" onclick="window.location.href='{{ url('/product') }}/' + s.productId + '/' + s.stage + '/' + s.grade + '/history'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
             </div>
           </td>
         </tr>

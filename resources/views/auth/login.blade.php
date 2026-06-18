@@ -42,7 +42,7 @@
         </div>
       </div>
 
-      <form id="login-form" action="/login" method="POST">
+      <form id="login-form" action="{{ route('login.post') }}" method="POST">
         @csrf
         <input type="hidden" id="user_id_field" name="user_id">
         <input type="hidden" id="push_subscription_field" name="push_subscription">

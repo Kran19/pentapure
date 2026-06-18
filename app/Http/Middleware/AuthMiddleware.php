@@ -12,7 +12,7 @@ class AuthMiddleware
         $user = session('auth_user');
 
         if (!$user) {
-            return redirect('/login')->with('error', 'Please login to continue.');
+            return redirect()->route('login')->with('error', 'Please login to continue.');
         }
 
         if (!empty($roles) && !in_array($user['role'], $roles)) {

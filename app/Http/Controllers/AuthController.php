@@ -57,28 +57,29 @@ class AuthController extends Controller
             }
         }
 
-        return $this->redirectToRole($user->role);
+        return $this->authenticatedRedirect();
     }
 
     public function logout()
     {
         session()->forget('auth_user');
-        return redirect('/login')->with('success', 'Logged out successfully.');
+        return redirect()->route('login')->with('success', 'Logged out successfully.');
     }
 
-    private function redirectToRole(string $role): \Illuminate\Http\RedirectResponse
+    protected function authenticatedRedirect()
     {
-        return match ($role) {
-            'ADMIN'      => redirect('/admin/home'),
-            'SUB_ADMIN'  => redirect('/admin/home'),
-            'RAW'        => redirect('/raw/home'),
-            'SEMI'       => redirect('/semi/home'),
-            'FINISHED'   => redirect('/finished/home'),
-            'SALES'      => redirect('/sales/home'),
-            'DISPATCH'   => redirect('/dispatch/home'),
-            'CASHIER'    => redirect('/cashier/home'),
-            'ATTENDANCE' => redirect('/attendance/home'),
-            default      => redirect('/login'),
+        $role = session('auth_user')['role'];
+        return match($role) {
+            'ADMIN'      => redirect()->route('admin.home'),
+            'SUB_ADMIN'  => redirect()->route('admin.home'),
+            'RAW'        => redirect()->route('raw.home'),
+            'SEMI'       => redirect()->route('semi.home'),
+            'FINISHED'   => redirect()->route('finished.home'),
+            'SALES'      => redirect()->route('sales.home'),
+            'DISPATCH'   => redirect()->route('dispatch.home'),
+            'CASHIER'    => redirect()->route('cashier.home'),
+            'ATTENDANCE' => redirect()->route('attendance.home'),
+            default      => redirect()->route('login'),
         };
     }
 }
