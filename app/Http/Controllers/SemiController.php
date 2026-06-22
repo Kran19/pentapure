@@ -50,7 +50,7 @@ class SemiController extends Controller
             ->orderByDesc('created_at')
             ->get()->map(fn($s) => [
                 'productId'   => $s->product_id,
-                'productName' => $s->product?->name,
+                'productName' => $s->product ? $s->product->formatName($s->grade) : 'Unknown',
                 'grade'       => $s->grade,
                 'quantity'    => $s->transaction_type === 'IN' ? $s->quantity : -$s->quantity,
                 'date'        => $s->created_at->toISOString(),
@@ -219,13 +219,13 @@ class SemiController extends Controller
                 'id'              => $l->id,
                 'type'            => 'SEMI',
                 'outputProductId' => $l->output_product_id,
-                'outputName'      => $l->outputProduct?->name,
+                'outputName'      => $l->outputProduct ? $l->outputProduct->formatName($l->output_grade) : 'Unknown',
                 'outputGrade'     => $l->output_grade,
                 'outputQty'       => $l->output_qty,
                 'date'            => $l->created_at->toISOString(),
                 'consumedInputs'  => $l->inputs->map(fn($i) => [
                     'productId' => $i->input_product_id,
-                    'name'      => $i->inputProduct?->name,
+                    'name'      => $i->inputProduct ? $i->inputProduct->formatName($i->input_grade) : 'Unknown',
                     'grade'     => $i->input_grade,
                     'quantity'  => $i->quantity,
                 ]),

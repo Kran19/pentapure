@@ -19,7 +19,7 @@
     <tbody>
       @forelse($pageData['purchaseOrders'] as $po)
         <tr>
-          <td style="font-weight:600;">{{ $po->product?->name }}</td>
+          <td style="font-weight:600;">{{ $po->product ? $po->product->formatName() : 'Unknown' }}</td>
           <td>{{ $po->quantity }} kg</td>
           <td><span class="badge {{ $po->status === 'DONE' ? 'badge-done' : 'badge-pending' }}">{{ $po->status === 'DONE' ? 'READ' : $po->status }}</span></td>
           <td style="font-size:0.8rem;">{{ \Carbon\Carbon::parse($po->created_at)->format('d M Y') }}</td>
@@ -45,7 +45,7 @@
         <label>Select Material</label>
         <select name="product_id" required>
             @foreach(\App\Models\Product::raw()->active()->get() as $rm)
-                <option value="{{ $rm->id }}">{{ $rm->name }}</option>
+                <option value="{{ $rm->id }}">{{ $rm->name }} - (grade- N/A) (type - raw)</option>
             @endforeach
         </select>
       </div>

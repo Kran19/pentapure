@@ -571,12 +571,12 @@ const app = {
   addInputRow() {
     // Group stock by product (sum across grades since raw has no meaningful grade for display)
     const stockItems = window.currentAvailableInputStock || [];
-    // For raw materials, combine same product entries and show total available
     const productMap = {};
     stockItems.forEach(s => {
-      const key = s.id;
+      // Use grade and stage as part of the unique key so they don't combine incorrectly
+      const key = `${s.id}_${s.grade}_${s.stage}`;
       if (!productMap[key]) {
-        productMap[key] = { id: s.id, name: s.name, grade: s.grade, quantity: parseFloat(s.quantity) };
+        productMap[key] = { id: s.id, name: s.name, grade: s.grade, stage: s.stage, quantity: parseFloat(s.quantity) };
       } else {
         productMap[key].quantity += parseFloat(s.quantity);
       }
@@ -599,7 +599,11 @@ const app = {
         <label style="font-size:0.75rem; margin-bottom:4px;">Material</label>
         <select class="prod-in-id" onchange="app.validateRowStock(this)" style="padding:0.75rem;">
           <option value="" disabled selected>Select Material</option>
-          ${products.map(s => `<option value="${s.id}|${s.grade}" data-max="${s.quantity}">${s.name} &mdash; Available: ${parseFloat(s.quantity).toFixed(2)} kg</option>`).join('')}
+          ${products.map(s => {
+            const displayStage = s.stage === 'FINISHED' ? 'FG' : (s.stage ? s.stage.toLowerCase() : 'raw');
+            const displayGrade = s.grade || 'N/A';
+            return `<option value="${s.id}|${s.grade}" data-max="${s.quantity}">${s.name} - (grade- ${displayGrade}) (type - ${displayStage}) &mdash; Available: ${parseFloat(s.quantity).toFixed(2)} kg</option>`;
+          }).join('')}
         </select>
         <div class="stock-hint" style="font-size:0.75rem; color:var(--secondary); margin-top:4px; font-weight:600; min-height:12px;"></div>
       </div>
@@ -656,8 +660,8 @@ const app = {
           this.toast(`Not enough stock for ${pName}. Max: ${available}`, 'error');
           validationFailed = true;
         }
-        // Extract just the product name (before ' — Available:' or '(')
-        const rawName = option.text.split('—')[0].split('(')[0].trim();
+        // Extract just the product name (before ' - (grade-')
+        const rawName = option.text.split(' - (grade-')[0].trim();
         inputs.push({ productId: id, grade: grade, quantity: qty, name: rawName });
       }
     });
@@ -674,8 +678,7 @@ const app = {
       <h3 style="margin-bottom:1rem; color:var(--warning);">Review Production</h3>
       <div style="background:rgba(255,255,255,0.05); padding:1rem; border-radius:10px; margin-bottom:1rem; border:1px solid var(--glass-border);">
         <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:4px;">Target Output</div>
-        <div style="font-weight:700; font-size:1.1rem; color:var(--text-main);">${outQty} kg of ${outProdName}</div>
-        ${outGrade && outGrade !== 'N/A' ? `<div style="font-size:0.85rem; margin-top:2px;">Grade: <span class="badge badge-info">${outGrade}</span></div>` : ''}
+        <div style="font-weight:700; font-size:1.1rem; color:var(--text-main);">${outQty} kg of ${outProdName} - (grade- ${outGrade || 'N/A'}) (type - ${outputType === 'FINISHED' ? 'FG' : outputType.toLowerCase()})</div>
       </div>
       
       <div style="font-size:0.9rem; font-weight:600; margin-bottom:0.8rem; color:var(--primary-light);">Materials to Consume:</div>
@@ -757,7 +760,7 @@ const app = {
         <div class="form-group">
           <label>Type</label>
           <select id="quick-p-type">
-            <option value="FINISHED" ${defaultType==='FINISHED'?'selected':''}>FINISHED</option>
+            <option value="FINISHED" ${defaultType==='FINISHED'?'selected':''}>FG</option>
             <option value="SEMI" ${defaultType==='SEMI'?'selected':''}>SEMI</option>
             <option value="RAW" ${defaultType==='RAW'?'selected':''}>RAW</option>
           </select>
@@ -815,7 +818,8 @@ const app = {
             if (sel.id === 'finished-output-id' || sel.id === 'prod-output' || sel.classList.contains('o-prod-id') || sel.classList.contains('prod-in-id') || sel.id === 'finished-input-id') {
               const opt = document.createElement('option');
               opt.value = res.product.id;
-              opt.text = `${res.product.name} (${res.product.type})`;
+              const displayType = res.product.type === 'FINISHED' ? 'FG' : (res.product.type ? res.product.type.toLowerCase() : '');
+              opt.text = `${res.product.name} (type - ${displayType})`;
               sel.appendChild(opt);
               if (sel.id === 'finished-output-id' || sel.id === 'prod-output' || sel.classList.contains('o-prod-id')) {
                 sel.value = res.product.id;
@@ -907,7 +911,10 @@ const app = {
       <div class="form-group" style="flex:1 1 100%;">
         <select class="o-prod-id" style="width:100%;" onchange="app.onSalesProductSelect(this)">
           <option value="" disabled ${!selectedProdId ? 'selected' : ''}>Product</option>
-          ${finProds.map(p => `<option value="${p.id}" ${p.id == selectedProdId ? 'selected' : ''}>${p.name} (${p.type})</option>`).join('')}
+          ${finProds.map(p => {
+            const displayType = p.type === 'FINISHED' ? 'FG' : (p.type ? p.type.toLowerCase() : '');
+            return `<option value="${p.id}" ${p.id == selectedProdId ? 'selected' : ''}>${p.name} - (grade- N/A) (type - ${displayType})</option>`;
+          }).join('')}
         </select>
       </div>
       <div class="form-group grade-container" style="flex:1 1 30%;${prefillData && prefillData.product && prefillData.product.type === 'RAW' ? ' display:none;' : ''}">
@@ -1179,7 +1186,7 @@ const app = {
         return `
         <div style="display:flex; flex-direction:column; gap:6px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-weight:500;">${i.productName} (${i.grade}) (${i.productType || 'N/A'})</span>
+            <span style="font-weight:500;">${i.productName} - (grade- ${i.grade || 'N/A'}) (type - ${i.productType === 'FINISHED' ? 'FG' : (i.productType ? i.productType.toLowerCase() : 'N/A')})</span>
             <span style="color:var(--text-muted); font-size:0.8rem;">
               Total: ${i.quantity} kg
               ${alreadyDispatched > 0 ? ` · Already sent: ${alreadyDispatched} kg` : ''}

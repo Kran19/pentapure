@@ -104,7 +104,7 @@
 
   <div id="printable-daily" style="display:none; background:white; color:black; padding:1.5rem;">
     <div style="text-align:center; border-bottom:2px solid #000; margin-bottom:1rem; padding-bottom:0.5rem;">
-      <h2 style="margin:0;">PENTAPURE FOODS & SPICES PVT.LTD.</h2>
+      <h2 style="margin:0;">FOOD & SPICES PVT.LTD.</h2>
       <h3 style="margin:5px 0;">DAILY ATTENDANCE SHEET</h3>
       <div style="font-weight:bold;">DATE: {{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}</div>
     </div>

@@ -74,15 +74,25 @@
 </div>
 
 <!-- Tabs -->
-<div style="display:flex; gap:10px; margin-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px;">
-  <a href="?tab=personal&range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&q={{ $q }}" 
-     style="text-decoration:none; padding:6px 12px; border-radius:6px; {{ $activeTab === 'personal' ? 'background:var(--primary); color:#fff;' : 'color:var(--text-muted);' }}">
-    Personal Ledger
-  </a>
-  <a href="?tab=team&range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&q={{ $q }}" 
-     style="text-decoration:none; padding:6px 12px; border-radius:6px; {{ $activeTab === 'team' ? 'background:var(--primary); color:#fff;' : 'color:var(--text-muted);' }}">
-    Team Ledger
-  </a>
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px;">
+  <div style="display:flex; gap:10px;">
+    <a href="?tab=personal&range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&q={{ $q }}" 
+       style="text-decoration:none; padding:6px 12px; border-radius:6px; {{ $activeTab === 'personal' ? 'background:var(--primary); color:#fff;' : 'color:var(--text-muted);' }}">
+      Personal Ledger
+    </a>
+    <a href="?tab=team&range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&q={{ $q }}" 
+       style="text-decoration:none; padding:6px 12px; border-radius:6px; {{ $activeTab === 'team' ? 'background:var(--primary); color:#fff;' : 'color:var(--text-muted);' }}">
+      Team Ledger
+    </a>
+  </div>
+  @if($activeTab === 'team')
+  <div>
+    <button type="button" class="btn-icon" style="background:rgba(59,130,246,0.1); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); padding:4px 10px; border-radius:6px; display:flex; align-items:center; gap:6px; width:auto;" onclick="showVisibilityInfo()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+      <span style="font-size:0.8rem;">Visibility Info</span>
+    </button>
+  </div>
+  @endif
 </div>
 
 <!-- Summary Cards -->
@@ -227,5 +237,38 @@
   document.addEventListener('DOMContentLoaded', () => {
     window.serverPageData = @json($pageData);
   });
+
+  function showVisibilityInfo() {
+    const allowed = window.serverPageData.allowedCashiers || [];
+    const disallowed = window.serverPageData.disallowedCashiers || [];
+
+    let html = '<div style="text-align:left; font-size:0.95rem;">';
+    
+    html += '<div style="margin-bottom:20px;">';
+    html += '<strong style="color:var(--secondary); display:block; border-bottom:1px solid var(--glass-border); padding-bottom:5px; margin-bottom:10px;">✅ Allowed to See:</strong>';
+    if(allowed.length > 0) {
+        html += '<ul style="margin:0; padding-left:20px; line-height:1.6;">' + allowed.map(n => `<li>${n}</li>`).join('') + '</ul>';
+    } else {
+        html += '<div style="color:var(--text-muted); font-style:italic;">You are not allowed to see anyone else.</div>';
+    }
+    html += '</div>';
+
+    html += '<div>';
+    html += '<strong style="color:var(--danger); display:block; border-bottom:1px solid var(--glass-border); padding-bottom:5px; margin-bottom:10px;">❌ Not Allowed to See:</strong>';
+    if(disallowed.length > 0) {
+        html += '<ul style="margin:0; padding-left:20px; line-height:1.6;">' + disallowed.map(n => `<li>${n}</li>`).join('') + '</ul>';
+    } else {
+        html += '<div style="color:var(--text-muted); font-style:italic;">None</div>';
+    }
+    html += '</div>';
+    html += '</div>';
+
+    Swal.fire({
+      title: 'Team Ledger Visibility',
+      html: html,
+      confirmButtonText: 'Close',
+      confirmButtonColor: 'var(--primary)'
+    });
+  }
 </script>
 @endsection

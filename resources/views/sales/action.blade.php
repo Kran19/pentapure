@@ -35,7 +35,7 @@
           <option value="ALL" {{ !empty($pageData['editOrder']) ? 'selected' : '' }}>All Products (Universal)</option>
           <option value="RAW">Raw Material Sales</option>
           <option value="SEMI">Semi-Finished Sales</option>
-          <option value="FINISHED">Finished Goods Sales</option>
+          <option value="FINISHED">FG Sales</option>
         </select>
       </div>
       

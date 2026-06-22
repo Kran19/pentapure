@@ -58,7 +58,7 @@ function selectRawMaterial(id, name, el) {
   document.querySelectorAll('.rm-card').forEach(c => c.style.borderColor = 'transparent');
   el.style.borderColor = 'var(--primary)';
   document.getElementById('raw-prod').value = id;
-  document.getElementById('raw-selected-name').innerText = 'Selected: ' + name;
+  document.getElementById('raw-selected-name').innerText = 'Selected: ' + name + ' - (grade- N/A) (type - raw)';
 }
 
 function submitRawInward(e) {

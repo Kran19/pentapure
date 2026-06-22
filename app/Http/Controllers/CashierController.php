@@ -261,13 +261,38 @@ class CashierController extends Controller
             'balance'  => $txs->where('type', 'IN')->sum('amount') - $txs->where('type', 'OUT')->sum('amount'),
         ];
 
-        // Team Ledger (All cashiers)
-        $teamTxs = Transaction::with(['bills', 'user'])
-            ->whereHas('user', function($q) {
-                $q->where('role', 'CASHIER');
-            })
-            ->orderByDesc('created_at')
-            ->get();
+        $userModel = User::find($user['id']);
+        $visibleIds = $userModel->visible_cashiers ?? [];
+        if (is_string($visibleIds)) {
+            $visibleIds = json_decode($visibleIds, true) ?? [];
+        }
+        $visibleIds = array_map('intval', $visibleIds);
+
+        // Fetch allowed and disallowed cashiers for the info modal
+        $allOtherCashiers = User::where('role', 'CASHIER')->where('id', '!=', $user['id'])->get();
+        $allowedCashiers = [];
+        $disallowedCashiers = [];
+        foreach ($allOtherCashiers as $c) {
+            if (in_array($c->id, $visibleIds)) {
+                $allowedCashiers[] = $c->name;
+            } else {
+                $disallowedCashiers[] = $c->name;
+            }
+        }
+
+        // Team Ledger (Only visible cashiers)
+        if (empty($visibleIds)) {
+            // User requested that empty array means they see nobody
+            $teamTxs = collect([]);
+        } else {
+            $teamTxs = Transaction::with(['bills', 'user'])
+                ->whereIn('user_id', $visibleIds)
+                ->whereHas('user', function($q) {
+                    $q->where('role', 'CASHIER');
+                })
+                ->orderByDesc('created_at')
+                ->get();
+        }
             
         $teamSummary = [
             'totalIn'  => $teamTxs->where('type', 'IN')->sum('amount'),
@@ -280,6 +305,8 @@ class CashierController extends Controller
             'summary'      => $summary,
             'teamTransactions' => $teamTxs->map(fn($t) => array_merge($this->txToArray($t), ['cashier_name' => $t->user?->name ?? 'Unknown'])),
             'teamSummary'  => $teamSummary,
+            'allowedCashiers' => $allowedCashiers,
+            'disallowedCashiers' => $disallowedCashiers,
         ];
 
         return view('cashier.ledger', compact('pageData'));
@@ -374,7 +401,7 @@ class CashierController extends Controller
             'toDate'         => $to   ? $to->format('Y-m-d')   : now()->format('Y-m-d'),
             'cashierName'    => $cashierName,
             'cashierId'      => $userId,
-            'accountName'    => 'Pentapure Foods and Spices',
+            'accountName'    => 'Foods and Spices',
             'site'           => $request->site && $request->site !== 'all' ? $request->site : 'All',
             'category'       => $request->category && $request->category !== 'all' ? ucwords(str_replace('_',' ',$request->category)) : 'All',
             'rows'           => $rows,

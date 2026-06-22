@@ -129,7 +129,7 @@ body {
                     </td>
                     <td style="text-align: left; padding-left: 10px; vertical-align: middle; border: none; background: transparent;">
                         <div class="brand-name">PentaPure</div>
-                        <div class="brand-sub">PENTAPURE FOOD &amp; SPICES PVT.LTD.</div>
+                        <div class="brand-sub">FOOD &amp; SPICES PVT.LTD.</div>
                     </td>
                 </tr>
             </table>

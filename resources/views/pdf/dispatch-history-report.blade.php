@@ -104,7 +104,7 @@
                         </td>
                         <td style="vertical-align: middle; padding: 0 0 0 8px;">
                             <div class="brand-title">PENTAPURE</div>
-                            <div class="brand-tagline">PENTAPURE FOOD &amp; SPICES PVT.LTD.</div>
+                            <div class="brand-tagline">FOOD &amp; SPICES PVT.LTD.</div>
                         </td>
                     </tr>
                 </table>

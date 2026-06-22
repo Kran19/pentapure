@@ -1,9 +1,25 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $user = session('auth_user');
+    $role = strtoupper($user['role'] ?? '');
+    
+    // Default fallback
+    $backUrl = url($role === 'ADMIN' ? 'admin/products' : strtolower($role) . '/home');
+
+    // If they came from a specific page (via query param), go back there
+    if (request()->query('from') === 'history') {
+        $backUrl = url(strtolower($role) . '/history');
+    } elseif (request()->query('from') === 'home') {
+        $backUrl = url(strtolower($role) . '/home');
+    } elseif (request()->query('from') === 'products') {
+        $backUrl = url('admin/products');
+    }
+@endphp
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
-    <h2 style="margin:0;">📦 Product History: {{ $product->name }}</h2>
-    <button onclick="window.history.back()" class="btn btn-sm btn-secondary" style="width:auto; padding:0.5rem 1rem;">&laquo; Back</button>
+    <h2 style="margin:0;">📦 Product History: {{ $product->formatName($grade) }}</h2>
+    <a href="{{ $backUrl }}" class="btn btn-sm btn-secondary" style="width:auto; padding:0.5rem 1rem; text-decoration:none;">&laquo; Back</a>
 </div>
 
 <div class="card" style="margin-bottom: 1rem;">

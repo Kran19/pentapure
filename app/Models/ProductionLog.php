@@ -37,7 +37,8 @@ class ProductionLog extends Model
     {
         static::created(function ($log) {
             $admins = \App\Models\User::where('role', 'ADMIN')->get();
-            $message = "{$log->user->name} logged production: {$log->output_qty}kg of {$log->outputProduct->name}";
+            $productName = $log->outputProduct ? $log->outputProduct->formatName($log->output_grade) : 'Unknown';
+            $message = "{$log->user->name} logged production: {$log->output_qty}kg of {$productName}";
             foreach ($admins as $admin) {
                 $admin->notify(new \App\Notifications\UserActivityNotification('Production Update', $message));
             }

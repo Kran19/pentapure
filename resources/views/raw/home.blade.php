@@ -24,7 +24,7 @@
         <div class="flex-between">
           <div>
             <div style="font-weight:600; font-size:1.1rem;">
-              <a href="{{ route('product.stock.history', ['productId' => $s['productId'] ?? $s['id'], 'stage' => 'RAW', 'grade' => $s['grade']]) }}" style="color: inherit; text-decoration: none; border-bottom: 1px dashed rgba(255,255,255,0.5);">
+              <a href="{{ route('product.stock.history', ['productId' => $s['productId'] ?? $s['id'], 'stage' => 'RAW', 'grade' => $s['grade'], 'from' => 'home']) }}" style="color: inherit; text-decoration: none; border-bottom: 1px dashed rgba(255,255,255,0.5);">
                 {{ $s['name'] }}
               </a>
             </div>

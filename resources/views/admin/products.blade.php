@@ -30,6 +30,10 @@
         <label>Rate (For Live Stock Ref)</label>
         <input type="number" id="p-rate" step="0.01" value="0.00" placeholder="e.g. 150.00">
       </div>
+      <div class="form-group">
+        <label>Low Stock Threshold</label>
+        <input type="number" id="p-threshold" step="0.01" value="0.00" placeholder="e.g. 50.00">
+      </div>
     </div>
 
     <div id="grade-selection-area" style="margin-top:1rem; border-top:1px solid var(--glass-border); padding-top:1rem;">
@@ -72,13 +76,14 @@
     <div class="card-title" style="color:var(--primary-light);">🌿 RAW Materials ({{ $rawProds->total() }})</div>
     <div class="table-container">
       <table>
-        <thead><tr><th>#</th><th>Name</th><th>Unit</th><th>Active</th><th>Actions</th></tr></thead>
+        <thead><tr><th>#</th><th>Name</th><th>Unit</th><th>Threshold</th><th>Active</th><th>Actions</th></tr></thead>
         <tbody>
           @foreach($rawProds as $p)
           <tr>
             <td>{{ $loop->iteration }}</td>
             <td style="font-weight:600;">{{ $p['name'] }}</td>
             <td>{{ $p['unit'] }}</td>
+            <td style="font-weight:bold; color:var(--danger);">{{ $p['threshold'] ?? '0.00' }}</td>
             <td>
               <label class="switch">
                 <input type="checkbox" {{ $p['is_active'] ? 'checked' : '' }} onchange="adminToggleProduct({{ $p['id'] }})">
@@ -110,7 +115,7 @@
     <div class="card-title" style="color:var(--secondary);">📦 FINISHED Products ({{ $finishedProds->total() }})</div>
     <div class="table-container">
       <table>
-        <thead><tr><th>#</th><th>Name</th><th>Grades</th><th>Unit</th><th>Active</th><th>Actions</th></tr></thead>
+        <thead><tr><th>#</th><th>Name</th><th>Grades</th><th>Unit</th><th>Threshold</th><th>Active</th><th>Actions</th></tr></thead>
         <tbody>
           @foreach($finishedProds as $p)
           <tr>
@@ -122,6 +127,7 @@
                 @endforeach
             </td>
             <td>{{ $p['unit'] }}</td>
+            <td style="font-weight:bold; color:var(--danger);">{{ $p['threshold'] ?? '0.00' }}</td>
             <td>
               <label class="switch">
                 <input type="checkbox" {{ $p['is_active'] ? 'checked' : '' }} onchange="adminToggleProduct({{ $p['id'] }})">
@@ -169,6 +175,7 @@ function adminEditProduct(prod) {
   document.getElementById('p-type').value = prod.type;
   document.getElementById('p-unit').value = prod.unit;
   document.getElementById('p-rate').value = prod.rate || '0.00';
+  document.getElementById('p-threshold').value = prod.threshold || '0.00';
   
   // Reset and set grades
   document.querySelectorAll('input[name="p-grades"]').forEach(cb => cb.checked = false);
@@ -206,6 +213,7 @@ function adminSaveProduct() {
   formData.append('type', document.getElementById('p-type').value);
   formData.append('unit', document.getElementById('p-unit').value || 'kg');
   formData.append('rate', document.getElementById('p-rate').value || '0.00');
+  formData.append('threshold', document.getElementById('p-threshold').value || '0.00');
   formData.append('grades', JSON.stringify(selectedGrades));
   formData.append('allowed_roles', JSON.stringify(selectedRoles));
   

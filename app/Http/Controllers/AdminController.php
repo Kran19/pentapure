@@ -26,42 +26,26 @@ class AdminController extends Controller
             ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")->value('net') ?? 0;
 
         $lowRawCount = DB::table('stocks')
-            ->leftJoin('stock_limits', function($join) {
-                $join->on('stocks.product_id', '=', 'stock_limits.product_id')
-                     ->on('stocks.stage', '=', 'stock_limits.stage')
-                     ->on('stocks.grade', '=', 'stock_limits.grade');
-            })
+            ->join('products', 'stocks.product_id', '=', 'products.id')
             ->select('stocks.product_id', 'stocks.stage', 'stocks.grade')
             ->where('stocks.stage', 'RAW')
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'stock_limits.alert_limit')
-            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) < IFNULL(stock_limits.alert_limit, 0)")
-            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0") // Optional: exclude 0 stock? Actually if stock is 0, it should probably still alert if limit is > 0. Let's just use the limit comparison.
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.threshold')
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) < products.threshold")
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
+            ->havingRaw("products.threshold > 0")
             ->get()
             ->count();
 
-        $lowSemiCount = DB::table('stocks')
-            ->leftJoin('stock_limits', function($join) {
-                $join->on('stocks.product_id', '=', 'stock_limits.product_id')
-                     ->on('stocks.stage', '=', 'stock_limits.stage')
-                     ->on('stocks.grade', '=', 'stock_limits.grade');
-            })
-            ->select('stocks.product_id', 'stocks.stage', 'stocks.grade')
-            ->where('stocks.stage', 'SEMI')
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'stock_limits.alert_limit')
-            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) < IFNULL(stock_limits.alert_limit, 0)")
-            ->get()
-            ->count();
+        $lowSemiCount = 0; // Removed as per user request
 
         $lowFinishedCount = DB::table('stocks')
-            ->leftJoin('stock_limits', function($join) {
-                $join->on('stocks.product_id', '=', 'stock_limits.product_id')
-                     ->on('stocks.stage', '=', 'stock_limits.stage')
-                     ->on('stocks.grade', '=', 'stock_limits.grade');
-            })
+            ->join('products', 'stocks.product_id', '=', 'products.id')
             ->select('stocks.product_id', 'stocks.stage', 'stocks.grade')
             ->where('stocks.stage', 'FINISHED')
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'stock_limits.alert_limit')
-            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) < IFNULL(stock_limits.alert_limit, 0)")
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.threshold')
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) < products.threshold")
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
+            ->havingRaw("products.threshold > 0")
             ->get()
             ->count();
 
@@ -99,7 +83,8 @@ class AdminController extends Controller
     public function users()
     {
         $users = User::with('parent')->orderBy('role')->paginate(15);
-        return view('admin.users', ['pageData' => ['users' => $users]]);
+        $allCashiers = User::where('role', 'CASHIER')->get(['id', 'name']);
+        return view('admin.users', ['pageData' => ['users' => $users, 'cashiers' => $allCashiers]]);
     }
 
     public function storeUser(Request $request)
@@ -109,6 +94,8 @@ class AdminController extends Controller
             'role'   => 'required|in:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE',
             'branch' => 'nullable|string|max:100',
             'permissions' => 'nullable',
+            'visible_cashiers' => 'nullable|array',
+            'visible_cashiers.*' => 'exists:users,id',
         ];
 
         if (!$request->user_id) {
@@ -122,6 +109,10 @@ class AdminController extends Controller
         if ($request->role !== 'SUB_ADMIN') {
             $permissions = [];
         }
+        
+        $visibleCashiers = $request->role === 'CASHIER' ? ($request->visible_cashiers ?? []) : [];
+        // Make sure values are integers or strings
+        $visibleCashiers = array_map('intval', $visibleCashiers);
 
         if ($request->user_id) {
             $user = User::findOrFail($request->user_id);
@@ -137,6 +128,7 @@ class AdminController extends Controller
                 $user->branch = null;
             }
             $user->permissions = $permissions;
+            $user->visible_cashiers = $visibleCashiers;
             $user->save();
             $msg = 'User updated!';
         } else {
@@ -149,6 +141,7 @@ class AdminController extends Controller
                 'branch'    => $request->role === 'CASHIER' ? $request->branch : null,
                 'status'    => 'ACTIVE',
                 'permissions' => $permissions,
+                'visible_cashiers' => $visibleCashiers,
             ]);
             $msg = 'User created!';
         }
@@ -236,6 +229,7 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'type' => 'required|in:RAW,FINISHED',
             'rate' => 'nullable|numeric|min:0',
+            'threshold' => 'nullable|numeric|min:0',
             'grades' => 'nullable', // Could be stringified JSON or array
             'allowed_roles' => 'nullable', // Could be stringified JSON or array
             'image' => 'nullable|image|max:2048'
@@ -256,6 +250,7 @@ class AdminController extends Controller
             'type' => $request->type,
             'unit' => $request->unit ?? 'kg',
             'rate' => $request->rate ?? 0.00,
+            'threshold' => $request->threshold ?? 0.00,
             'allowed_roles' => $allowedRoles
         ];
         
@@ -301,11 +296,12 @@ class AdminController extends Controller
                      ->on('stocks.stage', '=', 'stock_limits.stage')
                      ->on('stocks.grade', '=', 'stock_limits.grade');
             })
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'stock_limits.alert_limit')
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.threshold', 'stock_limits.alert_limit')
             ->selectRaw("
                 stocks.product_id as productId,
                 products.name,
                 products.unit,
+                products.threshold,
                 stocks.stage,
                 stocks.grade,
                 IFNULL(stock_limits.alert_limit, 0) as alert_limit,
@@ -452,8 +448,9 @@ class AdminController extends Controller
             $amount = $s->quantity * $rate;
             $totalValuation += $amount;
 
+            $product = \App\Models\Product::find($s->productId);
             $items[] = [
-                'name' => $s->name,
+                'name' => $product ? $product->formatName($s->grade) : $s->name,
                 'stage' => $s->stage,
                 'grade' => $s->grade,
                 'quantity' => $s->quantity,
@@ -607,7 +604,7 @@ class AdminController extends Controller
             ->orderByDesc('created_at')->get()->map(fn($l) => [
                 'category'    => 'Production',
                 'date'        => $l->created_at->toISOString(),
-                'description' => "Produced {$l->output_qty}kg of {$l->outputProduct?->name} ({$l->output_grade})",
+                'description' => "Produced {$l->output_qty}kg of " . ($l->outputProduct ? $l->outputProduct->formatName($l->output_grade) : 'Unknown'),
                 'by'          => $l->user?->name,
                 'role'        => $l->user?->role,
             ]);
@@ -1155,8 +1152,9 @@ class AdminController extends Controller
         return response()->json(['success' => true, 'message' => 'Stock transferred successfully!']);
     }
 
-    public function productStockHistory($productId, $stage, $grade)
+    public function productStockHistory(\Illuminate\Http\Request $request, $productId, $stage)
     {
+        $grade = $request->query('grade', 'NONE');
         $product = \App\Models\Product::findOrFail($productId);
         
         $stockLogs = \App\Models\Stock::with(['user:id,name', 'location:id,name'])

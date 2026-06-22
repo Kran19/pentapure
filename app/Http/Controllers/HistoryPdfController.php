@@ -34,7 +34,10 @@ class HistoryPdfController extends Controller
             $pdf = Pdf::loadView('pdf.history-report', $data)->setPaper('A4', 'portrait');
         }
 
-        return $pdf->download('PentaPure_' . ucfirst(strtolower($panel)) . '_History_' . now()->format('Ymd_His') . '.pdf');
+        return $pdf->download('PentaPure_' . ucfirst(strtolower($panel)) . '_History_' . now()->format('Ymd_His') . '.pdf')
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 
     private function buildReportData(Request $request, string $panel): array
@@ -122,7 +125,7 @@ class HistoryPdfController extends Controller
     private function rawRows(Carbon $from, Carbon $to): array
     {
         $q = request('q');
-        $query = Stock::with(['product', 'location'])->where('stage', 'RAW')->where('transaction_type', 'IN')->whereBetween('created_at', [$from, $to]);
+        $query = Stock::with(['product', 'location'])->where('stage', 'RAW')->whereBetween('created_at', [$from, $to]);
         if ($q) {
             $query->where(function($sub) use ($q) {
                 $sub->whereHas('product', function($qp) use ($q) {
@@ -136,15 +139,17 @@ class HistoryPdfController extends Controller
         return $query->latest()->get()
             ->map(fn ($s) => [
                 'id' => 'RAW-' . str_pad($s->id, 4, '0', STR_PAD_LEFT),
-                'type' => 'Raw Inward',
-                'date' => $s->created_at->format('d M Y'),
+                'type' => $s->transaction_type === 'IN' ? 'IN' : 'OUT',
+                'date' => $s->created_at->format('d M Y, h:i A'),
                 'status' => 'COMPLETED',
                 'amount' => 0,
-                'product_name' => $s->product?->name ?? '-',
+                'product_name' => $s->product ? $s->product->formatName($s->grade) : '-',
                 'grade' => $s->grade ?? '-',
                 'location' => $s->location?->name ?? 'Unassigned',
                 'quantity' => $s->quantity ?? 0,
                 'unit' => $s->product?->unit ?? 'kg',
+                'notes' => $s->notes ?? '—',
+                'transaction_type' => $s->transaction_type
             ])->toArray();
     }
 
@@ -166,12 +171,12 @@ class HistoryPdfController extends Controller
                 'date' => $l->created_at->format('d M Y'),
                 'status' => 'COMPLETED',
                 'amount' => 0,
-                'output_product' => $l->outputProduct?->name ?? '-',
+                'output_product' => $l->outputProduct ? $l->outputProduct->formatName($l->output_grade) : '-',
                 'output_grade' => $l->output_grade ?? '-',
                 'output_qty' => $l->output_qty ?? 0,
                 'unit' => $l->outputProduct?->unit ?? 'kg',
                 'inputs' => collect($l->inputs)->map(fn($input) => [
-                    'name' => $input->inputProduct?->name ?? '-',
+                    'name' => $input->inputProduct ? $input->inputProduct->formatName($input->input_grade) : '-',
                     'grade' => $input->input_grade ?? '-',
                     'quantity' => $input->quantity ?? 0,
                 ])->toArray(),
@@ -416,7 +421,7 @@ class HistoryPdfController extends Controller
                         'order_id' => 'ORD-' . str_pad($order->id ?? 0, 4, '0', STR_PAD_LEFT),
                         'date' => $log->created_at->format('d M Y'),
                         'customer' => strtoupper($order?->company?->name ?? 'N/A'),
-                        'product' => strtoupper($orderItem->product?->name ?? 'Unknown'),
+                        'product' => strtoupper($orderItem->product ? $orderItem->product->formatName($orderItem->grade) : 'Unknown'),
                         'grade' => strtoupper($orderItem->grade ?? 'NONE'),
                         'locations' => $locations,
                         'ordered_qty' => $orderedQty,

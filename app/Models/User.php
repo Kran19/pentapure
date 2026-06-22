@@ -22,6 +22,7 @@ class User extends Authenticatable
         'parent_id',
         'branch',
         'permissions',
+        'visible_cashiers',
     ];
 
     protected $hidden = [
@@ -35,6 +36,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password'          => 'hashed',
             'permissions'       => 'array',
+            'visible_cashiers'  => 'array',
         ];
     }
 

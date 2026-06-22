@@ -30,11 +30,11 @@
         <thead><tr><th>Product</th><th>Grade</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="raw-stock-tbody">
 @foreach($rawItems as $s)
-          @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
-          <tr @if($isLow) style="background-color: #e60000; color: #fff; pointer-events:none;" title="Low Stock! Limit is {{ $s->alert_limit }}" @endif>
+          @php $isLow = $s->threshold > 0 && $s->quantity < $s->threshold; @endphp
+          <tr @if($isLow) style="background-color: rgba(255, 77, 77, 0.15);" title="Low Stock! Threshold is {{ $s->threshold }}" @endif>
             <td style="font-weight:600;">{{ $s->name }}</td>
             <td><span class="badge badge-info">{{ $s->grade }}</span></td>
-            <td @if($isLow) style="font-weight:bold; color:#fff;" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
+            <td @if($isLow) style="font-weight:bold; color:var(--danger);" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold;">₹{{ number_format($s->rate ?? 0, 2) }}</td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="RAW" style="cursor:pointer; color:var(--primary-light); text-decoration:underline;" onclick="showLocationBreakdown(this)">📍 View Locations</td>
@@ -70,12 +70,12 @@
         <thead><tr><th>Product</th><th>Grade</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="semi-stock-tbody">
           @foreach($semiItems as $s)
-          @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
-<tr @if($isLow) style="background-color: #ff4d4d; color: #fff; pointer-events:none;" title="Low Stock! Limit is {{ $s->alert_limit }}" @endif>
+          @php $isLow = $s->threshold > 0 && $s->quantity < $s->threshold; @endphp
+<tr @if($isLow) style="background-color: rgba(255, 77, 77, 0.15);" title="Low Stock! Threshold is {{ $s->threshold }}" @endif>
 
             <td style="font-weight:600;">{{ $s->name }}</td>
             <td><span class="badge badge-info">{{ $s->grade }}</span></td>
-            <td @if($isLow) style="font-weight:bold; color:#fff;" @else style="font-weight:bold; color:var(--warning);" @endif>{{ number_format($s->quantity, 2) }}</td>
+            <td @if($isLow) style="font-weight:bold; color:var(--danger);" @else style="font-weight:bold; color:var(--warning);" @endif>{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold;">₹{{ number_format($s->rate ?? 0, 2) }}</td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="SEMI" style="cursor:pointer; color:var(--primary-light); text-decoration:underline;" onclick="showLocationBreakdown(this)">📍 View Locations</td>
@@ -102,7 +102,7 @@
   @if(!$typeFilter || $typeFilter === 'FINISHED')
   <!-- Finished Stock -->
   <div class="card" style="padding:1.2rem;">
-    <div class="card-title" style="color:var(--secondary);">✅ Finished Goods Stock ({{ $finishedItems->count() }} items)</div>
+    <div class="card-title" style="color:var(--secondary);">✅ FG Stock ({{ $finishedItems->count() }} items)</div>
     @if($finishedItems->isEmpty())
       <p class="text-muted text-center">No finished stock recorded yet.</p>
     @else
@@ -111,13 +111,13 @@
         <thead><tr><th>Product</th><th>Grade</th><th>Total Qty</th><th>Unit</th><th>Rate (Ref)</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="finished-stock-tbody">
           @foreach($finishedItems as $s)
-          @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
-<tr @if($isLow) style="background-color: #ff4d4d; color:#fff; pointer-events:none;" title="Low Stock! Limit is {{ $s->alert_limit }}" @endif>
+          @php $isLow = $s->threshold > 0 && $s->quantity < $s->threshold; @endphp
+<tr @if($isLow) style="background-color: rgba(255, 77, 77, 0.15);" title="Low Stock! Threshold is {{ $s->threshold }}" @endif>
 
             <td style="font-weight:600;">{{ $s->name }}</td>
             <td><span class="badge badge-info">{{ $s->grade }}</span></td>
 
-            <td @if($isLow) style="font-weight:bold; color:#fff;" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
+            <td @if($isLow) style="font-weight:bold; color:var(--danger);" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold;">₹{{ number_format($s->rate ?? 0, 2) }}</td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="FINISHED" style="cursor:pointer; color:var(--primary-light); text-decoration:underline;" onclick="showLocationBreakdown(this)">📍 View Locations</td>
@@ -199,9 +199,10 @@ function adminAddStock() {
         const targetType = stage === 'RAW' ? 'RAW' : 'FINISHED';
         const filteredProducts = adminStockProducts.filter(p => p.type === targetType && p.is_active);
         
-        productSelect.innerHTML = filteredProducts.map(p => 
-          `<option value="${p.id}" data-unit="${escapeHtml(p.unit || 'kg')}">${escapeHtml(p.name)} (${escapeHtml(p.unit || 'kg')})</option>`
-        ).join('');
+        productSelect.innerHTML = filteredProducts.map(p => {
+          let t = stage.toLowerCase() === 'finished' ? 'fg' : stage.toLowerCase();
+          return `<option value="${p.id}" data-unit="${escapeHtml(p.unit || 'kg')}">${escapeHtml(p.name)} - (grade- N/A) (type - ${t})</option>`;
+        }).join('');
         
         onStockProductChange();
       };
@@ -311,7 +312,7 @@ function adminAddStock() {
 }
 
 function adminAdjustStock(productId, stage, grade) {
-  const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ Finished' }[stage] || stage;
+  const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG' }[stage] || stage;
 
   Swal.fire({
     title: 'Adjust Stock',
@@ -441,7 +442,7 @@ function adminAdjustStock(productId, stage, grade) {
 }
 
 function adminSetLimit(productId, stage, grade, currentLimit) {
-  const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ Finished' }[stage] || stage;
+  const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG' }[stage] || stage;
 
   Swal.fire({
     title: 'Set Alert Limit',
@@ -563,11 +564,11 @@ function updateStockTables(stockData) {
 
     let html = '';
     items.forEach(s => {
-      const limit = parseFloat(s.alert_limit) || 0;
+      const limit = parseFloat(s.threshold) || 0;
       const qty = parseFloat(s.quantity);
       const isLow = limit > 0 && qty < limit;
-const rowStyle = isLow ? 'background-color: #ff4d4d; color: #fff;' : '';
-      const titleAttr = isLow ? `title="Low Stock! Limit is ${limit}"` : '';
+const rowStyle = isLow ? 'background-color: rgba(255, 77, 77, 0.15);' : '';
+      const titleAttr = isLow ? `title="Low Stock! Threshold is ${limit}"` : '';
 
       // Disable hover ONLY visually for low rows without breaking the click buttons
       const disableHoverClass = isLow ? 'low-stock-no-hover' : '';
@@ -578,6 +579,7 @@ const rowStyle = isLow ? 'background-color: #ff4d4d; color: #fff;' : '';
       if (stage === 'RAW') qtyColor = 'var(--secondary)';
       if (stage === 'SEMI') qtyColor = 'var(--warning)';
       if (stage === 'FINISHED') qtyColor = 'var(--secondary)';
+      if (isLow) qtyColor = 'var(--danger)';
 
       html += `
         <tr style="${rowStyle}" ${titleAttr} class="${disableHoverClass}">
@@ -851,7 +853,7 @@ function adminExportStockPdf() {
             <input type="checkbox" id="export-stage-semi" checked style="width:20px; height:20px; cursor:pointer;"> ⚗️ Semi-Finished Stock
           </label>
           <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-            <input type="checkbox" id="export-stage-finished" checked style="width:20px; height:20px; cursor:pointer;"> ✅ Finished Goods Stock
+            <input type="checkbox" id="export-stage-finished" checked style="width:20px; height:20px; cursor:pointer;"> ✅ FG Stock
           </label>
         </div>
         

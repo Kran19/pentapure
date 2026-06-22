@@ -71,7 +71,7 @@
             <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 82px; height: 82px; vertical-align: middle; margin-right: 12px; object-fit: contain;">
             <div class="brand-text">
                 <div class="brand-title">PentaPure</div>
-                <div class="tagline">PENTAPURE FOOD &amp; SPICES PVT.LTD.</div>
+                <div class="tagline">FOOD &amp; SPICES PVT.LTD.</div>
             </div>
         </div>
         <div class="contact">
@@ -148,37 +148,41 @@
                 @endforelse
             </tbody>
         </table>
-    @elseif($panel === 'RAW')
-        <div class="section-label">Raw Material Inward History</div>
+    @elseif(strtoupper($panel) === 'RAW')
+        <div class="section-label">Raw Material History</div>
         <table>
             <thead>
                 <tr>
-                    <th class="center" style="width:6%;">#</th>
-                    <th style="width:14%;">ID</th>
-                    <th style="width:14%;">Date</th>
-                    <th style="width:20%;">Product</th>
-                    <th style="width:12%;">Grade</th>
-                    <th style="width:18%;">Location</th>
-                    <th style="width:16%;">Quantity Inward</th>
+                    <th style="width:25%;">Product Name</th>
+                    <th style="width:10%;">Type</th>
+                    <th style="width:15%;">Quantity</th>
+                    <th style="width:20%;">Date</th>
+                    <th style="width:30%;">Notes</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($rows as $index => $row)
                     <tr>
-                        <td class="center">{{ $index + 1 }}</td>
-                        <td>{{ $row['id'] }}</td>
-                        <td>{{ $row['date'] }}</td>
                         <td><strong>{{ $row['product_name'] ?? '-' }}</strong></td>
-                        <td>{{ $row['grade'] ?? '-' }}</td>
-                        <td>{{ $row['location'] ?? '-' }}</td>
-                        <td class="amount text-green">+{{ number_format((float) ($row['quantity'] ?? 0), 2) }} <span style="font-size:10px; color:#667085;">{{ $row['unit'] ?? 'kg' }}</span></td>
+                        <td class="center">
+                            @if(($row['transaction_type'] ?? '') === 'IN')
+                                <span class="badge badge-ok">IN</span>
+                            @else
+                                <span class="badge badge-warn">OUT</span>
+                            @endif
+                        </td>
+                        <td class="amount {{ ($row['transaction_type'] ?? '') === 'IN' ? 'text-green' : 'text-red' }}">
+                            {{ ($row['transaction_type'] ?? '') === 'IN' ? '+' : '-' }}{{ number_format((float) ($row['quantity'] ?? 0), 2) }} <span style="font-size:10px; color:#667085;">{{ $row['unit'] ?? 'kg' }}</span>
+                        </td>
+                        <td>{{ $row['date'] }}</td>
+                        <td style="font-size: 11px;">{{ $row['notes'] }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="center">No raw material inward history found for this period.</td></tr>
+                    <tr><td colspan="5" class="center">No raw material history found for this period.</td></tr>
                 @endforelse
             </tbody>
         </table>
-    @elseif($panel === 'SEMI' || $panel === 'FINISHED')
+    @elseif(strtoupper($panel) === 'SEMI' || strtoupper($panel) === 'FINISHED')
         <div class="section-label">Production History ({{ $panel }})</div>
         <table>
             <thead>
@@ -217,7 +221,7 @@
                 @endforelse
             </tbody>
         </table>
-    @elseif($panel === 'SALES')
+    @elseif(strtoupper($panel) === 'SALES')
         <div class="section-label">Sales / Order History</div>
         <table>
             <thead>
@@ -255,7 +259,7 @@
                 @endforelse
             </tbody>
         </table>
-    @elseif($panel === 'CASHIER')
+    @elseif(strtoupper($panel) === 'CASHIER')
         <div class="section-label">Cashier History</div>
         <table>
             <thead>

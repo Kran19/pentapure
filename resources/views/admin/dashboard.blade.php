@@ -22,29 +22,16 @@
     </div>
     @endif
 
-    <!-- Semi-Finished Stock -->
-    @if(($pageData['lowSemiCount'] ?? 0) > 0)
-    <div style="background-color: #fff3cd; color: #856404; padding: 1rem; border-radius: 8px; border: 1px solid #ffeeba; display: flex; align-items: center; gap: 8px;">
-      <span style="font-size: 1.2rem;">⚠</span>
-      <a href="{{ route('admin.stock', ['type' => 'semi']) }}" style="font-size: 1.1rem; font-weight: bold; color: inherit; text-decoration: none;">Semi-Finished Low Stock: {{ $pageData['lowSemiCount'] }}</a>
-    </div>
-    @else
-    <div style="background-color: #d4edda; color: #155724; padding: 1rem; border-radius: 8px; border: 1px solid #c3e6cb; display: flex; align-items: center; gap: 8px;">
-      <span style="font-size: 1.2rem;">✅</span>
-      <a href="{{ route('admin.stock', ['type' => 'semi']) }}" style="font-size: 1.1rem; font-weight: bold; color: inherit; text-decoration: none;">Semi-Finished Low Stock: 0</a>
-    </div>
-    @endif
-
-    <!-- Finished Goods Stock -->
+    <!-- FG Stock -->
     @if(($pageData['lowFinishedCount'] ?? 0) > 0)
     <div style="background-color: #fff3cd; color: #856404; padding: 1rem; border-radius: 8px; border: 1px solid #ffeeba; display: flex; align-items: center; gap: 8px;">
       <span style="font-size: 1.2rem;">⚠</span>
-      <a href="{{ route('admin.stock', ['type' => 'finished']) }}" style="font-size: 1.1rem; font-weight: bold; color: inherit; text-decoration: none;">Finished Goods Low Stock: {{ $pageData['lowFinishedCount'] }}</a>
+      <a href="{{ route('admin.stock', ['type' => 'finished']) }}" style="font-size: 1.1rem; font-weight: bold; color: inherit; text-decoration: none;">FG Low Stock: {{ $pageData['lowFinishedCount'] }}</a>
     </div>
     @else
     <div style="background-color: #d4edda; color: #155724; padding: 1rem; border-radius: 8px; border: 1px solid #c3e6cb; display: flex; align-items: center; gap: 8px;">
       <span style="font-size: 1.2rem;">✅</span>
-      <a href="{{ route('admin.stock', ['type' => 'finished']) }}" style="font-size: 1.1rem; font-weight: bold; color: inherit; text-decoration: none;">Finished Goods Low Stock: 0</a>
+      <a href="{{ route('admin.stock', ['type' => 'finished']) }}" style="font-size: 1.1rem; font-weight: bold; color: inherit; text-decoration: none;">FG Low Stock: 0</a>
     </div>
     @endif
   </div>
@@ -67,7 +54,7 @@
       <div style="font-size:1.6rem; font-weight:bold; color:var(--warning); word-break:break-word;">
         {{ number_format($pageData['finishedQty'] ?? 0, 1) }}
       </div>
-      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Finished Stock (kg)</div>
+      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">FG Stock (kg)</div>
     </a>
 
     <a href="{{ route('admin.dispatch.activity') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">

@@ -2,14 +2,14 @@
 
 @section('content')
 <div class="card">
-  <div class="card-title">Convert to Finished Goods</div>
+  <div class="card-title">Convert to FG</div>
   
   <div class="form-group">
     <label>Target Product</label>
     <select id="prod-output" onchange="onTargetProductSelected()">
       <option value="" disabled selected>-- Select Product --</option>
       @foreach(collect($pageData['products'])->filter(fn($p) => $p['type'] !== 'RAW') as $p)
-        <option value="{{ $p['id'] }}">{{ $p['name'] }}</option>
+        <option value="{{ $p['id'] }}">{{ $p['name'] }} - (grade- N/A) (type - {{ strtolower($p['type']) === 'finished' ? 'fg' : strtolower($p['type']) }})</option>
       @endforeach
     </select>
   </div>
@@ -187,11 +187,10 @@
     const outProdName = window.productsList.find(x => x.id == outProdId)?.name;
     
     app.openDrawer(`
-      <h3 style="margin-bottom:1rem; color:var(--secondary);">Review Finished Production</h3>
+      <h3 style="margin-bottom:1rem; color:var(--secondary);">Review FG Production</h3>
       <div style="background:rgba(255,255,255,0.05); padding:1rem; border-radius:10px; margin-bottom:1rem; border:1px solid var(--glass-border);">
         <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:4px;">Target Output</div>
-        <div style="font-weight:700; font-size:1.1rem; color:var(--text-main);">${outQty} kg of ${outProdName}</div>
-        ${outGrade && outGrade !== 'N/A' ? `<div style="font-size:0.85rem; margin-top:2px;">Grade: <span class="badge badge-info">${outGrade}</span></div>` : ''}
+        <div style="font-weight:700; font-size:1.1rem; color:var(--text-main);">${outQty} kg of ${outProdName} - (grade- ${outGrade || 'N/A'}) (type - fg)</div>
       </div>
       
       <div style="font-size:0.9rem; font-weight:600; margin-bottom:0.8rem; color:var(--primary-light);">Consumed Materials:</div>
@@ -246,7 +245,7 @@
     .then(r => r.json())
     .then(res => {
       if (res.success) {
-        app.toast(res.message || 'Finished Production logged successfully!');
+        app.toast(res.message || 'FG Production logged successfully!');
         window.tempFinishedProductionData = null;
         app.closeDrawer();
         document.getElementById('prod-out-qty').value = '';

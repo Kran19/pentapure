@@ -31,7 +31,7 @@ class RawController extends Controller
             ->map(fn($s) => [
                 'id'               => $s->id,
                 'productId'        => $s->product_id,
-                'productName'      => $s->product?->name ?? 'Unknown',
+                'productName'      => $s->product ? $s->product->formatName($s->grade) : 'Unknown',
                 'grade'            => $s->grade,
                 'quantity'         => $s->transaction_type === 'IN' ? $s->quantity : -$s->quantity,
                 'transaction_type' => $s->transaction_type,
@@ -178,7 +178,7 @@ class RawController extends Controller
             ->map(fn($s) => [
                 'id'               => $s->id,
                 'productId'        => $s->product_id,
-                'productName'      => $s->product?->name,
+                'productName'      => $s->product ? $s->product->formatName($s->grade) : 'Unknown',
                 'image'            => $s->product?->image_url,
                 'quantity'         => $s->quantity,
                 'unit'             => $s->product?->unit ?? 'kg',

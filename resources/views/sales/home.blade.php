@@ -55,7 +55,7 @@
     <div class="stat-value">{{ $semiCount }}</div>
   </div>
   <div class="stat-card" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);">
-    <div style="color:var(--primary-light);">Finished Sales</div>
+    <div style="color:var(--primary-light);">FG Sales</div>
     <div class="stat-value">{{ $finishedCount }}</div>
   </div>
 

@@ -35,7 +35,19 @@
       <div class="bottom-nav" id="bottom-nav">
         @php
           $prefix = request()->segment(1) ?? 'user';
+          $validPrefixes = ['admin', 'raw', 'semi', 'finished', 'cashier', 'sales', 'dispatch', 'attendance'];
+          if (!in_array($prefix, $validPrefixes)) {
+              $sessUser = session('auth_user');
+              if ($sessUser && isset($sessUser['role'])) {
+                  $prefix = strtolower($sessUser['role']);
+                  if ($prefix === 'sub_admin') $prefix = 'admin';
+              }
+          }
           $currentRoute = request()->segment(2) ?? 'home';
+          if (!in_array(request()->segment(1), $validPrefixes)) {
+              // If we are on a detail page like product history, highlight the Home tab
+              $currentRoute = 'home';
+          }
         @endphp
 
         <div class="nav-logo desktop-only">
@@ -88,7 +100,7 @@
                 $segments = [
                     'raw' => ['Amit (Raw)', 'RAW'],
                     'semi' => ['Rahul (Semi)', 'SEMI'],
-                    'finished' => ['Vikram (Finished)', 'FINISHED'],
+                    'finished' => ['Vikram (FG)', 'FINISHED'],
                     'cashier' => ['Sneha (Cashier)', 'CASHIER'],
                     'sales' => ['Raj (Sales)', 'SALES'],
                     'dispatch' => ['Ravi (Dispatch)', 'DISPATCH'],

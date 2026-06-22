@@ -88,8 +88,8 @@
                             @endif
                         </td>
                         <td style="vertical-align: middle; padding: 0 0 0 8px;">
-                            <div class="brand-title">PENTAPURE</div>
-                            <div class="brand-tagline">PENTAPURE FOOD &amp; SPICES PVT.LTD.</div>
+                            <div class="brand-title">PentaPure</div>
+                            <div class="brand-tagline">FOOD &amp; SPICES PVT.LTD.</div>
                         </td>
                     </tr>
                 </table>
@@ -190,8 +190,7 @@
                 <tr>
                     <td class="text-center">{{ $idx + 1 }}</td>
                     <td>
-                        <strong>{{ $orderItem->product->name }}</strong>
-                        <div style="font-size: 8px; color: #475467;">Grade: {{ $orderItem->grade }}</div>
+                        <strong>{{ $orderItem->product ? $orderItem->product->formatName($orderItem->grade) : 'Unknown' }}</strong>
                     </td>
                     <td class="text-right text-green">{{ number_format($orderItem->quantity) }} KG</td>
                     <td class="text-right">{{ number_format($prevDispatched) }} KG</td>
@@ -254,7 +253,7 @@
                         <td>
                             @foreach($historyLog->dispatchItems as $hItem)
                                 <div style="margin-bottom: 2px;">
-                                    &bull; {{ $hItem->orderItem->product->name }} <span style="color: #667085;">({{ $hItem->orderItem->grade }})</span>: 
+                                    &bull; {{ $hItem->orderItem->product ? $hItem->orderItem->product->formatName($hItem->orderItem->grade) : 'Unknown' }}: 
                                     <strong style="color: #175cd3;">{{ number_format($hItem->quantity) }} KG</strong>
                                 </div>
                             @endforeach

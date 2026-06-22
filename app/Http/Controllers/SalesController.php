@@ -37,7 +37,7 @@ class SalesController extends Controller
                 'products'        => $o->items->map(fn($i) => [
                     'id'          => $i->id,
                     'productId'   => $i->product_id,
-                    'productName' => strtoupper($i->product?->name ?? ''),
+                    'productName' => strtoupper($i->product ? $i->product->formatName($i->grade) : ''),
                     'grade'       => strtoupper($i->grade ?? ''),
                     'quantity'    => $i->quantity,
                     'price'       => $i->price,
@@ -202,7 +202,7 @@ class SalesController extends Controller
                 'items'          => $o->items->map(fn($i)=>[
                     'id'          => $i->id,
                     'productId'   => $i->product_id,
-                    'productName' => strtoupper($i->product?->name ?? ''),
+                    'productName' => strtoupper($i->product ? $i->product->formatName($i->grade) : ''),
                     'grade'       => strtoupper($i->grade ?? ''),
                     'quantity'    => $i->quantity,
                     'price'       => $i->price,
@@ -261,9 +261,10 @@ class SalesController extends Controller
                 $orderItem = OrderItem::find($item['id']);
                 if ($orderItem && $item['quantity'] < $orderItem->dispatched_qty) {
                     $product = $orderItem->product;
+                    $productName = $product ? $product->formatName($item['grade']) : 'Unknown';
                     return response()->json([
                         'success' => false,
-                        'message' => "Cannot reduce {$product->name} quantity to {$item['quantity']} kg. Already dispatched: {$orderItem->dispatched_qty} kg. Minimum allowed: {$orderItem->dispatched_qty} kg."
+                        'message' => "Cannot reduce {$productName} quantity to {$item['quantity']} kg. Already dispatched: {$orderItem->dispatched_qty} kg. Minimum allowed: {$orderItem->dispatched_qty} kg."
                     ], 422);
                 }
             }

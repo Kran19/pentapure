@@ -97,7 +97,11 @@
     <tbody>
       @forelse($paginated as $s)
         <tr>
-          <td style="font-weight:600; white-space: nowrap;">{{ $s['productName'] }}</td>
+          <td style="font-weight:600; white-space: nowrap;">
+            <a href="{{ route('product.stock.history', ['productId' => $s['productId'], 'stage' => 'RAW', 'grade' => $s['grade'], 'from' => 'history']) }}" style="color: inherit; text-decoration: none; border-bottom: 1px dashed rgba(255,255,255,0.5);">
+              {{ $s['productName'] }}
+            </a>
+          </td>
           <td style="white-space: nowrap;">
             @if($s['transaction_type'] === 'IN')
               <span class="badge" style="background:#2ecc71; color:#fff;">IN</span>
@@ -144,7 +148,7 @@
     <tbody>
       @forelse($pageData['purchaseOrders'] ?? [] as $po)
         <tr>
-          <td style="font-weight:600;">{{ $po->product?->name }}</td>
+          <td style="font-weight:600;">{{ $po->product ? $po->product->formatName() : 'Unknown' }}</td>
           <td>{{ $po->quantity }} kg</td>
           <td>
              <span class="badge {{ $po->status === 'DONE' ? 'badge-done' : 'badge-pending' }}">

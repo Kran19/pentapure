@@ -72,7 +72,7 @@
                   @foreach($order->items as $item)
                     <div style="font-size:0.85rem; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid rgba(255,255,255,0.05);">
                       <div style="margin-bottom:2px;">
-                        • {{ $item->product?->name }} ({{ $item->grade }}): 
+                        • {{ $item->product ? $item->product->formatName($item->grade) : 'Unknown' }}: 
                         <span style="font-weight:600;">{{ $item->quantity }} {{ $item->product?->unit }}</span>
                       </div>
                       @if($order->dispatch_status === 'PARTIAL' || ($order->dispatch_status === 'DONE' && $order->dispatch_logs_count > 1))

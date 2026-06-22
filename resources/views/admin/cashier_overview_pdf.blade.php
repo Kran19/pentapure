@@ -107,7 +107,7 @@
                 </td>
                 <td style="width: 60%; text-align: center; vertical-align: middle; border: none; background: transparent;">
                     <div class="brand-title">PENTAPURE</div>
-                    <div class="tagline">PENTAPURE FOOD &amp; SPICES PVT.LTD.</div>
+                    <div class="tagline">FOOD &amp; SPICES PVT.LTD.</div>
                 </td>
                 <td style="width: 20%; text-align: right; vertical-align: middle; border: none; background: transparent;">
                     @if(file_exists(public_path('logo.png')))

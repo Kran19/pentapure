@@ -33,7 +33,8 @@ class PurchaseOrder extends Model
             \Log::info('PurchaseOrder Created: notifying admins', ['po_id' => $po->id]);
             $admins = \App\Models\User::where('role', 'ADMIN')->get();
             foreach ($admins as $admin) {
-                $message = "{$po->user->name} ({$po->user->role}) requested {$po->quantity}kg of {$po->product->name}";
+                $productName = $po->product ? $po->product->formatName() : 'Unknown';
+                $message = "{$po->user->name} ({$po->user->role}) requested {$po->quantity}kg of {$productName}";
                 \Log::info('Triggering Notification for Admin: ' . $admin->name, ['message' => $message]);
                 try {
                     $admin->notify(new \App\Notifications\PurchaseOrderNotification($po->id, $message));

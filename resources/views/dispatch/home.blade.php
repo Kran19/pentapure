@@ -55,11 +55,11 @@
   </div>
 </div>
 
-<!-- Finished Stock -->
+<!-- FG Stock -->
 <div class="card mb-2" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:0.8rem;">
   <div style="font-size:0.75rem; color:var(--primary-light); margin-bottom:8px; font-weight:600; display:flex; align-items:center; gap:6px;">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--secondary);"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-    Finished Goods Stock
+    FG Stock
   </div>
   <div style="font-size:0.7rem; color:var(--text-muted); font-weight:normal; margin-bottom:5px; text-align:right; display:flex; justify-content:flex-end; gap:5px;">
     <button type="button" onclick="document.getElementById('finished-stock-scroll').scrollBy({left:-200, behavior:'smooth'})" style="border:1px solid #444; background:transparent; color:#ccc; border-radius:4px; cursor:pointer; padding:2px 8px;">&larr;</button>

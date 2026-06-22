@@ -281,7 +281,7 @@
             <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 40px; height: 40px; vertical-align: middle; margin-right: 12px; object-fit: contain;">
             <span style="display:inline-block; vertical-align:middle;">
                 <span class="brand-name">PentaPure</span><br>
-                <span class="brand-tagline">PENTAPURE FOOD &amp; SPICES PVT.LTD.</span>
+                <span class="brand-tagline">FOOD &amp; SPICES PVT.LTD.</span>
             </span>
         </div>
         <div class="header-right">

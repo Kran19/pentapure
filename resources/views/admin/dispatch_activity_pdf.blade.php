@@ -30,8 +30,8 @@
                     @endif
                 </td>
                 <td style="width: 60%; text-align: center; vertical-align: middle; border: none; background: transparent;">
-                    <div class="brand-title">PENTAPURE</div>
-                    <div class="tagline">PENTAPURE FOOD &amp; SPICES PVT.LTD.</div>
+                    <div class="brand-title">PentaPure</div>
+                    <div class="tagline">FOOD &amp; SPICES PVT.LTD.</div>
                 </td>
                 <td style="width: 20%; text-align: right; vertical-align: middle; border: none; background: transparent;">
                     @if(file_exists(public_path('logo.png')))
@@ -81,7 +81,7 @@
                         $orderTotalRevenue += $lineRevenue;
                     @endphp
                     <tr>
-                        <td>{{ $item->product?->name }} ({{ $item->grade }})</td>
+                        <td>{{ $item->product ? $item->product->formatName($item->grade) : 'Unknown' }}</td>
                         <td>{{ $item->product?->unit ?? '' }}</td>
                         <td style="text-align:right;">{{ number_format($qty, 2) }}</td>
                         <td style="text-align:right;">{{ number_format($rate, 2) }}</td>
@@ -103,7 +103,7 @@
     </table>
 
     <div class="footer">
-        &copy; {{ date('Y') }} Pentapure Foods Factory Operations. All rights reserved.
+        &copy; {{ date('Y') }} Food Factory Operations. All rights reserved.
     </div>
 </body>
 </html>

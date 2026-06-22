@@ -33,6 +33,21 @@
         <input type="text" id="u-branch" placeholder="e.g. Main Factory">
       </div>
     </div>
+
+    <div id="visible-cashiers-container" style="display:none; margin-top:1rem; border:1px solid var(--glass-border); padding:1.2rem; border-radius:8px; background:var(--glass-bg);">
+      <h4 style="margin-top:0; margin-bottom:1rem; color:var(--secondary); font-size:1.1rem; text-transform:none;">Team Ledger Visibility (Cashier Only)</h4>
+      <div style="margin-bottom:1rem; font-size:0.9rem; color:var(--text-muted);">
+        Select which other cashiers this user is allowed to see in their Team Ledger.
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:1rem;">
+        @foreach($pageData['cashiers'] as $c)
+          <div style="display:flex; align-items:center; gap:8px;" class="visible-cashier-wrapper">
+            <input type="checkbox" class="visible-cashier-cb" value="{{ $c['id'] }}" style="width:16px;height:16px;margin:0;">
+            <span style="font-size:0.9rem; text-transform:none;">{{ $c['name'] }}</span>
+          </div>
+        @endforeach
+      </div>
+    </div>
     
     <div id="permissions-container" style="display:none; margin-top:1rem; border:1px solid var(--glass-border); padding:1.2rem; border-radius:8px; background:var(--glass-bg);">
       <h4 style="margin-top:0; margin-bottom:1rem; color:var(--primary); font-size:1.1rem; text-transform:none;">Sub-Admin Permissions</h4>
@@ -146,11 +161,17 @@ let editingUserId = null;
 function toggleRoleFields(role) {
   const branchContainer = document.getElementById('branch-field-container');
   const permContainer = document.getElementById('permissions-container');
+  const visibilityContainer = document.getElementById('visible-cashiers-container');
   
   if (role === 'CASHIER') {
     branchContainer.style.display = 'block';
+    if(visibilityContainer) visibilityContainer.style.display = 'block';
   } else {
     branchContainer.style.display = 'none';
+    if(visibilityContainer) {
+        visibilityContainer.style.display = 'none';
+        document.querySelectorAll('.visible-cashier-cb').forEach(cb => cb.checked = false);
+    }
     document.getElementById('u-branch').value = '';
   }
   
@@ -177,6 +198,17 @@ function adminEditUser(user) {
   document.querySelectorAll('.sub-perm').forEach(cb => {
       cb.checked = perms.includes(cb.value);
   });
+
+  // Set visible cashiers if it's a CASHIER
+  const visCashiers = user.visible_cashiers || [];
+  document.querySelectorAll('.visible-cashier-cb').forEach(cb => {
+      if (cb.value == user.id) {
+          cb.parentElement.style.display = 'none'; // hide themselves
+      } else {
+          cb.parentElement.style.display = 'flex';
+      }
+      cb.checked = visCashiers.includes(parseInt(cb.value)) || visCashiers.includes(cb.value.toString());
+  });
   
   document.getElementById('u-password').value = ''; 
   document.getElementById('u-password').placeholder = '(Leave blank to keep current)';
@@ -195,7 +227,8 @@ function adminSaveUser() {
     role: document.getElementById('u-role').value,
     branch: document.getElementById('u-branch').value,
     password: document.getElementById('u-password').value,
-    permissions: perms
+    permissions: perms,
+    visible_cashiers: Array.from(document.querySelectorAll('.visible-cashier-cb:checked')).map(cb => parseInt(cb.value))
   };
   
   if (!payload.name || !payload.email || !payload.role) {

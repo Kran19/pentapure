@@ -58,7 +58,8 @@ Route::middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTE
     Route::post('/api/stock/locations/transfer', [AdminController::class, 'transferStockLocationsApi']);
 
     // Shared Product Stock History
-    Route::get('/product/{productId}/{stage}/{grade}/history', [AdminController::class, 'productStockHistory'])->name('product.stock.history');
+    Route::get('/product/{productId}/{stage}/history', [AdminController::class, 'productStockHistory'])
+        ->name('product.stock.history');
 
     // Admin specific notification send route
     Route::post('/admin/notifications/send', [AdminController::class, 'sendNotification'])->middleware('auth.role:ADMIN');

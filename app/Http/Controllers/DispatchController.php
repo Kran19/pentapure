@@ -62,7 +62,7 @@ class DispatchController extends Controller
                 'items'        => $o->items->map(fn($i) => [
                     'id'            => $i->id,
                     'productId'     => $i->product_id,
-                    'productName'   => $i->product?->name,
+                    'productName'   => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
                     'productType'   => $i->product?->type,
                     'quantity'      => (float) $i->quantity,
                     'dispatchedQty' => (float) $i->dispatched_qty,
@@ -110,7 +110,7 @@ class DispatchController extends Controller
                 ],
                 'items'       => $o->items->map(fn($i)=>[
                     'id'            => $i->id,
-                    'productName'   => $i->product?->name,
+                    'productName'   => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
                     'productId'     => $i->product_id,
                     'productType'   => $i->product?->type,
                     'quantity'      => (float) $i->quantity,
@@ -470,7 +470,7 @@ class DispatchController extends Controller
                 'date'          => $d->created_at->toISOString(),
                 'notes'         => $d->order?->notes,
                 'items'         => $d->dispatchItems->map(fn($di) => [
-                    'productName' => $di->orderItem?->product?->name,
+                    'productName' => $di->orderItem?->product ? $di->orderItem->product->formatName($di->orderItem->grade) : 'Unknown',
                     'grade'       => $di->orderItem?->grade,
                     'productType' => $di->orderItem?->product?->type,
                     'quantity'    => (float) $di->quantity,

@@ -101,7 +101,11 @@
     <div class="list-item" onclick="app.openProductionDrawer({{ $idx }})" style="cursor:pointer; background:rgba(255,255,255,0.03); padding:1rem; border-radius:12px; border:1px solid rgba(255,255,255,0.05); transition:0.2s; display:block;">
       <div class="list-item-content">
         <div class="list-item-title" style="font-weight:600; font-size:1rem; color:var(--text-main);">
-          Produced {{ number_format($l['outputQty'], 2) }}kg {{ $l['outputName'] }} 
+          Produced {{ number_format($l['outputQty'], 2) }}kg 
+          <a href="{{ route('product.stock.history', ['productId' => $l['outputProductId'], 'stage' => 'SEMI', 'grade' => $l['outputGrade'], 'from' => 'history']) }}" style="color: inherit; text-decoration: none; border-bottom: 1px dashed rgba(255,255,255,0.5);" onclick="event.stopPropagation()">
+            {{ $l['outputName'] }}
+          </a>
+
           @if($l['outputGrade'] && $l['outputGrade'] !== 'NONE' && $l['outputGrade'] !== 'N/A')
             <span class="badge badge-info">{{ $l['outputGrade'] }}</span>
           @endif
@@ -145,7 +149,7 @@
     <tbody>
       @forelse($pageData['purchaseOrders'] ?? [] as $po)
         <tr>
-          <td style="font-weight:600;">{{ $po->product?->name }}</td>
+          <td style="font-weight:600;">{{ $po->product ? $po->product->formatName() : 'Unknown' }}</td>
           <td>{{ $po->quantity }} kg</td>
           <td>
              <span class="badge {{ $po->status === 'DONE' ? 'badge-done' : 'badge-pending' }}">

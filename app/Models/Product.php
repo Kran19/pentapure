@@ -7,17 +7,25 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
 {
-    protected $fillable = ['name', 'type', 'unit', 'image_url', 'is_active', 'allowed_roles', 'rate'];
+    protected $fillable = ['name', 'type', 'unit', 'image_url', 'is_active', 'allowed_roles', 'rate', 'threshold'];
 
     protected $casts = [
         'is_active' => 'boolean',
         'allowed_roles' => 'array',
-        'rate' => 'float'
+        'rate' => 'float',
+        'threshold' => 'float'
     ];
 
     public function scopeRaw($query)   { return $query->where('type', 'RAW'); }
     public function scopeTarget($query){ return $query; }
     public function scopeActive($query){ return $query->where('is_active', true); }
+
+    public function formatName($grade = null)
+    {
+        $g = $grade ?: 'N/A';
+        $t = strtolower($this->type ?? 'N/A');
+        return "{$this->name} - (grade- {$g}) (type - {$t})";
+    }
 
     public function scopeVisibleTo($query, $role)
     {

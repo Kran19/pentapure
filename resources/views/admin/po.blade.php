@@ -31,7 +31,7 @@
               <div style="font-weight:600;">{{ $po->user?->name }}</div>
               <div style="font-size:0.75rem; color:var(--text-muted);">{{ $po->user?->role }}</div>
             </td>
-            <td style="font-weight:600;">{{ $po->product?->name }}</td>
+            <td style="font-weight:600;">{{ $po->product ? $po->product->formatName() : 'Unknown' }}</td>
             <td style="color:var(--primary-light); font-weight:bold;">{{ number_format($po->quantity, 1) }}</td>
             <td style="font-size:0.85rem; color:var(--text-muted);">{{ $po->note ?? '—' }}</td>
             <td>

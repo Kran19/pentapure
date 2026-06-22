@@ -14,7 +14,7 @@
     <!-- Official Header -->
     <div style="text-align:center; margin-bottom:1rem;">
       <div style="font-size:0.7rem; font-weight:bold; border:1px solid #000; padding:2px 10px; display:inline-block; margin-bottom:10px;">OFFICIAL RECORD</div>
-      <h1 style="margin:0; color:#000; font-weight:900; letter-spacing:1px; font-size:1.5rem;">PENTAPURE FOODS & SPICES PVT.LTD.</h1>
+      <h1 style="margin:0; color:#000; font-weight:900; letter-spacing:1px; font-size:1.5rem;">FOOD & SPICES PVT.LTD.</h1>
       <div style="font-size:0.75rem; color:#444; margin-bottom:5px;">Factory & Warehouse Operations</div>
       <div style="display:inline-block; border-top:2px solid #000; border-bottom:2px solid #000; padding:3px 15px; font-weight:bold; font-size:1rem; letter-spacing:2px; background:#f9f9f9;">ATTENDANCE SHEET</div>
     </div>
@@ -130,7 +130,7 @@
     <div class="no-print" style="margin-top:2rem; display:grid; grid-template-columns: repeat(3, 1fr); gap:40px; text-align:center;">
       <div style="border-top:1px solid #000; padding-top:10px; font-size:0.8rem; font-weight:bold;">FACTORY MANAGER<br><span style="font-weight:normal; font-size:0.7rem;">Verified & Checked</span></div>
       <div style="border-top:1px solid #000; padding-top:10px; font-size:0.8rem; font-weight:bold;">FINANCE / ACCOUNTS<br><span style="font-weight:normal; font-size:0.7rem;">Audit Approved</span></div>
-      <div style="border-top:1px solid #000; padding-top:10px; font-size:0.8rem; font-weight:bold;">AUTHORIZED SIGNATORY<br><span style="font-weight:normal; font-size:0.7rem;">Pentapure Foods & Spices</span></div>
+      <div style="border-top:1px solid #000; padding-top:10px; font-size:0.8rem; font-weight:bold;">AUTHORIZED SIGNATORY<br><span style="font-weight:normal; font-size:0.7rem;">Food & Spices</span></div>
     </div>
     
     <!-- Fine Print -->

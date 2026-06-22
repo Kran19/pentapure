@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
-  <h2 style="margin:0;">✅ Finished Goods Stock</h2>
+  <h2 style="margin:0;">✅ FG Stock</h2>
   <a class="btn btn-sm btn-secondary" style="width:auto; padding:0.5rem 1rem; text-decoration:none;" href="{{ url('finished/po') }}">Purchase Orders</a>
 </div>
 
@@ -44,14 +44,14 @@
   </div>
 </div>
 
-<h3 style="margin-top:1.5rem; margin-bottom:0.8rem; color:var(--primary-light);">📦 Live Finished Goods Stock</h3>
+<h3 style="margin-top:1.5rem; margin-bottom:0.8rem; color:var(--primary-light);">📦 Live FG Stock</h3>
 <div class="responsive-grid">
   @forelse($pageData['finishedStock'] as $s)
     <div class="card" style="padding: 1rem; margin-bottom: 0;">
       <div class="flex-between">
         <div>
           <div style="font-weight:600; font-size:1.1rem;">
-            <a href="{{ route('product.stock.history', ['productId' => $s['productId'] ?? $s['id'], 'stage' => 'FINISHED', 'grade' => $s['grade']]) }}" style="color: inherit; text-decoration: none; border-bottom: 1px dashed rgba(255,255,255,0.5);">
+            <a href="{{ route('product.stock.history', ['productId' => $s['productId'] ?? $s['id'], 'stage' => 'FINISHED', 'grade' => $s['grade'], 'from' => 'home']) }}" style="color: inherit; text-decoration: none; border-bottom: 1px dashed rgba(255,255,255,0.5);">
               {{ $s['name'] }}
             </a>
           </div>
@@ -63,7 +63,7 @@
       </div>
     </div>
   @empty
-    <div class="card" style="grid-column:1/-1;"><p class="text-center text-muted">No finished goods stock recorded yet.</p></div>
+    <div class="card" style="grid-column:1/-1;"><p class="text-center text-muted">No FG stock recorded yet.</p></div>
   @endforelse
 </div>
 @endsection
