@@ -218,6 +218,7 @@
     });
 
     window.csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    window.logoutUrl = "{{ route('logout') }}";
 
     @if(isset($pageData))
     window.serverPageData = @json($pageData);

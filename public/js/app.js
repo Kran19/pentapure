@@ -335,7 +335,7 @@ const app = {
   logout() {
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = '/logout';
+    form.action = window.logoutUrl || '/logout';
     
     const csrfInput = document.createElement('input');
     csrfInput.type = 'hidden';

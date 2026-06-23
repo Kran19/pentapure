@@ -89,6 +89,8 @@
   <script src="{{ asset('js/app.js') }}"></script>
   <script>
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    window.csrfToken = csrfToken;
+    window.logoutUrl = "{{ route('logout') }}";
   </script>
 </body>
 </html>

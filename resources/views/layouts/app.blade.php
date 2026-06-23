@@ -145,6 +145,7 @@
   <script>
     // ── CSRF for all fetch() calls ─────────────────────────────────────────
     window.csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    window.logoutUrl = "{{ route('logout') }}";
 
     // ── Global Server Page Data ───────────────────────────────────────────
     window.serverPageData = {!! json_encode($pageData ?? []) !!};
