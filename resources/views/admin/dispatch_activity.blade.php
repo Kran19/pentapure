@@ -68,15 +68,15 @@
                 <div style="font-size:0.75rem; color:var(--text-muted);">By: {{ $order->creator?->name ?? 'System' }}</div>
               </td>
               <td>
-                <div style="max-width:300px;">
+                <div style="min-width:280px; max-width:450px; white-space:normal; word-break:break-word;">
                   @foreach($order->items as $item)
                     <div style="font-size:0.85rem; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid rgba(255,255,255,0.05);">
-                      <div style="margin-bottom:2px;">
+                      <div style="margin-bottom:2px; white-space:normal;">
                         • {{ $item->product ? $item->product->formatName($item->grade) : 'Unknown' }}: 
                         <span style="font-weight:600;">{{ $item->quantity }} {{ $item->product?->unit }}</span>
                       </div>
                       @if($order->dispatch_status === 'PARTIAL' || ($order->dispatch_status === 'DONE' && $order->dispatch_logs_count > 1))
-                        <div style="font-size:0.75rem; color:var(--text-muted); padding-left:12px;">
+                        <div style="font-size:0.75rem; color:var(--text-muted); padding-left:12px; white-space:normal;">
                           Dispatched: <span style="color:var(--secondary); font-weight:600;">{{ $item->dispatched_qty ?? 0 }} {{ $item->product?->unit }}</span>
                           &nbsp;|&nbsp;
                           Pending: <span style="color:var(--danger); font-weight:600;">{{ max(0, $item->quantity - ($item->dispatched_qty ?? 0)) }} {{ $item->product?->unit }}</span>
@@ -84,7 +84,7 @@
                       @endif
 
                       @if($order->dispatch_status === 'PENDING_PARTIAL' && $item->quantity > ($item->dispatched_qty ?? 0))
-                        <div style="font-size:0.75rem; color:var(--text-muted); padding-left:12px;">
+                        <div style="font-size:0.75rem; color:var(--text-muted); padding-left:12px; white-space:normal;">
                           🚧 Pending Partial Qty: <span style="color:var(--danger); font-weight:600;">{{ max(0, $item->quantity - ($item->dispatched_qty ?? 0)) }} {{ $item->product?->unit }}</span>
                         </div>
                       @endif
@@ -92,7 +92,7 @@
                     </div>
                   @endforeach
                   @if($order->notes)
-                    <div style="font-size:0.75rem; color:var(--text-muted); font-style:italic; margin-top:4px;">
+                    <div style="font-size:0.75rem; color:var(--text-muted); font-style:italic; margin-top:4px; white-space:normal;">
                       Note: {{ $order->notes }}
                     </div>
                   @endif

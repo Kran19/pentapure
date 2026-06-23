@@ -166,12 +166,12 @@
                         <td><strong>{{ $row['product_name'] ?? '-' }}</strong></td>
                         <td class="center">
                             @if(($row['transaction_type'] ?? '') === 'IN')
-                                <span class="badge badge-ok">IN</span>
+                                <span class="badge" style="background:#d3d3d3de; color:#2ecc71; min-width: 55px; display: inline-block; text-align: center;">IN</span>
                             @else
-                                <span class="badge badge-warn">OUT</span>
+                                <span class="badge" style="background:#d3d3d3de; color:red; min-width: 55px; display: inline-block; text-align: center;">OUT</span>
                             @endif
                         </td>
-                        <td class="amount {{ ($row['transaction_type'] ?? '') === 'IN' ? 'text-green' : 'text-red' }}">
+                        <td class="amount" style="color:{{ ($row['transaction_type'] ?? '') === 'IN' ? '#2ecc71' : 'red' }}; font-weight:bold;">
                             {{ ($row['transaction_type'] ?? '') === 'IN' ? '+' : '-' }}{{ number_format((float) ($row['quantity'] ?? 0), 2) }} <span style="font-size:10px; color:#667085;">{{ $row['unit'] ?? 'kg' }}</span>
                         </td>
                         <td>{{ $row['date'] }}</td>

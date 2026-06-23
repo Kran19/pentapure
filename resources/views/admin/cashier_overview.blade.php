@@ -80,12 +80,12 @@
                         <td style="font-size:0.85rem;">{{ $tx->created_at->format('d M Y, h:i A') }}</td>
                         <td><strong>{{ $tx->user->name }}</strong></td>
                         <td>
-                            <span class="badge {{ $tx->type === 'IN' ? 'badge-done' : 'badge-closed' }}">
+                            <span style="display:inline-block; min-width:55px; text-align:center; padding:4px 8px; border-radius:4px; font-weight:bold; background: #d3d3d3de; color:{{ $tx->type === 'IN' ? '#2ecc71' : 'red' }};">
                                 {{ $tx->type }}
                             </span>
                         </td>
                         <td><span class="badge badge-info">{{ strtoupper($tx->category) }}</span></td>
-                        <td style="font-weight:700; color: {{ $tx->type === 'IN' ? 'var(--secondary)' : 'var(--danger)' }}">
+                        <td style="font-weight:700; color: {{ $tx->type === 'IN' ? '#2ecc71' : 'red' }}">
                             {{ $tx->type === 'IN' ? '+' : '-' }}₹{{ number_format($tx->amount, 2) }}
                         </td>
                         <td style="font-size:0.9rem; max-width:200px;">{{ $tx->note ?? '—' }}</td>

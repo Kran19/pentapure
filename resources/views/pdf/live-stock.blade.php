@@ -9,7 +9,7 @@
         table td { color: #101828 !important; }
         table th { color: #f8c300 !important; }
 
-        .page { border: 1px solid #1e40af; padding: 42px 46px 24px; min-height: 1060px; border-bottom: 7px solid #f8c300; }
+        .page { border: 1px solid #1f2937; padding: 42px 46px 24px; min-height: 1060px; border-bottom: 7px solid #f8c300; }
         .top { display: table; width: 100%; padding-bottom: 22px; border-bottom: 1px solid #667085; }
         .brand, .contact { display: table-cell; vertical-align: top; width: 50%; }
         .contact { text-align: left; padding-left: 110px; font-size: 14px; }
@@ -23,18 +23,18 @@
         .meta-row { margin-bottom: 11px; }
         .label { display: inline-block; min-width: 130px; font-weight: 600; }
         .colon { display: inline-block; width: 20px; text-align: center; }
-        .section-label { background: #1e40af; color: #ffffff; display: inline-block; padding: 8px 28px; border-radius: 4px; font-weight: 700; text-transform: uppercase; font-size: 15px; }
+        .section-label { background: #f8c300; color: #101828; display: inline-block; padding: 8px 28px; border-radius: 4px; font-weight: 700; text-transform: uppercase; font-size: 15px; }
         .box { border: 1px solid #d0d5dd; border-radius: 5px; padding: 28px 30px; margin-top: -1px; margin-bottom: 30px; background-color: #fffdf5; }
         .details { display: table; width: 100%; }
         .details-col { display: table-cell; width: 50%; vertical-align: top; }
         .divider { border-left: 1px solid #d0d5dd; padding-left: 34px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-        th { background: #1e40af; color: #f8c300; padding: 14px 10px; border: 1px solid #1e40af; font-size: 14px; text-align: left; }
+        th { background: #f8c300; color: #101828; padding: 14px 10px; border: 1px solid #667085; font-size: 14px; text-align: left; }
         td { padding: 13px 10px; border: 1px solid #d9dee7; vertical-align: top; }
         td.center, th.center { text-align: center; }
         td.amount { text-align: right; font-weight: 700; }
         .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }
-        .badge-raw { background: #e3f2fd; color: #0d47a1; }
+        .badge-raw { background: #fff8e1; color: #b37400; }
         .badge-semi { background: #fff8e1; color: #ff6f00; }
         .badge-finished { background: #e8f5e9; color: #1b5e20; }
         .summary { display: table; width: 100%; }
@@ -44,7 +44,7 @@
         .summary-label { font-size: 12px; margin-top: 4px; color: #667085; }
         .footer { margin-top: 38px; padding-top: 26px; border-top: 1px solid #98a2b3; display: table; width: 100%; }
         .notes, .sign { display: table-cell; width: 50%; vertical-align: bottom; }
-        .notes-title { color: #1e40af; font-weight: 800; margin-bottom: 12px; }
+        .notes-title { color: #f8c300; font-weight: 800; margin-bottom: 12px; text-shadow: 0.5px 0.5px 0 #000; }
 
         .sign { text-align: center; padding-left: 130px; }
         .scribble { font-family: DejaVu Sans, sans-serif; font-size: 28px; margin-bottom: 6px; }
@@ -137,8 +137,8 @@
             @endforelse
             @if(!empty($items))
                 <tr style="background-color: #fffdf5; font-weight: bold; font-size: 14px;">
-                    <td colspan="6" style="text-align: right; border-top: 2px solid #1e40af; padding: 15px 10px;">Total Stock Valuation (Ref):</td>
-                    <td class="amount" style="border-top: 2px solid #1e40af; padding: 15px 10px; color: #b37400;">₹{{ number_format($totalValuation, 2) }}</td>
+                    <td colspan="6" style="text-align: right; border-top: 2px solid #f8c300; padding: 15px 10px;">Total Stock Valuation (Ref):</td>
+                    <td class="amount" style="border-top: 2px solid #f8c300; padding: 15px 10px; color: #b37400;">₹{{ number_format($totalValuation, 2) }}</td>
                 </tr>
             @endif
         </tbody>

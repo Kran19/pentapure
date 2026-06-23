@@ -104,12 +104,12 @@
           </td>
           <td style="white-space: nowrap;">
             @if($s['transaction_type'] === 'IN')
-              <span class="badge" style="background:#2ecc71; color:#fff;">IN</span>
+              <span class="badge" style="background:#d3d3d3de; color:#2ecc71; min-width: 55px; display: inline-block; text-align: center;">IN</span>
             @else
-              <span class="badge" style="background:#f1c40f; color:#000;">OUT</span>
+              <span class="badge" style="background:#d3d3d3de; color:red; min-width: 55px; display: inline-block; text-align: center;">OUT</span>
             @endif
           </td>
-          <td style="font-weight:bold; color:{{ $s['transaction_type'] === 'IN' ? '#2ecc71' : '#f1c40f' }}; white-space: nowrap;">
+          <td style="font-weight:bold; color:{{ $s['transaction_type'] === 'IN' ? '#2ecc71' : 'red' }}; white-space: nowrap;">
             {{ $s['transaction_type'] === 'IN' ? '+' : '-' }}{{ number_format($s['quantity'], 2) }} {{ $s['unit'] }}
           </td>
           <td style="font-size:0.8rem; white-space: nowrap;">{{ \Carbon\Carbon::parse($s['date'])->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}</td>

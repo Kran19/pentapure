@@ -30,23 +30,23 @@
         <thead><tr><th>Product</th><th>Grade</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="raw-stock-tbody">
 @foreach($rawItems as $s)
-          @php $isLow = $s->threshold > 0 && $s->quantity < $s->threshold; @endphp
-          <tr @if($isLow) style="background-color: rgba(255, 77, 77, 0.15);" title="Low Stock! Threshold is {{ $s->threshold }}" @endif>
+          @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
+          <tr @if($isLow) style="background-color: #8b0000; color: #ffffff;" title="Low Stock! Threshold is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:600;">{{ $s->name }}</td>
-            <td><span class="badge badge-info">{{ $s->grade }}</span></td>
-            <td @if($isLow) style="font-weight:bold; color:var(--danger);" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
+            <td><span class="badge badge-info" @if($isLow) style="background-color:rgba(255,255,255,0.2); color:#ffffff;" @endif>{{ $s->grade }}</span></td>
+            <td @if($isLow) style="font-weight:bold; color:#ffffff;" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold;">₹{{ number_format($s->rate ?? 0, 2) }}</td>
-            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="RAW" style="cursor:pointer; color:var(--primary-light); text-decoration:underline;" onclick="showLocationBreakdown(this)">📍 View Locations</td>
+            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="RAW" style="cursor:pointer; text-decoration:underline; @if($isLow) color:#ffffff; @else color:var(--primary-light); @endif" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
               <div style="display:flex; align-items:center; gap:0.4rem;">
-                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust">
+                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust" @if($isLow) style="color:#ffffff;" @endif>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
-                <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" style="color:var(--danger);">
+                <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" @if($isLow) style="color:#ffcccc;" @else style="color:var(--danger);" @endif>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 </button>
-                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
+                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem; @if($isLow) background:rgba(255,255,255,0.2); color:#fff; border-color:transparent; @endif">Details</button>
               </div>
             </td>
           </tr>
@@ -70,24 +70,24 @@
         <thead><tr><th>Product</th><th>Grade</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="semi-stock-tbody">
           @foreach($semiItems as $s)
-          @php $isLow = $s->threshold > 0 && $s->quantity < $s->threshold; @endphp
-<tr @if($isLow) style="background-color: rgba(255, 77, 77, 0.15);" title="Low Stock! Threshold is {{ $s->threshold }}" @endif>
+          @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
+<tr @if($isLow) style="background-color: #8b0000; color: #ffffff;" title="Low Stock! Threshold is {{ $s->alert_limit }}" @endif>
 
             <td style="font-weight:600;">{{ $s->name }}</td>
-            <td><span class="badge badge-info">{{ $s->grade }}</span></td>
-            <td @if($isLow) style="font-weight:bold; color:var(--danger);" @else style="font-weight:bold; color:var(--warning);" @endif>{{ number_format($s->quantity, 2) }}</td>
+            <td><span class="badge badge-info" @if($isLow) style="background-color:rgba(255,255,255,0.2); color:#ffffff;" @endif>{{ $s->grade }}</span></td>
+            <td @if($isLow) style="font-weight:bold; color:#ffffff;" @else style="font-weight:bold; color:var(--warning);" @endif>{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold;">₹{{ number_format($s->rate ?? 0, 2) }}</td>
-            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="SEMI" style="cursor:pointer; color:var(--primary-light); text-decoration:underline;" onclick="showLocationBreakdown(this)">📍 View Locations</td>
+            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="SEMI" style="cursor:pointer; text-decoration:underline; @if($isLow) color:#ffffff; @else color:var(--primary-light); @endif" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
               <div style="display:flex; align-items:center; gap:0.4rem;">
-                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust">
+                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust" @if($isLow) style="color:#ffffff;" @endif>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
-                <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" style="color:var(--danger);">
+                <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" @if($isLow) style="color:#ffcccc;" @else style="color:var(--danger);" @endif>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 </button>
-                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
+                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem; @if($isLow) background:rgba(255,255,255,0.2); color:#fff; border-color:transparent; @endif">Details</button>
               </div>
             </td>
           </tr>
@@ -111,25 +111,25 @@
         <thead><tr><th>Product</th><th>Grade</th><th>Total Qty</th><th>Unit</th><th>Rate (Ref)</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="finished-stock-tbody">
           @foreach($finishedItems as $s)
-          @php $isLow = $s->threshold > 0 && $s->quantity < $s->threshold; @endphp
-<tr @if($isLow) style="background-color: rgba(255, 77, 77, 0.15);" title="Low Stock! Threshold is {{ $s->threshold }}" @endif>
+          @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
+<tr @if($isLow) style="background-color: #8b0000; color: #ffffff;" title="Low Stock! Threshold is {{ $s->alert_limit }}" @endif>
 
             <td style="font-weight:600;">{{ $s->name }}</td>
-            <td><span class="badge badge-info">{{ $s->grade }}</span></td>
+            <td><span class="badge badge-info" @if($isLow) style="background-color:rgba(255,255,255,0.2); color:#ffffff;" @endif>{{ $s->grade }}</span></td>
 
-            <td @if($isLow) style="font-weight:bold; color:var(--danger);" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
+            <td @if($isLow) style="font-weight:bold; color:#ffffff;" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold;">₹{{ number_format($s->rate ?? 0, 2) }}</td>
-            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="FINISHED" style="cursor:pointer; color:var(--primary-light); text-decoration:underline;" onclick="showLocationBreakdown(this)">📍 View Locations</td>
+            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="FINISHED" style="cursor:pointer; text-decoration:underline; @if($isLow) color:#ffffff; @else color:var(--primary-light); @endif" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
               <div style="display:flex; align-items:center; gap:0.4rem;">
-                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust">
+                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust" @if($isLow) style="color:#ffffff;" @endif>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
-                <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" style="color:var(--danger);">
+                <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" @if($isLow) style="color:#ffcccc;" @else style="color:var(--danger);" @endif>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 </button>
-                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
+                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem; @if($isLow) background:rgba(255,255,255,0.2); color:#fff; border-color:transparent; @endif">Details</button>
               </div>
             </td>
           </tr>
@@ -564,10 +564,10 @@ function updateStockTables(stockData) {
 
     let html = '';
     items.forEach(s => {
-      const limit = parseFloat(s.threshold) || 0;
+      const limit = parseFloat(s.alert_limit) || 0;
       const qty = parseFloat(s.quantity);
       const isLow = limit > 0 && qty < limit;
-const rowStyle = isLow ? 'background-color: rgba(255, 77, 77, 0.15);' : '';
+const rowStyle = isLow ? 'background-color: #8b0000; color: #ffffff;' : '';
       const titleAttr = isLow ? `title="Low Stock! Threshold is ${limit}"` : '';
 
       // Disable hover ONLY visually for low rows without breaking the click buttons
@@ -579,26 +579,26 @@ const rowStyle = isLow ? 'background-color: rgba(255, 77, 77, 0.15);' : '';
       if (stage === 'RAW') qtyColor = 'var(--secondary)';
       if (stage === 'SEMI') qtyColor = 'var(--warning)';
       if (stage === 'FINISHED') qtyColor = 'var(--secondary)';
-      if (isLow) qtyColor = 'var(--danger)';
+      if (isLow) qtyColor = '#ffffff';
 
       html += `
         <tr style="${rowStyle}" ${titleAttr} class="${disableHoverClass}">
           <td style="font-weight:600;">${s.name}</td>
-          <td><span class="badge badge-info">${s.grade}</span></td>
+          <td><span class="badge badge-info" ${isLow ? 'style="background-color:rgba(255,255,255,0.2); color:#ffffff;"' : ''}>${s.grade}</span></td>
           <td style="font-weight:bold; color:${qtyColor};">${formattedQty}</td>
           <td>${s.unit || ''}</td>
           <td style="font-weight:bold;">₹${number_format(parseFloat(s.rate ?? 0) || 0, 2)}</td>
-          <td class="location-col" data-product="${s.productId}" data-grade="${s.grade}" data-stage="${stage}" style="cursor:pointer; color:var(--primary-light); text-decoration:underline;" onclick="showLocationBreakdown(this)">📍 View Locations</td>
+          <td class="location-col" data-product="${s.productId}" data-grade="${s.grade}" data-stage="${stage}" style="cursor:pointer; text-decoration:underline; ${isLow ? 'color:#ffffff;' : 'color:var(--primary-light);'}" onclick="showLocationBreakdown(this)">📍 View Locations</td>
           <td>
 
             <div style="display:flex; align-items:center; gap:0.4rem;">
-              <button class="btn-icon edit" onclick="adminAdjustStock('${s.productId}', '${s.stage}', '${s.grade}')" title="Adjust">
+              <button class="btn-icon edit" onclick="adminAdjustStock('${s.productId}', '${s.stage}', '${s.grade}')" title="Adjust" ${isLow ? 'style="color:#ffffff;"' : ''}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
-              <button class="btn-icon edit" onclick="adminSetLimit('${s.productId}', '${s.stage}', '${s.grade}', '${limit}')" title="Set Alert Limit" style="color:var(--danger);">
+              <button class="btn-icon edit" onclick="adminSetLimit('${s.productId}', '${s.stage}', '${s.grade}', '${limit}')" title="Set Alert Limit" style="color:${isLow ? '#ffcccc' : 'var(--danger)'};">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
               </button>
-              <button class="btn btn-sm" onclick="window.location.href='{{ url('/product') }}/' + s.productId + '/' + s.stage + '/' + s.grade + '/history'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
+              <button class="btn btn-sm" onclick="window.location.href='{{ url('/product') }}/' + s.productId + '/' + s.stage + '/' + s.grade + '/history'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem; ${isLow ? 'background:rgba(255,255,255,0.2); color:#fff; border-color:transparent;' : ''}">Details</button>
             </div>
           </td>
         </tr>

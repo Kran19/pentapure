@@ -34,7 +34,7 @@
         .stats-card { border-radius: 4px; padding: 6px; text-align: center; border: 1px solid #d0d5dd; }
         
         /* Color variations for stats */
-        .stats-blue { border-color: #b2ddff; background: #f0f8ff; color: #175cd3; }
+        .stats-yellow { border-color: #fdec98; background: #fffdf5; color: #b37400; }
         .stats-green { border-color: #abefc6; background: #f6fef9; color: #027a48; }
         .stats-orange { border-color: #fedf89; background: #fffdf5; color: #b54708; }
         .stats-red { border-color: #fecdca; background: #fffbfa; color: #b42318; }
@@ -143,7 +143,7 @@
     <table class="stats-table">
         <tr>
             <td class="stats-card-cell">
-                <div class="stats-card stats-blue">
+                <div class="stats-card stats-yellow">
                     <div class="stats-label">Total Dispatches</div>
                     <div class="stats-value">{{ $totalRecords }}</div>
                 </div>
@@ -192,7 +192,7 @@
                 <th style="width: 12%;">Customer</th>
                 <th style="width: 22%;">Product Details</th>
                 <th style="width: 8%; color: #027a48;" class="text-right">Ord. Qty</th>
-                <th style="width: 8%; color: #175cd3;" class="text-right">Disp. Qty</th>
+                <th style="width: 8%; color: #b37400;" class="text-right">Disp. Qty</th>
                 <th style="width: 8%; color: #b42318;" class="text-right">Pend. Qty</th>
                 <th style="width: 9%;" class="text-right">Revenue</th>
                 <th style="width: 8%;" class="text-center">Status</th>
@@ -213,7 +213,7 @@
                         </div>
                     </td>
                     <td class="text-right text-green"><strong>{{ $row['ordered_qty_formatted'] ?? number_format($row['ordered_qty'] ?? 0) . ' KG' }}</strong></td>
-                    <td class="text-right" style="color: #175cd3;"><strong>{{ $row['dispatch_qty_formatted'] ?? number_format($row['qty'] ?? 0) . ' KG' }}</strong></td>
+                    <td class="text-right" style="color: #b37400;"><strong>{{ $row['dispatch_qty_formatted'] ?? number_format($row['qty'] ?? 0) . ' KG' }}</strong></td>
                     <td class="text-right" style="color: {{ ($row['pending_qty'] ?? 0) > 0 ? '#b42318' : 'inherit' }};"><strong>{{ $row['pending_qty_formatted'] ?? number_format($row['pending_qty'] ?? 0) . ' KG' }}</strong></td>
                     <td class="text-right"><strong>Rs. {{ number_format($row['amount'], 2) }}</strong></td>
                     <td class="text-center">
@@ -231,7 +231,7 @@
                 <tr class="total-row">
                     <td colspan="5">TOTAL</td>
                     <td class="text-right text-green">{{ number_format($totalOrderedQty ?? 0) }} KG</td>
-                    <td class="text-right" style="color: #175cd3;">{{ number_format($totalQuantity) }} KG</td>
+                    <td class="text-right" style="color: #b37400;">{{ number_format($totalQuantity) }} KG</td>
                     <td class="text-right" style="color: {{ ($totalPendingQty ?? 0) > 0 ? '#b42318' : 'inherit' }};">{{ number_format($totalPendingQty ?? 0) }} KG</td>
                     <td class="text-right">Rs. {{ number_format($totalValue, 2) }}</td>
                     <td></td>

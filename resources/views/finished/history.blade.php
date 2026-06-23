@@ -92,13 +92,13 @@
   @forelse($paginated as $idx => $l)
     @php
       $inputList = collect($l['consumedInputs'] ?? [])->map(function($i) {
-        return "{$i['quantity']}kg " . ($i['name'] ?? 'Material');
+        return "<span style=\"color:red; font-weight:bold;\">-{$i['quantity']}kg</span> " . ($i['name'] ?? 'Material');
       })->join(', ');
     @endphp
     <div class="list-item" onclick="app.openProductionDrawer({{ $idx }})" style="cursor:pointer; background:rgba(255,255,255,0.03); padding:1rem; border-radius:12px; border:1px solid rgba(255,255,255,0.05); transition:0.2s; display:block;">
       <div class="list-item-content">
         <div class="list-item-title" style="font-weight:600; font-size:1rem; color:var(--text-main);">
-          Produced {{ number_format($l['outputQty'], 2) }}kg 
+          Produced <span style="color:#2ecc71; font-weight:bold;">+{{ number_format($l['outputQty'], 2) }}kg</span> 
           <a href="{{ route('product.stock.history', ['productId' => $l['outputProductId'], 'stage' => 'FINISHED', 'grade' => $l['outputGrade'], 'from' => 'history']) }}" style="color: inherit; text-decoration: none; border-bottom: 1px dashed rgba(255,255,255,0.5);" onclick="event.stopPropagation()">
             {{ $l['outputName'] }}
           </a>
@@ -112,7 +112,7 @@
         </div>
         <div class="list-item-meta" style="margin-top:6px;">
           <div style="color:var(--secondary); font-size:0.8rem; margin-bottom:4px;">{{ \Carbon\Carbon::parse($l['date'])->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}</div>
-          <div style="font-size:0.75rem; color:var(--text-muted); line-height:1.3;">Using: {{ $inputList }}</div>
+          <div style="font-size:0.75rem; color:var(--text-muted); line-height:1.3;">Using: {!! $inputList !!}</div>
         </div>
       </div>
     </div>

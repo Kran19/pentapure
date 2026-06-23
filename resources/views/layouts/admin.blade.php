@@ -75,14 +75,10 @@
             📊 Dashboard
           </a>
           @endif
+
           @if($can('module_users'))
           <a href="{{ url('admin/users') }}" class="nav-item {{ $seg=='users'?'active':'' }}">
             👥 Users &amp; Hierarchy
-          </a>
-          @endif
-          @if($can('module_products'))
-          <a href="{{ url('admin/products') }}" class="nav-item {{ $seg=='products'?'active':'' }}">
-            🏷️ Products Master
           </a>
           @endif
 
@@ -91,16 +87,43 @@
             📦 Live Stock
           </a>
           @endif
-          @if($can('module_grades'))
-          <a href="{{ url('admin/grades') }}" class="nav-item {{ $seg=='grades'?'active':'' }}">
-            ✅ Grades Master
+
+          @if($can('module_products'))
+          <a href="{{ url('admin/products') }}" class="nav-item {{ $seg=='products'?'active':'' }}">
+            🏷️ Products Master
           </a>
           @endif
+
           @if($can('module_po'))
           <a href="{{ url('admin/po') }}" class="nav-item {{ $seg=='po'?'active':'' }}">
             📋 Purchase Orders
           </a>
           @endif
+
+          @if($can('module_dispatch'))
+          <a href="{{ url('admin/dispatch-activity') }}" class="nav-item {{ $seg=='dispatch-activity'?'active':'' }}">
+            🚚 Dispatch Activity
+          </a>
+          @endif
+
+          @if($can('module_cashier'))
+          <a href="{{ url('admin/cashier-overview') }}" class="nav-item {{ $seg=='cashier-overview'?'active':'' }}">
+            💰 Cashier Overview
+          </a>
+          @endif
+
+          @if($can('module_categories'))
+          <a href="{{ url('admin/categories') }}" class="nav-item {{ $seg=='categories'?'active':'' }}">
+            🏷️ Expense Category Master
+          </a>
+          @endif
+
+          @if($can('module_grades'))
+          <a href="{{ url('admin/grades') }}" class="nav-item {{ $seg=='grades'?'active':'' }}">
+            ✅ Grades Master
+          </a>
+          @endif
+
           @if($can('module_logs'))
           <a href="{{ url('admin/logs') }}" class="nav-item {{ $seg=='logs'?'active':'' }}">
             🕐 Activity Logs
@@ -110,22 +133,6 @@
           <a href="#" onclick="event.preventDefault(); openLocationsAdminModal()" class="nav-item">
             📍 Storage Locations
           </a>
-
-          @if($can('module_categories'))
-          <a href="{{ url('admin/categories') }}" class="nav-item {{ $seg=='categories'?'active':'' }}">
-            🏷️ Expense Category Master
-          </a>
-          @endif
-          @if($can('module_dispatch'))
-          <a href="{{ url('admin/dispatch-activity') }}" class="nav-item {{ $seg=='dispatch-activity'?'active':'' }}">
-            🚚 Dispatch Activity
-          </a>
-          @endif
-          @if($can('module_cashier'))
-          <a href="{{ url('admin/cashier-overview') }}" class="nav-item {{ $seg=='cashier-overview'?'active':'' }}">
-            💰 Cashier Overview
-          </a>
-          @endif
 
           @if($can('module_notifications'))
           <a href="{{ url('admin/notifications') }}" class="nav-item {{ $seg=='notifications'?'active':'' }}"

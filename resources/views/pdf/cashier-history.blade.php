@@ -15,7 +15,7 @@
 
         /* ── HEADER BAR ── */
         .header-bar {
-            background: #1a2744;
+            background: #f8c300;
             padding: 20px 30px;
             display: table;
             width: 100%;
@@ -37,12 +37,12 @@
         .brand-name {
             font-size: 24px;
             font-weight: bold;
-            color: #ffffff;
+            color: #101828;
             letter-spacing: 1px;
         }
         .brand-tagline {
             font-size: 10px;
-            color: #7ec8e3;
+            color: #101828;
             margin-top: 2px;
         }
         .logo-icon {
@@ -53,7 +53,7 @@
             border-radius: 8px;
             text-align: center;
             line-height: 40px;
-            color: white;
+            color: #f8c300;
             font-size: 20px;
             font-weight: bold;
             margin-right: 12px;
@@ -68,7 +68,7 @@
             text-align: center;
             font-size: 22px;
             font-weight: bold;
-            color: #1a2744;
+            color: #101828;
             margin: 20px 0 15px;
             letter-spacing: 2px;
         }
@@ -86,12 +86,12 @@
         }
         .meta-right { text-align: right; }
         .meta-label { color: #666; font-weight: bold; }
-        .meta-value { color: #1a2744; font-weight: bold; margin-left: 5px; }
+        .meta-value { color: #101828; font-weight: bold; margin-left: 5px; }
 
         /* ── SECTION LABEL ── */
         .section-label {
-            background: #1a2744;
-            color: #ffffff;
+            background: #f8c300;
+            color: #101828;
             font-size: 11px;
             font-weight: bold;
             padding: 5px 15px;
@@ -139,15 +139,15 @@
             margin-bottom: 20px;
         }
         .data-table thead th {
-            background: #1a2744;
-            color: #ffffff;
+            background: #f8c300;
+            color: #101828;
             padding: 10px 8px;
             font-size: 10px;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             text-align: center;
-            border: 1px solid #1a2744;
+            border: 1px solid #667085;
         }
         .data-table tbody td {
             padding: 10px 8px;
@@ -205,7 +205,7 @@
             font-size: 14px;
             margin-bottom: 4px;
         }
-        .summary-icon-blue { background: #e3f2fd; color: #1565c0; }
+        .summary-icon-yellow { background: #fffdf5; color: #b37400; border: 1px solid #fdec98; line-height: 26px; }
         .summary-icon-green { background: #e8f5e9; color: #2e7d32; }
         .summary-icon-orange { background: #fff3e0; color: #e65100; }
         .summary-icon-red { background: #fce4ec; color: #c62828; }
@@ -213,7 +213,7 @@
         .summary-number {
             font-size: 18px;
             font-weight: bold;
-            color: #1a2744;
+            color: #101828;
         }
         .summary-label {
             font-size: 9px;
@@ -241,7 +241,7 @@
             vertical-align: bottom;
         }
         .footer-note-label {
-            color: #1a2744;
+            color: #101828;
             font-weight: bold;
             margin-bottom: 4px;
         }
@@ -259,7 +259,7 @@
         .signature-text {
             font-style: italic;
             font-weight: bold;
-            color: #1a2744;
+            color: #101828;
             font-size: 10px;
         }
         .signature-role {
@@ -369,7 +369,7 @@
         <div class="summary-box">
             <div class="summary-grid">
                 <div class="summary-item">
-                    <div class="summary-icon summary-icon-blue">📋</div><br>
+                    <div class="summary-icon summary-icon-yellow">📋</div><br>
                     <span class="summary-number">{{ $totalRecords }}</span><br>
                     <span class="summary-label">Total Records</span>
                 </div>

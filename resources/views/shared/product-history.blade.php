@@ -54,13 +54,13 @@
                     <td>{{ $log->user->name ?? 'System' }}</td>
                     <td>
                         @if($log->transaction_type === 'IN')
-                            <span class="badge" style="background:#2ecc71; color:#fff;">IN</span>
+                            <span class="badge" style="background:#d3d3d3de; color:#2ecc71; min-width: 55px; display: inline-block; text-align: center;">IN</span>
                         @else
-                            <span class="badge" style="background:#f1c40f; color:#000;">OUT</span>
+                            <span class="badge" style="background:#d3d3d3de; color:red; min-width: 55px; display: inline-block; text-align: center;">OUT</span>
                         @endif
                     </td>
 
-                    <td style="font-weight:bold; color:{{ $log->transaction_type === 'IN' ? '#2ecc71' : '#e11d48' }}">
+                    <td style="font-weight:bold; color:{{ $log->transaction_type === 'IN' ? '#2ecc71' : 'red' }}">
                         {{ $log->transaction_type === 'IN' ? '+' : '-' }}{{ number_format($log->quantity, 2) }}
                     </td>
                     <td>{{ $log->location->name ?? 'Default' }}</td>
