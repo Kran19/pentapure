@@ -1,3 +1,17 @@
+// Intercept fetch to automatically prepend the base URL if the app is in a subdirectory
+const _originalFetch = window.fetch;
+window.fetch = function(url, options) {
+    if (typeof url === 'string' && url.startsWith('/')) {
+        const metaBase = document.querySelector('meta[name="base-url"]');
+        if (metaBase && metaBase.content) {
+            let base = metaBase.content;
+            if (base.endsWith('/')) base = base.slice(0, -1);
+            url = base + url;
+        }
+    }
+    return _originalFetch.call(this, url, options);
+};
+
 const app = {
   currentUser: null,
   currentView: 'home',

@@ -240,18 +240,29 @@ function adminSaveUser() {
 
   fetch('/admin/users', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
+    headers: { 
+        'Content-Type': 'application/json', 
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': window.csrfToken 
+    },
     body: JSON.stringify(payload)
-  }).then(r => r.json()).then(d => {
-    if (d.success) { 
-      Swal.fire('Success', d.message, 'success');
+  }).then(async r => {
+    if (!r.ok && r.status !== 422) throw new Error('Server error: ' + r.status);
+    return r.json();
+  }).then(d => {
+    if (d.success || (d.id && !d.errors)) { 
+      Swal.fire('Success', d.message || 'Saved successfully', 'success');
       setTimeout(() => location.reload(), 800); 
     } else {
-      Swal.fire('Error', d.message || 'Error', 'error');
+      let errorMsg = d.message || 'Error';
+      if (d.errors) {
+        errorMsg = Object.values(d.errors).flat().join('<br>');
+      }
+      Swal.fire({title: 'Error', html: errorMsg, icon: 'error'});
     }
   }).catch(e => {
-    Swal.fire('Error', 'A server error occurred while saving. Please try again.', 'error');
     console.error('Save User Error:', e);
+    Swal.fire('Error', e.message || 'A server error occurred while saving. Please try again.', 'error');
   });
 }
 

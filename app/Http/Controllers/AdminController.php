@@ -101,6 +101,9 @@ class AdminController extends Controller
         if (!$request->user_id) {
             $rules['email']    = 'required|email|unique:users,email';
             $rules['password'] = 'required|string|min:4';
+        } else {
+            $rules['email']    = 'required|email|unique:users,email,' . $request->user_id;
+            $rules['password'] = 'nullable|string|min:4';
         }
 
         $request->validate($rules);
@@ -117,6 +120,7 @@ class AdminController extends Controller
         if ($request->user_id) {
             $user = User::findOrFail($request->user_id);
             $user->name  = $request->name;
+            $user->email = $request->email;
             $user->role  = $request->role;
             if ($request->password) {
                 $user->password = Hash::make($request->password);
