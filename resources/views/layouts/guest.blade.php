@@ -29,7 +29,7 @@
   <script src="{{ asset('js/tabulator-init.js') }}"></script>
   <script src="{{ asset('js/table-sorter.js') }}"></script>
   <script src="{{ asset('js/table-filter.js') }}"></script>
-  <script src="{{ asset('js/app.js') }}"></script>
+  <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}"></script>
   <script>
     window.csrfToken = document.querySelector('meta[name="csrf-token"]').content;
   </script>

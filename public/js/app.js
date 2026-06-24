@@ -1913,7 +1913,14 @@ const app = {
 
   registerServiceWorker() {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
-      return navigator.serviceWorker.register('/sw.js')
+      let swUrl = '/sw.js';
+      const metaBase = document.querySelector('meta[name="base-url"]');
+      if (metaBase && metaBase.content) {
+          let base = metaBase.content;
+          if (base.endsWith('/')) base = base.slice(0, -1);
+          swUrl = base + swUrl;
+      }
+      return navigator.serviceWorker.register(swUrl)
         .then(swReg => {
           this.swRegistration = swReg;
           return swReg;
