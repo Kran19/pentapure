@@ -328,8 +328,9 @@
                             {{ $row['description'] ?? '-' }}
                             @if(isset($row['lr_copy']) && $row['lr_copy'])
                                 <div style="margin-top: 8px;">
-                                    <img src="{{ public_path($row['lr_copy']) }}" style="max-width: 140px; max-height: 100px; border: 1px solid #d0d5dd; border-radius: 4px; object-fit: contain;">
-                                </div>
+                                @if(file_exists(public_path($row['lr_copy'])))
+                                    <img src="data:image/jpeg;base64,{{ base64_encode(file_get_contents(public_path($row['lr_copy']))) }}" style="max-width: 140px; max-height: 100px; border: 1px solid #d0d5dd; border-radius: 4px; object-fit: contain;">
+                                @endif                                </div>
                             @endif
                         </td>
                     </tr>

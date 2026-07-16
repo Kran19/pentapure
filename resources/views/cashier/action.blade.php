@@ -4,7 +4,6 @@
 <div class="card">
   <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
     <h2 style="margin:0;">💰 New Transactions</h2>
-    <button class="btn btn-secondary" onclick="app.addNewExpenseCategory()" style="width:auto; padding:0.5rem 1rem; white-space:nowrap; font-size:0.85rem;">+ New Category</button>
   </div>
   
   <div id="transaction-rows" style="display:flex; flex-direction:column; gap:15px; margin-bottom:1.5rem;">
@@ -22,49 +21,6 @@
   window.expenseCategories = @json($pageData['categories'] ?? []);
 
   // Event listener to dynamically update all category selects when a new one is added
-  const originalAddNewExpenseCategory = app.addNewExpenseCategory;
-  app.addNewExpenseCategory = function() {
-    Swal.fire({
-      title: '📁 New Category',
-      input: 'text',
-      inputLabel: 'Category Name',
-      inputPlaceholder: 'Enter category name...',
-      showCancelButton: true,
-      confirmButtonColor: 'var(--primary)',
-      cancelButtonColor: '#30363d',
-      background: 'var(--dark-panel)',
-      color: 'var(--text-main)',
-    }).then(res => {
-      if (res.isConfirmed && res.value) {
-        const name = res.value.trim();
-        fetch('/cashier/category', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': window.csrfToken || '{{ csrf_token() }}'
-          },
-          body: JSON.stringify({ name })
-        })
-        .then(r => r.json())
-        .then(d => {
-          if (d.success) {
-            app.toast(d.message);
-            // Add new category to local array
-            window.expenseCategories.push(d.category);
-            // Refresh all category select options in rows
-            document.querySelectorAll('.tx-category').forEach(select => {
-              const currentVal = select.value;
-              select.innerHTML = window.expenseCategories.map(c => `<option value="${c.value}">${c.label}</option>`).join('');
-              select.value = currentVal; // preserve selected option
-            });
-          } else {
-            app.toast(d.message || 'Error creating category', 'error');
-          }
-        })
-        .catch(() => app.toast('Network error', 'error'));
-      }
-    });
-  };
 
   function addTransactionRow() {
     const categories = window.expenseCategories || [];

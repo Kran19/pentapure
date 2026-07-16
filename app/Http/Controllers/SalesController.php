@@ -65,8 +65,9 @@ class SalesController extends Controller
         $transportCompanies = Transporter::orderBy('name')->get()->map(fn($t)=>[
             'id'=>$t->id,'name'=>strtoupper($t->name ?? ''),'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
         ]);
-        $products = Product::active()->get(['id', 'name', 'unit', 'type'])->map(fn($p) => [
-            'id' => $p->id, 'name' => strtoupper($p->name ?? ''), 'unit' => $p->unit, 'type' => $p->type
+        $products = Product::active()->with('grades')->get(['id', 'name', 'unit', 'type'])->map(fn($p) => [
+            'id' => $p->id, 'name' => strtoupper($p->name ?? ''), 'unit' => $p->unit, 'type' => $p->type,
+            'grades' => $p->grades->pluck('name')->map('strtoupper')->toArray()
         ]);
         $grades = \App\Models\Grade::where('is_active', true)->pluck('name')->map('strtoupper')->toArray();
 
@@ -75,7 +76,12 @@ class SalesController extends Controller
             $editOrder = Order::with('items.product')->findOrFail($request->edit);
         }
 
-        $pageData = compact('companies', 'transportCompanies', 'products', 'grades', 'editOrder');
+        $editCompany = null;
+        if ($request->editCompany) {
+            $editCompany = Company::findOrFail($request->editCompany);
+        }
+
+        $pageData = compact('companies', 'transportCompanies', 'products', 'grades', 'editOrder', 'editCompany');
         return view('sales.action', compact('pageData'));
     }
 
@@ -148,18 +154,45 @@ class SalesController extends Controller
 
         $request->validate([
             'name'    => 'required|string|max:255|unique:companies,name',
-            'gst'     => 'required|string|max:15|unique:companies,gst',
-            'contact' => 'required|string|regex:/^[0-9]{10}$/',
+            'gst'     => ['nullable', 'string', 'regex:/^(N\/A|[A-Za-z0-9]{15})$/i', 'unique:companies,gst'],
+            'contact' => ['required', 'string', 'regex:/^(\+91\s*)?[0-9]{10}$/'],
             'address' => 'required|string|max:500',
         ], [
-            'gst.max'       => 'GST number cannot exceed 15 characters',
-            'contact.regex' => 'Mobile number must be exactly 10 digits',
-            'name.unique'    => 'Company name already exists',
-            'gst.unique'     => 'GST number already registered'
+            'gst.regex'     => 'GST number must be 15 alphanumeric characters or N/A',
+            'contact.regex' => 'Mobile number must be 10 digits (with or without +91)',
+            'name.unique'   => 'Company name already exists',
+            'gst.unique'    => 'GST number already registered'
         ]);
 
-        Company::create($request->only('name', 'gst',   'address', 'contact'));
+        $contact = preg_replace('/^\+91\s*/', '', $request->contact);
+        $request->merge(['contact' => '+91 ' . $contact]);
+
+        Company::create($request->only('name', 'gst', 'address', 'contact'));
         return response()->json(['success' => true, 'message' => 'Company saved!']);
+    }
+
+    public function updateCompany(Request $request, $id)
+    {
+        $company = Company::findOrFail($id);
+        $request->merge(['name' => strtoupper($request->name)]);
+
+        $request->validate([
+            'name'    => 'required|string|max:255|unique:companies,name,' . $company->id,
+            'gst'     => ['nullable', 'string', 'regex:/^(N\/A|[A-Za-z0-9]{15})$/i', 'unique:companies,gst,' . $company->id],
+            'contact' => ['required', 'string', 'regex:/^(\+91\s*)?[0-9]{10}$/'],
+            'address' => 'required|string|max:500',
+        ], [
+            'gst.regex'     => 'GST number must be 15 alphanumeric characters or N/A',
+            'contact.regex' => 'Mobile number must be 10 digits (with or without +91)',
+            'name.unique'   => 'Company name already exists',
+            'gst.unique'    => 'GST number already registered'
+        ]);
+
+        $contact = preg_replace('/^\+91\s*/', '', $request->contact);
+        $request->merge(['contact' => '+91 ' . $contact]);
+
+        $company->update($request->only('name', 'gst', 'address', 'contact'));
+        return response()->json(['success' => true, 'message' => 'Company updated!']);
     }
 
     public function storeTransporter(Request $request)
@@ -168,15 +201,18 @@ class SalesController extends Controller
 
         $request->validate([
             'name'    => 'required|string|max:255|unique:transporters,name',
-            'gst'     => 'required|string|max:15|unique:transporters,gst',
-            'contact' => 'required|string|regex:/^[0-9]{10}$/',
+            'gst'     => ['nullable', 'string', 'regex:/^(N\/A|[A-Za-z0-9]{15})$/i', 'unique:transporters,gst'],
+            'contact' => ['required', 'string', 'regex:/^(\+91\s*)?[0-9]{10}$/'],
             'vehicles' => 'nullable|string',
         ], [
-            'gst.max'       => 'GST number cannot exceed 15 characters',
-            'contact.regex' => 'Mobile number must be 10 digits',
-            'name.unique'    => 'Transporter already exists',
-            'gst.unique'     => 'GST number already registered'
+            'gst.regex'     => 'GST number must be 15 alphanumeric characters or N/A',
+            'contact.regex' => 'Mobile number must be 10 digits (with or without +91)',
+            'name.unique'   => 'Transporter already exists',
+            'gst.unique'    => 'GST number already registered'
         ]);
+
+        $contact = preg_replace('/^\+91\s*/', '', $request->contact);
+        $request->merge(['contact' => '+91 ' . $contact]);
 
         Transporter::create($request->only('name', 'gst', 'contact', 'vehicles'));
         return response()->json(['success' => true, 'message' => 'Transporter saved!']);
@@ -316,6 +352,18 @@ class SalesController extends Controller
         });
 
         return response()->json(['success' => true, 'message' => 'Order updated successfully!']);
+    }
+
+    public function cancelOrder(Request $request, $id)
+    {
+        $order = Order::findOrFail($id);
+        
+        if ($order->dispatch_status === 'DONE' || $order->dispatch_status === 'PARTIAL' || $order->status === 'CLOSED') {
+            return response()->json(['success' => false, 'message' => 'Cannot cancel an order that is closed or has dispatch progress.'], 422);
+        }
+
+        $order->update(['status' => 'CANCELLED']);
+        return response()->json(['success' => true, 'message' => 'Order cancelled successfully!']);
     }
 
     public function profile()

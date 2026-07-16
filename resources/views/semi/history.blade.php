@@ -159,7 +159,7 @@
           <td style="font-size:0.8rem;">{{ \Carbon\Carbon::parse($po->created_at)->format('d M Y') }}</td>
         </tr>
       @empty
-        <tr><td colspan="4" class="text-center text-muted">No purchase orders found.</td></tr>
+        <tr><td colspan="4" class="text-center text-muted">No purchase requests found.</td></tr>
       @endforelse
     </tbody>
   </table>

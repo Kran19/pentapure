@@ -70,23 +70,26 @@
   <!-- Tab 2: Company -->
   <div id="sales-tab-company" class="sales-tab-content animation-fadeIn" style="display:none;">
     <div class="card">
+      @if(!empty($pageData['editCompany']))
+        <input type="hidden" id="edit-comp-id" value="{{ $pageData['editCompany']->id }}">
+      @endif
       <div class="form-group">
         <label>Company Name</label>
-        <input type="text" id="comp-name" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+        <input type="text" id="comp-name" value="{{ !empty($pageData['editCompany']) ? $pageData['editCompany']->name : '' }}" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
       </div>
       <div class="form-group">
         <label>GST No.</label>
-        <input type="text" id="comp-gst" placeholder="e.g. 22AAAAA0000A1Z5" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+        <input type="text" id="comp-gst" value="{{ !empty($pageData['editCompany']) ? $pageData['editCompany']->gst : '' }}" placeholder="e.g. 22AAAAA0000A1Z5 or N/A" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
       </div>
       <div class="form-group">
         <label>Address</label>
-        <textarea id="comp-address" rows="2" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;"></textarea>
+        <textarea id="comp-address" rows="2" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">{{ !empty($pageData['editCompany']) ? $pageData['editCompany']->address : '' }}</textarea>
       </div>
       <div class="form-group">
         <label>Mobile No</label>
-        <input type="text" id="comp-contact" placeholder="10-digit mobile" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+        <input type="text" id="comp-contact" value="{{ !empty($pageData['editCompany']) ? $pageData['editCompany']->contact : '' }}" placeholder="10-digit mobile" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
       </div>
-      <button class="btn" onclick="app.submitCompany()" style="padding:1rem; font-size:1.1rem; margin-top:0.5rem;">Save Company</button>
+      <button class="btn" onclick="app.submitCompany()" style="padding:1rem; font-size:1.1rem; margin-top:0.5rem;">{{ !empty($pageData['editCompany']) ? 'Update Company' : 'Save Company' }}</button>
     </div>
   </div>
 
@@ -130,8 +133,14 @@
     // Fill details
     const compVal = "{{ $pageData['editOrder']->company_id }}";
     const transVal = "{{ $pageData['editOrder']->transporter_id }}";
-    if (compVal) app.onSalesCompanySelect(compVal);
-    if (transVal) app.onSalesTransportSelect(transVal);
+    if (compVal) {
+      document.getElementById('order-company').value = compVal;
+      app.onSalesCompanySelect(compVal);
+    }
+    if (transVal) {
+      document.getElementById('order-transport').value = transVal;
+      app.onSalesTransportSelect(transVal);
+    }
 
     // Populate rows
     window.currentOrderType = 'ALL';
@@ -147,6 +156,15 @@
         });
       }
     }
+  });
+</script>
+@endif
+
+@if(!empty($pageData['editCompany']))
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.querySelector('.tab-btn:nth-child(2)');
+    if (btn) switchSalesTab('company', btn);
   });
 </script>
 @endif

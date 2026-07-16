@@ -134,6 +134,9 @@ class DispatchController extends Controller
             'items.*.location_splits.*.location_key' => 'required_with:items.*.location_splits|string',
             'items.*.location_splits.*.dispatch_location_qty' => 'required_with:items.*.location_splits|numeric|min:0.001',
             'lr_image'                    => 'nullable|string',
+            'driver_no'                   => 'nullable|string',
+            'lr_no'                       => 'nullable|string',
+            'transporter_id'              => 'nullable|exists:transporters,id',
         ]);
 
         $user  = $this->authUser();
@@ -226,8 +229,10 @@ class DispatchController extends Controller
             $dispatchLog = DispatchLog::create([
                 'user_id'        => $user['id'],
                 'order_id'       => $order->id,
-                'transporter_id' => $order->transporter_id,
+                'transporter_id' => $request->transporter_id ?? $order->transporter_id,
                 'lr_image_path'  => $lrPath,
+                'driver_no'      => $request->driver_no,
+                'lr_no'          => $request->lr_no,
             ]);
 
             // Process each item
@@ -484,5 +489,57 @@ class DispatchController extends Controller
     public function profile()
     {
         return view('dispatch.profile');
+    }
+    public function revertDispatch(Request $request, $id)
+    {
+        $log = DispatchLog::with('order.items', 'dispatchItems')->findOrFail($id);
+        $order = $log->order;
+
+        if ($order->status === 'CANCELLED') {
+            return response()->json(['success' => false, 'message' => 'Cannot revert dispatch for a cancelled order.'], 400);
+        }
+
+        DB::transaction(function () use ($log, $order) {
+            // Delete existing stock OUT transactions for this dispatch
+            $stockIds = \App\Models\DispatchLogItem::where('dispatch_log_id', $log->id)
+                ->with('locationAllocations')
+                ->get()
+                ->flatMap(fn($di) => $di->locationAllocations->pluck('stock_id'))
+                ->unique()
+                ->toArray();
+
+            Stock::whereIn('id', array_filter($stockIds))->delete();
+
+            // Restore dispatched_qty on order items
+            foreach ($log->dispatchItems as $di) {
+                $di->orderItem->decrement('dispatched_qty', $di->quantity);
+            }
+
+            // Delete dispatch item locations
+            \App\Models\DispatchItemLocation::whereIn('dispatch_log_item_id', 
+                $log->dispatchItems->pluck('id')->toArray()
+            )->delete();
+
+            // Delete the dispatch log items
+            \App\Models\DispatchLogItem::where('dispatch_log_id', $log->id)->delete();
+
+            // Delete the log image if exists
+            if ($log->lr_image_path && file_exists(public_path($log->lr_image_path))) {
+                @unlink(public_path($log->lr_image_path));
+            }
+
+            // Delete the dispatch log itself
+            $log->delete();
+
+            // Update order status
+            $order->refresh();
+            $anyDispatched = $order->items->filter(fn($item) => $item->dispatched_qty > 0)->isNotEmpty();
+            $order->update([
+                'status' => 'OPEN',
+                'dispatch_status' => $anyDispatched ? 'PARTIAL' : 'PENDING'
+            ]);
+        });
+
+        return response()->json(['success' => true, 'message' => 'Dispatch reverted successfully!']);
     }
 }

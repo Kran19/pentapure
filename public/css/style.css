@@ -1016,12 +1016,19 @@ select:focus, input:focus, textarea:focus {
 }
 
 /* Tables */
-.table-container {
+.table-container, .table-responsive {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   background: var(--bg-card);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-soft);
   box-shadow: var(--shadow-soft);
+  width: 100%;
+}
+.table-container table, .table-responsive table {
+  width: 100%;
+  border-collapse: collapse;
+  white-space: nowrap;
 }
 table {
   width: 100%;

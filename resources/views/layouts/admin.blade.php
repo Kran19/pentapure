@@ -97,7 +97,7 @@
 
           @if($can('module_po'))
           <a href="{{ url('admin/po') }}" class="nav-item {{ $seg=='po'?'active':'' }}">
-            📋 Purchase Orders
+            📋 Purchase Requests
           </a>
           @endif
 

@@ -205,37 +205,6 @@ class CashierController extends Controller
         ]);
     }
 
-    // ── CATEGORY MANAGEMENT ────────────────────────────────────────────────
-    public function storeCategory(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255|unique:categories,name',
-        ]);
-        
-        $category = Category::create([
-            'name'      => $request->name,
-            'is_active' => true,
-        ]);
-        
-        return response()->json([
-            'success' => true, 
-            'message' => 'Category created successfully!',
-            'category' => [
-                'id'    => $category->id,
-                'value' => strtolower(preg_replace('/[^a-z0-9]+/i', '_', trim($category->name))),
-                'label' => $category->name
-            ]
-        ]);
-    }
-
-    public function destroyCategory($id)
-    {
-        $category = Category::findOrFail($id);
-        $category->delete();
-        
-        return response()->json(['success' => true, 'message' => 'Category deleted successfully!']);
-    }
-
     // ── HISTORY ────────────────────────────────────────────────────────────
     public function history()
     {
@@ -300,11 +269,26 @@ class CashierController extends Controller
             'balance'  => $teamTxs->where('type', 'IN')->sum('amount') - $teamTxs->where('type', 'OUT')->sum('amount'),
         ];
 
+        // Day Wise Balance
+        $dailyData = $txs->groupBy(function($t) {
+            return Carbon::parse($t->created_at)->format('Y-m-d');
+        })->map(function($group, $date) {
+            $in = $group->where('type', 'IN')->sum('amount');
+            $out = $group->where('type', 'OUT')->sum('amount');
+            return [
+                'date' => $date,
+                'in' => $in,
+                'out' => $out,
+                'balance' => $in - $out,
+            ];
+        })->values()->sortByDesc('date')->toArray();
+
         $pageData = [
             'transactions' => $txs->map(fn($t) => $this->txToArray($t)),
             'summary'      => $summary,
             'teamTransactions' => $teamTxs->map(fn($t) => array_merge($this->txToArray($t), ['cashier_name' => $t->user?->name ?? 'Unknown'])),
             'teamSummary'  => $teamSummary,
+            'dailyData'    => $dailyData,
             'allowedCashiers' => $allowedCashiers,
             'disallowedCashiers' => $disallowedCashiers,
         ];

@@ -47,63 +47,71 @@
     <table>
         <thead>
             <tr>
-                <th>Product (Grade)</th>
-                <th>Unit</th>
-                <th style="text-align:right;">Order Qty</th>
-                <th style="text-align:right;">Dispatch Rate</th>
-                <th style="text-align:right;">Total Product Revenue</th>
-                <th style="text-align:right;">Pending Qty</th>
-                <th> </th>
+                <th>Order ID</th>
+                <th>Date</th>
+                <th>Customer / Company</th>
+                <th style="width: 35%;">Items & Details</th>
+                <th>Status</th>
+                <th>Dispatch Details</th>
             </tr>
         </thead>
-
         <tbody>
             @foreach($orders as $order)
                 @php
-                    $orderTotalRevenue = 0;
+                    $label = $order->dispatch_status;
+                    if ($order->dispatch_status === 'DONE') {
+                        $label = $order->dispatch_logs_count > 1 ? 'DONE (PARTIAL)' : 'DONE (SINGLE)';
+                    } elseif ($order->dispatch_status === 'PARTIAL') {
+                        $label = 'PARTIAL (PENDING)';
+                    }
                 @endphp
-
                 <tr>
-                    <td colspan="7" style="background:#fafafa;">
-                        <strong>#{{ $order->id }}</strong> | {{ $order->created_at->format('d/m/Y') }} | {{ $order->company?->name ?? 'N/A' }}
+                    <td><strong>#{{ $order->id }}</strong></td>
+                    <td>{{ $order->created_at->format('d M Y, h:i A') }}</td>
+                    <td>
+                        <strong>{{ $order->company?->name ?? 'N/A' }}</strong><br>
+                        <span style="font-size:10px; color:#666;">By: {{ $order->creator?->name ?? 'System' }}</span>
                     </td>
-                </tr>
-
-                @foreach($order->items as $item)
-                    @php
-                        $qty = (float) ($item->quantity ?? 0);
-                        $sent = (float) ($item->dispatched_qty ?? 0);
-                        $pending = max(0, $qty - $sent);
-
-                        // dispatch rate/unit: use order item rate if present, otherwise fallback to 0
-                        $rate = (float) ($item->rate ?? $item->dispatch_rate ?? 0);
-                        $lineRevenue = $qty * $rate;
-                        $orderTotalRevenue += $lineRevenue;
-                    @endphp
-                    <tr>
-                        <td>{{ $item->product ? $item->product->formatName($item->grade) : 'Unknown' }}</td>
-                        <td>{{ $item->product?->unit ?? '' }}</td>
-                        <td style="text-align:right;">{{ number_format($qty, 2) }}</td>
-                        <td style="text-align:right;">{{ number_format($rate, 2) }}</td>
-                        <td style="text-align:right;">₹{{ number_format($lineRevenue, 2) }}</td>
-                        <td style="text-align:right;">
-                            {{ number_format($pending, 2) }}
-                        </td>
-                    </tr>
-                @endforeach
-
-                <tr>
-                    <td colspan="4" style="text-align:right; font-weight:bold;">Total Product Revenue</td>
-                    <td style="text-align:right; font-weight:bold;">₹{{ number_format($orderTotalRevenue, 2) }}</td>
-                    <td></td>
+                    <td>
+                        <ul class="items-list" style="margin: 0; padding-left: 15px; list-style-type: none; padding: 0;">
+                        @foreach($order->items as $item)
+                            <li style="margin-bottom: 5px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
+                                • {{ $item->product ? $item->product->formatName($item->grade) : 'Unknown' }}: <strong>{{ $item->quantity }} {{ $item->product?->unit }}</strong>
+                                @if($order->dispatch_status === 'PARTIAL' || ($order->dispatch_status === 'DONE' && $order->dispatch_logs_count > 1))
+                                    <div style="font-size:10px; color:#555; padding-left: 10px;">
+                                        Dispatched: {{ $item->dispatched_qty ?? 0 }} {{ $item->product?->unit }} |
+                                        Pending: {{ max(0, $item->quantity - ($item->dispatched_qty ?? 0)) }} {{ $item->product?->unit }}
+                                    </div>
+                                @endif
+                            </li>
+                        @endforeach
+                        </ul>
+                        @if($order->notes)
+                            <div style="font-size:10px; font-style:italic; margin-top:5px; color:#666;">Note: {{ $order->notes }}</div>
+                        @endif
+                    </td>
+                    <td>{{ $label }}</td>
+                    <td>
+                        @if($order->dispatchLog)
+                            <div>Transporter: {{ $order->transporter?->name ?? 'N/A' }}</div>
+                            <div style="font-size:10px; color:#666;">Dispatched by: {{ $order->dispatchLog->user?->name }}</div>
+                            @if($order->dispatchLog->driver_no)
+                                <div style="font-size:10px; color:#666;">Driver: {{ $order->dispatchLog->driver_no }}</div>
+                            @endif
+                            @if($order->dispatchLog->lr_no)
+                                <div style="font-size:10px; color:#666;">LR No: {{ $order->dispatchLog->lr_no }}</div>
+                            @endif
+                        @else
+                            <span style="color:#888;">Not dispatched yet</span>
+                        @endif
+                    </td>
                 </tr>
             @endforeach
         </tbody>
-
     </table>
 
     <div class="footer">
-        &copy; {{ date('Y') }} Food Factory Operations. All rights reserved.
+        Generated by PentaPure ERP System on {{ now()->format('d M Y, h:i A') }}
     </div>
 </body>
 </html>

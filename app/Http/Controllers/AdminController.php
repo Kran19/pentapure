@@ -1161,18 +1161,35 @@ class AdminController extends Controller
         $grade = $request->query('grade', 'NONE');
         $product = \App\Models\Product::findOrFail($productId);
         
-        $stockLogs = \App\Models\Stock::with(['user:id,name', 'location:id,name'])
+        $allLogs = \App\Models\Stock::with(['user:id,name', 'location:id,name'])
             ->where('product_id', $productId)
             ->where('stage', strtoupper($stage))
             ->where('grade', $grade)
-            ->latest()
-            ->paginate(25);
+            ->orderBy('created_at', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+            
+        $balance = 0;
+        foreach($allLogs as $log) {
+            $balance += ($log->transaction_type === 'IN') ? $log->quantity : -$log->quantity;
+            $log->running_balance = $balance;
+        }
+        
+        $perPage = 25;
+        $page = \Illuminate\Pagination\Paginator::resolveCurrentPage() ?: 1;
+        
+        $allLogs = $allLogs->reverse()->values();
+        $items = $allLogs->slice(($page - 1) * $perPage, $perPage);
+        $stockLogs = new \Illuminate\Pagination\LengthAwarePaginator(
+            $items, 
+            $allLogs->count(), 
+            $perPage, 
+            $page, 
+            ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]
+        );
+        $stockLogs->appends($request->all());
 
-        $currentTotal = \App\Models\Stock::where('product_id', $productId)
-            ->where('stage', strtoupper($stage))
-            ->where('grade', $grade)
-            ->selectRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as total")
-            ->value('total') ?? 0;
+        $currentTotal = $balance;
 
         return view('shared.product-history', compact('product', 'stage', 'grade', 'stockLogs', 'currentTotal'));
     }

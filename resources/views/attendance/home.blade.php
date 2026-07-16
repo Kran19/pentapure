@@ -4,27 +4,34 @@
 <div style="padding:1.5rem;">
   <h2 style="margin-bottom:1.5rem;">📊 Attendance Dashboard</h2>
 
+@php
+  $prefix = request()->segment(1) == 'admin' ? 'admin' : 'attendance';
+  $workersUrl = $prefix == 'admin' ? route('admin.attendance.workers') : route('attendance.workers');
+  $dailyUrl = $prefix == 'admin' ? route('admin.attendance.daily') : route('attendance.daily');
+  $reportsUrl = $prefix == 'admin' ? route('admin.attendance.reports') : route('attendance.history');
+@endphp
+
   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
     <!-- Total Workers -->
-    <a href="{{ route('admin.attendance.workers') }}" class="card clickable-card" style="padding:1.5rem; text-align:center;">
+    <a href="{{ $workersUrl }}" class="card clickable-card" style="padding:1.5rem; text-align:center;">
       <div style="font-size:2rem; font-weight:bold; color:var(--primary-light);">{{ $totalWorkers }}</div>
       <div style="color:var(--text-muted); font-size:0.9rem; margin-top:0.5rem;">Total Employees</div>
     </a>
 
     <!-- Present Today -->
-    <a href="{{ route('admin.attendance.daily') }}" class="card clickable-card" style="padding:1.5rem; text-align:center;">
+    <a href="{{ $dailyUrl }}" class="card clickable-card" style="padding:1.5rem; text-align:center;">
       <div style="font-size:2rem; font-weight:bold; color:var(--secondary);">{{ $presentToday }}</div>
       <div style="color:var(--text-muted); font-size:0.9rem; margin-top:0.5rem;">Present Today</div>
     </a>
 
     <!-- Absent Today -->
-    <a href="{{ route('admin.attendance.daily') }}" class="card clickable-card" style="padding:1.5rem; text-align:center;">
+    <a href="{{ $dailyUrl }}" class="card clickable-card" style="padding:1.5rem; text-align:center;">
       <div style="font-size:2rem; font-weight:bold; color:var(--danger);">{{ $absentToday }}</div>
       <div style="color:var(--text-muted); font-size:0.9rem; margin-top:0.5rem;">Absent Today</div>
     </a>
 
     <!-- Total OT -->
-    <a href="{{ route('admin.attendance.reports') }}" class="card clickable-card" style="padding:1.5rem; text-align:center;">
+    <a href="{{ $reportsUrl }}" class="card clickable-card" style="padding:1.5rem; text-align:center;">
       <div style="font-size:2rem; font-weight:bold; color:var(--info);">{{ number_format($totalOT, 1) }}</div>
       <div style="color:var(--text-muted); font-size:0.9rem; margin-top:0.5rem;">Total OT Hours Today</div>
     </a>

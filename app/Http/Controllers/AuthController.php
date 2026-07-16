@@ -21,7 +21,7 @@ class AuthController extends Controller
     {
         $request->validate([
             'user_id'  => 'required|exists:users,id',
-            'password' => 'required|string',
+            'password' => 'required|string|min:4',
         ]);
 
         $user = User::find($request->user_id);

@@ -43,10 +43,7 @@ class SemiController extends Controller
         $semiStock    = $this->getLiveStock('SEMI');
         $user = $this->authUser();
         $ledger = Stock::with('product')
-            ->where(function($q) use ($user) {
-                $q->where('stage', 'SEMI')
-                  ->orWhere('user_id', $user['id']);
-            })
+            ->where('stage', 'SEMI')
             ->orderByDesc('created_at')
             ->get()->map(fn($s) => [
                 'productId'   => $s->product_id,
@@ -78,7 +75,7 @@ class SemiController extends Controller
             'semiLedger'     => $ledger,
             'purchaseOrders' => $myPOs,
             'rawMaterialsList' => Product::raw()->active()->visibleTo($user['role'])->get(['id', 'name', 'unit']),
-            'products'       => Product::with('grades')->active()->visibleTo($user['role'])->get()->map(fn($p)=>[
+            'products'       => Product::with('grades')->active()->where('type', 'SEMI')->visibleTo($user['role'])->get()->map(fn($p)=>[
                 'id'=>$p->id,'name'=>$p->name,'type'=>$p->type,'unit'=>$p->unit,
                 'gradeNames'=>$p->grades->pluck('name')
             ]),
@@ -94,7 +91,7 @@ class SemiController extends Controller
         $pageData = [
             'rawStock' => $rawStock,
             'grades'   => $grades,
-            'products' => Product::with('grades')->active()->visibleTo($this->authUser()['role'])->get()->map(fn($p)=>[
+            'products' => Product::with('grades')->active()->where('type', 'SEMI')->visibleTo($this->authUser()['role'])->get()->map(fn($p)=>[
                 'id'=>$p->id,'name'=>$p->name,'type'=>$p->type,'unit'=>$p->unit,
                 'gradeNames'=>$p->grades->pluck('name')
             ]),

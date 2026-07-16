@@ -84,6 +84,10 @@
        style="text-decoration:none; padding:6px 12px; border-radius:6px; {{ $activeTab === 'team' ? 'background:var(--primary); color:#fff;' : 'color:var(--text-muted);' }}">
       Team Ledger
     </a>
+    <a href="?tab=daily&range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&q={{ $q }}" 
+       style="text-decoration:none; padding:6px 12px; border-radius:6px; {{ $activeTab === 'daily' ? 'background:var(--primary); color:#fff;' : 'color:var(--text-muted);' }}">
+      Day Wise Balance
+    </a>
   </div>
   @if($activeTab === 'team')
   <div>
@@ -96,20 +100,24 @@
 </div>
 
 <!-- Summary Cards -->
+@if($activeTab !== 'daily')
 <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:1.2rem;">
   <div class="card" style="padding:12px; text-align:center; margin-bottom:0;">
-    <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">INCOME</div>
-    <div style="font-weight:bold; color:var(--secondary); font-size:1.1rem;">₹{{ number_format($summary['totalIn'], 2) }}</div>
+    <div style="color:var(--text-muted); font-size:0.75rem; margin-bottom:4px;">Total IN</div>
+    <div style="color:var(--secondary); font-weight:700; font-size:1.1rem;">₹{{ number_format($summary['totalIn'], 2) }}</div>
   </div>
   <div class="card" style="padding:12px; text-align:center; margin-bottom:0;">
-    <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">EXPENSE</div>
-    <div style="font-weight:bold; color:var(--danger); font-size:1.1rem;">₹{{ number_format($summary['totalOut'], 2) }}</div>
+    <div style="color:var(--text-muted); font-size:0.75rem; margin-bottom:4px;">Total OUT</div>
+    <div style="color:var(--danger); font-weight:700; font-size:1.1rem;">₹{{ number_format($summary['totalOut'], 2) }}</div>
   </div>
-  <div class="card" style="padding:12px; text-align:center; margin-bottom:0; background:{{ $summary['balance'] >= 0 ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)' }}">
-    <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">BALANCE</div>
-    <div style="font-weight:bold; color:{{ $summary['balance'] >= 0 ? 'var(--secondary)' : 'var(--danger)' }}; font-size:1.1rem;">₹{{ number_format($summary['balance'], 2) }}</div>
+  <div class="card" style="padding:12px; text-align:center; margin-bottom:0;">
+    <div style="color:var(--text-muted); font-size:0.75rem; margin-bottom:4px;">Balance</div>
+    <div style="color:{{ $summary['balance'] >= 0 ? 'var(--secondary)' : 'var(--danger)' }}; font-weight:700; font-size:1.1rem;">
+      ₹{{ number_format($summary['balance'], 2) }}
+    </div>
   </div>
 </div>
+@endif
 
 <form method="GET" action="" style="margin-bottom:1rem; display:flex; flex-direction:column; gap:10px;">
   <input type="hidden" name="tab" value="{{ $activeTab }}">
@@ -129,14 +137,44 @@
     @endif
   </div>
 
+  @if($activeTab !== 'daily')
   <div class="form-group">
-    <input type="text" name="q" placeholder="Search note, category or amount..." value="{{ $q }}" onchange="this.form.submit()" style="padding:0.6rem 0.8rem; font-size:0.85rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+    <input type="text" name="q" placeholder="Search details or amount..." value="{{ $q }}" onchange="this.form.submit()" style="padding:0.6rem 0.8rem; font-size:0.85rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
   </div>
+  @endif
 </form>
 
 <!-- Transaction Table -->
 <div class="card" style="padding:0; overflow:hidden;">
-  <div class="table-container">
+  <div style="overflow-x:auto;">
+    @if($activeTab === 'daily')
+    <table style="font-size:0.85rem; width:100%; border-collapse:collapse;">
+      <thead>
+        <tr style="background:rgba(0,0,0,0.2);">
+          <th style="padding:12px; text-align:left;">Date</th>
+          <th style="padding:12px; text-align:right;">Total IN</th>
+          <th style="padding:12px; text-align:right;">Total OUT</th>
+          <th style="padding:12px; text-align:right;">Net Balance</th>
+        </tr>
+      </thead>
+      <tbody>
+        @forelse($pageData['dailyData'] ?? [] as $d)
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+            <td style="padding:12px; font-weight:600;">{{ \Carbon\Carbon::parse($d['date'])->format('d M Y') }}</td>
+            <td style="padding:12px; text-align:right; color:var(--secondary);">₹{{ number_format($d['in'], 2) }}</td>
+            <td style="padding:12px; text-align:right; color:var(--danger);">₹{{ number_format($d['out'], 2) }}</td>
+            <td style="padding:12px; text-align:right; font-weight:bold; color:{{ $d['balance'] >= 0 ? 'var(--secondary)' : 'var(--danger)' }}">
+              ₹{{ number_format($d['balance'], 2) }}
+            </td>
+          </tr>
+        @empty
+          <tr>
+            <td colspan="4" style="padding:2rem; text-align:center; color:var(--text-muted);">No daily data available.</td>
+          </tr>
+        @endforelse
+      </tbody>
+    </table>
+    @else
     <table style="font-size:0.85rem; width:100%; border-collapse:collapse;">
       <thead>
         <tr style="background:rgba(0,0,0,0.2);">
@@ -218,6 +256,7 @@
         @endforelse
       </tbody>
     </table>
+    @endif
   </div>
 </div>
 

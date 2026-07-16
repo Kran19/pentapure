@@ -44,10 +44,7 @@ class FinishedController extends Controller
         $semiStock = $this->getLiveStock('SEMI');
         $user = $this->authUser();
         $ledger = Stock::with('product')
-            ->where(function($q) use ($user) {
-                $q->where('stage', 'FINISHED')
-                  ->orWhere('user_id', $user['id']);
-            })
+            ->where('stage', 'FINISHED')
             ->orderByDesc('created_at')
             ->get()->map(fn($s) => [
                 'productId'   => $s->product_id,
@@ -79,7 +76,7 @@ class FinishedController extends Controller
             'finishedLedger' => $ledger,
             'purchaseOrders' => $myPOs,
             'rawMaterialsList' => Product::raw()->active()->visibleTo($user['role'])->get(['id', 'name', 'unit']),
-            'products'       => Product::with('grades')->active()->visibleTo($user['role'])->get()->map(fn($p)=>[
+            'products'       => Product::with('grades')->active()->where('type', 'FINISHED')->visibleTo($user['role'])->get()->map(fn($p)=>[
                 'id'=>$p->id,'name'=>$p->name,'type'=>$p->type,'unit'=>$p->unit,
                 'gradeNames'=>$p->grades->pluck('name')
             ]),
@@ -99,7 +96,7 @@ class FinishedController extends Controller
             'rawStock'  => $rawStock,
             'grades'    => $grades,
             'locations' => $locations,
-            'products'  => Product::with('grades')->active()->visibleTo($this->authUser()['role'])->get()->map(fn($p)=>[
+            'products'  => Product::with('grades')->active()->where('type', 'FINISHED')->visibleTo($this->authUser()['role'])->get()->map(fn($p)=>[
                 'id'=>$p->id,'name'=>$p->name,'type'=>$p->type,'unit'=>$p->unit,
                 'gradeNames'=>$p->grades->pluck('name')
             ]),

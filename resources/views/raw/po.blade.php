@@ -2,8 +2,8 @@
 
 @section('content')
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
-  <h2 style="margin:0;">🛒 Purchase Orders</h2>
-  <button class="btn btn-sm btn-primary" onclick="document.getElementById('po-modal').classList.add('active')">+ New PO</button>
+  <h2 style="margin:0;">🛒 Purchase Requests</h2>
+  <button class="btn btn-sm btn-primary" onclick="document.getElementById('po-modal').classList.add('active')">+ New Request</button>
 </div>
 
 <div class="table-container">
@@ -25,7 +25,7 @@
           <td style="font-size:0.8rem;">{{ \Carbon\Carbon::parse($po->created_at)->format('d M Y') }}</td>
         </tr>
       @empty
-        <tr><td colspan="4" class="text-center text-muted">No purchase orders found.</td></tr>
+        <tr><td colspan="4" class="text-center text-muted">No purchase requests found.</td></tr>
       @endforelse
     </tbody>
   </table>

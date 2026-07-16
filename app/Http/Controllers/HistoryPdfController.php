@@ -278,6 +278,43 @@ class HistoryPdfController extends Controller
             })->toArray();
     }
 
+    public function salesOrderPdf(Request $request, $id)
+    {
+        $order = Order::with([
+            'company',
+            'transporter',
+            'creator',
+            'items.product'
+        ])->findOrFail($id);
+
+        $totalOrderedQty = 0;
+        $totalAmount = 0;
+
+        foreach ($order->items as $item) {
+            $totalOrderedQty += (float) $item->quantity;
+            $totalAmount += (float) ($item->price * $item->quantity);
+        }
+
+        $data = [
+            'order' => $order,
+            'company' => $order->company,
+            'transporter' => $order->transporter ?? (object)[],
+            'items' => $order->items,
+            'orderNo' => 'ORD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT),
+            'orderDate' => $order->created_at->format('d-M-Y'),
+            'generatedOn' => now()->format('d-M-Y h:i A'),
+            'generatedBy' => $this->authUser()['name'] ?? 'System',
+            'status' => $order->status,
+            'remarks' => $order->notes ?? '',
+            'totalOrderedQty' => $totalOrderedQty,
+            'totalAmount' => $totalAmount,
+            'totalItems' => count($order->items),
+        ];
+
+        $pdf = Pdf::loadView('pdf.sales-order', $data)->setPaper('A4', 'portrait');
+        return $pdf->download($data['orderNo'] . '_Sales_Order_' . now()->format('Ymd_His') . '.pdf');
+    }
+
     public function dispatchNotePdf(Request $request, $id)
     {
         $log = DispatchLog::with([

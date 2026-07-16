@@ -90,6 +90,7 @@ Route::prefix('raw')->middleware('auth.role:RAW')->controller(RawController::cla
     Route::get('/home',    'home')->name('raw.home');
     Route::get('/action',  'action')->name('raw.action');
     Route::post('/action', 'storeInward')->name('raw.action.store');
+    Route::post('/transfer-to-semi', 'transferToSemi')->name('raw.transfer_to_semi');
     Route::get('/po',      'po')->name('raw.po');
     Route::post('/po',     'storePO');
     Route::get('/history', 'history')->name('raw.history');
@@ -125,10 +126,13 @@ Route::prefix('sales')->middleware('auth.role:SALES')->controller(SalesControlle
     Route::get('/action',        'action')->name('sales.action');
     Route::post('/order',        'storeOrder');
     Route::post('/order/{id}',   'updateOrder');
+    Route::post('/order/{id}/cancel', 'cancelOrder');
     Route::post('/company',      'storeCompany');
+    Route::post('/company/{id}', 'updateCompany');
     Route::post('/transport',    'storeTransporter');
     Route::get('/history',       'history')->name('sales.history');
     Route::get('/profile',       'profile')->name('sales.profile');
+    Route::get('/order/pdf/{id}', [HistoryPdfController::class, 'salesOrderPdf'])->name('sales.order.pdf');
 });
 
 // ── DISPATCH ROUTES ────────────────────────────────────────────────────────
@@ -137,6 +141,7 @@ Route::prefix('dispatch')->middleware('auth.role:DISPATCH')->controller(Dispatch
     Route::get('/action',   'action')->name('dispatch.action');
     Route::post('/action',  'storeDispatch');
     Route::post('/update-lr', 'updateLR');
+    Route::post('/revert/{id}', 'revertDispatch');
     Route::get('/history',  'history')->name('dispatch.history');
     Route::get('/profile',  'profile')->name('dispatch.profile');
 });
@@ -154,9 +159,6 @@ Route::prefix('cashier')->middleware('auth.role:CASHIER')->controller(CashierCon
     Route::post('/bill/upload',        'uploadBill')->name('cashier.bill.upload');
     Route::delete('/bill/{id}',        'destroyBill')->name('cashier.bill.destroy');
     Route::get('/bill/{id}/view',      'viewBill')->name('cashier.bill.view');
-    // Category management
-    Route::post('/category',           'storeCategory')->name('cashier.category.store');
-    Route::delete('/category/{id}',    'destroyCategory')->name('cashier.category.destroy');
     // Transaction management
     Route::put('/action/{id}',         'updateTransaction')->name('cashier.action.update');
     Route::delete('/action/{id}',      'destroyTransaction')->name('cashier.action.destroy');
@@ -248,8 +250,8 @@ Route::prefix('attendance')->middleware('auth.role:ATTENDANCE')->controller(Atte
     Route::get('/api/departments',    'departmentsJson');
     Route::get('/api/daily',          'dailyJson');
 
-    Route::get('/reports',            'reports')->name('attendance.reports');
-    Route::get('/reports/worker/{id}','workerReport');
+    Route::get('/history',            'reports')->name('attendance.history');
+    Route::get('/history/worker/{id}','workerReport');
 
     // Standard mobile nav aliases
     Route::get('/action',             'daily')->name('attendance.action');

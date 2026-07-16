@@ -43,6 +43,7 @@
                 <th>User</th>
                 <th>Type</th>
                 <th>Qty ({{ $product->unit }})</th>
+                <th>Balance ({{ $product->unit }})</th>
                 <th>Location</th>
                 <th>Notes</th>
             </tr>
@@ -63,13 +64,16 @@
                     <td style="font-weight:bold; color:{{ $log->transaction_type === 'IN' ? '#2ecc71' : 'red' }}">
                         {{ $log->transaction_type === 'IN' ? '+' : '-' }}{{ number_format($log->quantity, 2) }}
                     </td>
+                    <td style="font-weight:bold; color:var(--primary-light);">
+                        {{ number_format($log->running_balance, 2) }}
+                    </td>
                     <td>{{ $log->location->name ?? 'Default' }}</td>
                     <td style="font-size:0.85rem; color:var(--text-muted); max-width:250px; overflow-wrap:break-word;">
                         {{ $log->notes ?: '-' }}
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="6" class="text-center text-muted">No history found for this product.</td></tr>
+                <tr><td colspan="7" class="text-center text-muted">No history found for this product.</td></tr>
             @endforelse
         </tbody>
     </table>

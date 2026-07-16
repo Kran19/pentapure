@@ -403,7 +403,7 @@ const app = {
     .then(data => {
       if (data.success) {
         this.toast(data.message || 'Request sent!');
-        setTimeout(() => this.navigate('home'), 600);
+        setTimeout(() => location.reload(), 600);
       } else {
         this.toast(data.message || 'Error', 'error');
         if (btn) { btn.disabled = false; btn.innerText = 'Send Request to Admin'; }
@@ -748,10 +748,7 @@ const app = {
       if (res.success) {
         this.toast(res.message || `${data.outputType} Production logged!`);
         window.tempProductionData = null;
-        this.closeDrawer();
-        document.getElementById('prod-out-qty').value = '';
-        document.querySelectorAll('.prod-in-qty').forEach(el => el.value = '');
-        if (btn) { btn.disabled = false; btn.innerHTML = `Confirm & Process`; }
+        setTimeout(() => location.reload(), 1000);
       } else {
         this.toast(res.message || 'Error confirming production', 'error');
         if (btn) { btn.disabled = false; btn.innerHTML = `Confirm & Process`; }
@@ -961,15 +958,38 @@ const app = {
     const row = selectEl.closest('.dynamic-row');
     const gradeContainer = row.querySelector('.grade-container');
     const gradeSelect = row.querySelector('.o-prod-grade');
+    const allGrades = (window.serverPageData && window.serverPageData.grades) || [];
+    const currentVal = gradeSelect.value;
     
     if (prod.type === 'RAW') {
       gradeContainer.style.display = 'none';
-      // Set to N/A if it exists, otherwise just leave it
-      let naOption = Array.from(gradeSelect.options).find(o => o.value === 'N/A');
-      if (naOption) gradeSelect.value = 'N/A';
+      
+      let html = `<option value="" disabled>Grade</option>`;
+      html += `<option value="N/A" selected>N/A</option>`;
+      gradeSelect.innerHTML = html;
+      gradeSelect.value = 'N/A';
     } else {
       gradeContainer.style.display = 'block';
-      if (gradeSelect.value === 'N/A') {
+      let validGrades = prod.grades && prod.grades.length > 0 ? prod.grades : allGrades;
+      let html = `<option value="" disabled>Grade</option>`;
+      
+      let foundCurrent = false;
+      validGrades.forEach(g => {
+         if (g === currentVal && currentVal !== 'N/A') foundCurrent = true;
+         html += `<option value="${g}">${g}</option>`;
+      });
+      
+      // If we don't have valid grades or N/A is globally allowed and we have no other options
+      if (allGrades.includes('N/A') && !validGrades.includes('N/A')) {
+          html += `<option value="N/A">N/A</option>`;
+          if (currentVal === 'N/A') foundCurrent = true;
+      }
+
+      gradeSelect.innerHTML = html;
+
+      if (foundCurrent) {
+        gradeSelect.value = currentVal;
+      } else {
         gradeSelect.value = gradeSelect.options[1] ? gradeSelect.options[1].value : '';
       }
     }
@@ -981,15 +1001,19 @@ const app = {
     const address = document.getElementById('comp-address').value;
     const contact = document.getElementById('comp-contact').value;
     
-    if (!name || !gst || !address || !contact) return this.toast('All fields are required', 'error');
+    if (!name || !address || !contact) return this.toast('Name, Address and Contact are required', 'error');
 
-    if(gst.length > 15) return this.toast('GST number cannot exceed 15 characters', 'error');
-    if(!/^[0-9]{10}$/.test(contact)) return this.toast('Mobile number must be 10 digits', 'error');
+    if(gst && gst.toUpperCase() !== 'N/A' && !/^[A-Za-z0-9]{15}$/.test(gst)) return this.toast('GST must be 15 alphanumeric characters or N/A', 'error');
+    if(!/^(\+91\s*)?[0-9]{10}$/.test(contact)) return this.toast('Mobile number must be 10 digits', 'error');
 
-    const exists = ((window.serverPageData && window.serverPageData.companies) || []).find(c => c.name.toLowerCase() === name.toLowerCase() || c.gst === gst);
+    const editIdEl = document.getElementById('edit-comp-id');
+    const isEdit = editIdEl && editIdEl.value;
+
+    const exists = ((window.serverPageData && window.serverPageData.companies) || []).find(c => c.id != (isEdit || 0) && (c.name.toLowerCase() === name.toLowerCase() || (gst && gst.toUpperCase() !== 'N/A' && c.gst === gst)));
     if(exists) return this.toast('Company with this name or GST already exists', 'error');
 
-    fetch('/sales/company', {
+    const url = isEdit ? '/sales/company/' + isEdit : '/sales/company';
+    fetch(url, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json', 
@@ -1000,7 +1024,7 @@ const app = {
     }).then(r => r.json()).then(d => {
       if (d.success) { 
         this.toast(d.message); 
-        this.navigate('sales/action'); 
+        setTimeout(() => location.reload(), 600); 
       }
       else this.toast(d.message, 'error');
     }).catch(() => this.toast('Network error.', 'error'));
@@ -1012,9 +1036,9 @@ const app = {
     const contact  = document.getElementById('trans-contact').value;
     const vehicles = document.getElementById('trans-vehicles').value;
     
-    if (!name || !gst || !contact) return this.toast('Name, GST and Contact are required', 'error');
-    if(gst.length > 15) return this.toast('GST number cannot exceed 15 characters', 'error');
-    if(!/^[0-9]{10}$/.test(contact)) return this.toast('Mobile number must be 10 digits', 'error');
+    if (!name || !contact) return this.toast('Name and Contact are required', 'error');
+    if(gst && gst.toUpperCase() !== 'N/A' && !/^[A-Za-z0-9]{15}$/.test(gst)) return this.toast('GST must be 15 alphanumeric characters or N/A', 'error');
+    if(!/^(\+91\s*)?[0-9]{10}$/.test(contact)) return this.toast('Mobile number must be 10 digits', 'error');
 
     fetch('/sales/transport', {
       method: 'POST',
@@ -1027,7 +1051,7 @@ const app = {
     }).then(r => r.json()).then(d => {
       if (d.success) { 
         this.toast(d.message); 
-        this.navigate('sales/action');
+        setTimeout(() => location.reload(), 600);
       }
       else this.toast(d.message, 'error');
     }).catch(() => this.toast('Network error.', 'error'));
@@ -1075,7 +1099,7 @@ const app = {
     })
     .then(r => r.json())
     .then(d => {
-      if (d.success) { this.toast(d.message); setTimeout(() => this.navigate('sales/history'), 600); }
+      if (d.success) { this.toast(d.message); setTimeout(() => window.location.href = '/sales/history', 600); }
       else this.toast(d.message || 'Error saving order', 'error');
     })
     .catch(() => this.toast('Network error.', 'error'));
@@ -1170,7 +1194,14 @@ const app = {
         'Accept': 'application/json',
         'X-CSRF-TOKEN': window.csrfToken || csrfToken 
       },
-      body: JSON.stringify({ order_id: orderId, items: items, lr_image: window.currentLRImage })
+      body: JSON.stringify({ 
+        order_id: orderId, 
+        items: items, 
+        lr_image: window.currentLRImage,
+        driver_no: document.getElementById('dispatch-driver')?.value || '',
+        lr_no: document.getElementById('dispatch-lr-no')?.value || '',
+        transporter_id: document.getElementById('dispatch-transporter')?.value || null
+      })
     })
     .then(r => r.json())
     .then(d => {
@@ -1193,6 +1224,8 @@ const app = {
       window.currentDispatchOrderItems = o.items;
       div.style.display = 'block';
       div.classList.add('animation-fadeIn');
+      const detailsDiv = document.getElementById('dispatch-details');
+      if(detailsDiv) detailsDiv.style.display = 'block';
       const itemRows = (o.items || []).map((i, idx) => {
         const remaining = i.remainingQty ?? (i.quantity - (i.dispatchedQty || 0));
         const alreadyDispatched = i.dispatchedQty || 0;
@@ -1486,7 +1519,7 @@ const app = {
     })
     .then(r => r.json())
     .then(d => {
-      if (d.success) { this.toast(d.message); setTimeout(() => this.navigate('home'), 600); }
+      if (d.success) { this.toast(d.message); setTimeout(() => location.reload(), 600); }
       else this.toast(d.message || 'Error', 'error');
     })
     .catch(() => this.toast('Network error.', 'error'));
@@ -1573,6 +1606,49 @@ const app = {
       if (p.opening_balance) url += `&opening_balance=${p.opening_balance}`;
       this.toast('Generating PDF... this may take a moment ⏳', 'info');
       window.open(url, '_blank');
+    });
+  },
+
+  editTransaction(id) {
+    const allTxs = window.serverPageData.transactions || [];
+    const teamTxs = window.serverPageData.teamTransactions || [];
+    const t = allTxs.find(x => x.id == id) || teamTxs.find(x => x.id == id);
+    if (!t) return this.toast('Transaction not found', 'error');
+
+    const allCats = (window.serverPageData && window.serverPageData.categories) ? window.serverPageData.categories : [];
+    const catOptions = allCats.map(c => {
+        const val = c.name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+        return `<option value="${val}" ${t.category === val ? 'selected' : ''}>${c.name}</option>`;
+    }).join('');
+
+    Swal.fire({
+      title: 'Edit Transaction',
+      html: `
+        <div style="text-align:left;">
+          <div class="form-group mb-1">
+            <label style="color:var(--text-muted); font-size:0.8rem;">Amount</label>
+            <input type="number" id="edit-tx-amount" value="${t.amount}" class="swal2-input" style="width:100%; margin:0; box-sizing:border-box;">
+          </div>
+          <div class="form-group mb-1">
+            <label style="color:var(--text-muted); font-size:0.8rem;">Category</label>
+            <select id="edit-tx-category" class="swal2-select" style="width:100%; margin:0; box-sizing:border-box;">
+              <option value="general" ${t.category === 'general' ? 'selected' : ''}>General</option>
+              ${catOptions}
+            </select>
+          </div>
+          <div class="form-group mb-1">
+            <label style="color:var(--text-muted); font-size:0.8rem;">Note</label>
+            <input type="text" id="edit-tx-note" value="${t.note || ''}" class="swal2-input" style="width:100%; margin:0; box-sizing:border-box;">
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Save Changes',
+      confirmButtonColor: 'var(--primary)',
+      cancelButtonColor: '#30363d',
+      background: 'var(--dark-panel)',
+      color: 'var(--text-main)',
+      preConfirm: () => this.saveTransactionEdit(id)
     });
   },
 
@@ -1725,18 +1801,69 @@ const app = {
     const t = window._historyLogs[idx];
     if(!t) return;
     const color = t.type==='IN' ? 'var(--secondary)' : 'var(--danger)';
+    
+    // Add edit form hidden by default
+    const allCats = (window.serverPageData && window.serverPageData.categories) ? window.serverPageData.categories : [];
+    const catOptions = allCats.map(c => {
+        const val = c.name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+        return `<option value="${val}" ${t.category === val ? 'selected' : ''}>${c.name}</option>`;
+    }).join('');
+
     this.openDrawer(`
       <h3 style="margin-bottom:1rem;">Transaction Details</h3>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem;">
-        <div><div style="color:var(--text-muted); font-size:0.8rem;">Type</div><div style="font-weight:600;">${t.type}</div></div>
-        <div><div style="color:var(--text-muted); font-size:0.8rem;">Amount</div><div style="font-weight:700; font-size:1.2rem; color:${color}">\u20b9${Number(t.amount).toLocaleString()}</div></div>
-        <div><div style="color:var(--text-muted); font-size:0.8rem;">Category</div><div>${(t.category||'general').replace(/_/g,' ').toUpperCase()}</div></div>
-        <div><div style="color:var(--text-muted); font-size:0.8rem;">Date</div><div>${new Date(t.date || t.created_at).toLocaleString()}</div></div>
+      <div id="tx-view-${t.id}">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem;">
+          <div><div style="color:var(--text-muted); font-size:0.8rem;">Type</div><div style="font-weight:600;">${t.type}</div></div>
+          <div><div style="color:var(--text-muted); font-size:0.8rem;">Amount</div><div style="font-weight:700; font-size:1.2rem; color:${color}">\u20b9${Number(t.amount).toLocaleString()}</div></div>
+          <div><div style="color:var(--text-muted); font-size:0.8rem;">Category</div><div>${(t.category||'general').replace(/_/g,' ').toUpperCase()}</div></div>
+          <div><div style="color:var(--text-muted); font-size:0.8rem;">Date</div><div>${new Date(t.date || t.created_at).toLocaleString()}</div></div>
+        </div>
+        <div style="margin-top:1rem;"><div style="color:var(--text-muted); font-size:0.8rem;">Note</div><div>${t.note||'\u2014'}</div></div>
+        ${t.reference ? '<div style="margin-top:0.5rem;"><div style="color:var(--text-muted); font-size:0.8rem;">Reference</div><div>'+t.reference+'</div></div>' : ''}
+        
+        <button class="btn btn-secondary mt-2" onclick="document.getElementById('tx-view-${t.id}').style.display='none'; document.getElementById('tx-edit-${t.id}').style.display='block';" style="width:100%; margin-bottom:10px;">Edit Transaction</button>
+        <button class="btn btn-secondary" onclick="app.closeDrawer()" style="width:100%;">Close</button>
       </div>
-      <div style="margin-top:1rem;"><div style="color:var(--text-muted); font-size:0.8rem;">Note</div><div>${t.note||'\u2014'}</div></div>
-      ${t.reference ? '<div style="margin-top:0.5rem;"><div style="color:var(--text-muted); font-size:0.8rem;">Reference</div><div>'+t.reference+'</div></div>' : ''}
-      <button class="btn btn-secondary mt-2" onclick="app.closeDrawer()" style="width:100%;">Close</button>
+      
+      <div id="tx-edit-${t.id}" style="display:none;">
+        <div class="form-group">
+            <label>Amount</label>
+            <input type="number" id="edit-tx-amount" value="${t.amount}" style="width:100%; padding:0.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;" min="0.01" step="0.01">
+        </div>
+        <div class="form-group mt-1">
+            <label>Category</label>
+            <select id="edit-tx-category" style="width:100%; padding:0.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+                <option value="general" ${t.category === 'general' ? 'selected' : ''}>General</option>
+                ${catOptions}
+            </select>
+        </div>
+        <div class="form-group mt-1">
+            <label>Note</label>
+            <input type="text" id="edit-tx-note" value="${t.note || ''}" style="width:100%; padding:0.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+        </div>
+        <button class="btn mt-2" onclick="app.submitEditTransaction(${t.id})" style="width:100%; margin-bottom:10px;">Save Changes</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('tx-edit-${t.id}').style.display='none'; document.getElementById('tx-view-${t.id}').style.display='block';" style="width:100%;">Cancel</button>
+      </div>
     `);
+  },
+
+  submitEditTransaction(id) {
+    const amount = document.getElementById('edit-tx-amount').value;
+    const category = document.getElementById('edit-tx-category').value;
+    const note = document.getElementById('edit-tx-note').value;
+
+    fetch('/cashier/action/' + id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': window.csrfToken || csrfToken },
+        body: JSON.stringify({ amount, category, note })
+    }).then(r => r.json()).then(d => {
+        if (d.success) {
+            this.toast(d.message, 'success');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            this.toast(d.message || 'Error updating transaction', 'error');
+        }
+    }).catch(err => this.toast('Network error', 'error'));
   },
 
   openProductionDrawer(idx) {
@@ -1811,11 +1938,26 @@ const app = {
           <tbody>${prodRows || '<tr><td colspan="4" style="text-align:center;">No products</td></tr>'}</tbody>
         </table>
       </div>
-      ${o.status === 'OPEN' && o.dispatchStatus !== 'DONE' ? `
-        <a class="btn mt-1" href="/sales/action?edit=${o.id}" style="width:100%; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:6px; background:var(--warning); color:#000; font-weight:bold; margin-bottom: 0.5rem;">✏️ Edit Order</a>
+      ${o.status === 'OPEN' && (o.dispatchStatus === 'PENDING' || o.dispatchStatus === '') ? `
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom: 0.5rem;">
+          <a class="btn" href="/sales/action?edit=${o.id}" style="text-decoration:none; display:flex; align-items:center; justify-content:center; gap:6px; background:var(--warning); color:#000; font-weight:bold;">✏️ Edit Order</a>
+          <button class="btn" onclick="app.cancelSalesOrder(${o.id})" style="display:flex; align-items:center; justify-content:center; gap:6px; background:var(--danger); font-weight:bold;">❌ Cancel Order</button>
+        </div>
       ` : ''}
+      <a class="btn mt-1" href="/order/pdf/${o.id}" target="_blank" style="width:100%; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:6px; background:var(--secondary); font-weight:bold; margin-bottom: 0.5rem;">📄 Download PDF</a>
       <button class="btn btn-secondary" onclick="app.closeDrawer()" style="width:100%;">Close</button>
     `);
+  },
+
+  cancelSalesOrder(id) {
+    if(!confirm('Are you sure you want to cancel this order?')) return;
+    fetch('/sales/order/'+id+'/cancel', {
+      method: 'POST',
+      headers: { 'X-CSRF-TOKEN': window.csrfToken || csrfToken }
+    }).then(r=>r.json()).then(d=>{
+      if(d.success) { this.toast(d.message); setTimeout(()=>location.reload(),800); }
+      else this.toast(d.message, 'error');
+    }).catch(()=>this.toast('Network error', 'error'));
   },
 
   openSalesCompanyDrawer(idx) {
@@ -1830,8 +1972,14 @@ const app = {
         <div><div style="color:var(--text-muted); font-size:0.8rem;">Date</div><div>${c.date ? new Date(c.date).toLocaleString() : 'N/A'}</div></div>
       </div>
       ${c.address ? '<div style="margin-bottom:1rem;"><div style="color:var(--text-muted); font-size:0.8rem;">Address</div><div>'+c.address+'</div></div>' : ''}
+      <button class="btn mt-1" onclick="app.editCompany(${c.id})" style="width:100%; display:flex; align-items:center; justify-content:center; gap:6px; background:var(--warning); color:#000; font-weight:bold; margin-bottom:0.5rem;">✏️ Edit Company</button>
       <button class="btn btn-secondary" onclick="app.closeDrawer()" style="width:100%;">Close</button>
     `);
+  },
+
+  editCompany(id) {
+    this.closeDrawer();
+    this.navigate('sales/action?editCompany='+id);
   },
 
   openSalesTransportDrawer(idx) {
@@ -1899,8 +2047,24 @@ const app = {
       <a href="/dispatch/pdf/${d.id}" target="_blank" class="btn mt-1 mb-1" style="width:100%; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px;">
         📄 Download Dispatch PDF
       </a>
+      <button class="btn btn-danger" onclick="app.revertDispatch(${d.id})" style="width:100%; margin-bottom:10px;">Revert Dispatch</button>
       <button class="btn btn-secondary" onclick="app.closeDrawer()" style="width:100%;">Close</button>
     `);
+  },
+
+  revertDispatch(id) {
+    if(!confirm('Are you sure you want to revert this dispatch? This will restore stock, delete the dispatch log, and update the order status.')) return;
+    fetch('/dispatch/revert/' + id, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': window.csrfToken || csrfToken }
+    }).then(r => r.json()).then(d => {
+      if(d.success) {
+        this.toast(d.message, 'success');
+        setTimeout(() => location.reload(), 800);
+      } else {
+        this.toast(d.message, 'error');
+      }
+    }).catch(() => this.toast('Error reverting dispatch', 'error'));
   },
 
   viewImage(src) {

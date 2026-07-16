@@ -72,7 +72,8 @@ class RawController extends Controller
     public function action()
     {
         $rawMaterials = Product::raw()->active()->visibleTo($this->authUser()['role'])->get(['id', 'name', 'unit', 'image_url']);
-        $pageData = ['rawMaterialsList' => $rawMaterials];
+        $rawStock = $this->getLiveStock('RAW');
+        $pageData = ['rawMaterialsList' => $rawMaterials, 'rawStock' => $rawStock];
         return view('raw.action', compact('pageData'));
     }
 
@@ -120,6 +121,75 @@ class RawController extends Controller
         }
 
         return redirect()->route('raw.home')->with('success', 'Raw material added to stock!');
+    }
+
+    // ── POST: Transfer to Semi ─────────────────────────────────────────────
+    public function transferToSemi(Request $request)
+    {
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'quantity'   => 'required|numeric|min:0.001',
+            'grade'      => 'nullable|string|max:50',
+            'notes'      => 'nullable|string',
+        ]);
+
+        $user = $this->authUser();
+
+        if (!Product::visibleTo($user['role'])->where('id', $request->product_id)->exists()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized product access.'], 403);
+        }
+
+        $qtyToTransfer = (float) $request->quantity;
+        $grade = $request->grade ?? 'NONE';
+
+        // Check if enough raw stock exists
+        $netRaw = DB::table('stocks')
+            ->where('stage', 'RAW')
+            ->where('product_id', $request->product_id)
+            ->where('grade', $grade)
+            ->selectRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as net")
+            ->value('net') ?? 0;
+
+        if ($netRaw < $qtyToTransfer) {
+            return response()->json(['success' => false, 'message' => "Insufficient RAW stock. Available: {$netRaw}"], 400);
+        }
+
+        DB::transaction(function() use ($request, $user, $qtyToTransfer, $grade) {
+            $notes = trim($request->notes ?? '');
+            if ($notes === '') {
+                $notes = 'TRANSFERRED TO SEMI';
+            }
+
+            // Deduct from RAW
+            Stock::create([
+                'product_id'       => $request->product_id,
+                'user_id'          => $user['id'],
+                'stage'            => 'RAW',
+                'grade'            => $grade,
+                'location_id'      => null,
+                'quantity'         => $qtyToTransfer,
+                'transaction_type' => 'OUT',
+                'notes'            => 'TRANSFER TO SEMI: ' . $notes,
+            ]);
+
+            // Add to SEMI
+            Stock::create([
+                'product_id'       => $request->product_id,
+                'user_id'          => $user['id'],
+                'stage'            => 'SEMI',
+                'grade'            => $grade,
+                'location_id'      => null, // Can be updated later
+                'quantity'         => $qtyToTransfer,
+                'transaction_type' => 'IN',
+                'notes'            => 'RECEIVED FROM RAW: ' . $notes,
+            ]);
+        });
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Stock transferred to SEMI successfully!']);
+        }
+
+        return redirect()->route('raw.home')->with('success', 'Stock transferred to SEMI!');
     }
 
     // ── PO ─────────────────────────────────────────────────────────────────

@@ -2,11 +2,11 @@
 
 @section('content')
 <div style="padding:1.5rem;">
-  <h2 style="margin-bottom:1.5rem;">📋 Purchase Orders</h2>
+  <h2 style="margin-bottom:1.5rem;">📋 Purchase Requests</h2>
 
   @if(empty($pageData['purchaseOrders']))
     <div class="card" style="padding:2rem; text-align:center;">
-      <p style="color:var(--text-muted); margin:0;">No purchase orders yet. Users will submit them from their profiles.</p>
+      <p style="color:var(--text-muted); margin:0;">No purchase requests yet. Users will submit them from their profiles.</p>
     </div>
   @else
   <div class="card" style="padding:1.2rem;">

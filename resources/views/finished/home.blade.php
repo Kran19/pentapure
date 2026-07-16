@@ -3,7 +3,7 @@
 @section('content')
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
   <h2 style="margin:0;">✅ FG Stock</h2>
-  <a class="btn btn-sm btn-secondary" style="width:auto; padding:0.5rem 1rem; text-decoration:none;" href="{{ url('finished/po') }}">Purchase Orders</a>
+  <a class="btn btn-sm btn-secondary" style="width:auto; padding:0.5rem 1rem; text-decoration:none;" href="{{ url('finished/po') }}">Purchase Requests</a>
 </div>
 
 @include('partials.recent-pos', ['pageData' => $pageData])
