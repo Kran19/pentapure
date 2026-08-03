@@ -192,7 +192,18 @@ class CashierController extends Controller
         $bill = TransactionBill::with('transaction')->findOrFail($id);
 
         $user = $this->authUser();
-        if ($user['role'] !== 'ADMIN' && $bill->transaction->user_id !== $user['id']) {
+        $userModel = User::find($user['id']);
+        $visibleIds = $userModel->visible_cashiers ?? [];
+        if (is_string($visibleIds)) {
+            $visibleIds = json_decode($visibleIds, true) ?? [];
+        }
+        $visibleIds = array_map('intval', $visibleIds);
+
+        $isAllowed = ($user['role'] === 'ADMIN') || 
+                     ($bill->transaction->user_id === $user['id']) || 
+                     (in_array((int)$bill->transaction->user_id, $visibleIds));
+
+        if (!$isAllowed) {
             abort(403);
         }
 

@@ -139,84 +139,89 @@ class DispatchController extends Controller
             'transporter_id'              => 'nullable|exists:transporters,id',
         ]);
 
-        $user  = $this->authUser();
-        $order = Order::with('items.product')->find($request->order_id);
+        $user = $this->authUser();
+        $response = null;
+        $message = '';
 
-        if ($order->dispatch_status === 'DONE') {
-            return response()->json(['success' => false, 'message' => 'Order already fully dispatched.'], 422);
-        }
+        DB::transaction(function () use ($request, $user, &$response, &$message) {
+            // Lock order row for update to prevent concurrent duplicate dispatches
+            $order = Order::with('items.product')->where('id', $request->order_id)->lockForUpdate()->first();
 
-        // Validate each item and location allocations
-        foreach ($request->items as $dispatchItem) {
-            $orderItem = $order->items->firstWhere('id', $dispatchItem['order_item_id']);
-            if (!$orderItem) {
-                return response()->json(['success' => false, 'message' => 'Invalid order item.'], 422);
+            if (!$order || $order->dispatch_status === 'DONE') {
+                $response = response()->json(['success' => false, 'message' => 'Order already fully dispatched or invalid.'], 422);
+                return;
             }
 
-            $dispatchQty = (float) $dispatchItem['quantity'];
-            $remaining   = $orderItem->remainingQty();
-
-            if ($dispatchQty > $remaining) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "Cannot dispatch {$dispatchQty} kg of {$orderItem->product?->name}. Remaining: {$remaining} kg"
-                ], 422);
-            }
-
-            // If location splits provided, validate them
-            if (!empty($dispatchItem['location_splits'])) {
-                $totalAllocated = collect($dispatchItem['location_splits'])->sum(fn($s) => (float)$s['dispatch_location_qty']);
-                if (abs($totalAllocated - $dispatchQty) > 0.001) { // Allow small floating point differences
-                    return response()->json([
-                        'success' => false,
-                        'message' => "Location allocation total ({$totalAllocated} kg) doesn't match dispatch quantity ({$dispatchQty} kg)"
-                    ], 422);
+            // Validate each item and stock availability under transaction lock
+            foreach ($request->items as $dispatchItem) {
+                $orderItem = $order->items->firstWhere('id', $dispatchItem['order_item_id']);
+                if (!$orderItem) {
+                    $response = response()->json(['success' => false, 'message' => 'Invalid order item.'], 422);
+                    return;
                 }
 
-                // Validate stock availability per location
-                foreach ($dispatchItem['location_splits'] as $split) {
-                    $locationName = $split['location_key'];
-                    $allocQty = (float) $split['dispatch_location_qty'];
-                    
-                    $locationId = \App\Models\Location::firstOrCreate(['name' => $locationName])->id;
-                    
-                    $availableAtLocation = DB::table('stocks')
+                $dispatchQty = (float) $dispatchItem['quantity'];
+                $remaining   = $orderItem->remainingQty();
+
+                if ($dispatchQty > $remaining) {
+                    $response = response()->json([
+                        'success' => false,
+                        'message' => "Cannot dispatch {$dispatchQty} kg of {$orderItem->product?->name}. Remaining: {$remaining} kg"
+                    ], 422);
+                    return;
+                }
+
+                if (!empty($dispatchItem['location_splits'])) {
+                    $totalAllocated = collect($dispatchItem['location_splits'])->sum(fn($s) => (float)$s['dispatch_location_qty']);
+                    if (abs($totalAllocated - $dispatchQty) > 0.001) {
+                        $response = response()->json([
+                            'success' => false,
+                            'message' => "Location allocation total ({$totalAllocated} kg) doesn't match dispatch quantity ({$dispatchQty} kg)"
+                        ], 422);
+                        return;
+                    }
+
+                    foreach ($dispatchItem['location_splits'] as $split) {
+                        $locationName = $split['location_key'];
+                        $allocQty = (float) $split['dispatch_location_qty'];
+                        $locationId = \App\Models\Location::firstOrCreate(['name' => $locationName])->id;
+
+                        $availableAtLocation = DB::table('stocks')
+                            ->where('product_id', $orderItem->product_id)
+                            ->where('stage', $orderItem->product->type)
+                            ->where('grade', $orderItem->grade)
+                            ->where('location_id', $locationId)
+                            ->lockForUpdate()
+                            ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
+                            ->value('net') ?? 0;
+
+                        if ($allocQty > $availableAtLocation) {
+                            $response = response()->json([
+                                'success' => false,
+                                'message' => "Insufficient stock at location. Need: {$allocQty} kg, Have: {$availableAtLocation} kg"
+                            ], 422);
+                            return;
+                        }
+                    }
+                } else {
+                    $available = DB::table('stocks')
                         ->where('product_id', $orderItem->product_id)
                         ->where('stage', $orderItem->product->type)
                         ->where('grade', $orderItem->grade)
-                        ->where('location_id', $locationId)
+                        ->lockForUpdate()
                         ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
                         ->value('net') ?? 0;
 
-                    if ($allocQty > $availableAtLocation) {
-                        return response()->json([
+                    if ($dispatchQty > $available) {
+                        $pName = $orderItem->product?->name;
+                        $response = response()->json([
                             'success' => false,
-                            'message' => "Insufficient stock at location. Need: {$allocQty} kg, Have: {$availableAtLocation} kg"
+                            'message' => "Insufficient stock for {$pName} ({$orderItem->grade}). Need: {$dispatchQty} kg, Have: {$available} kg"
                         ], 422);
+                        return;
                     }
                 }
-            } else {
-                // Check overall stock availability if no location specified
-                $available = DB::table('stocks')
-                    ->where('product_id', $orderItem->product_id)
-                    ->where('stage', $orderItem->product->type)
-                    ->where('grade', $orderItem->grade)
-                    ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
-                    ->value('net') ?? 0;
-
-                if ($dispatchQty > $available) {
-                    $pName = $orderItem->product?->name;
-                    return response()->json([
-                        'success' => false,
-                        'message' => "Insufficient stock for {$pName} ({$orderItem->grade}). Need: {$dispatchQty} kg, Have: {$available} kg"
-                    ], 422);
-                }
             }
-        }
-
-        $message = '';
-
-        DB::transaction(function () use ($request, $user, $order, &$message) {
             // Handle LR image
             $lrPath = null;
             if ($request->lr_image) {
@@ -309,6 +314,10 @@ class DispatchController extends Controller
                 $message = 'Partial dispatch recorded. Remaining items can be dispatched in the next round.';
             }
         });
+
+        if ($response) {
+            return $response;
+        }
 
         return response()->json(['success' => true, 'message' => $message]);
     }
@@ -500,15 +509,22 @@ class DispatchController extends Controller
         }
 
         DB::transaction(function () use ($log, $order) {
-            // Delete existing stock OUT transactions for this dispatch
-            $stockIds = \App\Models\DispatchLogItem::where('dispatch_log_id', $log->id)
-                ->with('locationAllocations')
-                ->get()
-                ->flatMap(fn($di) => $di->locationAllocations->pluck('stock_id'))
-                ->unique()
+            // Collect stock IDs from locationAllocations
+            $stockIdsFromLocations = \App\Models\DispatchItemLocation::whereIn(
+                'dispatch_log_item_id', 
+                $log->dispatchItems->pluck('id')->toArray()
+            )->pluck('stock_id')->toArray();
+
+            // Collect stock IDs created via deductStock with round notes
+            $stockIdsFromNotes = Stock::where('notes', 'LIKE', "%round #{$log->id}%")
+                ->orWhere('notes', 'LIKE', "%round #{$log->id})%")
+                ->pluck('id')
                 ->toArray();
 
-            Stock::whereIn('id', array_filter($stockIds))->delete();
+            $allStockIds = array_unique(array_filter(array_merge($stockIdsFromLocations, $stockIdsFromNotes)));
+            if (!empty($allStockIds)) {
+                Stock::whereIn('id', $allStockIds)->delete();
+            }
 
             // Restore dispatched_qty on order items
             foreach ($log->dispatchItems as $di) {
@@ -531,12 +547,14 @@ class DispatchController extends Controller
             // Delete the dispatch log itself
             $log->delete();
 
-            // Update order status
+            // Update order status accurately
             $order->refresh();
             $anyDispatched = $order->items->filter(fn($item) => $item->dispatched_qty > 0)->isNotEmpty();
+            $allDone = $order->items->isNotEmpty() && $order->items->every(fn($item) => $item->remainingQty() <= 0);
+            
             $order->update([
                 'status' => 'OPEN',
-                'dispatch_status' => $anyDispatched ? 'PARTIAL' : 'PENDING'
+                'dispatch_status' => $allDone ? 'DONE' : ($anyDispatched ? 'PARTIAL' : 'PENDING')
             ]);
         });
 

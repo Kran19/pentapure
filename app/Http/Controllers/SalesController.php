@@ -114,11 +114,21 @@ class SalesController extends Controller
 
         $user  = $this->authUser();
 
-        // Security check: Ensure products are visible to this user role
+        // Security check: Ensure products are visible to this user role and grade belongs to product
         $visibleProductIds = Product::visibleTo($user['role'])->pluck('id')->toArray();
         foreach ($request->items as $item) {
             if (!in_array($item['product_id'], $visibleProductIds)) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized product access.'], 403);
+            }
+            $product = Product::with('grades')->find($item['product_id']);
+            if ($product && $product->grades->isNotEmpty()) {
+                $allowedGrades = $product->grades->pluck('name')->map('strtoupper')->toArray();
+                if (!in_array(strtoupper($item['grade']), $allowedGrades)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Grade '{$item['grade']}' is invalid for product '{$product->name}'."
+                    ], 422);
+                }
             }
         }
         $total = collect($request->items)->sum(fn($i) => $i['quantity'] * $i['price']);
@@ -152,9 +162,14 @@ class SalesController extends Controller
     {
         $request->merge(['name' => strtoupper($request->name)]);
 
+        $gstRule = ['nullable', 'string', 'regex:/^(N\/A|[A-Za-z0-9]{15})$/i'];
+        if ($request->gst && strtoupper($request->gst) !== 'N/A') {
+            $gstRule[] = 'unique:companies,gst';
+        }
+
         $request->validate([
             'name'    => 'required|string|max:255|unique:companies,name',
-            'gst'     => ['nullable', 'string', 'regex:/^(N\/A|[A-Za-z0-9]{15})$/i', 'unique:companies,gst'],
+            'gst'     => $gstRule,
             'contact' => ['required', 'string', 'regex:/^(\+91\s*)?[0-9]{10}$/'],
             'address' => 'required|string|max:500',
         ], [
@@ -176,9 +191,14 @@ class SalesController extends Controller
         $company = Company::findOrFail($id);
         $request->merge(['name' => strtoupper($request->name)]);
 
+        $gstRule = ['nullable', 'string', 'regex:/^(N\/A|[A-Za-z0-9]{15})$/i'];
+        if ($request->gst && strtoupper($request->gst) !== 'N/A') {
+            $gstRule[] = 'unique:companies,gst,' . $company->id;
+        }
+
         $request->validate([
             'name'    => 'required|string|max:255|unique:companies,name,' . $company->id,
-            'gst'     => ['nullable', 'string', 'regex:/^(N\/A|[A-Za-z0-9]{15})$/i', 'unique:companies,gst,' . $company->id],
+            'gst'     => $gstRule,
             'contact' => ['required', 'string', 'regex:/^(\+91\s*)?[0-9]{10}$/'],
             'address' => 'required|string|max:500',
         ], [
@@ -199,9 +219,14 @@ class SalesController extends Controller
     {
         $request->merge(['name' => strtoupper($request->name)]);
 
+        $gstRule = ['nullable', 'string', 'regex:/^(N\/A|[A-Za-z0-9]{15})$/i'];
+        if ($request->gst && strtoupper($request->gst) !== 'N/A') {
+            $gstRule[] = 'unique:transporters,gst';
+        }
+
         $request->validate([
             'name'    => 'required|string|max:255|unique:transporters,name',
-            'gst'     => ['nullable', 'string', 'regex:/^(N\/A|[A-Za-z0-9]{15})$/i', 'unique:transporters,gst'],
+            'gst'     => $gstRule,
             'contact' => ['required', 'string', 'regex:/^(\+91\s*)?[0-9]{10}$/'],
             'vehicles' => 'nullable|string',
         ], [
@@ -288,6 +313,16 @@ class SalesController extends Controller
         foreach ($request->items as $item) {
             if (!in_array($item['product_id'], $visibleProductIds)) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized product access.'], 403);
+            }
+            $product = Product::with('grades')->find($item['product_id']);
+            if ($product && $product->grades->isNotEmpty()) {
+                $allowedGrades = $product->grades->pluck('name')->map('strtoupper')->toArray();
+                if (!in_array(strtoupper($item['grade']), $allowedGrades)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Grade '{$item['grade']}' is invalid for product '{$product->name}'."
+                    ], 422);
+                }
             }
         }
 

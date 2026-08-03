@@ -154,7 +154,10 @@ class RawController extends Controller
             return response()->json(['success' => false, 'message' => "Insufficient RAW stock. Available: {$netRaw}"], 400);
         }
 
-        DB::transaction(function() use ($request, $user, $qtyToTransfer, $grade) {
+        $locationName = $request->location ?: 'Main Warehouse';
+        $locationId = \App\Models\Location::firstOrCreate(['name' => $locationName])->id;
+
+        DB::transaction(function() use ($request, $user, $qtyToTransfer, $grade, $locationId) {
             $notes = trim($request->notes ?? '');
             if ($notes === '') {
                 $notes = 'TRANSFERRED TO SEMI';
@@ -166,7 +169,7 @@ class RawController extends Controller
                 'user_id'          => $user['id'],
                 'stage'            => 'RAW',
                 'grade'            => $grade,
-                'location_id'      => null,
+                'location_id'      => $locationId,
                 'quantity'         => $qtyToTransfer,
                 'transaction_type' => 'OUT',
                 'notes'            => 'TRANSFER TO SEMI: ' . $notes,
@@ -178,7 +181,7 @@ class RawController extends Controller
                 'user_id'          => $user['id'],
                 'stage'            => 'SEMI',
                 'grade'            => $grade,
-                'location_id'      => null, // Can be updated later
+                'location_id'      => $locationId,
                 'quantity'         => $qtyToTransfer,
                 'transaction_type' => 'IN',
                 'notes'            => 'RECEIVED FROM RAW: ' . $notes,

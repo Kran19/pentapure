@@ -204,7 +204,7 @@
     <div class="page-break-avoid">
         
         <!-- Dispatch Timeline for Order -->
-        @if(count($dispatchHistory) > 1)
+        @if(isset($dispatchHistory) && count($dispatchHistory) > 1)
         <div class="section-header" style="border-radius: 4px 4px 0 0; margin-bottom: 0; margin-top: 10px;">⏱️ Dispatch Timeline for this Order</div>
         <table class="items-table" style="margin-bottom: 10px;">
             <thead>
@@ -217,10 +217,10 @@
             </thead>
             <tbody>
                 @foreach($dispatchHistory as $historyLog)
-                    <tr style="{{ $historyLog->id === $log->id ? 'background-color: #f6fef9;' : '' }}">
+                    <tr style="{{ (isset($log) && $historyLog->id === $log->id) ? 'background-color: #f6fef9;' : '' }}">
                         <td class="text-center">
                             <strong>#{{ $loop->iteration }}</strong>
-                            @if($historyLog->id === $log->id)
+                            @if(isset($log) && $historyLog->id === $log->id)
                                 <br><span style="color:#027a48; font-size: 8px;">(Current)</span>
                             @endif
                         </td>
