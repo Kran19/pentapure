@@ -571,7 +571,10 @@ class CashierController extends Controller
         ]);
     }
 
-    private function txToArray(Transaction $t): array
+    /**
+     * @param Transaction|object $t
+     */
+    private function txToArray($t): array
     {
         return [
             'id'          => $t->id,

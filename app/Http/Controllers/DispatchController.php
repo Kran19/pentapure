@@ -145,6 +145,7 @@ class DispatchController extends Controller
 
         DB::transaction(function () use ($request, $user, &$response, &$message) {
             // Lock order row for update to prevent concurrent duplicate dispatches
+            /** @var Order $order */
             $order = Order::with('items.product')->where('id', $request->order_id)->lockForUpdate()->first();
 
             if (!$order || $order->dispatch_status === 'DONE') {
