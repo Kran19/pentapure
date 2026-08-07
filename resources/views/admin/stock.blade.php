@@ -846,13 +846,13 @@ function adminExportStockPdf() {
       <div style="text-align:left; font-size:0.95rem; color:#e6edf3;">
         <p style="margin-bottom:12px; color:#8b949e;">Select the stock panels to include in the PDF report:</p>
         <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
-          <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:#ffffff !important;">
             <input type="checkbox" id="export-stage-raw" checked style="width:20px; height:20px; cursor:pointer;"> 🌿 Raw Material Stock
           </label>
-          <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:#ffffff !important;">
             <input type="checkbox" id="export-stage-semi" checked style="width:20px; height:20px; cursor:pointer;"> ⚗️ Semi-Finished Stock
           </label>
-          <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:#ffffff !important;">
             <input type="checkbox" id="export-stage-finished" checked style="width:20px; height:20px; cursor:pointer;"> ✅ FG Stock
           </label>
         </div>
