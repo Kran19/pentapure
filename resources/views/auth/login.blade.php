@@ -120,6 +120,8 @@
 
   async function handleNotificationPermission(allow) {
     if (allow) {
+      document.getElementById('notification-modal').classList.remove('active');
+      app.toast('Please check your browser address bar to allow notifications.', 'info');
       try {
         const subscription = await app.requestNotificationPermission();
         if (subscription) {
@@ -128,7 +130,6 @@
       } catch (e) {
         console.error('Notification permission error:', e);
       }
-      document.getElementById('notification-modal').classList.remove('active');
       showPasswordStep();
     } else {
       // Allow them to proceed even if denied, but warn them
