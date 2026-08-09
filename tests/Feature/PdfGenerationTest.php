@@ -103,6 +103,23 @@ class PdfGenerationTest extends TestCase
         $this->assertNotEmpty($response->getContent());
     }
 
+    public function test_admin_stock_pdf_download_with_stage_and_date_filters(): void
+    {
+        $response = $this->withSession(['auth_user' => [
+            'id' => $this->adminUser->id,
+            'name' => $this->adminUser->name,
+            'role' => 'ADMIN',
+        ]])->post('/admin/stock/pdf', [
+            'stages' => 'RAW,FINISHED',
+            'start_date' => '2026-01-01',
+            'end_date' => '2026-12-31',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $this->assertNotEmpty($response->getContent());
+    }
+
     public function test_admin_dispatch_activity_pdf_download(): void
     {
         $response = $this->withSession(['auth_user' => [

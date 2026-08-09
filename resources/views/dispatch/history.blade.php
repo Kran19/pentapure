@@ -94,7 +94,7 @@
     @php
       $lrStatus = $d['lrImage'] ? '<span class="badge badge-done" style="font-size:0.6rem;">LR UPLOADED</span>' : '<span class="badge badge-pending" style="font-size:0.6rem;">LR PENDING</span>';
     @endphp
-    <div class="list-item" onclick="app.openDispatchDrawer({{ $idx }})" style="cursor:pointer; background:rgba(255,255,255,0.03); padding:1rem; border-radius:12px; border:1px solid rgba(255,255,255,0.05); transition:0.2s; display:block;">
+    <div class="list-item" onclick="app.openDispatchDrawer({{ $idx }})" style="cursor:pointer; background:rgba(255,255,255,0.03); padding:1rem; border-radius:12px; border:1px solid rgba(255,255,255,0.05); transition:0.2s; display:flex; justify-content:space-between; align-items:center;">
       <div class="list-item-content">
         <div class="list-item-title" style="font-weight:600; font-size:1rem; color:var(--text-main);">
           Order #{{ strtoupper((string)$d['orderId']) }} — {{ $d['companyName'] }}
@@ -104,6 +104,9 @@
           Transporter: {{ $d['transportName'] ?? 'N/A' }} · 
           {{ \Carbon\Carbon::parse($d['date'])->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}
         </div>
+      </div>
+      <div>
+        <button type="button" class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); app.revertDispatch({{ $d['id'] }})" style="width:auto; padding:0.35rem 0.8rem; font-size:0.75rem; border-color:#ef4444 !important; color:#ef4444 !important;">↩️ Revert Dispatch</button>
       </div>
     </div>
   @empty

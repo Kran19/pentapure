@@ -92,49 +92,33 @@
 
   async function selectUser(id, name, role) {
     pendingUser = { id, name, role };
-    
-    // Safeguard Notification API
-    if (!window.Notification) {
-      console.warn('Notification API not supported by this browser.');
-      showPasswordStep();
-      return;
-    }
+    showPasswordStep();
 
-    if (Notification.permission === 'granted') {
+    // Background push subscription attempt if permitted (non-blocking)
+    if (window.Notification && Notification.permission === 'granted' && window.app && typeof app.subscribeUser === 'function') {
       try {
         const subscription = await app.subscribeUser();
         if (subscription) {
           document.getElementById('push_subscription_field').value = JSON.stringify(subscription);
         }
       } catch (e) {
-        console.error('Push subscription failed:', e);
+        console.warn('Background push subscription skipped:', e);
       }
-      showPasswordStep();
-    } else if (Notification.permission === 'denied') {
-      // Proceed anyway instead of locking the user out if they previously denied it
-      showPasswordStep();
-    } else {
-      document.getElementById('notification-modal').classList.add('active');
     }
   }
 
   async function handleNotificationPermission(allow) {
-    if (allow) {
+    document.getElementById('notification-modal').classList.remove('active');
+    showPasswordStep();
+    if (allow && window.app && typeof app.requestNotificationPermission === 'function') {
       try {
         const subscription = await app.requestNotificationPermission();
         if (subscription) {
           document.getElementById('push_subscription_field').value = JSON.stringify(subscription);
         }
       } catch (e) {
-        console.error('Notification permission error:', e);
+        console.warn('Notification permission error:', e);
       }
-      document.getElementById('notification-modal').classList.remove('active');
-      showPasswordStep();
-    } else {
-      // Allow them to proceed even if denied, but warn them
-      app.toast('Warning: You will not receive real-time updates.', 'warning');
-      document.getElementById('notification-modal').classList.remove('active');
-      showPasswordStep();
     }
   }
 
@@ -158,5 +142,18 @@
   function togglePassword(id) {
     app.togglePassword(id);
   }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+      loginForm.addEventListener('submit', function() {
+        const btn = this.querySelector('button[type="submit"]');
+        if (btn) {
+          btn.style.opacity = '0.85';
+          btn.innerHTML = `<svg class="spin" style="width:18px;height:18px;margin-right:8px;vertical-align:middle;display:inline-block;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg> Logging in...`;
+        }
+      });
+    }
+  });
 </script>
 @endsection

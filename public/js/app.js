@@ -126,29 +126,37 @@ const app = {
     window.customEnd = '';
     window.rawHomeTab = 'stock';
 
-    this.fetchLocations();
-
-    this.fetchNotifications();
-    setInterval(() => this.fetchNotifications(), 10000);
-
     const splash = document.getElementById('splash-screen');
     if (splash) {
       splash.style.opacity = '0';
       setTimeout(() => splash.remove(), 500);
     }
 
+    // Do not run background API calls or Push subscriptions on guest/login pages
+    if (window.location.pathname.includes('/login') || document.body.classList.contains('guest-mode') || !document.querySelector('meta[name="csrf-token"]')) {
+      return;
+    }
+
+    this.fetchLocations();
+    this.fetchNotifications();
+    setInterval(() => this.fetchNotifications(), 10000);
     this.registerServiceWorker();
   },
 
   fetchLocations() {
     fetch('/api/locations')
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok || !(r.headers.get('content-type') || '').includes('application/json')) {
+          return null;
+        }
+        return r.json();
+      })
       .then(data => {
-        if (data.success) {
+        if (data && data.success && Array.isArray(data.locations)) {
           this.storageLocations = data.locations.map(l => l.name);
         }
       })
-      .catch(e => console.error("Failed to fetch locations", e));
+      .catch(e => {});
   },
 
   fetchJson(url, options = {}) {
@@ -190,23 +198,7 @@ const app = {
 
   exportHistoryPdf(btn, url) {
     if (!url) return;
-    const orig = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-      Generating...
-    </span>`;
-
-    // Direct window location change is the most reliable way to trigger a file download 
-    // without navigating away when Content-Disposition: attachment is returned.
-    window.location.href = url;
-
-    // After 4s assume download started/completed, re-enable button
-    setTimeout(() => {
-      btn.disabled = false;
-      btn.innerHTML = orig;
-      this.toast('📄 PDF downloaded successfully!', 'success');
-    }, 4000);
+    window.downloadPdfAsync(url, {}, btn);
   },
 
   openModal(html) {
@@ -1921,13 +1913,16 @@ const app = {
       return `<tr><td>${p.productName || 'Unknown'}${typeStr}</td><td>${p.grade}</td><td>${p.quantity} kg</td><td>\u20b9${(p.price||0).toLocaleString()}</td></tr>`;
     }).join('');
     
+    const canCancel = o.status !== 'CANCELLED' && o.status !== 'CLOSED' && o.dispatchStatus !== 'DONE' && o.dispatchStatus !== 'PARTIAL';
+    const canEdit = o.status === 'OPEN' && (o.dispatchStatus === 'PENDING' || o.dispatchStatus === 'UNASSIGNED' || !o.dispatchStatus);
+
     this.openDrawer(`
       <h3 style="margin-bottom:1rem;">Order #${String(o.id).toUpperCase()}</h3>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; margin-bottom:1rem;">
         <div><div style="color:var(--text-muted); font-size:0.8rem;">Company</div><div style="font-weight:600;">${comp.name||'N/A'}</div></div>
-        <div><div style="color:var(--text-muted); font-size:0.8rem;">Status</div><div><span class="badge ${o.status==='OPEN'?'badge-open':'badge-closed'}">${o.status}</span></div></div>
+        <div><div style="color:var(--text-muted); font-size:0.8rem;">Status</div><div><span class="badge ${o.status==='OPEN'?'badge-open':(o.status==='CANCELLED'?'badge-danger':'badge-closed')}">${o.status}</span></div></div>
         <div><div style="color:var(--text-muted); font-size:0.8rem;">Transport</div><div>${trans.name||'N/A'}</div></div>
-        <div><div style="color:var(--text-muted); font-size:0.8rem;">Dispatch</div><div><span class="badge ${o.dispatchStatus==='PENDING'?'badge-pending':'badge-done'}">${o.dispatchStatus}</span></div></div>
+        <div><div style="color:var(--text-muted); font-size:0.8rem;">Dispatch</div><div><span class="badge ${o.dispatchStatus==='PENDING'?'badge-pending':'badge-done'}">${o.dispatchStatus||'PENDING'}</span></div></div>
         <div><div style="color:var(--text-muted); font-size:0.8rem;">Date</div><div>${new Date(o.date).toLocaleString()}</div></div>
         <div><div style="color:var(--text-muted); font-size:0.8rem;">Total</div><div style="font-weight:700; font-size:1.2rem; color:var(--secondary);">\u20b9${(o.total||0).toLocaleString()}</div></div>
       </div>
@@ -1938,10 +1933,10 @@ const app = {
           <tbody>${prodRows || '<tr><td colspan="4" style="text-align:center;">No products</td></tr>'}</tbody>
         </table>
       </div>
-      ${o.status === 'OPEN' && (o.dispatchStatus === 'PENDING' || o.dispatchStatus === '') ? `
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom: 0.5rem;">
-          <a class="btn" href="/sales/action?edit=${o.id}" style="text-decoration:none; display:flex; align-items:center; justify-content:center; gap:6px; background:var(--warning); color:#000; font-weight:bold;">✏️ Edit Order</a>
-          <button class="btn" onclick="app.cancelSalesOrder(${o.id})" style="display:flex; align-items:center; justify-content:center; gap:6px; background:var(--danger); font-weight:bold;">❌ Cancel Order</button>
+      ${(canEdit || canCancel) ? `
+        <div style="display:grid; grid-template-columns:${canEdit && canCancel ? '1fr 1fr' : '1fr'}; gap:8px; margin-bottom: 0.5rem;">
+          ${canEdit ? `<a class="btn" href="/sales/action?edit=${o.id}" style="text-decoration:none; display:flex; align-items:center; justify-content:center; gap:6px; background:var(--warning); color:#000; font-weight:bold;">✏️ Edit Order</a>` : ''}
+          ${canCancel ? `<button class="btn" onclick="app.cancelSalesOrder(${o.id})" style="display:flex; align-items:center; justify-content:center; gap:6px; background:var(--danger); color:#fff; font-weight:bold;">❌ Cancel Order</button>` : ''}
         </div>
       ` : ''}
       <a class="btn mt-1" href="/order/pdf/${o.id}" target="_blank" style="width:100%; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:6px; background:var(--secondary); font-weight:bold; margin-bottom: 0.5rem;">📄 Download PDF</a>
@@ -1950,14 +1945,38 @@ const app = {
   },
 
   cancelSalesOrder(id) {
-    if(!confirm('Are you sure you want to cancel this order?')) return;
-    fetch('/sales/order/'+id+'/cancel', {
-      method: 'POST',
-      headers: { 'X-CSRF-TOKEN': window.csrfToken || csrfToken }
-    }).then(r=>r.json()).then(d=>{
-      if(d.success) { this.toast(d.message); setTimeout(()=>location.reload(),800); }
-      else this.toast(d.message, 'error');
-    }).catch(()=>this.toast('Network error', 'error'));
+    const token = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
+    Swal.fire({
+      title: 'Cancel Order?',
+      text: `Are you sure you want to cancel Order #${id}?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Cancel Order',
+      cancelButtonText: 'No, Keep Order',
+      confirmButtonColor: '#dc2626'
+    }).then(result => {
+      if (result.isConfirmed) {
+        fetch('/sales/order/' + id + '/cancel', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': token 
+          }
+        })
+        .then(r => r.json())
+        .then(d => {
+          if (d.success) {
+            Swal.fire('Cancelled', d.message, 'success');
+            setTimeout(() => location.reload(), 800);
+          } else {
+            Swal.fire('Error', d.message || 'Could not cancel order.', 'error');
+          }
+        })
+        .catch(err => {
+          Swal.fire('Error', 'Network error: ' + err.message, 'error');
+        });
+      }
+    });
   },
 
   openSalesCompanyDrawer(idx) {
@@ -2053,18 +2072,39 @@ const app = {
   },
 
   revertDispatch(id) {
-    if(!confirm('Are you sure you want to revert this dispatch? This will restore stock, delete the dispatch log, and update the order status.')) return;
-    fetch('/dispatch/revert/' + id, {
-      method: 'POST',
-      headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': window.csrfToken || csrfToken }
-    }).then(r => r.json()).then(d => {
-      if(d.success) {
-        this.toast(d.message, 'success');
-        setTimeout(() => location.reload(), 800);
-      } else {
-        this.toast(d.message, 'error');
+    const token = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
+    Swal.fire({
+      title: 'Revert Dispatch?',
+      text: `Are you sure you want to revert Dispatch Log #${id}? This will restore stock, remove the dispatch record, and update order status.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Revert Dispatch',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc2626'
+    }).then(result => {
+      if (result.isConfirmed) {
+        fetch('/dispatch/revert/' + id, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': token 
+          }
+        })
+        .then(r => r.json())
+        .then(d => {
+          if (d.success) {
+            Swal.fire('Reverted', d.message, 'success');
+            setTimeout(() => location.reload(), 800);
+          } else {
+            Swal.fire('Error', d.message || 'Could not revert dispatch.', 'error');
+          }
+        })
+        .catch(err => {
+          Swal.fire('Error', 'Network error: ' + err.message, 'error');
+        });
       }
-    }).catch(() => this.toast('Error reverting dispatch', 'error'));
+    });
   },
 
   viewImage(src) {
@@ -2090,7 +2130,6 @@ const app = {
           return swReg;
         })
         .catch(error => {
-          console.error('Service Worker Error', error);
           return null;
         });
     }
@@ -2109,15 +2148,15 @@ const app = {
   },
 
   async subscribeUser() {
-    console.log('Attempting to subscribe user for push...');
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      return null;
+    }
     
     if (!this.swRegistration) {
-      console.log('Service Worker not ready, attempting registration...');
       this.swRegistration = await this.registerServiceWorker();
     }
 
-    if (!this.swRegistration) {
-      console.error('Service Worker registration failed or not supported!');
+    if (!this.swRegistration || !this.swRegistration.pushManager) {
       return null;
     }
     
@@ -2130,19 +2169,14 @@ const app = {
         applicationServerKey: applicationServerKey
       });
       
-      console.log('Browser subscription successful:', subscription);
-      
       fetch('/notifications/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken || csrfToken },
         body: JSON.stringify(subscription)
-      }).then(res => {
-        console.log('Server subscription response status:', res.status);
-      }).catch(e => console.log('Silent fail (expected if not logged in):', e));
+      }).catch(e => {});
       
       return subscription;
     } catch (err) {
-      console.error('Failed to subscribe browser: ', err);
       return null;
     }
   },
@@ -2162,6 +2196,167 @@ const app = {
     return null;
   }
 };
+
+// Global JS Helper for Number Formatting
+window.number_format = function(value, decimals = 2) {
+  const num = parseFloat(value) || 0;
+  return num.toLocaleString(undefined, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  });
+};
+
+// Global Asynchronous Non-blocking PDF Download Helper
+window.downloadPdfAsync = async function(url, data = {}, btnElement = null) {
+  let originalHtml = '';
+  if (btnElement) {
+    originalHtml = btnElement.innerHTML;
+    btnElement.disabled = true;
+    btnElement.style.opacity = '0.75';
+    btnElement.style.cursor = 'not-allowed';
+    btnElement.innerHTML = `<svg class="spin" style="width:16px;height:16px;margin-right:6px;vertical-align:middle;display:inline-block;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg> Generating PDF...`;
+  }
+
+  try {
+    const isPost = Object.keys(data).length > 0;
+    const options = {
+      method: isPost ? 'POST' : 'GET',
+      headers: {
+        'X-CSRF-TOKEN': window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '',
+      }
+    };
+
+    if (isPost) {
+      options.headers['Content-Type'] = 'application/json';
+      options.body = JSON.stringify(data);
+    }
+
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      throw new Error(`PDF generation failed with status ${response.status}`);
+    }
+
+    const disposition = response.headers.get('Content-Disposition');
+    let filename = 'PentaPure_Report.pdf';
+    if (disposition && disposition.includes('filename=')) {
+      const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      if (match && match[1]) {
+        filename = match[1].replace(/['"]/g, '');
+      }
+    }
+
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = downloadUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(downloadUrl);
+    document.body.removeChild(a);
+
+    if (window.Swal) {
+      const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000
+      });
+      Toast.fire({ icon: 'success', title: 'PDF downloaded successfully!' });
+    }
+  } catch (err) {
+    console.error('PDF Export Error:', err);
+    if (window.Swal) {
+      Swal.fire({ icon: 'error', title: 'PDF Export Failed', text: err.message || 'Could not generate PDF.' });
+    } else {
+      alert('Failed to generate PDF: ' + err.message);
+    }
+  } finally {
+    if (btnElement) {
+      btnElement.disabled = false;
+      btnElement.style.opacity = '1';
+      btnElement.style.cursor = 'pointer';
+      btnElement.innerHTML = originalHtml;
+    }
+  }
+};
+
+// Global Page Navigation Loader Overlay
+window.showPageLoader = function() {
+  let loader = document.getElementById('global-page-loader');
+  const isDark = document.documentElement.classList.contains('dark-mode');
+  
+  const overlayBg = isDark ? 'rgba(2, 6, 23, 0.65)' : 'rgba(43, 36, 28, 0.25)';
+  const boxBg = isDark ? '#0F172A' : '#FFF8EA';
+  const boxBorder = isDark ? '1.5px solid #F4B400' : '1.5px solid #DDCFAF';
+  const textColor = isDark ? '#FFFFFF' : '#2B241C';
+  const shadow = isDark ? '0 12px 32px rgba(0,0,0,0.6)' : '0 12px 32px rgba(216, 138, 0, 0.18)';
+
+  if (!loader) {
+    loader = document.createElement('div');
+    loader.id = 'global-page-loader';
+    loader.style.cssText = `position:fixed;top:0;left:0;right:0;bottom:0;background:${overlayBg};backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:inherit;transition:opacity 0.2s ease;`;
+    loader.innerHTML = `
+      <div id="global-page-loader-box" style="background:${boxBg}; border:${boxBorder}; padding:18px 30px; border-radius:14px; display:flex; align-items:center; gap:14px; box-shadow:${shadow};">
+        <svg class="spin" style="width:26px;height:26px;color:#F4B400;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+        <span id="global-page-loader-text" style="font-weight:700; font-size:1rem; color:${textColor}; text-transform:uppercase; letter-spacing:0.5px;">Loading...</span>
+      </div>
+    `;
+    document.body.appendChild(loader);
+  } else {
+    loader.style.background = overlayBg;
+    const box = document.getElementById('global-page-loader-box');
+    const text = document.getElementById('global-page-loader-text');
+    if (box) {
+      box.style.background = boxBg;
+      box.style.border = boxBorder;
+      box.style.boxShadow = shadow;
+    }
+    if (text) {
+      text.style.color = textColor;
+    }
+    loader.style.display = 'flex';
+  }
+};
+
+window.hidePageLoader = function() {
+  const loader = document.getElementById('global-page-loader');
+  if (loader) {
+    loader.style.display = 'none';
+  }
+};
+
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('a[href]');
+  if (!link) return;
+  const href = link.getAttribute('href');
+  const lowerHref = (href || '').toLowerCase();
+
+  if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('blob:') || href.startsWith('data:')) return;
+  if (link.getAttribute('target') === '_blank' || link.hasAttribute('download') || link.hasAttribute('data-no-loader')) return;
+  if (lowerHref.includes('pdf') || lowerHref.includes('download') || lowerHref.includes('export')) return;
+
+  try {
+    const targetUrl = new URL(link.href, window.location.href);
+    if (targetUrl.origin === window.location.origin && targetUrl.pathname !== window.location.pathname) {
+      window.showPageLoader();
+    }
+  } catch(err) {}
+});
+
+document.addEventListener('submit', (e) => {
+  const form = e.target;
+  const action = (form?.getAttribute('action') || '').toLowerCase();
+  if (action.includes('pdf') || action.includes('download') || action.includes('export')) return;
+  if (form && form.style.display !== 'none' && !form.hasAttribute('data-ajax') && !form.hasAttribute('data-no-loader') && form.id !== 'login-form') {
+    window.showPageLoader();
+  }
+});
+
+window.addEventListener('pageshow', () => {
+  window.hidePageLoader();
+});
 
 window.onload = () => {
   setTimeout(() => app.init(), 10);

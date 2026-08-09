@@ -80,10 +80,12 @@
        style="text-decoration:none; padding:6px 12px; border-radius:6px; {{ $activeTab === 'personal' ? 'background:var(--primary); color:#fff;' : 'color:var(--text-muted);' }}">
       Personal Ledger
     </a>
+    @if(!empty($pageData['allowedCashiers']) && count($pageData['allowedCashiers']) > 0)
     <a href="?tab=team&range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&q={{ $q }}" 
        style="text-decoration:none; padding:6px 12px; border-radius:6px; {{ $activeTab === 'team' ? 'background:var(--primary); color:#fff;' : 'color:var(--text-muted);' }}">
       Team Ledger
     </a>
+    @endif
     <a href="?tab=daily&range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&q={{ $q }}" 
        style="text-decoration:none; padding:6px 12px; border-radius:6px; {{ $activeTab === 'daily' ? 'background:var(--primary); color:#fff;' : 'color:var(--text-muted);' }}">
       Day Wise Balance

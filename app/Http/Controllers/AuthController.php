@@ -66,12 +66,11 @@ class AuthController extends Controller
         return redirect()->route('login')->with('success', 'Logged out successfully.');
     }
 
-    protected function authenticatedRedirect()
+    public function redirectToRole(?string $role = null)
     {
-        $role = session('auth_user')['role'];
+        $role = $role ?? (session('auth_user')['role'] ?? null);
         return match($role) {
-            'ADMIN'      => redirect()->route('admin.home'),
-            'SUB_ADMIN'  => redirect()->route('admin.home'),
+            'ADMIN', 'SUB_ADMIN' => redirect()->route('admin.home'),
             'RAW'        => redirect()->route('raw.home'),
             'SEMI'       => redirect()->route('semi.home'),
             'FINISHED'   => redirect()->route('finished.home'),
@@ -81,5 +80,10 @@ class AuthController extends Controller
             'ATTENDANCE' => redirect()->route('attendance.home'),
             default      => redirect()->route('login'),
         };
+    }
+
+    protected function authenticatedRedirect()
+    {
+        return $this->redirectToRole();
     }
 }

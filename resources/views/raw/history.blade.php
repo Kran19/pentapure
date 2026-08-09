@@ -134,7 +134,7 @@
   </div>
 @endif
 
-<h3 style="margin-top: 2rem; margin-bottom: 1rem;">🛒 Purchase Request History</h3>
+<h3 style="margin-top: 2rem; margin-bottom: 1rem;">🛒 PO Received by System History</h3>
 <div class="table-container">
   <table>
     <thead>

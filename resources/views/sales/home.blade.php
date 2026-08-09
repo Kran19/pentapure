@@ -6,24 +6,18 @@
 </div>
 
 
-<div class="dashboard-grid" style="margin-top:1rem;">
+<div class="dashboard-grid" style="margin-top:1rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
   <a class="stat-card clickable-card" href="{{ url('sales/history') }}" style="text-decoration:none;">
     <div style="color:var(--primary-light)">Total Orders</div>
-    <div class="stat-value">{{ $pageData['stats']['totalOrders'] }}</div>
+    <div class="stat-value">{{ $pageData['stats']['totalOrders'] ?? 0 }}</div>
   </a>
   <a class="stat-card clickable-card" href="{{ url('sales/history') }}" style="text-decoration:none;">
-    <div style="color:var(--warning)">Open Orders</div>
-    <div class="stat-value">{{ $pageData['stats']['openOrders'] }}</div>
+    <div style="color:var(--warning)">Pending Orders</div>
+    <div class="stat-value">{{ $pageData['stats']['pendingOrders'] ?? 0 }}</div>
   </a>
   <a class="stat-card clickable-card" href="{{ url('sales/history') }}" style="text-decoration:none;">
-    <div style="color:var(--info)">Pending Dispatch</div>
-    <div class="stat-value">{{ $pageData['stats']['pendingDisp'] }}</div>
-  </a>
-  
-
-  <a class="stat-card clickable-card" href="{{ url('sales/history') }}" style="grid-column: 1 / -1; background:var(--dark-panel); text-decoration:none;">
-    <div style="color:var(--text-muted)">Total Sales Value</div>
-    <div class="stat-value" style="color:var(--secondary)">₹{{ number_format($pageData['stats']['totalValue'], 2) }}</div>
+    <div style="color:var(--secondary)">Dispatched Orders</div>
+    <div class="stat-value">{{ $pageData['stats']['dispatchedOrders'] ?? 0 }}</div>
   </a>
 </div>
 

@@ -7,7 +7,7 @@
         @page { margin: 18px; }
         * { box-sizing: border-box; }        body { font-family: DejaVu Sans, sans-serif; color: #101828; font-size: 13px; line-height: 1.45; text-transform: uppercase; }
         table td { color: #101828 !important; }
-        table th { color: #f8c300 !important; }
+        table th { color: #101828 !important; }
 
         .page { border: 1px solid #1f2937; padding: 42px 46px 24px; min-height: 1060px; border-bottom: 7px solid #f8c300; }
         .top { display: table; width: 100%; padding-bottom: 22px; border-bottom: 1px solid #667085; }
@@ -55,7 +55,9 @@
 <div class="page">
     <div class="top">
         <div class="brand">
+            @if(file_exists(public_path('logo.png')))
             <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 82px; height: 82px; vertical-align: middle; margin-right: 12px; object-fit: contain;">
+            @endif
             <div class="brand-text">
                 <div class="brand-title">PentaPure</div>
                 <div class="tagline">FOOD &amp; SPICES PVT.LTD.</div>
@@ -103,10 +105,9 @@
     <table>
         <thead>
             <tr>
-                <th style="width:25%; color:#111827;">Product Name</th>
-                <th style="width:10%; color:#111827;">Stage</th>
-                <th style="width:10%; color:#111827;">Grade</th>
-                <th style="width:20%; color:#111827;">Location</th>
+                <th style="width:30%; color:#111827;">Product Name</th>
+                <th style="width:12%; color:#111827;">Stage</th>
+                <th style="width:23%; color:#111827;">Location</th>
                 <th style="width:15%; text-align: right; color:#111827;">Available Qty</th>
                 <th style="width:10%; text-align: right; color:#111827;">Rate / Unit</th>
                 <th style="width:10%; text-align: right; color:#111827;">Valuation (Rs.)</th>
@@ -115,14 +116,17 @@
 
         <tbody>
             @forelse($items as $item)
+                @php
+                    $gStr = ($item['grade'] && $item['grade'] !== 'NONE' && $item['grade'] !== 'N/A') ? ' ' . strtoupper($item['grade']) : '';
+                    $displayType = strtolower($item['stage']) === 'finished' ? 'fg' : strtolower($item['stage']);
+                @endphp
                 <tr>
-                    <td style="font-weight: 600;">{{ $item['name'] }}</td>
+                    <td style="font-weight: 600;">{{ $item['name'] }}{{ $gStr }} ({{ $displayType }})</td>
                     <td>
                         <span class="badge {{ $item['stage'] === 'RAW' ? 'badge-raw' : ($item['stage'] === 'SEMI' ? 'badge-semi' : 'badge-finished') }}">
-                            {{ $item['stage'] }}
+                            {{ $item['stage'] === 'FINISHED' ? 'FG' : $item['stage'] }}
                         </span>
                     </td>
-                    <td>{{ $item['grade'] }}</td>
                     <td style="font-size: 11px; text-transform: uppercase;">{{ $item['location'] }}</td>
                     <td style="text-align: right; font-weight: 600;">
                         {{ number_format($item['quantity'], 2) }} <span style="font-size: 10px; font-weight: normal; color: #667085;">{{ $item['unit'] }}</span>
@@ -132,12 +136,12 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" class="center">No live stock records found matching filters.</td>
+                    <td colspan="6" class="center">No live stock records found matching filters.</td>
                 </tr>
             @endforelse
             @if(!empty($items))
                 <tr style="background-color: #fffdf5; font-weight: bold; font-size: 14px;">
-                    <td colspan="6" style="text-align: right; border-top: 2px solid #f8c300; padding: 15px 10px;">Total Stock Valuation (Ref):</td>
+                    <td colspan="5" style="text-align: right; border-top: 2px solid #f8c300; padding: 15px 10px;">Total Stock Valuation (Ref):</td>
                     <td class="amount" style="border-top: 2px solid #f8c300; padding: 15px 10px; color: #b37400;">₹{{ number_format($totalValuation, 2) }}</td>
                 </tr>
             @endif

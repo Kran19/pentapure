@@ -72,9 +72,9 @@ Route::post('/logout',[AuthController::class, 'logout'])->name('logout');
 Route::get('/logout', [AuthController::class, 'logout'])->name('logout.get');
 
 // Shared Stock Routes (Admin, Sales, Dispatch, Raw, Semi, Finished)
-Route::post('/stock/adjust', [\App\Http\Controllers\AdminController::class, 'adjustStock'])
-    ->middleware('auth.role:ADMIN,SALES,DISPATCH');
-Route::get('/stock/live', [\App\Http\Controllers\AdminController::class, 'liveStockApi'])
+Route::post('/stock/adjust', [AdminController::class, 'adjustStock'])
+    ->middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH');
+Route::get('/stock/live', [AdminController::class, 'liveStockApi'])
     ->middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER');
 
 Route::get('/history/{panel}/pdf', [HistoryPdfController::class, 'download'])
@@ -104,6 +104,7 @@ Route::prefix('semi')->middleware('auth.role:SEMI')->controller(SemiController::
     Route::get('/po',      'po')->name('semi.po');
     Route::post('/po',     [RawController::class, 'storePO']); // Shared logic from RawController
     Route::post('/action', 'storeProduction');
+    Route::post('/transfer-to-semi', [RawController::class, 'transferToSemi'])->name('semi.transfer_to_semi');
     Route::get('/history', 'history')->name('semi.history');
     Route::get('/profile', 'profile')->name('semi.profile');
 });
@@ -116,6 +117,7 @@ Route::prefix('finished')->middleware('auth.role:FINISHED')->controller(Finished
     Route::post('/po',     [RawController::class, 'storePO']); // Shared logic from RawController
     Route::post('/action', 'storeProduction');
     Route::post('/quick-product', [AdminController::class, 'storeProduct']);
+    Route::post('/transfer-to-semi', [RawController::class, 'transferToSemi'])->name('finished.transfer_to_semi');
     Route::get('/history', 'history')->name('finished.history');
     Route::get('/profile', 'profile')->name('finished.profile');
 });
@@ -178,6 +180,7 @@ Route::prefix('admin')->middleware('auth.role:ADMIN')->controller(AdminControlle
     Route::post('/users/toggle',      'toggleUserStatus');
 
     // Locations admin management
+    Route::get('/locations',          'locations')->name('admin.locations');
     Route::post('/locations',         'storeLocationApi');
     Route::delete('/locations/{id}',  'destroyLocationApi');
     Route::delete('/users/{id}',      'destroyUser');

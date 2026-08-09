@@ -306,8 +306,41 @@ header {
 .main-content {
   flex: 1;
   overflow-y: auto;
-  padding: 1.2rem;
-  padding-bottom: 6rem;
+  padding: 0.5rem 1.2rem 4rem;
+}
+
+/* Eliminate unnecessary top double padding globally */
+.main-content > div[style*="padding:1.5rem"],
+.main-content > div[style*="padding: 1.5rem"] {
+  padding: 0.25rem 0 1rem 0 !important;
+}
+
+/* Global Table Container & Filter Bar Alignment */
+.table-container {
+  width: 100% !important;
+  overflow-x: auto !important;
+  clear: both !important;
+  margin-top: 0.5rem !important;
+}
+
+.table-container table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  table-layout: auto !important;
+}
+
+.filter-bar {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  margin-bottom: 1rem !important;
+  padding: 0.75rem 1rem !important;
+  background: var(--bg-main) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-md) !important;
 }
 
 /* Cards */
@@ -1341,4 +1374,123 @@ body:not(.admin-mode) a.btn {
   100% {
     transform: rotate(360deg);
   }
+}
+
+/* ==========================================================================
+   PENTAPURE BRAND MODAL & SWEETALERT SYSTEM (Warm Gold & Cream Palette)
+   ========================================================================== */
+
+/* HTML Modal Overlay & Content */
+.modal-overlay {
+  background: rgba(43, 36, 28, 0.45) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}
+
+.modal-content {
+  background: var(--bg-card, #FFFFFF) !important;
+  border: 1.5px solid var(--border-color, #E7DFC9) !important;
+  border-radius: var(--radius-lg, 16px) !important;
+  box-shadow: 0 20px 40px rgba(43, 36, 28, 0.15) !important;
+  color: var(--text-main, #2A2A2A) !important;
+}
+
+/* SweetAlert2 Popup Overlay & Dialog Box */
+.swal2-container.swal2-backdrop-show,
+.swal2-container.swal2-nobackdrop {
+  background: rgba(43, 36, 28, 0.45) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}
+
+.swal2-popup,
+.swal-stock-popup,
+div:where(.swal2-container) div:where(.swal2-popup) {
+  background: var(--bg-card, #FFFFFF) !important;
+  border: 2px solid var(--primary, #F4B400) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 40px rgba(43, 36, 28, 0.2) !important;
+  color: var(--text-main, #2A2A2A) !important;
+  padding: 1.5rem !important;
+}
+
+/* SweetAlert Header Title & Text */
+.swal2-title,
+.swal-stock-title,
+div:where(.swal2-container) div:where(.swal2-title) {
+  color: var(--dark-brand, #2B241C) !important;
+  -webkit-text-fill-color: var(--dark-brand, #2B241C) !important;
+  font-weight: 700 !important;
+  font-size: 1.25rem !important;
+}
+
+.swal2-html-container,
+div:where(.swal2-container) div:where(.swal2-html-container) {
+  color: var(--text-main, #2A2A2A) !important;
+  -webkit-text-fill-color: var(--text-main, #2A2A2A) !important;
+  font-size: 0.95rem !important;
+}
+
+/* SweetAlert Inputs, Selects & Textareas */
+.swal2-input,
+.swal2-select,
+.swal2-textarea,
+.swal-stock-popup input,
+.swal-stock-popup select,
+.swal-stock-popup textarea {
+  background: var(--input-bg, #FFFFFF) !important;
+  border: 1px solid var(--input-border, #DDCFAF) !important;
+  border-radius: 8px !important;
+  color: var(--text-main, #2A2A2A) !important;
+  -webkit-text-fill-color: var(--text-main, #2A2A2A) !important;
+  box-shadow: none !important;
+}
+
+.swal2-input:focus,
+.swal2-select:focus,
+.swal2-textarea:focus,
+.swal-stock-popup input:focus,
+.swal-stock-popup select:focus,
+.swal-stock-popup textarea:focus {
+  border-color: var(--primary, #F4B400) !important;
+  outline: none !important;
+}
+
+/* SweetAlert Buttons */
+.swal2-confirm,
+.swal-confirm-btn,
+.swal-confirm-btn-primary {
+  background: linear-gradient(135deg, #F4B400 0%, #D88A00 100%) !important;
+  color: #2B241C !important;
+  -webkit-text-fill-color: #2B241C !important;
+  font-weight: 700 !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 0.65rem 1.4rem !important;
+  box-shadow: 0 4px 12px rgba(244, 180, 0, 0.3) !important;
+}
+
+.swal2-cancel,
+.swal-cancel-btn,
+.swal-cancel-btn-secondary {
+  background: var(--bg-hover, #FFF1CC) !important;
+  color: var(--dark-brand, #2B241C) !important;
+  -webkit-text-fill-color: var(--dark-brand, #2B241C) !important;
+  font-weight: 600 !important;
+  border: 1px solid var(--border-color, #E7DFC9) !important;
+  border-radius: 10px !important;
+  padding: 0.65rem 1.4rem !important;
+}
+
+/* Export Option Cards inside Stock Modal */
+.export-option-card {
+  background: var(--bg-sidebar, #FFF8EA) !important;
+  border: 1.5px solid var(--border-color, #E7DFC9) !important;
+  color: var(--dark-brand, #2B241C) !important;
+  border-radius: 10px !important;
+}
+
+.export-option-card:hover {
+  border-color: var(--primary, #F4B400) !important;
+  background: var(--bg-hover, #FFF1CC) !important;
 }

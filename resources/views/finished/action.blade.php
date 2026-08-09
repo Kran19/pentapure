@@ -1,6 +1,15 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+  $tab = request('tab', 'production');
+@endphp
+<div class="tabs" style="margin-bottom:1rem;">
+  <a class="tab-btn {{ $tab==='production'?'active':'' }}" href="?tab=production" style="text-decoration:none;">Convert to FG</a>
+  <a class="tab-btn {{ $tab==='transfer'?'active':'' }}" href="?tab=transfer" style="text-decoration:none;">Transfer Raw Stock</a>
+</div>
+
+@if($tab === 'production')
 <div class="card">
   <div class="card-title">Convert to FG</div>
   
@@ -61,6 +70,100 @@
     </button>
   </div>
 </div>
+@endif
+
+@if($tab === 'transfer')
+<div class="card">
+  <div class="card-title">➡️ Transfer Raw Stock to Semi-Finished</div>
+  
+  <div class="responsive-grid" style="grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); margin-bottom:1rem; max-height:250px; overflow-y:auto; padding:5px;">
+    @foreach($pageData['rawStock'] as $rs)
+      <div class="rs-card" onclick="selectTransferMaterial('{{ $rs['productId'] }}', '{{ addslashes($rs['name']) }}', '{{ addslashes($rs['grade']) }}', {{ $rs['quantity'] }}, this)" 
+        style="border:2px solid transparent; border-radius:10px; overflow:hidden; cursor:pointer; background:rgba(255,255,255,0.05); text-align:center; padding:12px 6px; transition:0.2s;">
+        <div style="font-size:0.85rem; font-weight:600; padding:4px 3px; line-height:1.2;">{{ $rs['name'] }} <small>({{ $rs['grade'] }})</small></div>
+        <div style="font-size:0.75rem; color:var(--primary-light);">Avail: {{ number_format($rs['quantity'], 2) }} {{ $rs['unit'] }}</div>
+      </div>
+    @endforeach
+  </div>
+
+  <form id="finished-transfer-form" onsubmit="submitTransfer(event)">
+    <input type="hidden" id="transfer-prod" name="product_id" value="">
+    <input type="hidden" id="transfer-grade" name="grade" value="">
+    <div id="transfer-selected-name" style="font-size:0.9rem; font-weight:bold; color:var(--secondary); margin-bottom:0.8rem; min-height:1.2em;"></div>
+    
+    <div class="form-group" style="margin-bottom:1rem;">
+      <label style="font-weight:600;">Quantity to Transfer</label>
+      <input type="number" name="quantity" id="transfer-qty" step="0.001" min="0.001" placeholder="Enter quantity" required style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+    </div>
+
+    <div class="form-group" style="margin-bottom:1.5rem;">
+      <label style="font-weight:600;">Notes</label>
+      <textarea id="transfer-notes" name="notes" placeholder="Optional notes..." style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff; height:70px; resize:vertical;"></textarea>
+    </div>
+    
+    <button type="submit" class="btn mt-1" id="transfer-submit-btn">Transfer to Semi</button>
+  </form>
+</div>
+
+<script>
+function selectTransferMaterial(id, name, grade, maxQty, el) {
+  document.querySelectorAll('.rs-card').forEach(c => c.style.borderColor = 'transparent');
+  el.style.borderColor = 'var(--secondary)';
+  document.getElementById('transfer-prod').value = id;
+  document.getElementById('transfer-grade').value = grade;
+  document.getElementById('transfer-qty').max = maxQty;
+  document.getElementById('transfer-selected-name').innerText = 'Selected: ' + name + ' (' + grade + ') - Max: ' + maxQty;
+}
+
+function submitTransfer(e) {
+  e.preventDefault();
+  const csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
+  const prodId = document.getElementById('transfer-prod').value;
+  const grade = document.getElementById('transfer-grade').value;
+  const qty = Number(document.getElementById('transfer-qty').value);
+  const notes = document.getElementById('transfer-notes').value;
+  const btn = document.getElementById('transfer-submit-btn');
+
+  if (!prodId) {
+    app.toast('Please select a material to transfer', 'error');
+    return;
+  }
+  if (!qty || qty <= 0) {
+    app.toast('Enter a valid quantity', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = `Transferring...`;
+
+  fetch('{{ route("finished.transfer_to_semi") }}', {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json', 
+      'Accept': 'application/json',
+      'X-CSRF-TOKEN': csrfToken 
+    },
+    body: JSON.stringify({ product_id: prodId, quantity: qty, grade: grade, notes: notes })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      app.toast(data.message || 'Stock transferred!');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      app.toast(data.message || 'Failed to transfer stock', 'error');
+      btn.disabled = false;
+      btn.innerHTML = 'Transfer to Semi';
+    }
+  })
+  .catch(err => {
+    app.toast('Network error: ' + err.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = 'Transfer to Semi';
+  });
+}
+</script>
+@endif
 
 <script>
   // Dynamic grades data from PHP

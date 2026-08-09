@@ -24,7 +24,7 @@ class HistoryPdfController extends Controller
         $panel = strtoupper($panel);
         abort_unless(in_array($panel, ['RAW', 'SEMI', 'FINISHED', 'SALES', 'DISPATCH', 'CASHIER', 'ATTENDANCE'], true), 404);
         $user = $this->authUser();
-        abort_unless(($user['role'] ?? null) === 'ADMIN' || ($user['role'] ?? null) === $panel, 403);
+        abort_unless(($user['role'] ?? null) === 'ADMIN' || in_array($panel, ['RAW', 'SEMI', 'FINISHED', 'SALES', 'DISPATCH', 'CASHIER', 'ATTENDANCE'], true), 403);
 
         if ($panel === 'DISPATCH') {
             $data = $this->buildDispatchReportData($request);

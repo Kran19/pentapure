@@ -78,14 +78,42 @@
   </div>
 </div>
 
-<div class="tabs" style="margin-bottom:1rem;">
-  <a class="tab-btn {{ $tab==='pending'?'active':'' }}" href="?tab=pending" style="text-decoration:none;">Pending</a>
-  <a class="tab-btn {{ $tab==='completed'?'active':'' }}" href="?tab=completed" style="text-decoration:none;">Completed</a>
+<div class="tabs" style="margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+  <div style="display:flex; gap:8px;">
+    <a class="tab-btn {{ $tab==='pending'?'active':'' }}" href="?tab=pending&dispatch_filter={{ request('dispatch_filter', 'all') }}" style="text-decoration:none;">Pending</a>
+    <a class="tab-btn {{ $tab==='completed'?'active':'' }}" href="?tab=completed&dispatch_filter={{ request('dispatch_filter', 'all') }}" style="text-decoration:none;">Completed</a>
+  </div>
+  <form method="GET" action="" style="display:flex; align-items:center; gap:8px; margin:0;">
+    <input type="hidden" name="tab" value="{{ $tab }}">
+    <select name="dispatch_filter" onchange="this.form.submit()" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:6px; border:1px solid rgba(255,255,255,0.2); background:#1f2937; color:#fff; cursor:pointer;">
+      <option value="all" {{ request('dispatch_filter') === 'all' || !request('dispatch_filter') ? 'selected' : '' }}>All Scenarios</option>
+      <option value="done" {{ request('dispatch_filter') === 'done' ? 'selected' : '' }}>Fully Dispatched (DONE)</option>
+      <option value="partial_dispatch" {{ request('dispatch_filter') === 'partial_dispatch' ? 'selected' : '' }}>Partial Dispatched</option>
+      <option value="partial_pending" {{ request('dispatch_filter') === 'partial_pending' ? 'selected' : '' }}>Partial Pending</option>
+      <option value="pending" {{ request('dispatch_filter') === 'pending' ? 'selected' : '' }}>Fully Pending</option>
+    </select>
+  </form>
 </div>
+
+@php
+  $dispatchFilter = request('dispatch_filter', 'all');
+  $pendingOrdersList = collect($pageData['pendingOrders'] ?? []);
+  $completedOrdersList = collect($pageData['completedOrders'] ?? []);
+
+  if ($dispatchFilter === 'done') {
+    $pendingOrdersList = collect([]);
+  } elseif ($dispatchFilter === 'partial_dispatch' || $dispatchFilter === 'partial_pending') {
+    $pendingOrdersList = $pendingOrdersList->filter(fn($o) => (float)$o['dispatchedQty'] > 0 && (float)$o['dispatchedQty'] < (float)$o['totalQty']);
+    $completedOrdersList = collect([]);
+  } elseif ($dispatchFilter === 'pending') {
+    $pendingOrdersList = $pendingOrdersList->filter(fn($o) => (float)$o['dispatchedQty'] == 0);
+    $completedOrdersList = collect([]);
+  }
+@endphp
 
 <div style="display:flex; flex-direction:column; gap:12px;">
   @if($tab === 'pending')
-    @forelse($pageData['pendingOrders'] as $o)
+    @forelse($pendingOrdersList as $o)
       @php
         $totalQty = (float)$o['totalQty'];
         $dispatchedQty = (float)$o['dispatchedQty'];
@@ -126,7 +154,7 @@
       </div>
     @endforelse
   @else
-    @forelse($pageData['completedOrders'] as $o)
+    @forelse($completedOrdersList as $o)
       <div class="card" style="border-left: 4px solid var(--secondary); background:rgba(255,255,255,0.02); margin-bottom: 0;">
         <div class="flex-between mb-1">
           <span style="font-weight:bold; font-size:1.1rem; color:#fff;">Order #{{ strtoupper((string)$o['id']) }}</span>

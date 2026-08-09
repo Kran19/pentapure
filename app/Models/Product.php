@@ -22,9 +22,10 @@ class Product extends Model
 
     public function formatName($grade = null)
     {
-        $g = $grade ?: 'N/A';
-        $t = strtolower($this->type ?? 'N/A');
-        return "{$this->name} - (grade- {$g}) (type - {$t})";
+        $g = ($grade && $grade !== 'NONE' && $grade !== 'N/A') ? " " . strtoupper($grade) : '';
+        $type = strtoupper($this->type ?? 'RAW');
+        $t = ($type === 'FINISHED') ? 'fg' : strtolower($type);
+        return "{$this->name}{$g} ({$t})";
     }
 
     public function scopeVisibleTo($query, $role)

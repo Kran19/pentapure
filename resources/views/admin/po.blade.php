@@ -1,8 +1,8 @@
 @extends('layouts.admin')
 
 @section('content')
-<div style="padding:1.5rem;">
-  <h2 style="margin-bottom:1.5rem;">📋 Purchase Requests</h2>
+<div style="padding:0.25rem 0 1rem 0;">
+  <h2 style="margin-bottom:1.5rem;">📋 PO Received by System</h2>
 
   @if(empty($pageData['purchaseOrders']))
     <div class="card" style="padding:2rem; text-align:center;">

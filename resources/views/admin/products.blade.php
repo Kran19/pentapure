@@ -8,7 +8,7 @@
   </div>
 
   <!-- Add Form -->
-  <div id="prod-form" class="card" style="display:none; margin-bottom:1.5rem; padding:1.2rem;">
+  <div id="prod-form" class="card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
     <div class="card-title">Add / Edit Product</div>
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
       <div class="form-group">
@@ -23,12 +23,16 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Unit</label>
-        <input type="text" id="p-unit" value="kg" placeholder="kg, liters, pieces...">
-      </div>
-      <div class="form-group">
-        <label>Rate (For Live Stock Ref)</label>
-        <input type="number" id="p-rate" step="0.01" value="0.00" placeholder="e.g. 150.00">
+        <label>Unit *</label>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <select id="p-unit-select" onchange="toggleCustomUnitInput()" style="width:100%;">
+            <option value="KG" selected>KG</option>
+            <option value="LTR">LTR</option>
+            <option value="NO">NO</option>
+            <option value="OTHER">OTHER (TYPE CUSTOM)</option>
+          </select>
+          <input type="text" id="p-unit-custom" placeholder="Type custom unit (e.g. BOTTLE, BOX)" style="display:none; width:100%; margin-top:4px;">
+        </div>
       </div>
       <div class="form-group">
         <label>Low Stock Threshold</label>
@@ -50,9 +54,9 @@
     <div style="margin-top:1rem; border-top:1px solid var(--glass-border); padding-top:1rem;">
         <label style="font-size:0.9rem; color:var(--primary-light); margin-bottom:0.5rem; display:block;">Visible To / Allowed User Types</label>
         <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px;">
-            @foreach(['ADMIN', 'RAW', 'SEMI', 'FINISHED', 'SALES', 'DISPATCH', 'CASHIER', 'ATTENDANCE'] as $role)
+            @foreach(['ADMIN', 'RAW', 'SEMI', 'FINISHED', 'SALES', 'DISPATCH', 'ATTENDANCE'] as $role)
             <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; background:var(--bg-hover); border:1px solid var(--border-soft); padding:6px 10px; border-radius:6px; cursor:pointer;">
-                <input type="checkbox" name="p-roles" value="{{ $role }}" style="width:auto;"> {{ $role }}
+                <input type="checkbox" name="p-roles" value="{{ $role }}" checked style="width:auto;"> {{ $role }}
             </label>
             @endforeach
         </div>
@@ -62,7 +66,6 @@
     <div style="display:flex; gap:1rem; margin-top:1.5rem;">
       <button class="btn" id="btn-save-prod" onclick="adminSaveProduct()" style="width:auto; padding:0.6rem 1.5rem;">Save Product</button>
       <button class="btn btn-secondary" onclick="document.getElementById('prod-form').style.display='none'" style="width:auto; padding:0.6rem 1.5rem;">Cancel</button>
-    </div>
     </div>
   </div>
 
@@ -165,6 +168,25 @@ function toggleGradeDisplay() {
     area.style.display = (type === 'RAW') ? 'none' : 'block';
 }
 
+function toggleCustomUnitInput() {
+  const sel = document.getElementById('p-unit-select').value;
+  const customInput = document.getElementById('p-unit-custom');
+  if (sel === 'OTHER') {
+    customInput.style.display = 'block';
+  } else {
+    customInput.style.display = 'none';
+  }
+}
+
+function getSelectedUnitValue() {
+  const sel = document.getElementById('p-unit-select').value;
+  if (sel === 'OTHER') {
+    const custom = document.getElementById('p-unit-custom').value.trim();
+    return custom ? custom.toUpperCase() : 'KG';
+  }
+  return sel;
+}
+
 let editingProductId = null;
 
 function adminEditProduct(prod) {
@@ -173,8 +195,18 @@ function adminEditProduct(prod) {
   document.querySelector('#prod-form .card-title').innerText = 'Edit Product';
   document.getElementById('p-name').value = prod.name;
   document.getElementById('p-type').value = prod.type;
-  document.getElementById('p-unit').value = prod.unit;
-  document.getElementById('p-rate').value = prod.rate || '0.00';
+  
+  const unitUpper = (prod.unit || 'KG').toUpperCase();
+  if (['KG', 'LTR', 'NO'].includes(unitUpper)) {
+    document.getElementById('p-unit-select').value = unitUpper;
+    document.getElementById('p-unit-custom').style.display = 'none';
+    document.getElementById('p-unit-custom').value = '';
+  } else {
+    document.getElementById('p-unit-select').value = 'OTHER';
+    document.getElementById('p-unit-custom').style.display = 'block';
+    document.getElementById('p-unit-custom').value = prod.unit || '';
+  }
+
   document.getElementById('p-threshold').value = prod.threshold || '0.00';
   
   // Reset and set grades
@@ -211,8 +243,8 @@ function adminSaveProduct() {
   if (editingProductId) formData.append('product_id', editingProductId);
   formData.append('name', document.getElementById('p-name').value);
   formData.append('type', document.getElementById('p-type').value);
-  formData.append('unit', document.getElementById('p-unit').value || 'kg');
-  formData.append('rate', document.getElementById('p-rate').value || '0.00');
+  formData.append('unit', getSelectedUnitValue());
+  formData.append('rate', '0.00');
   formData.append('threshold', document.getElementById('p-threshold').value || '0.00');
   formData.append('grades', JSON.stringify(selectedGrades));
   formData.append('allowed_roles', JSON.stringify(selectedRoles));

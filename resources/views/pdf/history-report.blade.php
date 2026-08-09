@@ -190,7 +190,7 @@
                     <th class="center" style="width:6%;">#</th>
                     <th style="width:14%;">Batch ID</th>
                     <th style="width:14%;">Date</th>
-                    <th style="width:25%;">Produced Item & Grade</th>
+                    <th style="width:25%;">Produced Item</th>
                     <th style="width:15%;">Produced Qty</th>
                     <th>Inputs Consumed</th>
                 </tr>
@@ -202,14 +202,13 @@
                         <td>{{ $row['id'] }}</td>
                         <td>{{ $row['date'] }}</td>
                         <td>
-                            <strong>{{ $row['output_product'] ?? '-' }}</strong><br>
-                            <span style="font-size: 11px; color: #475467;">Grade: {{ $row['output_grade'] ?? '-' }}</span>
+                            <strong>{{ $row['output_product'] ?? '-' }}</strong>
                         </td>
                         <td class="amount text-green">+{{ number_format((float) ($row['output_qty'] ?? 0), 2) }} <span style="font-size:10px; color:#667085;">{{ $row['unit'] ?? 'kg' }}</span></td>
                         <td style="font-size: 11px; line-height: 1.6;">
                             @if(!empty($row['inputs']))
                                 @foreach($row['inputs'] as $input)
-                                    <div>&bull; {{ $input['name'] ?? '-' }} ({{ $input['grade'] ?? '-' }}): <span class="text-red">-{{ number_format((float) ($input['quantity'] ?? 0), 2) }} kg</span></div>
+                                    <div>&bull; {{ $input['name'] ?? '-' }}: <span class="text-red">-{{ number_format((float) ($input['quantity'] ?? 0), 2) }} kg</span></div>
                                 @endforeach
                             @else
                                 <span style="color: #667085; font-style: italic;">No inputs recorded</span>

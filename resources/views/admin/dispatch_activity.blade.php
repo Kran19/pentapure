@@ -4,9 +4,9 @@
 <div style="padding:1.5rem;">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
     <h2 style="margin:0;">🚚 Dispatch Order Activity</h2>
-    <a href="{{ route('admin.dispatch.pdf', request()->all()) }}" class="btn" style="width:auto; padding:0.6rem 1.2rem; background:var(--secondary);">
+    <button type="button" class="btn" onclick="window.downloadPdfAsync('{{ route('admin.dispatch.pdf') }}', {{ json_encode(request()->all()) }}, this)" style="width:auto; padding:0.6rem 1.2rem; background:var(--secondary); cursor:pointer;">
       📥 Download PDF Report
-    </a>
+    </button>
   </div>
 
   <!-- Filters -->

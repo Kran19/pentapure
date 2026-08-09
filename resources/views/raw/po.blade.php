@@ -1,8 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
-  <h2 style="margin:0;">🛒 Purchase Requests</h2>
+<div style="padding:0.25rem 0 1rem 0;">
+  <h2 style="margin:0;">🛒 PO Received by System</h2>
   <button class="btn btn-sm btn-primary" onclick="document.getElementById('po-modal').classList.add('active')">+ New Request</button>
 </div>
 

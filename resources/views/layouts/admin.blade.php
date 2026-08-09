@@ -131,8 +131,8 @@
           </a>
           @endif
 
-          <a href="#" onclick="event.preventDefault(); openLocationsAdminModal()" class="nav-item">
-            📍 Storage Locations
+          <a href="{{ url('admin/locations') }}" class="nav-item {{ $seg=='locations'?'active':'' }}">
+            📍 Warehouse Master
           </a>
 
           @if($can('module_notifications'))

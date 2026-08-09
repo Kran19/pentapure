@@ -91,4 +91,16 @@ class AuthTest extends TestCase
         $response = $this->get('/admin/users');
         $response->assertStatus(403);
     }
+
+    public function test_authenticated_user_accessing_login_page_redirects_to_home(): void
+    {
+        $response = $this->withSession(['auth_user' => [
+            'id' => 1,
+            'name' => 'Admin User',
+            'role' => 'ADMIN',
+            'permissions' => [],
+        ]])->get('/login');
+
+        $response->assertRedirect('/admin/home');
+    }
 }

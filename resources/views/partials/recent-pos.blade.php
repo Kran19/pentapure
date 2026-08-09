@@ -1,6 +1,6 @@
 @if(isset($pageData['purchaseOrders']) && count($pageData['purchaseOrders']) > 0)
-<div class="card mt-1" style="background:rgba(255,255,255,0.03);">
-  <div class="card-title" style="font-size:0.9rem;">Recent Purchase Requests</div>
+<div class="card" style="margin-bottom:1rem; padding:0.8rem 1.2rem;">
+  <div class="card-title" style="font-size:0.9rem;">PO Received by System</div>
   @foreach(collect($pageData['purchaseOrders'])->sortByDesc('date')->take(3) as $p)
     <div class="flex-between" style="padding:0.5rem 0; border-bottom:1px solid rgba(255,255,255,0.05);">
       <div>

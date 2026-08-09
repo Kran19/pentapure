@@ -6,7 +6,7 @@
 @endphp
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
   <h2 style="margin:0;">🌿 Raw Material Overview</h2>
-  <a class="btn btn-sm btn-secondary" style="width:auto; padding:0.5rem 1rem; text-decoration:none;" href="{{ url('raw/po') }}">Purchase Requests</a>
+  <a class="btn btn-sm btn-secondary" style="width:auto; padding:0.5rem 1rem; text-decoration:none;" href="{{ url('raw/po') }}">PO Received by System</a>
 </div>
 
 <div class="tabs" style="margin-bottom:1rem;">

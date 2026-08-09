@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Attendance;
 use App\Models\Category;
 use App\Models\DispatchLog;
+use App\Models\Location;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductionLog;
 use App\Models\PurchaseOrder;
 use App\Models\Stock;
 use App\Models\User;
+use App\Models\Worker;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -49,12 +53,12 @@ class AdminController extends Controller
             ->get()
             ->count();
 
-        $totalOrders  = \App\Models\Order::count();
-        $totalRevenue = \App\Models\Order::sum('total');
-        $pendingPOs   = \App\Models\PurchaseOrder::where('status', 'PENDING')->count();
+        $totalOrders  = Order::count();
+        $totalRevenue = Order::sum('total');
+        $pendingPOs   = PurchaseOrder::where('status', 'PENDING')->count();
         
-        $totalWorkers = \App\Models\Worker::count();
-        $presentToday = \App\Models\Attendance::where('date', \Carbon\Carbon::today()->toDateString())->whereIn('status', ['PRESENT', 'HALF_DAY'])->count();
+        $totalWorkers = Worker::count();
+        $presentToday = Attendance::where('date', \Carbon\Carbon::today()->toDateString())->whereIn('status', ['PRESENT', 'HALF_DAY'])->count();
 
         // --- Chart Data ---
         $days = [];
@@ -65,8 +69,8 @@ class AdminController extends Controller
             $date = \Carbon\Carbon::today()->subDays($i);
             $days[] = $date->format('D (d M)');
             
-            $salesTrend[] = \App\Models\Order::whereDate('created_at', $date)->sum('total') ?: 0;
-            $productionTrend[] = \App\Models\ProductionLog::whereDate('created_at', $date)->sum('output_qty') ?: 0;
+            $salesTrend[] = Order::whereDate('created_at', $date)->sum('total') ?: 0;
+            $productionTrend[] = ProductionLog::whereDate('created_at', $date)->sum('output_qty') ?: 0;
         }
 
         $pageData = compact(
@@ -405,36 +409,49 @@ class AdminController extends Controller
             ->orderBy('products.name')
             ->get();
 
+        // Bulk query for all location breakdowns in a single SQL call
+        $locQuery = DB::table('stocks')
+            ->leftJoin('locations', 'stocks.location_id', '=', 'locations.id')
+            ->whereIn('stocks.stage', $stages);
+
+        if ($startDate) {
+            $locQuery->where('stocks.created_at', '>=', $startDate . ' 00:00:00');
+        }
+        if ($endDate) {
+            $locQuery->where('stocks.created_at', '<=', $endDate . ' 23:59:59');
+        }
+
+        $allLocations = $locQuery->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'stocks.location_id', 'locations.name')
+            ->selectRaw("
+                stocks.product_id,
+                stocks.stage,
+                stocks.grade,
+                stocks.location_id,
+                IFNULL(locations.name, 'Unspecified') as name,
+                SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity
+            ")
+            ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
+            ->get();
+
+        $locsByKey = [];
+        foreach ($allLocations as $l) {
+            $key = "{$l->product_id}_{$l->stage}_{$l->grade}";
+            $locsByKey[$key][] = $l;
+        }
+
+        // Preload all matching products in a single SQL call
+        $productIds = $stockData->pluck('productId')->unique();
+        $productsMap = Product::whereIn('id', $productIds)->get()->keyBy('id');
+
         $totalValuation = 0.0;
         $items = [];
         foreach ($stockData as $s) {
-            // Fetch live locations for this item from DB
+            $key = "{$s->productId}_{$s->stage}_{$s->grade}";
+            $itemLocs = $locsByKey[$key] ?? [];
+
             $locStrings = [];
             $assignedSum = 0;
-
-            $locQuery = DB::table('stocks')
-                ->leftJoin('locations', 'stocks.location_id', '=', 'locations.id')
-                ->where('stocks.product_id', $s->productId)
-                ->where('stocks.stage', $s->stage)
-                ->where('stocks.grade', $s->grade);
-
-            if ($startDate) {
-                $locQuery->where('stocks.created_at', '>=', $startDate . ' 00:00:00');
-            }
-            if ($endDate) {
-                $locQuery->where('stocks.created_at', '<=', $endDate . ' 23:59:59');
-            }
-
-            $locs = $locQuery->groupBy('stocks.location_id', 'locations.name')
-                ->selectRaw("
-                    stocks.location_id,
-                    IFNULL(locations.name, 'Unspecified') as name,
-                    SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity
-                ")
-                ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
-                ->get();
-            
-            foreach ($locs as $l) {
+            foreach ($itemLocs as $l) {
                 if ($l->location_id) {
                     $locStrings[] = "{$l->name} ({$l->quantity} {$s->unit})";
                     $assignedSum += $l->quantity;
@@ -452,9 +469,9 @@ class AdminController extends Controller
             $amount = $s->quantity * $rate;
             $totalValuation += $amount;
 
-            $product = \App\Models\Product::find($s->productId);
+            $product = $productsMap->get($s->productId);
             $items[] = [
-                'name' => $product ? $product->formatName($s->grade) : $s->name,
+                'name' => ($product instanceof Product) ? $product->formatName($s->grade) : $s->name,
                 'stage' => $s->stage,
                 'grade' => $s->grade,
                 'quantity' => $s->quantity,
@@ -474,7 +491,11 @@ class AdminController extends Controller
             'endDate' => $endDate,
         ];
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.live-stock', $pdfData)->setPaper('A4', 'portrait');
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.live-stock', $pdfData)
+            ->setPaper('A4', 'portrait')
+            ->setOption('isRemoteEnabled', true)
+            ->setOption('isHtml5ParserEnabled', true)
+            ->setOption('isFontSubsettingEnabled', true);
         
         if ($startDate && $endDate) {
             $filename = 'PentaPure_Stock_Valuation_Report_' . \Carbon\Carbon::parse($startDate)->format('Ymd') . '_to_' . \Carbon\Carbon::parse($endDate)->format('Ymd') . '.pdf';
@@ -624,7 +645,7 @@ class AdminController extends Controller
             ]);
 
         // 3. Sales Orders
-        $salesLogs = \App\Models\Order::with(['creator', 'company'])
+        $salesLogs = Order::with(['creator', 'company'])
             ->orderByDesc('created_at')->get()->map(fn($o) => [
                 'category'    => 'Sales',
                 'date'        => $o->created_at->toISOString(),
@@ -819,7 +840,7 @@ class AdminController extends Controller
                 "{$note} [{$summary}]"
             );
         } else {
-            $defaultLocId = \App\Models\Location::firstOrCreate(['name' => 'Main Warehouse'])->id;
+            $defaultLocId = Location::firstOrCreate(['name' => 'Main Warehouse'])->id;
             Stock::create([
                 'product_id'       => $request->product_id,
                 'user_id'          => session('auth_user')['id'],
@@ -837,9 +858,9 @@ class AdminController extends Controller
     // ── DISPATCH ACTIVITY ───────────────────────────────────────────────────
     public function dispatchActivity(Request $request)
     {
-        $query = \App\Models\Order::with(['company', 'items.product', 'dispatchLog.user', 'transporter'])
+        $query = Order::with(['company', 'items.product', 'dispatchLog.user', 'transporter'])
             ->select('orders.*')
-            ->addSelect(['dispatch_logs_count' => \App\Models\DispatchLog::selectRaw('COUNT(*)')
+            ->addSelect(['dispatch_logs_count' => DispatchLog::selectRaw('COUNT(*)')
                 ->whereColumn('order_id', 'orders.id')
             ])
             ->orderByDesc('created_at');
@@ -888,9 +909,9 @@ class AdminController extends Controller
 
     public function dispatchActivityPdf(Request $request)
     {
-        $query = \App\Models\Order::with(['company', 'items.product', 'dispatchLog.user', 'transporter'])
+        $query = Order::with(['company', 'items.product', 'dispatchLog.user', 'transporter'])
             ->select('orders.*')
-            ->addSelect(['dispatch_logs_count' => \App\Models\DispatchLog::selectRaw('COUNT(*)')
+            ->addSelect(['dispatch_logs_count' => DispatchLog::selectRaw('COUNT(*)')
                 ->whereColumn('order_id', 'orders.id')
             ])
             ->orderByDesc('created_at');
@@ -1028,28 +1049,44 @@ class AdminController extends Controller
     }
 
     // ── ADMIN: DOWNLOAD ANY CASHIER'S PDF ──────────────────────────────────
-    public function downloadCashierPdf(\Illuminate\Http\Request $request, $userId)
+    public function downloadCashierPdf(Request $request, $userId)
     {
         $cashier = User::findOrFail($userId);
         $controller = new \App\Http\Controllers\CashierController();
         return $controller->generateCashierPdf($request, (int) $userId, $cashier->name);
     }
 
-    // ── LOCATIONS API ENDPOINTS ──────────────────────────────────────────────
+    // ── LOCATIONS / WAREHOUSE MASTER ──────────────────────────────────────────
+    public function locations()
+    {
+        $locations = Location::orderBy('name')->paginate(20);
+        return view('admin.locations', compact('locations'));
+    }
+
     public function getLocationsApi()
     {
-        $locations = \App\Models\Location::orderBy('name')->get(['id', 'name', 'description']);
+        $locations = Location::orderBy('name')->get(['id', 'name', 'description']);
         return response()->json(['success' => true, 'locations' => $locations]);
     }
 
-    public function storeLocationApi(\Illuminate\Http\Request $request)
+    public function storeLocationApi(Request $request)
     {
+        $locationId = $request->location_id;
         $request->validate([
-            'name' => 'required|string|unique:locations,name|max:255',
+            'name' => 'required|string|max:255|unique:locations,name,' . ($locationId ?? 'NULL'),
             'description' => 'nullable|string|max:500',
         ]);
 
-        $location = \App\Models\Location::create([
+        if ($locationId) {
+            $location = Location::findOrFail($locationId);
+            $location->update([
+                'name' => $request->name,
+                'description' => $request->description,
+            ]);
+            return response()->json(['success' => true, 'message' => 'Location updated successfully!', 'location' => $location]);
+        }
+
+        $location = Location::create([
             'name' => $request->name,
             'description' => $request->description,
         ]);
@@ -1059,11 +1096,11 @@ class AdminController extends Controller
 
     public function destroyLocationApi($id)
     {
-        \App\Models\Location::destroy($id);
+        Location::destroy($id);
         return response()->json(['success' => true, 'message' => 'Location deleted successfully!']);
     }
 
-    public function stockLocationsBreakdownApi(\Illuminate\Http\Request $request)
+    public function stockLocationsBreakdownApi(Request $request)
     {
         $request->validate([
             'product_id' => 'required|exists:products,id',
@@ -1089,7 +1126,7 @@ class AdminController extends Controller
         return response()->json(['success' => true, 'breakdown' => $breakdown]);
     }
 
-    public function transferStockLocationsApi(\Illuminate\Http\Request $request)
+    public function transferStockLocationsApi(Request $request)
     {
         $request->validate([
             'product_id' => 'required|exists:products,id',
@@ -1104,9 +1141,9 @@ class AdminController extends Controller
 
         // Resolve locations
         $fromLocationName = $request->from_location ?: 'Main Warehouse';
-        $fromLocationId = \App\Models\Location::firstOrCreate(['name' => $fromLocationName])->id;
+        $fromLocationId = Location::firstOrCreate(['name' => $fromLocationName])->id;
 
-        $toLocationId = \App\Models\Location::firstOrCreate(['name' => $request->to_location])->id;
+        $toLocationId = Location::firstOrCreate(['name' => $request->to_location])->id;
 
         if ($fromLocationId === $toLocationId) {
             return response()->json(['success' => false, 'message' => 'Source and destination locations must be different.'], 422);
@@ -1156,12 +1193,12 @@ class AdminController extends Controller
         return response()->json(['success' => true, 'message' => 'Stock transferred successfully!']);
     }
 
-    public function productStockHistory(\Illuminate\Http\Request $request, $productId, $stage)
+    public function productStockHistory(Request $request, $productId, $stage)
     {
         $grade = $request->query('grade', 'NONE');
-        $product = \App\Models\Product::findOrFail($productId);
+        $product = Product::findOrFail($productId);
         
-        $allLogs = \App\Models\Stock::with(['user:id,name', 'location:id,name'])
+        $allLogs = Stock::with(['user:id,name', 'location:id,name'])
             ->where('product_id', $productId)
             ->where('stage', strtoupper($stage))
             ->where('grade', $grade)

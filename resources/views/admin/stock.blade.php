@@ -2,12 +2,73 @@
 
 @section('content')
 
-<div style="padding:1.5rem;">
+<div style="padding:0.25rem 0 1rem 0;">
   <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem;">
     <h2 style="margin:0;">📦 Live Stock Overview</h2>
     <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
       <button class="btn btn-secondary" onclick="adminExportStockPdf()" style="width:auto; padding:0.65rem 1.2rem; border-color:#DDCFAF !important;">📄 Generate PDF Report</button>
-      <button class="btn" onclick="adminAddStock()" style="width:auto; padding:0.65rem 1.2rem;">+ Add Stock</button>
+      <button class="btn" onclick="toggleStockFormCard()" style="width:auto; padding:0.65rem 1.2rem;">+ Add Stock</button>
+    </div>
+  </div>
+
+  <!-- In-Page Add / Adjust Stock Card (Open by Default) -->
+  <div id="stock-form-card" class="card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
+    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+      <span>📦 Add Stock Entry</span>
+      <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('stock-form-card').style.display='none'" style="width:auto; padding:0.3rem 0.8rem;">✕ Close</button>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-top:1rem;">
+      <div class="form-group">
+        <label>Stock Type *</label>
+        <select id="card-stock-stage" onchange="onCardStockStageChange()" class="form-control" style="width:100%;">
+          <option value="RAW" selected>RAW (Input Material)</option>
+          <option value="SEMI">SEMI (Intermediate Production)</option>
+          <option value="FINISHED">FINISHED (Packaged Goods)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Product *</label>
+        <select id="card-stock-product" onchange="onCardStockProductChange()" class="form-control" style="width:100%;">
+          <!-- Populated dynamically -->
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Grade *</label>
+        <div id="card-stock-grade-container">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Storage Location</label>
+        <select id="card-stock-location" class="form-control" style="width:100%;">
+          <option value="Main Warehouse" selected>Main Warehouse</option>
+          @php $allLocs = \App\Models\Location::orderBy('name')->get(); @endphp
+          @foreach($allLocs as $loc)
+            @if($loc->name !== 'Main Warehouse')
+              <option value="{{ $loc->name }}">{{ $loc->name }}</option>
+            @endif
+          @endforeach
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Quantity *</label>
+        <input id="card-stock-qty" type="number" min="0.001" step="0.001" placeholder="e.g. 200.00" class="form-control">
+      </div>
+
+      <div class="form-group">
+        <label>Note / Reason</label>
+        <input id="card-stock-note" type="text" placeholder="Optional details (e.g. Inward arrival)" class="form-control">
+      </div>
+    </div>
+
+    <div style="display:flex; gap:1rem; margin-top:1.5rem;">
+      <button class="btn" id="btn-save-stock-card" onclick="adminSaveStockFromCard()" style="width:auto; padding:0.6rem 1.8rem;">Add Stock</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('stock-form-card').style.display='none'" style="width:auto; padding:0.6rem 1.5rem;">Cancel</button>
     </div>
   </div>
 
@@ -27,13 +88,16 @@
     @else
     <div class="table-container">
       <table>
-        <thead><tr><th>Product</th><th>Grade</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>Location</th><th>Action</th></tr></thead>
+        <thead><tr><th>Product</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="raw-stock-tbody">
 @foreach($rawItems as $s)
-          @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
-          <tr @if($isLow) style="background-color: #8b0000; color: #ffffff;" title="Low Stock! Threshold is {{ $s->alert_limit }}" @endif>
-            <td style="font-weight:600;">{{ $s->name }}</td>
-            <td><span class="badge badge-info" @if($isLow) style="background-color:rgba(255,255,255,0.2); color:#ffffff;" @endif>{{ $s->grade }}</span></td>
+          @php 
+            $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit;
+            $gStr = ($s->grade && $s->grade !== 'NONE' && $s->grade !== 'N/A') ? ' ' . strtoupper($s->grade) : '';
+            $displayType = strtolower($s->stage) === 'finished' ? 'fg' : strtolower($s->stage);
+          @endphp
+          <tr @if($isLow) style="background-color: rgba(220, 38, 38, 0.35) !important; color: #ffffff !important;" title="Low Stock! Threshold is {{ $s->alert_limit }}" @endif>
+            <td style="font-weight:600;">{{ $s->name }}{{ $gStr }} ({{ $displayType }})</td>
             <td @if($isLow) style="font-weight:bold; color:#ffffff;" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold;">₹{{ number_format($s->rate ?? 0, 2) }}</td>
@@ -67,14 +131,16 @@
     @else
     <div class="table-container">
       <table>
-        <thead><tr><th>Product</th><th>Grade</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>Location</th><th>Action</th></tr></thead>
+        <thead><tr><th>Product</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="semi-stock-tbody">
           @foreach($semiItems as $s)
-          @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
-<tr @if($isLow) style="background-color: #8b0000; color: #ffffff;" title="Low Stock! Threshold is {{ $s->alert_limit }}" @endif>
-
-            <td style="font-weight:600;">{{ $s->name }}</td>
-            <td><span class="badge badge-info" @if($isLow) style="background-color:rgba(255,255,255,0.2); color:#ffffff;" @endif>{{ $s->grade }}</span></td>
+          @php 
+            $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit;
+            $gStr = ($s->grade && $s->grade !== 'NONE' && $s->grade !== 'N/A') ? ' ' . strtoupper($s->grade) : '';
+            $displayType = strtolower($s->stage) === 'finished' ? 'fg' : strtolower($s->stage);
+          @endphp
+          <tr @if($isLow) style="background-color: rgba(220, 38, 38, 0.35) !important; color: #ffffff !important;" title="Low Stock! Threshold is {{ $s->alert_limit }}" @endif>
+            <td style="font-weight:600;">{{ $s->name }}{{ $gStr }} ({{ $displayType }})</td>
             <td @if($isLow) style="font-weight:bold; color:#ffffff;" @else style="font-weight:bold; color:var(--warning);" @endif>{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold;">₹{{ number_format($s->rate ?? 0, 2) }}</td>
@@ -108,15 +174,16 @@
     @else
     <div class="table-container">
       <table>
-        <thead><tr><th>Product</th><th>Grade</th><th>Total Qty</th><th>Unit</th><th>Rate (Ref)</th><th>Location</th><th>Action</th></tr></thead>
+        <thead><tr><th>Product</th><th>Total Qty</th><th>Unit</th><th>Rate (Ref)</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="finished-stock-tbody">
           @foreach($finishedItems as $s)
-          @php $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit; @endphp
-<tr @if($isLow) style="background-color: #8b0000; color: #ffffff;" title="Low Stock! Threshold is {{ $s->alert_limit }}" @endif>
-
-            <td style="font-weight:600;">{{ $s->name }}</td>
-            <td><span class="badge badge-info" @if($isLow) style="background-color:rgba(255,255,255,0.2); color:#ffffff;" @endif>{{ $s->grade }}</span></td>
-
+          @php 
+            $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit;
+            $gStr = ($s->grade && $s->grade !== 'NONE' && $s->grade !== 'N/A') ? ' ' . strtoupper($s->grade) : '';
+            $displayType = strtolower($s->stage) === 'finished' ? 'fg' : strtolower($s->stage);
+          @endphp
+          <tr @if($isLow) style="background-color: rgba(220, 38, 38, 0.35) !important; color: #ffffff !important;" title="Low Stock! Threshold is {{ $s->alert_limit }}" @endif>
+            <td style="font-weight:600;">{{ $s->name }}{{ $gStr }} ({{ $displayType }})</td>
             <td @if($isLow) style="font-weight:bold; color:#ffffff;" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold;">₹{{ number_format($s->rate ?? 0, 2) }}</td>
@@ -143,6 +210,7 @@
 </div>
 
 <script>
+const csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
 const adminStockProducts = @json($pageData['allProducts']);
 const adminStockLogsByKey = @json($pageData['stockLogsByKey']);
 let locationMappings = @json($pageData['locationMappings'] ?? (object)[]);
@@ -587,7 +655,7 @@ const rowStyle = isLow ? 'background-color: #8b0000; color: #ffffff;' : '';
           <td><span class="badge badge-info" ${isLow ? 'style="background-color:rgba(255,255,255,0.2); color:#ffffff;"' : ''}>${s.grade}</span></td>
           <td style="font-weight:bold; color:${qtyColor};">${formattedQty}</td>
           <td>${s.unit || ''}</td>
-          <td style="font-weight:bold;">₹${number_format(parseFloat(s.rate ?? 0) || 0, 2)}</td>
+          <td style="font-weight:bold;">₹${window.number_format(s.rate ?? 0, 2)}</td>
           <td class="location-col" data-product="${s.productId}" data-grade="${s.grade}" data-stage="${stage}" style="cursor:pointer; text-decoration:underline; ${isLow ? 'color:#ffffff;' : 'color:var(--primary-light);'}" onclick="showLocationBreakdown(this)">📍 View Locations</td>
           <td>
 
@@ -682,21 +750,21 @@ async function showLocationBreakdown(el) {
   let transferHtml = '';
   if (Object.keys(locMap).length > 0) {
     transferHtml = `
-      <div style="border-top:1px dashed #30363d; padding-top:1rem; margin-top:1rem; text-align:left;">
-        <label style="display:block; font-size:0.8rem; color:#8b949e; margin-bottom:0.5rem;">Transfer Stock Between Locations</label>
+      <div style="border-top:1px dashed var(--border-soft); padding-top:1rem; margin-top:1rem; text-align:left;">
+        <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Transfer Stock Between Locations</label>
         <div style="display:flex; gap:8px; margin-bottom:0.5rem;">
-          <select id="swal-transfer-from" style="flex:1; padding:0.55rem; background:#161b22; border:1px solid #30363d; color:#e6edf3; border-radius:8px; font-size:0.85rem;">
+          <select id="swal-transfer-from" style="flex:1; padding:0.55rem; background:var(--input-bg, #FFFFFF); border:1px solid var(--input-border, #DDCFAF); color:var(--text-main, #2A2A2A); border-radius:8px; font-size:0.85rem;">
             <option value="" disabled selected>From Location</option>
             ${fromOptionsHtml}
           </select>
-          <span style="color:#8b949e; align-self:center;">➡</span>
-          <select id="swal-transfer-to" style="flex:1; padding:0.55rem; background:#161b22; border:1px solid #30363d; color:#e6edf3; border-radius:8px; font-size:0.85rem;">
+          <span style="color:var(--text-muted); align-self:center;">➡</span>
+          <select id="swal-transfer-to" style="flex:1; padding:0.55rem; background:var(--input-bg, #FFFFFF); border:1px solid var(--input-border, #DDCFAF); color:var(--text-main, #2A2A2A); border-radius:8px; font-size:0.85rem;">
             <option value="" disabled selected>To Location</option>
             ${optionsHtml}
           </select>
         </div>
         <div style="display:flex; gap:8px;">
-          <input type="number" id="swal-transfer-qty" min="0.01" step="0.01" placeholder="Qty (kg)" style="width:100px; padding:0.55rem; background:#161b22; border:1px solid #30363d; color:#e6edf3; border-radius:8px;">
+          <input type="number" id="swal-transfer-qty" min="0.01" step="0.01" placeholder="Qty (kg)" style="width:100px; padding:0.55rem; background:var(--input-bg, #FFFFFF); border:1px solid var(--input-border, #DDCFAF); color:var(--text-main, #2A2A2A); border-radius:8px;">
           <button class="btn btn-sm" onclick="transferLocationMapping('${pId}', '${stage}', '${grade}', this)" style="flex:1;">Transfer Stock</button>
         </div>
       </div>
@@ -706,33 +774,33 @@ async function showLocationBreakdown(el) {
   Swal.fire({
     title: '📍 Stock Storage Locations',
     html: `
-      <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:#8b949e;">
+      <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:var(--text-muted);">
         Product locations for this item.
       </div>
       <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:1rem; text-align:center;">
-        <div style="background:#161b22; border-radius:8px; padding:8px;">
-          <div style="font-size:0.7rem; color:#8b949e;">Available</div>
-          <div style="font-weight:700; color:#e6edf3;">${availableQty.toFixed(2)} kg</div>
+        <div style="background:var(--bg-sidebar, #FFF8EA); border:1px solid var(--border-soft, #ECE4CF); border-radius:8px; padding:8px;">
+          <div style="font-size:0.7rem; color:var(--text-muted);">Available</div>
+          <div style="font-weight:700; color:var(--text-main);">${availableQty.toFixed(2)} kg</div>
         </div>
-        <div style="background:#161b22; border-radius:8px; padding:8px;">
-          <div style="font-size:0.7rem; color:#8b949e;">Assigned</div>
+        <div style="background:var(--bg-sidebar, #FFF8EA); border:1px solid var(--border-soft, #ECE4CF); border-radius:8px; padding:8px;">
+          <div style="font-size:0.7rem; color:var(--text-muted);">Assigned</div>
           <div style="font-weight:700; color:var(--secondary);">${assignedQty.toFixed(2)} kg</div>
         </div>
-        <div style="background:#161b22; border-radius:8px; padding:8px;">
-          <div style="font-size:0.7rem; color:#8b949e;">Unassigned</div>
-          <div style="font-weight:700; color:#e6edf3;">${remainingQty.toFixed(2)} kg</div>
+        <div style="background:var(--bg-sidebar, #FFF8EA); border:1px solid var(--border-soft, #ECE4CF); border-radius:8px; padding:8px;">
+          <div style="font-size:0.7rem; color:var(--text-muted);">Unassigned</div>
+          <div style="font-weight:700; color:var(--text-main);">${remainingQty.toFixed(2)} kg</div>
         </div>
       </div>
       <div style="margin-bottom:1rem; max-height:200px; overflow-y:auto;">
         ${locationsListHtml}
       </div>
-      <div style="border-top:1px dashed #30363d; padding-top:1rem; text-align:left;">
-        <label style="display:block; font-size:0.8rem; color:#8b949e; margin-bottom:0.5rem;">Link Quantity to Location</label>
+      <div style="border-top:1px dashed var(--border-soft); padding-top:1rem; text-align:left;">
+        <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Link Quantity to Location</label>
         <div style="display:flex; gap:8px; margin-bottom:0.5rem;">
-          <select id="swal-loc-select" style="flex:1; padding:0.55rem; background:#161b22; border:1px solid #30363d; color:#e6edf3; border-radius:8px;">
+          <select id="swal-loc-select" style="flex:1; padding:0.55rem; background:var(--input-bg, #FFFFFF); border:1px solid var(--input-border, #DDCFAF); color:var(--text-main, #2A2A2A); border-radius:8px;">
             ${optionsHtml}
           </select>
-          <input type="number" id="swal-loc-qty" min="0.01" max="${remainingQty.toFixed(2)}" step="0.01" placeholder="Qty (kg)" style="width:100px; padding:0.55rem; background:#161b22; border:1px solid #30363d; color:#e6edf3; border-radius:8px;">
+          <input type="number" id="swal-loc-qty" min="0.01" max="${remainingQty.toFixed(2)}" step="0.01" placeholder="Qty (kg)" style="width:100px; padding:0.55rem; background:var(--input-bg, #FFFFFF); border:1px solid var(--input-border, #DDCFAF); color:var(--text-main, #2A2A2A); border-radius:8px;">
         </div>
         <button class="btn btn-sm" onclick="addLocationMapping('${pId}', '${stage}', '${grade}', ${remainingQty}, this)" style="width:100%;">Save Location link</button>
       </div>
@@ -741,9 +809,9 @@ async function showLocationBreakdown(el) {
     showConfirmButton: false,
     showCancelButton: true,
     cancelButtonText: 'Close',
-    background: '#0d1117',
-    color: '#e6edf3',
-    cancelButtonColor: '#30363d'
+    customClass: {
+      popup: 'swal-stock-popup'
+    }
   });
 }
 
@@ -841,53 +909,56 @@ window.transferLocationMapping = async function(productId, stage, grade, buttonE
 
 function adminExportStockPdf() {
   Swal.fire({
-    title: 'Export Stock Valuation PDF',
+    title: '📄 EXPORT STOCK VALUATION PDF',
     html: `
-      <div style="text-align:left; font-size:0.95rem; color:#e6edf3;">
-        <p style="margin-bottom:12px; color:#8b949e;">Select the stock panels to include in the PDF report:</p>
-        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
-          <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-            <input type="checkbox" id="export-stage-raw" checked style="width:20px; height:20px; cursor:pointer;"> 🌿 Raw Material Stock
+      <div style="text-align:left; font-size:0.95rem;">
+        <p style="margin-bottom:14px; color:#cbd5e1 !important; -webkit-text-fill-color:#cbd5e1 !important; font-weight:500; line-height:1.4;">Select the stock panels to include in the PDF report:</p>
+        
+        <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:18px;">
+          <label class="export-option-card">
+            <input type="checkbox" id="export-stage-raw" checked style="width:20px; height:20px; accent-color:#f59e0b; cursor:pointer;">
+            <span>🌿 RAW MATERIAL STOCK</span>
           </label>
-          <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-            <input type="checkbox" id="export-stage-semi" checked style="width:20px; height:20px; cursor:pointer;"> ⚗️ Semi-Finished Stock
+          <label class="export-option-card">
+            <input type="checkbox" id="export-stage-semi" checked style="width:20px; height:20px; accent-color:#f59e0b; cursor:pointer;">
+            <span>⚗️ SEMI-FINISHED STOCK</span>
           </label>
-          <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-            <input type="checkbox" id="export-stage-finished" checked style="width:20px; height:20px; cursor:pointer;"> ✅ FG Stock
+          <label class="export-option-card">
+            <input type="checkbox" id="export-stage-finished" checked style="width:20px; height:20px; accent-color:#f59e0b; cursor:pointer;">
+            <span>✅ FG STOCK (FINISHED GOODS)</span>
           </label>
         </div>
         
-        <div style="display:flex; gap:10px; margin-bottom:8px;">
+        <div style="display:flex; gap:12px; margin-bottom:10px;">
           <div style="flex:1;">
-            <label style="display:block; text-align:left; font-size:0.82rem; font-weight:600; color:#8b949e; margin-bottom:0.35rem;">
-              From Date (Optional)
+            <label class="field-label">
+              FROM DATE <span style="font-weight:400; text-transform:none; color:#94a3b8 !important; -webkit-text-fill-color:#94a3b8 !important;">(OPTIONAL)</span>
             </label>
-            <input type="date" id="export-start-date" style="
-              width:100%; padding:0.65rem 0.8rem; border-radius:8px;
-              background:#161b22; border:1px solid #30363d; color:#e6edf3;
-              font-size:0.95rem; outline:none; box-sizing:border-box;
-            ">
+            <input type="date" id="export-start-date">
           </div>
           <div style="flex:1;">
-            <label style="display:block; text-align:left; font-size:0.82rem; font-weight:600; color:#8b949e; margin-bottom:0.35rem;">
-              To Date (Optional)
+            <label class="field-label">
+              TO DATE <span style="font-weight:400; text-transform:none; color:#94a3b8 !important; -webkit-text-fill-color:#94a3b8 !important;">(OPTIONAL)</span>
             </label>
-            <input type="date" id="export-end-date" style="
-              width:100%; padding:0.65rem 0.8rem; border-radius:8px;
-              background:#161b22; border:1px solid #30363d; color:#e6edf3;
-              font-size:0.95rem; outline:none; box-sizing:border-box;
-            ">
+            <input type="date" id="export-end-date">
           </div>
         </div>
-        <p style="margin-top:6px; font-size:0.8rem; color:#8b949e;">Leave empty to generate live stock report.</p>
+        <p style="margin-top:8px; font-size:0.82rem; color:#94a3b8 !important; -webkit-text-fill-color:#94a3b8 !important; font-style:italic;">Leave empty to generate live stock report.</p>
       </div>
     `,
-    background: '#0d1117',
-    color: '#e6edf3',
+    background: '#0f172a',
+    color: '#f8fafc',
     showCancelButton: true,
-    confirmButtonText: 'Generate Report',
-    confirmButtonColor: '#238636',
-    cancelButtonColor: '#30363d',
+    confirmButtonText: 'GENERATE REPORT',
+    cancelButtonText: 'CANCEL',
+    confirmButtonColor: '#f59e0b',
+    cancelButtonColor: '#334155',
+    customClass: {
+      popup: 'swal-stock-popup',
+      title: 'swal-stock-title',
+      confirmButton: 'swal-confirm-btn-primary',
+      cancelButton: 'swal-cancel-btn-secondary'
+    },
     preConfirm: () => {
       const raw = document.getElementById('export-stage-raw').checked;
       const semi = document.getElementById('export-stage-semi').checked;
@@ -916,55 +987,297 @@ function adminExportStockPdf() {
     if (!result.isConfirmed) return;
     
     const { stages, startDate, endDate } = result.value;
+    const btn = document.querySelector('button[onclick="adminExportStockPdf()"]');
     
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '{{ route("admin.stock.pdf") }}';
-    form.style.display = 'none';
-    
-    const tokenInput = document.createElement('input');
-    tokenInput.type = 'hidden';
-    tokenInput.name = '_token';
-    tokenInput.value = csrfToken;
-    form.appendChild(tokenInput);
-    
-    const stagesInput = document.createElement('input');
-    stagesInput.type = 'hidden';
-    stagesInput.name = 'stages';
-    stagesInput.value = stages.join(',');
-    form.appendChild(stagesInput);
-    
-    if (startDate) {
-      const startInput = document.createElement('input');
-      startInput.type = 'hidden';
-      startInput.name = 'start_date';
-      startInput.value = startDate;
-      form.appendChild(startInput);
-    }
-
-    if (endDate) {
-      const endInput = document.createElement('input');
-      endInput.type = 'hidden';
-      endInput.name = 'end_date';
-      endInput.value = endDate;
-      form.appendChild(endInput);
-    }
-    
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
+    window.downloadPdfAsync('{{ route("admin.stock.pdf") }}', {
+      stages: stages.join(','),
+      start_date: startDate,
+      end_date: endDate
+    }, btn);
   });
 }
 
-document.addEventListener('DOMContentLoaded', updateAllLocationLabels);
+window.onCardStockStageChange = function() {
+  const stage = document.getElementById('card-stock-stage').value;
+  const productSelect = document.getElementById('card-stock-product');
+  const targetType = stage === 'RAW' ? 'RAW' : 'FINISHED';
+  const filteredProducts = adminStockProducts.filter(p => p.type === targetType && p.is_active);
+  
+  productSelect.innerHTML = filteredProducts.map(p => {
+    let t = stage.toLowerCase() === 'finished' ? 'fg' : stage.toLowerCase();
+    return `<option value="${p.id}" data-unit="${escapeHtml(p.unit || 'kg')}">${escapeHtml(p.name)} - (grade- N/A) (type - ${t})</option>`;
+  }).join('');
+  
+  onCardStockProductChange();
+};
+
+window.onCardStockProductChange = function() {
+  const productSelect = document.getElementById('card-stock-product');
+  const productId = productSelect.value;
+  const product = adminStockProducts.find(p => p.id == productId);
+  const gradeContainer = document.getElementById('card-stock-grade-container');
+  
+  if (!product) {
+    gradeContainer.innerHTML = `<input id="card-stock-grade" value="NONE" class="form-control" style="width:100%;">`;
+    return;
+  }
+
+  const stage = document.getElementById('card-stock-stage').value;
+  if (stage === 'RAW') {
+    gradeContainer.innerHTML = `
+      <select id="card-stock-grade" class="form-control" style="width:100%;">
+        <option value="NONE">NONE</option>
+        <option value="CUSTOM">Type custom grade...</option>
+      </select>
+      <input id="card-stock-grade-custom" placeholder="Enter custom grade" style="display:none; width:100%; margin-top:0.5rem;" class="form-control">
+    `;
+    
+    const select = document.getElementById('card-stock-grade');
+    const customInput = document.getElementById('card-stock-grade-custom');
+    select.onchange = function() {
+      customInput.style.display = select.value === 'CUSTOM' ? 'block' : 'none';
+    };
+    return;
+  }
+
+  const grades = product.grades || [];
+  if (grades.length > 0) {
+    const options = grades.map(g => `<option value="${escapeHtml(g.name)}">${escapeHtml(g.name)}</option>`).join('');
+    gradeContainer.innerHTML = `
+      <select id="card-stock-grade" class="form-control" style="width:100%;">
+        ${options}
+        <option value="CUSTOM">Type custom grade...</option>
+      </select>
+      <input id="card-stock-grade-custom" placeholder="Enter custom grade" style="display:none; width:100%; margin-top:0.5rem;" class="form-control">
+    `;
+  } else {
+    gradeContainer.innerHTML = `<input id="card-stock-grade" placeholder="e.g. PREMIUM" class="form-control" style="width:100%;">`;
+  }
+
+  const select = document.getElementById('card-stock-grade');
+  const customInput = document.getElementById('card-stock-grade-custom');
+  if (select && customInput) {
+    select.onchange = function() {
+      customInput.style.display = select.value === 'CUSTOM' ? 'block' : 'none';
+    };
+  }
+};
+
+window.toggleStockFormCard = function() {
+  const card = document.getElementById('stock-form-card');
+  if (card) {
+    card.style.display = card.style.display === 'none' ? 'block' : 'none';
+    if (card.style.display === 'block') {
+      card.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+};
+
+window.adminSaveStockFromCard = function() {
+  const btn = document.getElementById('btn-save-stock-card');
+  const productId = document.getElementById('card-stock-product').value;
+  const stage = document.getElementById('card-stock-stage').value;
+  const locationName = document.getElementById('card-stock-location').value;
+  
+  let grade = 'NONE';
+  const gradeEl = document.getElementById('card-stock-grade');
+  if (gradeEl) {
+    if (gradeEl.tagName === 'SELECT') {
+      if (gradeEl.value === 'CUSTOM') {
+        grade = document.getElementById('card-stock-grade-custom')?.value.trim() || 'NONE';
+      } else {
+        grade = gradeEl.value;
+      }
+    } else {
+      grade = gradeEl.value.trim();
+    }
+  }
+  grade = grade || 'NONE';
+
+  const quantity = parseFloat(document.getElementById('card-stock-qty').value);
+  const reason = document.getElementById('card-stock-note').value.trim();
+
+  if (!productId) {
+    Swal.fire('Error', 'Please select a product.', 'error');
+    return;
+  }
+  if (isNaN(quantity) || quantity <= 0) {
+    Swal.fire('Error', 'Please enter a quantity greater than 0.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.style.opacity = '0.7';
+
+  fetch('/stock/adjust', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+    body: JSON.stringify({ product_id: productId, stage, grade, quantity, adjust_type: 'add', location_name: locationName, reason })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success) {
+      Swal.fire('Saved', d.message || 'Stock added.', 'success').then(() => location.reload());
+    } else {
+      Swal.fire('Error', d.message || 'Could not add stock.', 'error');
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
+  })
+  .catch(() => {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+  });
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  updateAllLocationLabels();
+  if (typeof onCardStockStageChange === 'function') {
+    onCardStockStageChange();
+  }
+});
 </script>
 
 <style>
-.swal-stock-popup { border: 1px solid #30363d !important; border-radius: 14px !important; }
-.swal-confirm-btn, .swal-cancel-btn { border-radius: 8px !important; font-weight: 600 !important; padding: 0.55rem 1.4rem !important; }
-#swal-qty:focus, #swal-reason:focus, #swal-adj-type:focus {
-  border-color: #238636 !important;
-  box-shadow: 0 0 0 3px rgba(35,134,54,0.25) !important;
+/* High Contrast Overrides for Stock SweetAlert Modals */
+.swal-stock-popup,
+.swal2-popup.swal-stock-popup {
+  background-color: #0f172a !important;
+  border: 1px solid #334155 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5) !important;
+  padding: 1.5rem !important;
+}
+
+.swal-stock-popup .swal2-title,
+.swal-stock-title,
+.swal2-title {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  font-weight: 700 !important;
+  font-size: 1.35rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.swal-stock-popup .swal2-html-container,
+.swal-stock-popup .swal2-html-container p,
+.swal-stock-popup .swal2-html-container div {
+  color: #F8FAFC !important;
+  -webkit-text-fill-color: #F8FAFC !important;
+}
+
+/* Checkbox Card Option Containers & Labels */
+.swal-stock-popup label,
+.swal-stock-popup label span,
+.swal-stock-popup .export-option-card,
+.swal-stock-popup .export-option-card span {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  font-size: 0.95rem !important;
+  font-weight: 700 !important;
+}
+
+.swal-stock-popup .export-option-card {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  cursor: pointer !important;
+  background-color: #1e293b !important;
+  border: 1.5px solid #334155 !important;
+  padding: 12px 16px !important;
+  border-radius: 10px !important;
+  margin-bottom: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+.swal-stock-popup .export-option-card:hover {
+  background-color: #334155 !important;
+  border-color: #f59e0b !important;
+}
+
+.swal-stock-popup .export-option-card input[type="checkbox"] {
+  width: 20px !important;
+  height: 20px !important;
+  accent-color: #f59e0b !important;
+  cursor: pointer !important;
+}
+
+/* Field Labels */
+.swal-stock-popup .field-label {
+  color: #CBD5E1 !important;
+  -webkit-text-fill-color: #CBD5E1 !important;
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  margin-bottom: 0.4rem !important;
+  display: block !important;
+}
+
+/* Inputs & Date Pickers */
+.swal-stock-popup input[type="date"],
+.swal-stock-popup input[type="text"],
+.swal-stock-popup input[type="number"],
+.swal-stock-popup select,
+.swal-stock-popup textarea {
+  background-color: #1e293b !important;
+  border: 1.5px solid #475569 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  color-scheme: dark !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  padding: 0.65rem 0.8rem !important;
+  border-radius: 8px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.swal-stock-popup input[type="date"]:focus,
+.swal-stock-popup input[type="text"]:focus,
+.swal-stock-popup input[type="number"]:focus,
+.swal-stock-popup select:focus,
+.swal-stock-popup textarea:focus {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 3px rgba(245,158,11,0.25) !important;
+  outline: none !important;
+}
+
+.swal2-validation-message {
+  background-color: #7f1d1d !important;
+  color: #fca5a5 !important;
+  -webkit-text-fill-color: #fca5a5 !important;
+  border: 1px solid #991b1b !important;
+  border-radius: 8px !important;
+  margin-top: 1rem !important;
+}
+
+.swal-confirm-btn-primary {
+  background-color: #f59e0b !important;
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+  padding: 0.65rem 1.4rem !important;
+  border: none !important;
+}
+
+.swal-confirm-btn-primary:hover {
+  background-color: #d97706 !important;
+}
+
+.swal-cancel-btn-secondary {
+  background-color: #334155 !important;
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  padding: 0.65rem 1.4rem !important;
+  border: none !important;
+}
+
+.swal-cancel-btn-secondary:hover {
+  background-color: #475569 !important;
 }
 
 /* Disable row hover effect for low stock (visual only, buttons remain clickable) */

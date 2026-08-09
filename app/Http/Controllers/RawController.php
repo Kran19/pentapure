@@ -135,7 +135,7 @@ class RawController extends Controller
 
         $user = $this->authUser();
 
-        if (!Product::visibleTo($user['role'])->where('id', $request->product_id)->exists()) {
+        if (!in_array($user['role'], ['ADMIN', 'RAW', 'SEMI', 'FINISHED']) && !Product::visibleTo($user['role'])->where('id', $request->product_id)->exists()) {
             return response()->json(['success' => false, 'message' => 'Unauthorized product access.'], 403);
         }
 
@@ -244,6 +244,19 @@ class RawController extends Controller
     // ── HISTORY ────────────────────────────────────────────────────────────
     public function history()
     {
+        $rawLedgerItems = Stock::with('product')
+            ->where('stage', 'RAW')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        $running = 0;
+        $ledgerMap = [];
+        foreach ($rawLedgerItems as $s) {
+            $change = $s->transaction_type === 'IN' ? (float)$s->quantity : -(float)$s->quantity;
+            $running += $change;
+            $ledgerMap[$s->id] = round(max(0, $running), 3);
+        }
+
         $ledger = Stock::with('product')
             ->where('stage', 'RAW')
             ->orderByDesc('created_at')
@@ -254,6 +267,7 @@ class RawController extends Controller
                 'productName'      => $s->product ? $s->product->formatName($s->grade) : 'Unknown',
                 'image'            => $s->product?->image_url,
                 'quantity'         => $s->quantity,
+                'runningBalance'   => $ledgerMap[$s->id] ?? 0,
                 'unit'             => $s->product?->unit ?? 'kg',
                 'grade'            => $s->grade,
                 'date'             => $s->created_at->toISOString(),

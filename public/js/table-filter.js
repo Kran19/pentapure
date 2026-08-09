@@ -1,6 +1,4 @@
 (function () {
-  const DATE_HEADER_PATTERN = /(date|created|updated)/i;
-  const NUMBER_HEADER_PATTERN = /(qty|quantity|amount|price|cost|total|kg|#|no|count|present|absent|half|ot|hrs|hours)/i;
   const DATE_VALUE_PATTERN = /^(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}|\d{1,2}\s+[A-Za-z]{3,}\s+\d{4})$/;
 
   function normalizeText(value) {
@@ -28,7 +26,7 @@
     input.style.color = '#2A2A2A';
     input.style.border = '1px solid #DDCFAF';
     input.style.padding = '5px 10px';
-    input.style.minWidth = '120px';
+    input.style.minWidth = '110px';
     input.style.textTransform = 'uppercase';
     return input;
   }
@@ -41,7 +39,7 @@
     select.style.color = '#2A2A2A';
     select.style.border = '1px solid #DDCFAF';
     select.style.padding = '5px 10px';
-    select.style.minWidth = '120px';
+    select.style.minWidth = '110px';
     select.style.textTransform = 'uppercase';
 
     const emptyOption = document.createElement('option');
@@ -68,6 +66,34 @@
     return btn;
   }
 
+  function createPageSizeSelect() {
+    const select = document.createElement('select');
+    select.className = 'btn-sm page-size-select';
+    select.style.background = '#FFFFFF';
+    select.style.color = '#2A2A2A';
+    select.style.border = '1px solid #DDCFAF';
+    select.style.padding = '5px 10px';
+    select.style.fontWeight = '600';
+    select.style.marginLeft = 'auto';
+
+    const sizes = [
+      { val: '10', label: 'Show 10' },
+      { val: '20', label: 'Show 20' },
+      { val: '50', label: 'Show 50' },
+      { val: '100', label: 'Show 100' },
+      { val: 'all', label: 'Show All' }
+    ];
+
+    sizes.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.val;
+      opt.textContent = s.label;
+      select.appendChild(opt);
+    });
+
+    return select;
+  }
+
   function matchesFilter(value, filter, type) {
     const normalized = normalizeText(value).toLowerCase();
     const filterValue = normalizeText(filter);
@@ -85,15 +111,112 @@
     return normalized.includes(filterValue.toLowerCase());
   }
 
-  function applyFilters(table, controls) {
-    const rows = Array.from(table.tBodies[0].querySelectorAll('tr'));
-    rows.forEach((row) => {
-      const visible = controls.every((control) => {
+  function updateTableState(table, controls, paginationState) {
+    if (!table.tBodies || !table.tBodies.length) return;
+    const allRows = Array.from(table.tBodies[0].querySelectorAll('tr'));
+    if (!allRows.length) return;
+
+    // Filter matching rows
+    const matchingRows = allRows.filter((row) => {
+      return controls.every((control) => {
         if (!control.element.value) return true;
         const cell = row.children[control.index];
         return matchesFilter(cell ? cell.textContent : '', control.element.value, control.type);
       });
-      row.style.display = visible ? '' : 'none';
+    });
+
+    const total = matchingRows.length;
+    const sizeVal = paginationState.pageSizeSelect.value;
+    const pageSize = sizeVal === 'all' ? total : parseInt(sizeVal, 10);
+
+    const totalPages = pageSize <= 0 || pageSize >= total ? 1 : Math.ceil(total / pageSize);
+
+    if (paginationState.currentPage > totalPages) paginationState.currentPage = totalPages;
+    if (paginationState.currentPage < 1) paginationState.currentPage = 1;
+
+    const currentPage = paginationState.currentPage;
+    const startIdx = sizeVal === 'all' || total === 0 ? 0 : (currentPage - 1) * pageSize;
+    const endIdx = sizeVal === 'all' ? total : Math.min(startIdx + pageSize, total);
+
+    // Hide all rows
+    allRows.forEach((row) => { row.style.display = 'none'; });
+
+    // Show visible page rows
+    matchingRows.slice(startIdx, endIdx).forEach((row) => {
+      row.style.display = '';
+    });
+
+    // Render pagination footer info & buttons
+    renderPaginationFooter(table, paginationState, total, startIdx, endIdx, totalPages);
+  }
+
+  function renderPaginationFooter(table, paginationState, total, startIdx, endIdx, totalPages) {
+    let footer = paginationState.footerElement;
+    if (!footer) {
+      footer = document.createElement('div');
+      footer.className = 'table-pagination-footer flex-between';
+      footer.style.cssText = 'display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-top:0.75rem; padding:0.5rem 0.25rem; font-size:0.85rem; color:var(--text-muted);';
+      const targetWrapper = table.closest('.table-container') || table;
+      targetWrapper.parentNode.insertBefore(footer, targetWrapper.nextSibling);
+      paginationState.footerElement = footer;
+    }
+
+    if (total === 0) {
+      footer.innerHTML = `<div>Showing 0 to 0 of 0 entries</div><div></div>`;
+      return;
+    }
+
+    const showingFrom = startIdx + 1;
+    const showingTo = endIdx;
+    const currentPage = paginationState.currentPage;
+
+    let buttonsHtml = `<div style="display:flex; align-items:center; gap:4px;">`;
+    
+    // Prev Button
+    buttonsHtml += `<button type="button" class="btn btn-sm btn-secondary pag-prev" ${currentPage <= 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} style="padding:3px 8px; font-size:0.8rem;">Prev</button>`;
+
+    // Page numbers
+    for (let p = 1; p <= totalPages; p++) {
+      if (totalPages > 7 && Math.abs(p - currentPage) > 2 && p !== 1 && p !== totalPages) {
+        if (p === 2 && currentPage > 4) buttonsHtml += `<span style="padding:0 4px;">...</span>`;
+        if (p === totalPages - 1 && currentPage < totalPages - 3) buttonsHtml += `<span style="padding:0 4px;">...</span>`;
+        continue;
+      }
+
+      const isActive = p === currentPage;
+      buttonsHtml += `<button type="button" class="btn btn-sm ${isActive ? 'btn-primary' : 'btn-secondary'} pag-page" data-page="${p}" style="padding:3px 9px; font-size:0.8rem; ${isActive ? 'font-weight:bold;' : ''}">${p}</button>`;
+    }
+
+    // Next Button
+    buttonsHtml += `<button type="button" class="btn btn-sm btn-secondary pag-next" ${currentPage >= totalPages ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} style="padding:3px 8px; font-size:0.8rem;">Next</button></div>`;
+
+    footer.innerHTML = `
+      <div style="font-weight:500;">Showing ${showingFrom} to ${showingTo} of ${total} entries</div>
+      ${buttonsHtml}
+    `;
+
+    // Attach event listeners
+    const prevBtn = footer.querySelector('.pag-prev');
+    if (prevBtn && currentPage > 1) {
+      prevBtn.addEventListener('click', () => {
+        paginationState.currentPage--;
+        updateTableState(table, paginationState.controls, paginationState);
+      });
+    }
+
+    const nextBtn = footer.querySelector('.pag-next');
+    if (nextBtn && currentPage < totalPages) {
+      nextBtn.addEventListener('click', () => {
+        paginationState.currentPage++;
+        updateTableState(table, paginationState.controls, paginationState);
+      });
+    }
+
+    footer.querySelectorAll('.pag-page').forEach(btn => {
+      btn.addEventListener('click', () => {
+        paginationState.currentPage = parseInt(btn.getAttribute('data-page'), 10);
+        updateTableState(table, paginationState.controls, paginationState);
+      });
     });
   }
 
@@ -119,19 +242,17 @@
     filterBar.style.gap = '0.75rem';
     filterBar.style.marginBottom = '1rem';
     filterBar.style.padding = '0.75rem';
-    filterBar.style.background = '#fdfbf7'; // Match theme light background
+    filterBar.style.background = '#fdfbf7';
     filterBar.style.borderRadius = '0.75rem';
-    filterBar.style.border = '1px solid #DDCFAF'; // Match theme border
+    filterBar.style.border = '1px solid #DDCFAF';
 
     headerCells.forEach((th, index) => {
       const label = normalizeText(th.textContent) || `Column ${index + 1}`;
       
-      // Skip columns that shouldn't have filters
       if (th.classList.contains('no-print') || label.toLowerCase() === 'action' || !label) {
         return;
       }
 
-      // Filter empty rows if any, to prevent empty matching messing up types
       const values = rows.map((row) => normalizeText((row.children[index] || {}).textContent));
       const nonEmptyValues = values.filter(v => v !== '');
       const unique = uniqueValues(values).sort((a, b) => a.localeCompare(b));
@@ -155,24 +276,51 @@
         controlElement = createInput('text', label, label);
       }
 
-      controlElement.addEventListener('input', () => applyFilters(table, controls));
-      controlElement.addEventListener('change', () => applyFilters(table, controls));
-
       controls.push({ index, element: controlElement, type: controlType });
       filterBar.appendChild(controlElement);
     });
 
     const resetButton = createResetButton();
-    resetButton.addEventListener('click', () => {
-      controls.forEach((control) => {
-        control.element.value = '';
-      });
-      applyFilters(table, controls);
-    });
     filterBar.appendChild(resetButton);
 
-    table.parentNode.insertBefore(filterBar, table);
+    const pageSizeSelect = createPageSizeSelect();
+    filterBar.appendChild(pageSizeSelect);
+
+    const paginationState = {
+      currentPage: 1,
+      pageSizeSelect: pageSizeSelect,
+      controls: controls,
+      footerElement: null
+    };
+
+    controls.forEach((control) => {
+      control.element.addEventListener('input', () => {
+        paginationState.currentPage = 1;
+        updateTableState(table, controls, paginationState);
+      });
+      control.element.addEventListener('change', () => {
+        paginationState.currentPage = 1;
+        updateTableState(table, controls, paginationState);
+      });
+    });
+
+    resetButton.addEventListener('click', () => {
+      controls.forEach((control) => { control.element.value = ''; });
+      paginationState.currentPage = 1;
+      updateTableState(table, controls, paginationState);
+    });
+
+    pageSizeSelect.addEventListener('change', () => {
+      paginationState.currentPage = 1;
+      updateTableState(table, controls, paginationState);
+    });
+
+    const targetWrapper = table.closest('.table-container') || table;
+    targetWrapper.parentNode.insertBefore(filterBar, targetWrapper);
     table.dataset.filterAttached = 'true';
+
+    // Initial state update & rendering
+    updateTableState(table, controls, paginationState);
   }
 
   function scanTables(root = document) {

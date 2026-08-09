@@ -125,11 +125,14 @@
           <div class="list-item-meta" style="margin-top:6px; font-size:0.8rem; color:var(--text-muted);">
             <span class="badge badge-open" style="font-size:0.6rem;">ORDER</span> · 
             {{ \Carbon\Carbon::parse($item['date'])->format('d M Y') }} · 
-            <span class="badge {{ $item['status']==='OPEN'?'badge-open':'badge-closed' }}" style="font-size:0.6rem;">{{ $item['status'] }}</span>
+            <span class="badge {{ $item['status']==='OPEN'?'badge-open':($item['status']==='CANCELLED'?'badge-danger':'badge-closed') }}" style="font-size:0.6rem;">{{ $item['status'] }}</span>
           </div>
         </div>
-        <div class="list-item-right" style="text-align:right;">
+        <div class="list-item-right" style="text-align:right; display:flex; align-items:center; gap:10px;">
           <div style="font-weight:bold; color:var(--secondary); font-size:1.1rem;">₹{{ number_format($item['total'], 2) }}</div>
+          @if(($item['status'] ?? '') !== 'CANCELLED' && ($item['status'] ?? '') !== 'CLOSED' && ($item['dispatchStatus'] ?? '') !== 'DONE' && ($item['dispatchStatus'] ?? '') !== 'PARTIAL')
+            <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); app.cancelSalesOrder({{ $item['id'] }})" style="background:var(--danger); color:#fff; padding:0.35rem 0.8rem; font-weight:bold; font-size:0.75rem; border-radius:6px; width:auto;">❌ Cancel</button>
+          @endif
         </div>
       </div>
     @elseif($item['_type'] === 'COMPANY')

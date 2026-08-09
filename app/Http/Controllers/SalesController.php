@@ -17,10 +17,10 @@ class SalesController extends Controller
     public function home()
     {
         $orders       = Order::with(['company', 'transporter', 'items.product'])->orderByDesc('created_at')->get();
-        $totalOrders  = $orders->count();
-        $openOrders   = $orders->where('status', 'OPEN')->count();
-        $pendingDisp  = $orders->where('dispatch_status', 'PENDING')->count();
-        $totalValue   = $orders->sum('total');
+        $totalOrders      = $orders->count();
+        $pendingOrders    = $orders->whereIn('status', ['OPEN', 'PENDING'])->where('dispatch_status', '!=', 'DONE')->count();
+        $dispatchedOrders = $orders->where('dispatch_status', 'DONE')->count();
+        $totalValue       = $orders->sum('total');
 
         $pageData = [
             'orders'         => $orders->map(fn($o) => [
@@ -52,7 +52,7 @@ class SalesController extends Controller
             'products'           => Product::target()->active()->visibleTo($this->authUser()['role'])->get(['id', 'name', 'unit', 'type'])->map(fn($p) => [
                 'id' => $p->id, 'name' => strtoupper($p->name ?? ''), 'unit' => $p->unit, 'type' => $p->type
             ]),
-            'stats'              => compact('totalOrders', 'openOrders', 'pendingDisp', 'totalValue'),
+            'stats'              => compact('totalOrders', 'pendingOrders', 'dispatchedOrders', 'totalValue'),
         ];
         return view('sales.home', compact('pageData'));
     }
