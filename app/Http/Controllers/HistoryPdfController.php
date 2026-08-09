@@ -347,7 +347,7 @@ class HistoryPdfController extends Controller
             }
         }
 
-        $dispatchHistory = \App\Models\DispatchLog::with(['dispatchItems.orderItem.product', 'user'])
+        $dispatchHistory = DispatchLog::with(['dispatchItems.orderItem.product', 'user'])
             ->where('order_id', $order->id)
             ->where('id', '<=', $log->id)
             ->orderBy('created_at', 'asc')

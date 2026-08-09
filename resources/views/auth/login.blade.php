@@ -109,8 +109,10 @@
 
   async function handleNotificationPermission(allow) {
     document.getElementById('notification-modal').classList.remove('active');
-    showPasswordStep();
-    if (allow && window.app && typeof app.requestNotificationPermission === 'function') {
+    if (allow) {
+      if (window.app && typeof app.toast === 'function') {
+        app.toast('Please check your browser address bar to allow notifications.', 'info');
+      }
       try {
         const subscription = await app.requestNotificationPermission();
         if (subscription) {
@@ -119,7 +121,12 @@
       } catch (e) {
         console.warn('Notification permission error:', e);
       }
+    } else {
+      if (window.app && typeof app.toast === 'function') {
+        app.toast('Warning: You will not receive real-time updates.', 'warning');
+      }
     }
+    showPasswordStep();
   }
 
   function showPasswordStep() {

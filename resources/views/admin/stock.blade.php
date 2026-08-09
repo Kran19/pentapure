@@ -911,21 +911,17 @@ function adminExportStockPdf() {
   Swal.fire({
     title: '📄 EXPORT STOCK VALUATION PDF',
     html: `
-      <div style="text-align:left; font-size:0.95rem;">
-        <p style="margin-bottom:14px; color:#cbd5e1 !important; -webkit-text-fill-color:#cbd5e1 !important; font-weight:500; line-height:1.4;">Select the stock panels to include in the PDF report:</p>
-        
-        <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:18px;">
-          <label class="export-option-card">
-            <input type="checkbox" id="export-stage-raw" checked style="width:20px; height:20px; accent-color:#f59e0b; cursor:pointer;">
-            <span>🌿 RAW MATERIAL STOCK</span>
+      <div style="text-align:left; font-size:0.95rem; color:#e6edf3;">
+        <p style="margin-bottom:12px; color:#8b949e;">Select the stock panels to include in the PDF report:</p>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:#ffffff !important;">
+            <input type="checkbox" id="export-stage-raw" checked style="width:20px; height:20px; cursor:pointer;"> 🌿 Raw Material Stock
           </label>
-          <label class="export-option-card">
-            <input type="checkbox" id="export-stage-semi" checked style="width:20px; height:20px; accent-color:#f59e0b; cursor:pointer;">
-            <span>⚗️ SEMI-FINISHED STOCK</span>
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:#ffffff !important;">
+            <input type="checkbox" id="export-stage-semi" checked style="width:20px; height:20px; cursor:pointer;"> ⚗️ Semi-Finished Stock
           </label>
-          <label class="export-option-card">
-            <input type="checkbox" id="export-stage-finished" checked style="width:20px; height:20px; accent-color:#f59e0b; cursor:pointer;">
-            <span>✅ FG STOCK (FINISHED GOODS)</span>
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:#ffffff !important;">
+            <input type="checkbox" id="export-stage-finished" checked style="width:20px; height:20px; cursor:pointer;"> ✅ FG Stock
           </label>
         </div>
         

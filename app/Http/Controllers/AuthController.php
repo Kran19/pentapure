@@ -11,7 +11,7 @@ class AuthController extends Controller
     public function showLogin()
     {
         if (session('auth_user')) {
-            return $this->redirectToRole(session('auth_user')['role']);
+            return $this->authenticatedRedirect();
         }
         $users = User::where('status', 'ACTIVE')->orderBy('role')->get(['id', 'name', 'role']);
         return view('auth.login', compact('users'));
