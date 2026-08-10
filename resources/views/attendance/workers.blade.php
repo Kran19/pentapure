@@ -2,9 +2,65 @@
 
 @section('content')
 <div style="padding:1.5rem;">
-  <div class="flex-between mb-1">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
     <h2 style="margin:0;">👷‍♂️ Workers Master</h2>
-    <button class="btn btn-sm" style="width:auto; padding:0.4rem 1rem;" onclick="openWorkerModal()">+ Add Worker</button>
+    <button class="btn" onclick="openWorkerForm()" style="width:auto; padding:0.6rem 1.2rem;">+ Add Worker</button>
+  </div>
+
+  <!-- Add/Edit Form Card (Open by default) -->
+  <div id="worker-form-card" class="card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
+    <div class="card-title" id="w-form-title">Add Worker</div>
+    <form id="worker-form">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-top:1rem;">
+        <div class="form-group" style="grid-column:1/-1;">
+          <label>Full Name</label>
+          <input type="text" id="w-name" required placeholder="e.g. Ram Kumar">
+        </div>
+        <div class="form-group">
+          <label>Department</label>
+          <select id="w-dept" required>
+            <option value="">-- Select --</option>
+            @foreach($departments as $d)
+              <option value="{{ $d->id }}">{{ $d->name }}</option>
+            @endforeach
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <input type="text" id="w-role" placeholder="e.g. Operator">
+        </div>
+        <div class="form-group">
+          <label>Shift Type</label>
+          <select id="w-shift">
+            <option value="DAY">Day Shift</option>
+            <option value="NIGHT">Night Shift</option>
+            <option value="CUSTOM">Custom</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Salary Type</label>
+          <select id="w-salary-type" onchange="updateSalaryLabel()">
+            <option value="DAILY">Daily (₹ / Day)</option>
+            <option value="MONTHLY">Monthly (₹ / Month)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label id="salary-label">Salary Amount (₹)</label>
+          <input type="number" id="w-salary" required min="0" step="1">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="w-status">
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex; gap:1rem; margin-top:1.5rem;">
+        <button type="submit" class="btn" style="width:auto; padding:0.6rem 1.5rem;">Save Worker</button>
+        <button type="button" class="btn btn-secondary" onclick="closeWorkerForm()" style="width:auto; padding:0.6rem 1.5rem;">Cancel</button>
+      </div>
+    </form>
   </div>
 
   <div class="card">
@@ -53,70 +109,14 @@
   </div>
 </div>
 
-<!-- Modal -->
-<div class="modal-overlay" id="worker-modal">
-  <div class="modal-content" style="max-width:500px;">
-    <h3 class="mb-1" id="w-modal-title">Add Worker</h3>
-    <form id="worker-form">
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-        <div class="form-group" style="grid-column:1/-1;">
-          <label>Full Name</label>
-          <input type="text" id="w-name" required placeholder="e.g. Ram Kumar">
-        </div>
-        <div class="form-group">
-          <label>Department</label>
-          <select id="w-dept" required>
-            <option value="">-- Select --</option>
-            @foreach($departments as $d)
-              <option value="{{ $d->id }}">{{ $d->name }}</option>
-            @endforeach
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Role</label>
-          <input type="text" id="w-role" placeholder="e.g. Operator">
-        </div>
-        <div class="form-group">
-          <label>Shift Type</label>
-          <select id="w-shift">
-            <option value="DAY">Day Shift</option>
-            <option value="NIGHT">Night Shift</option>
-            <option value="CUSTOM">Custom</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Salary Type</label>
-          <select id="w-salary-type" onchange="updateSalaryLabel()">
-            <option value="DAILY">Daily (₹ / Day)</option>
-            <option value="MONTHLY">Monthly (₹ / Month)</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label id="salary-label">Salary Amount (₹)</label>
-          <input type="number" id="w-salary" required min="0" step="1">
-        </div>
-        <div class="form-group">
-          <label>Status</label>
-          <select id="w-status">
-            <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
-          </select>
-        </div>
-      </div>
-      <div style="display:flex; gap:10px; margin-top:1.5rem;">
-        <button type="button" class="btn btn-secondary" onclick="closeWorkerModal()">Cancel</button>
-        <button type="submit" class="btn">Save Worker</button>
-      </div>
-    </form>
-  </div>
-</div>
+<!-- Modal removed, now using inline form -->
 
 <script>
 let editingWorkerId = null;
 
-function openWorkerModal() {
+function openWorkerForm() {
   editingWorkerId = null;
-  document.getElementById('w-modal-title').innerText = 'Add Worker';
+  document.getElementById('w-form-title').innerText = 'Add Worker';
   document.getElementById('w-name').value = '';
   document.getElementById('w-dept').value = '';
   document.getElementById('w-role').value = '';
@@ -125,7 +125,8 @@ function openWorkerModal() {
   document.getElementById('w-salary').value = '';
   document.getElementById('w-status').value = 'ACTIVE';
   updateSalaryLabel();
-  document.getElementById('worker-modal').classList.add('active');
+  document.getElementById('worker-form-card').style.display = 'block';
+  document.getElementById('worker-form-card').scrollIntoView({ behavior: 'smooth' });
 }
 
 function updateSalaryLabel() {
@@ -135,7 +136,7 @@ function updateSalaryLabel() {
 
 function editWorker(w) {
   editingWorkerId = w.id;
-  document.getElementById('w-modal-title').innerText = 'Edit Worker';
+  document.getElementById('w-form-title').innerText = 'Edit Worker';
   document.getElementById('w-name').value = w.name;
   document.getElementById('w-dept').value = w.department_id;
   document.getElementById('w-role').value = w.role || '';
@@ -144,11 +145,12 @@ function editWorker(w) {
   document.getElementById('w-salary').value = parseFloat(w.salary_amount || w.daily_salary);
   document.getElementById('w-status').value = w.status;
   updateSalaryLabel();
-  document.getElementById('worker-modal').classList.add('active');
+  document.getElementById('worker-form-card').style.display = 'block';
+  document.getElementById('worker-form-card').scrollIntoView({ behavior: 'smooth' });
 }
 
-function closeWorkerModal() {
-  document.getElementById('worker-modal').classList.remove('active');
+function closeWorkerForm() {
+  document.getElementById('worker-form-card').style.display = 'none';
 }
 
 document.getElementById('worker-form').onsubmit = function(e) {

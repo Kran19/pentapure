@@ -2,9 +2,26 @@
 
 @section('content')
 <div style="padding: 1.5rem;">
-    <div class="flex-between mb-1">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
         <h2 style="margin:0;">✅ Grades Master</h2>
-        <button class="btn btn-sm" style="width:auto; padding:0.4rem 1rem;" onclick="openGradeModal()">+ Add New Grade</button>
+        <button class="btn" onclick="openGradeForm()" style="width:auto; padding:0.6rem 1.2rem;">+ Add New Grade</button>
+    </div>
+
+    <!-- Add/Edit Form Card (Open by default) -->
+    <div id="grade-form-card" class="card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
+        <div class="card-title" id="form-card-title">Add New Grade</div>
+        <form id="grade-form">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1rem;">
+                <div class="form-group">
+                    <label>Grade Name (e.g., PREMIUM+, SUPER GOLD)</label>
+                    <input type="text" id="grade-name" placeholder="Enter grade name" required>
+                </div>
+            </div>
+            <div style="display:flex; gap:1rem; margin-top:1.5rem;">
+                <button type="submit" class="btn" style="width:auto; padding:0.6rem 1.5rem;">Save Grade</button>
+                <button type="button" class="btn btn-secondary" onclick="closeGradeForm()" style="width:auto; padding:0.6rem 1.5rem;">Cancel</button>
+            </div>
+        </form>
     </div>
 
     <div class="card">
@@ -54,42 +71,29 @@
     </div>
 </div>
 
-<!-- Add Grade Modal -->
-<div class="modal-overlay" id="grade-modal">
-    <div class="modal-content">
-        <h3 class="mb-1" id="modal-title">Add New Grade</h3>
-        <form id="grade-form">
-            <div class="form-group">
-                <label>Grade Name (e.g., PREMIUM+, SUPER GOLD)</label>
-                <input type="text" id="grade-name" placeholder="Enter grade name" required>
-            </div>
-            <div style="display:flex; gap:10px; margin-top:1rem;">
-                <button type="button" class="btn btn-secondary" onclick="closeGradeModal()">Cancel</button>
-                <button type="submit" class="btn">Save Grade</button>
-            </div>
-        </form>
-    </div>
-</div>
+<!-- Modal removed, now using inline form -->
 
 <script>
 let editingGradeId = null;
 
-function openGradeModal() {
+function openGradeForm() {
     editingGradeId = null;
-    document.getElementById('modal-title').innerText = 'Add New Grade';
+    document.getElementById('form-card-title').innerText = 'Add New Grade';
     document.getElementById('grade-name').value = '';
-    document.getElementById('grade-modal').classList.add('active');
+    document.getElementById('grade-form-card').style.display = 'block';
+    document.getElementById('grade-form-card').scrollIntoView({ behavior: 'smooth' });
 }
 
 function adminEditGrade(g) {
     editingGradeId = g.id;
-    document.getElementById('modal-title').innerText = 'Edit Grade';
+    document.getElementById('form-card-title').innerText = 'Edit Grade';
     document.getElementById('grade-name').value = g.name;
-    document.getElementById('grade-modal').classList.add('active');
+    document.getElementById('grade-form-card').style.display = 'block';
+    document.getElementById('grade-form-card').scrollIntoView({ behavior: 'smooth' });
 }
 
-function closeGradeModal() {
-    document.getElementById('grade-modal').classList.remove('active');
+function closeGradeForm() {
+    document.getElementById('grade-form-card').style.display = 'none';
 }
 
 document.getElementById('grade-form').onsubmit = function(e) {

@@ -4,11 +4,11 @@
 <div style="padding:1.5rem;">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
     <h2 style="margin:0;">👥 Users & Hierarchy</h2>
-    <button class="btn" onclick="document.getElementById('user-form-card').style.display='block'" style="width:auto; padding:0.6rem 1.2rem;">+ Add User</button>
+    <button class="btn" onclick="resetUserForm()" style="width:auto; padding:0.6rem 1.2rem;">+ Add User</button>
   </div>
 
   <!-- Add/Edit Form -->
-  <div id="user-form-card" class="card" style="display:none; margin-bottom:1.5rem; padding:1.2rem;">
+  <div id="user-form-card" class="card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
     <div class="card-title">Create New User</div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
       <div class="form-group">
@@ -157,6 +157,28 @@
 
 <script>
 let editingUserId = null;
+
+function resetUserForm() {
+  editingUserId = null;
+  document.querySelector('#user-form-card .card-title').innerText = 'Create New User';
+  document.getElementById('u-name').value = '';
+  document.getElementById('u-email').value = '';
+  document.getElementById('u-role').value = '';
+  document.getElementById('u-branch').value = '';
+  document.getElementById('u-password').value = '';
+  document.getElementById('u-password').placeholder = 'Set password';
+  
+  if(document.getElementById('perm-can_manage')) document.getElementById('perm-can_manage').checked = false;
+  document.querySelectorAll('.sub-perm').forEach(cb => cb.checked = false);
+  document.querySelectorAll('.visible-cashier-cb').forEach(cb => {
+      cb.checked = false;
+      cb.parentElement.style.display = 'flex';
+  });
+  
+  toggleRoleFields('');
+  document.getElementById('user-form-card').style.display = 'block';
+  document.getElementById('user-form-card').scrollIntoView({ behavior: 'smooth' });
+}
 
 function toggleRoleFields(role) {
   const branchContainer = document.getElementById('branch-field-container');

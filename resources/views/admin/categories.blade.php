@@ -2,9 +2,26 @@
 
 @section('content')
 <div style="padding: 1.5rem;">
-  <div class="flex-between mb-1" style="flex-wrap: wrap; gap: 10px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
     <h2 style="margin:0;">🏷️ Expense Category Master</h2>
-    <button class="btn btn-sm btn-secondary" style="width:auto; padding:0.4rem 1rem;" onclick="openCategoryModal()">+ Add New Category</button>
+    <button class="btn" onclick="openCategoryForm()" style="width:auto; padding:0.6rem 1.2rem;">+ Add New Category</button>
+  </div>
+
+  <!-- Add/Edit Form Card (Open by default) -->
+  <div id="category-form-card" class="card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
+    <div class="card-title" id="form-card-title">Add New Category</div>
+    <form id="category-form">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1rem;">
+        <div class="form-group">
+          <label>Category Name *</label>
+          <input type="text" id="category-name" placeholder="e.g. Packaging, Office Supplies..." required>
+        </div>
+      </div>
+      <div style="display:flex; gap:1rem; margin-top:1.5rem;">
+        <button type="submit" class="btn" style="width:auto; padding:0.6rem 1.5rem;">Save Category</button>
+        <button type="button" class="btn btn-secondary" onclick="closeCategoryForm()" style="width:auto; padding:0.6rem 1.5rem;">Cancel</button>
+      </div>
+    </form>
   </div>
 
   <div class="card" style="padding: 1.2rem;">
@@ -53,44 +70,28 @@
   </div>
 </div>
 
-<!-- Add/Edit Category Modal -->
-<div class="modal-overlay" id="category-modal">
-  <div class="modal-content">
-    <h3 class="mb-1" id="modal-title">Add New Category</h3>
-
-    <form id="category-form">
-      <div class="form-group">
-        <label>Category Name *</label>
-        <input type="text" id="category-name" placeholder="e.g. Packaging, Office Supplies..." required>
-      </div>
-
-      <div style="display:flex; gap:10px; margin-top:1rem;">
-        <button type="button" class="btn btn-secondary" onclick="closeCategoryModal()">Cancel</button>
-        <button type="submit" class="btn">Save Category</button>
-      </div>
-    </form>
-  </div>
-</div>
+<!-- Modal removed, now using inline form -->
 
 <script>
   let editingCategoryId = null;
 
-  function openCategoryModal() {
+  function openCategoryForm() {
     editingCategoryId = null;
-    document.getElementById('modal-title').innerText = 'Add New Category';
+    document.getElementById('form-card-title').innerText = 'Add New Category';
     document.getElementById('category-name').value = '';
-    document.getElementById('category-modal').classList.add('active');
+    document.getElementById('category-form-card').style.display = 'block';
   }
 
   function adminEditCategory(c) {
     editingCategoryId = c.id;
-    document.getElementById('modal-title').innerText = 'Edit Category';
+    document.getElementById('form-card-title').innerText = 'Edit Category';
     document.getElementById('category-name').value = c.name;
-    document.getElementById('category-modal').classList.add('active');
+    document.getElementById('category-form-card').style.display = 'block';
+    document.getElementById('category-form-card').scrollIntoView({ behavior: 'smooth' });
   }
 
-  function closeCategoryModal() {
-    document.getElementById('category-modal').classList.remove('active');
+  function closeCategoryForm() {
+    document.getElementById('category-form-card').style.display = 'none';
   }
 
   document.getElementById('category-form').onsubmit = function(e) {

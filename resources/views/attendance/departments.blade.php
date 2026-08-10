@@ -2,9 +2,26 @@
 
 @section('content')
 <div style="padding:1.5rem;">
-  <div class="flex-between mb-1">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
     <h2 style="margin:0;">🏢 Departments</h2>
-    <button class="btn btn-sm" style="width:auto; padding:0.4rem 1rem;" onclick="openDeptModal()">+ Add Department</button>
+    <button class="btn" onclick="openDeptForm()" style="width:auto; padding:0.6rem 1.2rem;">+ Add Department</button>
+  </div>
+
+  <!-- Add/Edit Form Card (Open by default) -->
+  <div id="dept-form-card" class="card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
+    <div class="card-title" id="dept-form-title">Add Department</div>
+    <form id="dept-form">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1rem;">
+        <div class="form-group">
+          <label>Department Name</label>
+          <input type="text" id="dept-name" required placeholder="e.g. Staff, Boiler">
+        </div>
+      </div>
+      <div style="display:flex; gap:1rem; margin-top:1.5rem;">
+        <button type="submit" class="btn" style="width:auto; padding:0.6rem 1.5rem;">Save</button>
+        <button type="button" class="btn btn-secondary" onclick="closeDeptForm()" style="width:auto; padding:0.6rem 1.5rem;">Cancel</button>
+      </div>
+    </form>
   </div>
 
   <div class="card">
@@ -46,42 +63,29 @@
   </div>
 </div>
 
-<!-- Modal -->
-<div class="modal-overlay" id="dept-modal">
-  <div class="modal-content">
-    <h3 class="mb-1" id="dept-modal-title">Add Department</h3>
-    <form id="dept-form">
-      <div class="form-group">
-        <label>Department Name</label>
-        <input type="text" id="dept-name" required placeholder="e.g. Staff, Boiler">
-      </div>
-      <div style="display:flex; gap:10px; margin-top:1rem;">
-        <button type="button" class="btn btn-secondary" onclick="closeDeptModal()">Cancel</button>
-        <button type="submit" class="btn">Save</button>
-      </div>
-    </form>
-  </div>
-</div>
+<!-- Modal removed, now using inline form -->
 
 <script>
 let editingDeptId = null;
 
-function openDeptModal() {
+function openDeptForm() {
   editingDeptId = null;
-  document.getElementById('dept-modal-title').innerText = 'Add Department';
+  document.getElementById('dept-form-title').innerText = 'Add Department';
   document.getElementById('dept-name').value = '';
-  document.getElementById('dept-modal').classList.add('active');
+  document.getElementById('dept-form-card').style.display = 'block';
+  document.getElementById('dept-form-card').scrollIntoView({ behavior: 'smooth' });
 }
 
 function editDept(d) {
   editingDeptId = d.id;
-  document.getElementById('dept-modal-title').innerText = 'Edit Department';
+  document.getElementById('dept-form-title').innerText = 'Edit Department';
   document.getElementById('dept-name').value = d.name;
-  document.getElementById('dept-modal').classList.add('active');
+  document.getElementById('dept-form-card').style.display = 'block';
+  document.getElementById('dept-form-card').scrollIntoView({ behavior: 'smooth' });
 }
 
-function closeDeptModal() {
-  document.getElementById('dept-modal').classList.remove('active');
+function closeDeptForm() {
+  document.getElementById('dept-form-card').style.display = 'none';
 }
 
 document.getElementById('dept-form').onsubmit = function(e) {
