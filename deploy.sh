@@ -32,4 +32,8 @@ php artisan migrate --force
 # chown -R www-data:www-data storage bootstrap/cache
 # chmod -R 775 storage bootstrap/cache
 
+# 7. Sync public assets to public_html
+echo "Syncing public assets to live web directory..."
+rsync -av public/ ../public_html/penta-pure/
+
 echo "Application deployed successfully!"
