@@ -12,7 +12,7 @@
   </div>
 
   <!-- In-Page Add / Adjust Stock Card (Open by Default) -->
-  <div id="stock-form-card" class="card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
+  <div id="stock-form-card" class="card white-orange-card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
     <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
       <span>📦 Add Stock Entry</span>
       <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('stock-form-card').style.display='none'" style="width:auto; padding:0.3rem 0.8rem;">✕ Close</button>
@@ -93,18 +93,23 @@
 @foreach($rawItems as $s)
           @php 
             $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit;
-            $gStr = ($s->grade && $s->grade !== 'NONE' && $s->grade !== 'N/A') ? ' ' . strtoupper($s->grade) : '';
-            $displayType = strtolower($s->stage) === 'finished' ? 'fg' : strtolower($s->stage);
+            $gStr = ($s->grade && $s->grade !== 'NONE' && $s->grade !== 'N/A') ? ' - ' . strtoupper($s->grade) : '';
+            $displayType = $s->stage === 'FINISHED' ? 'FG' : ($s->stage === 'SEMI' ? 'Semi-Finished' : 'Raw');
           @endphp
           <tr @if($isLow) style="background-color: rgba(220, 38, 38, 0.35) !important; color: #ffffff !important;" title="Low Stock! Threshold is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:600;">{{ $s->name }}{{ $gStr }} ({{ $displayType }})</td>
-            <td @if($isLow) style="font-weight:bold; color:#ffffff;" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
+            <td @if($isLow) style="font-weight:bold; color:#333;" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
-            <td style="font-weight:bold;">₹{{ number_format($s->rate ?? 0, 2) }}</td>
-            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="RAW" style="cursor:pointer; text-decoration:underline; @if($isLow) color:#ffffff; @else color:var(--primary-light); @endif" onclick="showLocationBreakdown(this)">📍 View Locations</td>
+            <td style="font-weight:bold;">
+              ₹{{ number_format($s->rate ?? 0, 2) }}
+              <button class="btn-icon edit" onclick="adminUpdateRate('{{ $s->productId }}', '{{ $s->rate ?? 0 }}', '{{ addslashes($s->name) }}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+              </button>
+            </td>
+            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="RAW" style="cursor:pointer; text-decoration:underline; @if($isLow) color:#333; @else color:var(--primary-light); @endif" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
               <div style="display:flex; align-items:center; gap:0.4rem;">
-                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust" @if($isLow) style="color:#ffffff;" @endif>
+                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust" @if($isLow) style="color:#333;" @endif>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
                 <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" @if($isLow) style="color:#ffcccc;" @else style="color:var(--danger);" @endif>
@@ -136,18 +141,23 @@
           @foreach($semiItems as $s)
           @php 
             $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit;
-            $gStr = ($s->grade && $s->grade !== 'NONE' && $s->grade !== 'N/A') ? ' ' . strtoupper($s->grade) : '';
-            $displayType = strtolower($s->stage) === 'finished' ? 'fg' : strtolower($s->stage);
+            $gStr = ($s->grade && $s->grade !== 'NONE' && $s->grade !== 'N/A') ? ' - ' . strtoupper($s->grade) : '';
+            $displayType = $s->stage === 'FINISHED' ? 'FG' : ($s->stage === 'SEMI' ? 'Semi-Finished' : 'Raw');
           @endphp
           <tr @if($isLow) style="background-color: rgba(220, 38, 38, 0.35) !important; color: #ffffff !important;" title="Low Stock! Threshold is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:600;">{{ $s->name }}{{ $gStr }} ({{ $displayType }})</td>
-            <td @if($isLow) style="font-weight:bold; color:#ffffff;" @else style="font-weight:bold; color:var(--warning);" @endif>{{ number_format($s->quantity, 2) }}</td>
+            <td @if($isLow) style="font-weight:bold; color:#333;" @else style="font-weight:bold; color:var(--warning);" @endif>{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
-            <td style="font-weight:bold;">₹{{ number_format($s->rate ?? 0, 2) }}</td>
-            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="SEMI" style="cursor:pointer; text-decoration:underline; @if($isLow) color:#ffffff; @else color:var(--primary-light); @endif" onclick="showLocationBreakdown(this)">📍 View Locations</td>
+            <td style="font-weight:bold;">
+              ₹{{ number_format($s->rate ?? 0, 2) }}
+              <button class="btn-icon edit" onclick="adminUpdateRate('{{ $s->productId }}', '{{ $s->rate ?? 0 }}', '{{ addslashes($s->name) }}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+              </button>
+            </td>
+            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="SEMI" style="cursor:pointer; text-decoration:underline; @if($isLow) color:#333; @else color:var(--primary-light); @endif" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
               <div style="display:flex; align-items:center; gap:0.4rem;">
-                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust" @if($isLow) style="color:#ffffff;" @endif>
+                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust" @if($isLow) style="color:#333;" @endif>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
                 <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" @if($isLow) style="color:#ffcccc;" @else style="color:var(--danger);" @endif>
@@ -179,18 +189,23 @@
           @foreach($finishedItems as $s)
           @php 
             $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit;
-            $gStr = ($s->grade && $s->grade !== 'NONE' && $s->grade !== 'N/A') ? ' ' . strtoupper($s->grade) : '';
-            $displayType = strtolower($s->stage) === 'finished' ? 'fg' : strtolower($s->stage);
+            $gStr = ($s->grade && $s->grade !== 'NONE' && $s->grade !== 'N/A') ? ' - ' . strtoupper($s->grade) : '';
+            $displayType = $s->stage === 'FINISHED' ? 'FG' : ($s->stage === 'SEMI' ? 'Semi-Finished' : 'Raw');
           @endphp
           <tr @if($isLow) style="background-color: rgba(220, 38, 38, 0.35) !important; color: #ffffff !important;" title="Low Stock! Threshold is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:600;">{{ $s->name }}{{ $gStr }} ({{ $displayType }})</td>
-            <td @if($isLow) style="font-weight:bold; color:#ffffff;" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
+            <td @if($isLow) style="font-weight:bold; color:#333;" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
-            <td style="font-weight:bold;">₹{{ number_format($s->rate ?? 0, 2) }}</td>
-            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="FINISHED" style="cursor:pointer; text-decoration:underline; @if($isLow) color:#ffffff; @else color:var(--primary-light); @endif" onclick="showLocationBreakdown(this)">📍 View Locations</td>
+            <td style="font-weight:bold;">
+              ₹{{ number_format($s->rate ?? 0, 2) }}
+              <button class="btn-icon edit" onclick="adminUpdateRate('{{ $s->productId }}', '{{ $s->rate ?? 0 }}', '{{ addslashes($s->name) }}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+              </button>
+            </td>
+            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="FINISHED" style="cursor:pointer; text-decoration:underline; @if($isLow) color:#333; @else color:var(--primary-light); @endif" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
               <div style="display:flex; align-items:center; gap:0.4rem;">
-                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust" @if($isLow) style="color:#ffffff;" @endif>
+                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust" @if($isLow) style="color:#333;" @endif>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
                 <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" @if($isLow) style="color:#ffcccc;" @else style="color:var(--danger);" @endif>
@@ -230,36 +245,36 @@ function adminAddStock() {
     title: 'Add Stock',
     html: `
       <div style="text-align:left;">
-        <label style="font-size:0.82rem; font-weight:600; color:#8b949e;">Stock Type</label>
-        <select id="add-stock-stage" onchange="onStockStageChange()" style="width:100%; padding:0.65rem; margin:0.35rem 0 0.85rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+        <label style="font-size:0.82rem; font-weight:600; color:#6b7280;">Stock Type</label>
+        <select id="add-stock-stage" onchange="onStockStageChange()" style="width:100%; padding:0.65rem; margin:0.35rem 0 0.85rem; border-radius:8px; background:#fff; border:1px solid #d1d5db; color:#333;">
           <option value="RAW">RAW</option>
           <option value="SEMI">SEMI</option>
           <option value="FINISHED">FINISHED</option>
         </select>
 
-        <label style="font-size:0.82rem; font-weight:600; color:#8b949e;">Product</label>
-        <select id="add-stock-product" onchange="onStockProductChange()" style="width:100%; padding:0.65rem; margin:0.35rem 0 0.85rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+        <label style="font-size:0.82rem; font-weight:600; color:#6b7280;">Product</label>
+        <select id="add-stock-product" onchange="onStockProductChange()" style="width:100%; padding:0.65rem; margin:0.35rem 0 0.85rem; border-radius:8px; background:#fff; border:1px solid #d1d5db; color:#333;">
           <!-- Populated dynamically -->
         </select>
 
-        <label style="font-size:0.82rem; font-weight:600; color:#8b949e;">Grade</label>
+        <label style="font-size:0.82rem; font-weight:600; color:#6b7280;">Grade</label>
         <div id="add-stock-grade-container">
           <!-- Populated dynamically -->
         </div>
 
-        <label style="font-size:0.82rem; font-weight:600; color:#8b949e; margin-top:0.85rem; display:block;">Quantity</label>
-        <input id="add-stock-qty" type="number" min="0.001" step="0.001" placeholder="e.g. 200" style="width:100%; padding:0.65rem; margin:0.35rem 0 0.85rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+        <label style="font-size:0.82rem; font-weight:600; color:#6b7280; margin-top:0.85rem; display:block;">Quantity</label>
+        <input id="add-stock-qty" type="number" min="0.001" step="0.001" placeholder="e.g. 200" style="width:100%; padding:0.65rem; margin:0.35rem 0 0.85rem; border-radius:8px; background:#fff; border:1px solid #d1d5db; color:#333;">
 
-        <label style="font-size:0.82rem; font-weight:600; color:#8b949e;">Note</label>
-        <textarea id="add-stock-note" rows="2" placeholder="Optional details" style="width:100%; padding:0.65rem; margin-top:0.35rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3; resize:vertical;"></textarea>
+        <label style="font-size:0.82rem; font-weight:600; color:#6b7280;">Note</label>
+        <textarea id="add-stock-note" rows="2" placeholder="Optional details" style="width:100%; padding:0.65rem; margin-top:0.35rem; border-radius:8px; background:#fff; border:1px solid #d1d5db; color:#333; resize:vertical;"></textarea>
       </div>
     `,
-    background: '#0d1117',
-    color: '#e6edf3',
+    background: '#ffffff',
+    color: '#333333',
     showCancelButton: true,
     confirmButtonText: 'Add Stock',
-    confirmButtonColor: '#238636',
-    cancelButtonColor: '#30363d',
+    confirmButtonColor: '#f59e0b',
+    cancelButtonColor: '#9ca3af',
     didOpen: () => {
       window.onStockStageChange = function() {
         const stage = document.getElementById('add-stock-stage').value;
@@ -282,18 +297,18 @@ function adminAddStock() {
         const gradeContainer = document.getElementById('add-stock-grade-container');
         
         if (!product) {
-          gradeContainer.innerHTML = `<input id="add-stock-grade" value="NONE" style="width:100%; padding:0.65rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">`;
+          gradeContainer.innerHTML = `<input id="add-stock-grade" value="NONE" style="width:100%; padding:0.65rem; border-radius:8px; background:#fff; border:1px solid #d1d5db; color:#333;">`;
           return;
         }
 
         const stage = document.getElementById('add-stock-stage').value;
         if (stage === 'RAW') {
           gradeContainer.innerHTML = `
-            <select id="add-stock-grade" style="width:100%; padding:0.65rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+            <select id="add-stock-grade" style="width:100%; padding:0.65rem; border-radius:8px; background:#fff; border:1px solid #d1d5db; color:#333;">
               <option value="NONE">NONE</option>
               <option value="CUSTOM">Type custom grade...</option>
             </select>
-            <input id="add-stock-grade-custom" placeholder="Enter custom grade" style="display:none; width:100%; padding:0.65rem; margin-top:0.5rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+            <input id="add-stock-grade-custom" placeholder="Enter custom grade" style="display:none; width:100%; padding:0.65rem; margin-top:0.5rem; border-radius:8px; background:#fff; border:1px solid #d1d5db; color:#333;">
           `;
           
           const select = document.getElementById('add-stock-grade');
@@ -308,14 +323,14 @@ function adminAddStock() {
         if (grades.length > 0) {
           const options = grades.map(g => `<option value="${escapeHtml(g.name)}">${escapeHtml(g.name)}</option>`).join('');
           gradeContainer.innerHTML = `
-            <select id="add-stock-grade" style="width:100%; padding:0.65rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+            <select id="add-stock-grade" style="width:100%; padding:0.65rem; border-radius:8px; background:#fff; border:1px solid #d1d5db; color:#333;">
               ${options}
               <option value="CUSTOM">Type custom grade...</option>
             </select>
-            <input id="add-stock-grade-custom" placeholder="Enter custom grade" style="display:none; width:100%; padding:0.65rem; margin-top:0.5rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+            <input id="add-stock-grade-custom" placeholder="Enter custom grade" style="display:none; width:100%; padding:0.65rem; margin-top:0.5rem; border-radius:8px; background:#fff; border:1px solid #d1d5db; color:#333;">
           `;
         } else {
-          gradeContainer.innerHTML = `<input id="add-stock-grade" placeholder="e.g. PREMIUM" style="width:100%; padding:0.65rem; border-radius:8px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">`;
+          gradeContainer.innerHTML = `<input id="add-stock-grade" placeholder="e.g. PREMIUM" style="width:100%; padding:0.65rem; border-radius:8px; background:#fff; border:1px solid #d1d5db; color:#333;">`;
         }
 
         const select = document.getElementById('add-stock-grade');
@@ -385,16 +400,16 @@ function adminAdjustStock(productId, stage, grade) {
   Swal.fire({
     title: 'Adjust Stock',
     html: `
-      <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:#8b949e;">
-        <strong style="color:#e6edf3;">${grade}</strong> &nbsp;·&nbsp; ${stageLabel}
+      <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:#6b7280;">
+        <strong style="color:#333;">${grade}</strong> &nbsp;·&nbsp; ${stageLabel}
       </div>
 
-      <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#8b949e;margin-bottom:0.35rem;">
+      <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
         Adjustment Type
       </label>
       <select id="swal-adj-type" style="
         width:100%; padding:0.65rem 0.8rem; border-radius:8px;
-        background:#161b22; border:1px solid #30363d; color:#e6edf3;
+        background:#fff; border:1px solid #d1d5db; color:#333;
         font-size:0.95rem; margin-bottom:1rem; outline:none;
       ">
         <option value="set">🎯 Set — Override to exact quantity</option>
@@ -402,31 +417,31 @@ function adminAdjustStock(productId, stage, grade) {
         <option value="subtract">➖ Subtract — Decrease current stock</option>
       </select>
 
-      <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#8b949e;margin-bottom:0.35rem;">
+      <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
         Quantity (kg)
       </label>
       <input id="swal-qty" type="number" min="0" step="0.01" placeholder="e.g. 150.00" style="
         width:100%; padding:0.65rem 0.8rem; border-radius:8px;
-        background:#161b22; border:1px solid #30363d; color:#e6edf3;
+        background:#fff; border:1px solid #d1d5db; color:#333;
         font-size:1rem; margin-bottom:1rem; outline:none; box-sizing:border-box;
       ">
 
-      <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#8b949e;margin-bottom:0.35rem;">
+      <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
         Reason / Note <span style="font-weight:400;">(optional)</span>
       </label>
       <textarea id="swal-reason" rows="2" placeholder="e.g. Physical count correction, spillage, etc." style="
         width:100%; padding:0.65rem 0.8rem; border-radius:8px;
-        background:#161b22; border:1px solid #30363d; color:#e6edf3;
+        background:#fff; border:1px solid #d1d5db; color:#333;
         font-size:0.9rem; resize:vertical; outline:none; box-sizing:border-box;
       "></textarea>
     `,
-    background: '#0d1117',
-    color: '#e6edf3',
+    background: '#ffffff',
+    color: '#333333',
     showCancelButton: true,
     confirmButtonText: 'Apply Adjustment',
     cancelButtonText: 'Cancel',
-    confirmButtonColor: '#238636',
-    cancelButtonColor: '#30363d',
+    confirmButtonColor: '#f59e0b',
+    cancelButtonColor: '#9ca3af',
     focusConfirm: false,
     width: '460px',
     customClass: {
@@ -454,8 +469,8 @@ function adminAdjustStock(productId, stage, grade) {
       title: 'Applying…',
       text: 'Updating stock record.',
       allowOutsideClick: false,
-      background: '#0d1117',
-      color: '#e6edf3',
+      background: '#ffffff',
+      color: '#333333',
       didOpen: () => Swal.showLoading()
     });
 
@@ -478,9 +493,9 @@ function adminAdjustStock(productId, stage, grade) {
           icon: 'success',
           title: 'Stock Updated',
           text: d.message || 'Adjustment applied successfully.',
-          background: '#0d1117',
-          color: '#e6edf3',
-          confirmButtonColor: '#238636',
+          background: '#ffffff',
+          color: '#333333',
+          confirmButtonColor: '#f59e0b',
           timer: 2000,
           timerProgressBar: true,
           showConfirmButton: false
@@ -490,9 +505,9 @@ function adminAdjustStock(productId, stage, grade) {
           icon: 'error',
           title: 'Failed',
           text: d.message || 'Something went wrong.',
-          background: '#0d1117',
-          color: '#e6edf3',
-          confirmButtonColor: '#238636',
+          background: '#ffffff',
+          color: '#333333',
+          confirmButtonColor: '#f59e0b',
         });
       }
     })
@@ -501,11 +516,90 @@ function adminAdjustStock(productId, stage, grade) {
         icon: 'error',
         title: 'Network Error',
         text: 'Could not reach the server. Please try again.',
-        background: '#0d1117',
-        color: '#e6edf3',
-        confirmButtonColor: '#238636',
+        background: '#ffffff',
+        color: '#333333',
+        confirmButtonColor: '#f59e0b',
       });
     });
+  });
+}
+
+function adminUpdateRate(productId, currentRate, name) {
+  Swal.fire({
+    title: 'Edit Rate',
+    html: `
+      <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:#6b7280;">
+        <strong style="color:#333;">${name}</strong>
+      </div>
+      <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
+        New Rate (₹)
+      </label>
+      <input id="swal-rate-val" type="number" min="0" step="0.01" value="${currentRate}" style="width:100%; padding:0.65rem; border-radius:8px; border:1px solid #d1d5db; background:#fff; color:#333;">
+    `,
+    background: '#ffffff',
+    color: '#333333',
+    showCancelButton: true,
+    confirmButtonText: 'Save',
+    confirmButtonColor: '#f59e0b',
+    cancelButtonColor: '#9ca3af',
+    preConfirm: () => {
+      const val = document.getElementById('swal-rate-val').value;
+      if (!val || val < 0) {
+        Swal.showValidationMessage('Enter a valid rate');
+        return false;
+      }
+      return val;
+    }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      fetch('/stock/rate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrfToken,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          product_id: productId,
+          rate: result.value
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          Swal.fire({ 
+            icon: 'success', 
+            title: 'Updated!', 
+            text: data.message,
+            background: '#ffffff',
+            color: '#333333',
+            confirmButtonColor: '#f59e0b',
+            timer: 1500, 
+            showConfirmButton: false 
+          }).then(() => location.reload());
+        } else {
+          Swal.fire({ 
+            icon: 'error', 
+            title: 'Error', 
+            text: data.message || data.error || 'Failed to update rate',
+            background: '#ffffff',
+            color: '#333333',
+            confirmButtonColor: '#f59e0b',
+          });
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        Swal.fire({ 
+          icon: 'error', 
+          title: 'Error', 
+          text: 'Network error',
+          background: '#ffffff',
+          color: '#333333',
+          confirmButtonColor: '#f59e0b',
+        });
+      });
+    }
   });
 }
 
@@ -515,27 +609,27 @@ function adminSetLimit(productId, stage, grade, currentLimit) {
   Swal.fire({
     title: 'Set Alert Limit',
     html: `
-      <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:#8b949e;">
-        <strong style="color:#e6edf3;">${grade}</strong> &nbsp;·&nbsp; ${stageLabel}
+      <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:#6b7280;">
+        <strong style="color:#333;">${grade}</strong> &nbsp;·&nbsp; ${stageLabel}
       </div>
 
-      <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#8b949e;margin-bottom:0.35rem;">
+      <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
         Alert Limit (kg)
       </label>
       <input id="swal-limit-qty" type="number" min="0" step="0.01" value="${currentLimit}" style="
         width:100%; padding:0.65rem 0.8rem; border-radius:8px;
-        background:#161b22; border:1px solid #30363d; color:#e6edf3;
+        background:#fff; border:1px solid #d1d5db; color:#333;
         font-size:1rem; margin-bottom:1rem; outline:none; box-sizing:border-box;
       ">
-      <p style="text-align:left; font-size:0.8rem; color:#8b949e;">Set to 0 to disable alerts for this item.</p>
+      <p style="text-align:left; font-size:0.8rem; color:#6b7280;">Set to 0 to disable alerts for this item.</p>
     `,
-    background: '#0d1117',
-    color: '#e6edf3',
+    background: '#ffffff',
+    color: '#333333',
     showCancelButton: true,
     confirmButtonText: 'Save Limit',
     cancelButtonText: 'Cancel',
-    confirmButtonColor: '#238636',
-    cancelButtonColor: '#30363d',
+    confirmButtonColor: '#f59e0b',
+    cancelButtonColor: '#9ca3af',
     focusConfirm: false,
     width: '460px',
     customClass: {
@@ -571,9 +665,9 @@ function adminSetLimit(productId, stage, grade, currentLimit) {
           icon: 'success',
           title: 'Limit Saved',
           text: d.message,
-          background: '#0d1117',
-          color: '#e6edf3',
-          confirmButtonColor: '#238636',
+          background: '#ffffff',
+          color: '#333333',
+          confirmButtonColor: '#f59e0b',
           timer: 1500,
           showConfirmButton: false
         }).then(() => location.reload());
@@ -582,9 +676,9 @@ function adminSetLimit(productId, stage, grade, currentLimit) {
           icon: 'error',
           title: 'Failed',
           text: d.message || 'Something went wrong.',
-          background: '#0d1117',
-          color: '#e6edf3',
-          confirmButtonColor: '#238636',
+          background: '#ffffff',
+          color: '#333333',
+          confirmButtonColor: '#f59e0b',
         });
       }
     });
@@ -635,7 +729,7 @@ function updateStockTables(stockData) {
       const limit = parseFloat(s.alert_limit) || 0;
       const qty = parseFloat(s.quantity);
       const isLow = limit > 0 && qty < limit;
-const rowStyle = isLow ? 'background-color: #8b0000; color: #ffffff;' : '';
+const rowStyle = isLow ? 'background-color: #8b0000; color:#333;' : '';
       const titleAttr = isLow ? `title="Low Stock! Threshold is ${limit}"` : '';
 
       // Disable hover ONLY visually for low rows without breaking the click buttons
@@ -651,16 +745,22 @@ const rowStyle = isLow ? 'background-color: #8b0000; color: #ffffff;' : '';
 
       html += `
         <tr style="${rowStyle}" ${titleAttr} class="${disableHoverClass}">
-          <td style="font-weight:600;">${s.name}</td>
-          <td><span class="badge badge-info" ${isLow ? 'style="background-color:rgba(255,255,255,0.2); color:#ffffff;"' : ''}>${s.grade}</span></td>
+          <td style="font-weight:600;">
+            ${s.name}${s.grade && s.grade !== 'NONE' && s.grade !== 'N/A' ? ' - ' + s.grade : ''} (${stage === 'FINISHED' ? 'FG' : (stage === 'SEMI' ? 'Semi-Finished' : 'Raw')})
+          </td>
           <td style="font-weight:bold; color:${qtyColor};">${formattedQty}</td>
           <td>${s.unit || ''}</td>
-          <td style="font-weight:bold;">₹${window.number_format(s.rate ?? 0, 2)}</td>
-          <td class="location-col" data-product="${s.productId}" data-grade="${s.grade}" data-stage="${stage}" style="cursor:pointer; text-decoration:underline; ${isLow ? 'color:#ffffff;' : 'color:var(--primary-light);'}" onclick="showLocationBreakdown(this)">📍 View Locations</td>
+          <td style="font-weight:bold;">
+            ₹${window.number_format(s.rate ?? 0, 2)}
+            <button class="btn-icon edit" onclick="adminUpdateRate('${s.productId}', '${s.rate ?? 0}', '${escapeHtml(s.name)}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+            </button>
+          </td>
+          <td class="location-col" data-product="${s.productId}" data-grade="${s.grade}" data-stage="${stage}" style="cursor:pointer; text-decoration:underline; ${isLow ? 'color:#333;' : 'color:var(--primary-light);'}" onclick="showLocationBreakdown(this)">📍 View Locations</td>
           <td>
 
             <div style="display:flex; align-items:center; gap:0.4rem;">
-              <button class="btn-icon edit" onclick="adminAdjustStock('${s.productId}', '${s.stage}', '${s.grade}')" title="Adjust" ${isLow ? 'style="color:#ffffff;"' : ''}>
+              <button class="btn-icon edit" onclick="adminAdjustStock('${s.productId}', '${s.stage}', '${s.grade}')" title="Adjust" ${isLow ? 'style="color:#333;"' : ''}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
               <button class="btn-icon edit" onclick="adminSetLimit('${s.productId}', '${s.stage}', '${s.grade}', '${limit}')" title="Set Alert Limit" style="color:${isLow ? '#ffcccc' : 'var(--danger)'};">
@@ -699,7 +799,7 @@ function updateAllLocationLabels() {
     const locMap = locationMappings[key] || {};
     const count = Object.keys(locMap).length;
     if(count === 0) {
-      td.innerHTML = `📍 <span style="font-size:0.75rem; color:#8b949e;">Not Set</span>`;
+      td.innerHTML = `📍 <span style="font-size:0.75rem; color:#6b7280;">Not Set</span>`;
     } else if(count === 1) {
       td.innerHTML = `📍 <span style="font-weight:600; color:var(--secondary);">${escapeHtml(Object.keys(locMap)[0])}</span>`;
     } else {
@@ -738,11 +838,11 @@ async function showLocationBreakdown(el) {
   const remainingQty = Math.max(availableQty - assignedQty, 0);
 
   let locationsListHtml = Object.entries(locMap).map(([loc, qty]) => `
-    <div style="display:flex; justify-content:space-between; padding:8px 12px; background:rgba(255,255,255,0.05); border-radius:8px; margin-bottom:6px;">
-      <span style="font-weight:600; color:#e6edf3;">📍 ${escapeHtml(loc)}</span>
+    <div style="display:flex; justify-content:space-between; padding:8px 12px; background:#f9fafb; border-radius:8px; margin-bottom:6px;">
+      <span style="font-weight:600; color:#333;">📍 ${escapeHtml(loc)}</span>
       <span style="font-weight:bold; color:var(--secondary);">${qty.toFixed(2)} kg</span>
     </div>
-  `).join('') || '<p style="text-align:center; color:#8b949e; margin: 1rem 0;">No locations linked yet.</p>';
+  `).join('') || '<p style="text-align:center; color:#6b7280; margin: 1rem 0;">No locations linked yet.</p>';
 
   let optionsHtml = allLocations.map(loc => `<option value="${escapeHtml(loc.name)}">${escapeHtml(loc.name)}</option>`).join('');
   
@@ -751,20 +851,20 @@ async function showLocationBreakdown(el) {
   if (Object.keys(locMap).length > 0) {
     transferHtml = `
       <div style="border-top:1px dashed var(--border-soft); padding-top:1rem; margin-top:1rem; text-align:left;">
-        <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Transfer Stock Between Locations</label>
+        <label style="display:block; font-size:0.8rem; color:#6b7280; margin-bottom:0.5rem;">Transfer Stock Between Locations</label>
         <div style="display:flex; gap:8px; margin-bottom:0.5rem;">
-          <select id="swal-transfer-from" style="flex:1; padding:0.55rem; background:var(--input-bg, #FFFFFF); border:1px solid var(--input-border, #DDCFAF); color:var(--text-main, #2A2A2A); border-radius:8px; font-size:0.85rem;">
+          <select id="swal-transfer-from" style="flex:1; padding:0.55rem; background:#ffffff; border:1px solid #d1d5db; color:#333333; border-radius:8px; font-size:0.85rem;">
             <option value="" disabled selected>From Location</option>
             ${fromOptionsHtml}
           </select>
-          <span style="color:var(--text-muted); align-self:center;">➡</span>
-          <select id="swal-transfer-to" style="flex:1; padding:0.55rem; background:var(--input-bg, #FFFFFF); border:1px solid var(--input-border, #DDCFAF); color:var(--text-main, #2A2A2A); border-radius:8px; font-size:0.85rem;">
+          <span style="color:#6b7280; align-self:center;">➡</span>
+          <select id="swal-transfer-to" style="flex:1; padding:0.55rem; background:#ffffff; border:1px solid #d1d5db; color:#333333; border-radius:8px; font-size:0.85rem;">
             <option value="" disabled selected>To Location</option>
             ${optionsHtml}
           </select>
         </div>
         <div style="display:flex; gap:8px;">
-          <input type="number" id="swal-transfer-qty" min="0.01" step="0.01" placeholder="Qty (kg)" style="width:100px; padding:0.55rem; background:var(--input-bg, #FFFFFF); border:1px solid var(--input-border, #DDCFAF); color:var(--text-main, #2A2A2A); border-radius:8px;">
+          <input type="number" id="swal-transfer-qty" min="0.01" step="0.01" placeholder="Qty (kg)" style="width:100px; padding:0.55rem; background:#ffffff; border:1px solid #d1d5db; color:#333333; border-radius:8px;">
           <button class="btn btn-sm" onclick="transferLocationMapping('${pId}', '${stage}', '${grade}', this)" style="flex:1;">Transfer Stock</button>
         </div>
       </div>
@@ -774,33 +874,33 @@ async function showLocationBreakdown(el) {
   Swal.fire({
     title: '📍 Stock Storage Locations',
     html: `
-      <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:var(--text-muted);">
+      <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:#6b7280;">
         Product locations for this item.
       </div>
       <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:1rem; text-align:center;">
         <div style="background:var(--bg-sidebar, #FFF8EA); border:1px solid var(--border-soft, #ECE4CF); border-radius:8px; padding:8px;">
-          <div style="font-size:0.7rem; color:var(--text-muted);">Available</div>
-          <div style="font-weight:700; color:var(--text-main);">${availableQty.toFixed(2)} kg</div>
+          <div style="font-size:0.7rem; color:#6b7280;">Available</div>
+          <div style="font-weight:700; color:#333;">${availableQty.toFixed(2)} kg</div>
         </div>
         <div style="background:var(--bg-sidebar, #FFF8EA); border:1px solid var(--border-soft, #ECE4CF); border-radius:8px; padding:8px;">
-          <div style="font-size:0.7rem; color:var(--text-muted);">Assigned</div>
+          <div style="font-size:0.7rem; color:#6b7280;">Assigned</div>
           <div style="font-weight:700; color:var(--secondary);">${assignedQty.toFixed(2)} kg</div>
         </div>
         <div style="background:var(--bg-sidebar, #FFF8EA); border:1px solid var(--border-soft, #ECE4CF); border-radius:8px; padding:8px;">
-          <div style="font-size:0.7rem; color:var(--text-muted);">Unassigned</div>
-          <div style="font-weight:700; color:var(--text-main);">${remainingQty.toFixed(2)} kg</div>
+          <div style="font-size:0.7rem; color:#6b7280;">Unassigned</div>
+          <div style="font-weight:700; color:#333;">${remainingQty.toFixed(2)} kg</div>
         </div>
       </div>
       <div style="margin-bottom:1rem; max-height:200px; overflow-y:auto;">
         ${locationsListHtml}
       </div>
       <div style="border-top:1px dashed var(--border-soft); padding-top:1rem; text-align:left;">
-        <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Link Quantity to Location</label>
+        <label style="display:block; font-size:0.8rem; color:#6b7280; margin-bottom:0.5rem;">Link Quantity to Location</label>
         <div style="display:flex; gap:8px; margin-bottom:0.5rem;">
-          <select id="swal-loc-select" style="flex:1; padding:0.55rem; background:var(--input-bg, #FFFFFF); border:1px solid var(--input-border, #DDCFAF); color:var(--text-main, #2A2A2A); border-radius:8px;">
+          <select id="swal-loc-select" style="flex:1; padding:0.55rem; background:#ffffff; border:1px solid #d1d5db; color:#333333; border-radius:8px;">
             ${optionsHtml}
           </select>
-          <input type="number" id="swal-loc-qty" min="0.01" max="${remainingQty.toFixed(2)}" step="0.01" placeholder="Qty (kg)" style="width:100px; padding:0.55rem; background:var(--input-bg, #FFFFFF); border:1px solid var(--input-border, #DDCFAF); color:var(--text-main, #2A2A2A); border-radius:8px;">
+          <input type="number" id="swal-loc-qty" min="0.01" max="${remainingQty.toFixed(2)}" step="0.01" placeholder="Qty (kg)" style="width:100px; padding:0.55rem; background:#ffffff; border:1px solid #d1d5db; color:#333333; border-radius:8px;">
         </div>
         <button class="btn btn-sm" onclick="addLocationMapping('${pId}', '${stage}', '${grade}', ${remainingQty}, this)" style="width:100%;">Save Location link</button>
       </div>
@@ -845,8 +945,8 @@ window.addLocationMapping = async function(productId, stage, grade, remainingQty
       Swal.fire({
         icon: 'success',
         title: 'Saved',
-        background: '#0d1117',
-        color: '#e6edf3',
+        background: '#ffffff',
+        color: '#333333',
         timer: 1000,
         showConfirmButton: false
       }).then(() => {
@@ -892,8 +992,8 @@ window.transferLocationMapping = async function(productId, stage, grade, buttonE
       Swal.fire({
         icon: 'success',
         title: 'Transferred',
-        background: '#0d1117',
-        color: '#e6edf3',
+        background: '#ffffff',
+        color: '#333333',
         timer: 1000,
         showConfirmButton: false
       }).then(() => {
@@ -911,44 +1011,36 @@ function adminExportStockPdf() {
   Swal.fire({
     title: '📄 EXPORT STOCK VALUATION PDF',
     html: `
-      <div style="text-align:left; font-size:0.95rem; color:#e6edf3;">
-        <p style="margin-bottom:12px; color:#8b949e;">Select the stock panels to include in the PDF report:</p>
+      <div style="text-align:left; font-size:0.95rem; color:#333;">
+        <p style="margin-bottom:12px; color:#6b7280;">Select the stock panels to include in the PDF report:</p>
         <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
-          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:#ffffff !important;">
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:#333333 !important;">
             <input type="checkbox" id="export-stage-raw" checked style="width:20px; height:20px; cursor:pointer;"> 🌿 Raw Material Stock
           </label>
-          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:#ffffff !important;">
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:#333333 !important;">
             <input type="checkbox" id="export-stage-semi" checked style="width:20px; height:20px; cursor:pointer;"> ⚗️ Semi-Finished Stock
           </label>
-          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:#ffffff !important;">
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:#333333 !important;">
             <input type="checkbox" id="export-stage-finished" checked style="width:20px; height:20px; cursor:pointer;"> ✅ FG Stock
           </label>
         </div>
         
-        <div style="display:flex; gap:12px; margin-bottom:10px;">
-          <div style="flex:1;">
-            <label class="field-label">
-              FROM DATE <span style="font-weight:400; text-transform:none; color:#94a3b8 !important; -webkit-text-fill-color:#94a3b8 !important;">(OPTIONAL)</span>
-            </label>
-            <input type="date" id="export-start-date">
-          </div>
-          <div style="flex:1;">
-            <label class="field-label">
-              TO DATE <span style="font-weight:400; text-transform:none; color:#94a3b8 !important; -webkit-text-fill-color:#94a3b8 !important;">(OPTIONAL)</span>
-            </label>
-            <input type="date" id="export-end-date">
-          </div>
+        <div style="margin-bottom:10px;">
+          <label class="field-label">
+            DATE <span style="font-weight:400; text-transform:none; color:#94a3b8 !important; -webkit-text-fill-color:#94a3b8 !important;">(OPTIONAL)</span>
+          </label>
+          <input type="date" id="export-date" style="width: 100%;">
         </div>
-        <p style="margin-top:8px; font-size:0.82rem; color:#94a3b8 !important; -webkit-text-fill-color:#94a3b8 !important; font-style:italic;">Leave empty to generate live stock report.</p>
+        <p style="margin-top:8px; font-size:0.82rem; color:#94a3b8 !important; -webkit-text-fill-color:#94a3b8 !important; font-style:italic;">Leave empty to generate live stock report for today.</p>
       </div>
     `,
-    background: '#0f172a',
-    color: '#f8fafc',
+    background: '#ffffff',
+    color: '#333333',
     showCancelButton: true,
     confirmButtonText: 'GENERATE REPORT',
     cancelButtonText: 'CANCEL',
     confirmButtonColor: '#f59e0b',
-    cancelButtonColor: '#334155',
+    cancelButtonColor: '#9ca3af',
     customClass: {
       popup: 'swal-stock-popup',
       title: 'swal-stock-title',
@@ -959,8 +1051,7 @@ function adminExportStockPdf() {
       const raw = document.getElementById('export-stage-raw').checked;
       const semi = document.getElementById('export-stage-semi').checked;
       const finished = document.getElementById('export-stage-finished').checked;
-      const startDate = document.getElementById('export-start-date').value;
-      const endDate = document.getElementById('export-end-date').value;
+      const selectedDate = document.getElementById('export-date').value;
       
       const stages = [];
       if (raw) stages.push('RAW');
@@ -972,23 +1063,17 @@ function adminExportStockPdf() {
         return false;
       }
 
-      if (startDate && endDate && startDate > endDate) {
-        Swal.showValidationMessage('From Date cannot be later than To Date.');
-        return false;
-      }
-
-      return { stages, startDate, endDate };
+      return { stages, selectedDate };
     }
   }).then(result => {
     if (!result.isConfirmed) return;
     
-    const { stages, startDate, endDate } = result.value;
+    const { stages, selectedDate } = result.value;
     const btn = document.querySelector('button[onclick="adminExportStockPdf()"]');
     
     window.downloadPdfAsync('{{ route("admin.stock.pdf") }}', {
       stages: stages.join(','),
-      start_date: startDate,
-      end_date: endDate
+      date: selectedDate
     }, btn);
   });
 }
@@ -1138,8 +1223,8 @@ document.addEventListener('DOMContentLoaded', () => {
 /* High Contrast Overrides for Stock SweetAlert Modals */
 .swal-stock-popup,
 .swal2-popup.swal-stock-popup {
-  background-color: #0f172a !important;
-  border: 1px solid #334155 !important;
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
   border-radius: 16px !important;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5) !important;
   padding: 1.5rem !important;
@@ -1148,8 +1233,8 @@ document.addEventListener('DOMContentLoaded', () => {
 .swal-stock-popup .swal2-title,
 .swal-stock-title,
 .swal2-title {
-  color: #FFFFFF !important;
-  -webkit-text-fill-color: #FFFFFF !important;
+  color: #333333 !important;
+  -webkit-text-fill-color: #333333 !important;
   font-weight: 700 !important;
   font-size: 1.35rem !important;
   margin-bottom: 1rem !important;
@@ -1158,8 +1243,8 @@ document.addEventListener('DOMContentLoaded', () => {
 .swal-stock-popup .swal2-html-container,
 .swal-stock-popup .swal2-html-container p,
 .swal-stock-popup .swal2-html-container div {
-  color: #F8FAFC !important;
-  -webkit-text-fill-color: #F8FAFC !important;
+  color: #333333 !important;
+  -webkit-text-fill-color: #333333 !important;
 }
 
 /* Checkbox Card Option Containers & Labels */
@@ -1167,8 +1252,8 @@ document.addEventListener('DOMContentLoaded', () => {
 .swal-stock-popup label span,
 .swal-stock-popup .export-option-card,
 .swal-stock-popup .export-option-card span {
-  color: #FFFFFF !important;
-  -webkit-text-fill-color: #FFFFFF !important;
+  color: #333333 !important;
+  -webkit-text-fill-color: #333333 !important;
   font-size: 0.95rem !important;
   font-weight: 700 !important;
 }
@@ -1178,8 +1263,8 @@ document.addEventListener('DOMContentLoaded', () => {
   align-items: center !important;
   gap: 12px !important;
   cursor: pointer !important;
-  background-color: #1e293b !important;
-  border: 1.5px solid #334155 !important;
+  background-color: #f9fafb !important;
+  border: 1.5px solid #d1d5db !important;
   padding: 12px 16px !important;
   border-radius: 10px !important;
   margin-bottom: 8px !important;
@@ -1187,7 +1272,7 @@ document.addEventListener('DOMContentLoaded', () => {
 }
 
 .swal-stock-popup .export-option-card:hover {
-  background-color: #334155 !important;
+  background-color: #f3f4f6 !important;
   border-color: #f59e0b !important;
 }
 
@@ -1200,8 +1285,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* Field Labels */
 .swal-stock-popup .field-label {
-  color: #CBD5E1 !important;
-  -webkit-text-fill-color: #CBD5E1 !important;
+  color: #4b5563 !important;
+  -webkit-text-fill-color: #4b5563 !important;
   font-size: 0.85rem !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
@@ -1216,11 +1301,11 @@ document.addEventListener('DOMContentLoaded', () => {
 .swal-stock-popup input[type="number"],
 .swal-stock-popup select,
 .swal-stock-popup textarea {
-  background-color: #1e293b !important;
-  border: 1.5px solid #475569 !important;
-  color: #FFFFFF !important;
-  -webkit-text-fill-color: #FFFFFF !important;
-  color-scheme: dark !important;
+  background-color: #f9fafb !important;
+  border: 1.5px solid #d1d5db !important;
+  color: #333333 !important;
+  -webkit-text-fill-color: #333333 !important;
+  color-scheme: light !important;
   font-size: 0.95rem !important;
   font-weight: 600 !important;
   padding: 0.65rem 0.8rem !important;
@@ -1240,10 +1325,10 @@ document.addEventListener('DOMContentLoaded', () => {
 }
 
 .swal2-validation-message {
-  background-color: #7f1d1d !important;
-  color: #fca5a5 !important;
-  -webkit-text-fill-color: #fca5a5 !important;
-  border: 1px solid #991b1b !important;
+  background-color: #fee2e2 !important;
+  color: #991b1b !important;
+  -webkit-text-fill-color: #991b1b !important;
+  border: 1px solid #f87171 !important;
   border-radius: 8px !important;
   margin-top: 1rem !important;
 }
@@ -1263,9 +1348,9 @@ document.addEventListener('DOMContentLoaded', () => {
 }
 
 .swal-cancel-btn-secondary {
-  background-color: #334155 !important;
-  color: #f8fafc !important;
-  -webkit-text-fill-color: #f8fafc !important;
+  background-color: #e5e7eb !important;
+  color: #374151 !important;
+  -webkit-text-fill-color: #374151 !important;
   font-weight: 600 !important;
   border-radius: 8px !important;
   padding: 0.65rem 1.4rem !important;
@@ -1273,7 +1358,7 @@ document.addEventListener('DOMContentLoaded', () => {
 }
 
 .swal-cancel-btn-secondary:hover {
-  background-color: #475569 !important;
+  background-color: #d1d5db !important;
 }
 
 /* Disable row hover effect for low stock (visual only, buttons remain clickable) */
@@ -1283,3 +1368,86 @@ tr.low-stock-no-hover:hover {
 }
 </style>
 @endsection
+
+<style>
+/* White and Orange Theme for Forms */
+.white-orange-card {
+    background-color: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+}
+.white-orange-card .card-title,
+.white-orange-card h4 {
+    color: #333333 !important;
+    font-weight: 700 !important;
+}
+.white-orange-card label {
+    color: #4b5563 !important;
+    font-weight: 600 !important;
+}
+.white-orange-card input,
+.white-orange-card select,
+.white-orange-card textarea {
+    background-color: #f9fafb !important;
+    border: 1px solid #d1d5db !important;
+    color: #333333 !important;
+    -webkit-text-fill-color: #333333 !important;
+}
+.white-orange-card input::placeholder,
+.white-orange-card textarea::placeholder {
+    color: #9ca3af !important;
+    -webkit-text-fill-color: #9ca3af !important;
+}
+.white-orange-card .btn-primary,
+.white-orange-card button[type="submit"] {
+    background-color: #f59e0b !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    border: none !important;
+}
+.white-orange-card .btn-secondary,
+.white-orange-card button[type="button"] {
+    background-color: #e5e7eb !important;
+    color: #374151 !important;
+    -webkit-text-fill-color: #374151 !important;
+    border: none !important;
+}
+.white-orange-card span {
+    color: #333333 !important;
+}
+</style>
+
+<style>
+/* Absolute override for all text in stock popup */
+.swal-stock-popup * {
+    color: #333333 !important;
+    -webkit-text-fill-color: #333333 !important;
+}
+.swal-stock-popup input,
+.swal-stock-popup select,
+.swal-stock-popup textarea,
+.swal-stock-popup option {
+    background-color: #ffffff !important;
+    color: #333333 !important;
+    -webkit-text-fill-color: #333333 !important;
+}
+.swal-stock-popup input::placeholder,
+.swal-stock-popup textarea::placeholder {
+    color: #9ca3af !important;
+    -webkit-text-fill-color: #9ca3af !important;
+}
+.swal-stock-popup .swal-cancel-btn-secondary,
+.swal-stock-popup .swal-cancel-btn {
+    background-color: #e5e7eb !important;
+    color: #374151 !important;
+    -webkit-text-fill-color: #374151 !important;
+}
+.swal-stock-popup .swal-confirm-btn-primary,
+.swal-stock-popup .swal-confirm-btn,
+.swal-stock-popup .swal2-confirm {
+    background-color: #f59e0b !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+</style>

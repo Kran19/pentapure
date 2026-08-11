@@ -72,6 +72,7 @@
                         <th>Amount</th>
                         <th>Notes</th>
                         <th>Reference</th>
+                        <th>Bill</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -90,6 +91,32 @@
                         </td>
                         <td style="font-size:0.9rem; max-width:200px;">{{ $tx->note ?? '—' }}</td>
                         <td style="font-size:0.85rem; color:var(--text-muted);">{{ $tx->reference ?? '—' }}</td>
+                        <td>
+                            @if($tx->bills && $tx->bills->count() > 0)
+                                <div style="display:flex; flex-direction:column; gap:8px;">
+                                @foreach($tx->bills as $bill)
+                                    <div style="display:flex; gap:10px; align-items:center;">
+                                        @if(in_array($bill->file_type, ['image', 'jpg', 'jpeg', 'png']))
+                                            <a href="javascript:void(0)" onclick="app.viewImage('{{ route('cashier.bill.view', $bill->id) }}')" style="color:var(--primary-light); text-decoration:underline; font-size:0.85rem; display:flex; align-items:center; gap:4px;">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                                Preview
+                                            </a>
+                                        @else
+                                            <a href="{{ route('cashier.bill.view', $bill->id) }}" target="_blank" style="color:var(--primary-light); text-decoration:underline; font-size:0.85rem; display:flex; align-items:center; gap:4px;">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                                View PDF
+                                            </a>
+                                        @endif
+                                        <a href="{{ route('cashier.bill.view', $bill->id) }}?download=1" download="{{ $bill->original_name }}" title="Download Bill" style="color:var(--secondary); font-size:1.1rem; text-decoration:none;">
+                                            📥
+                                        </a>
+                                    </div>
+                                @endforeach
+                                </div>
+                            @else
+                                <span style="color:var(--text-muted);">—</span>
+                            @endif
+                        </td>
                     </tr>
                     @endforeach
                 </tbody>
@@ -119,4 +146,30 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+    window.app = window.app || {};
+    window.app.viewImage = function(url) {
+        Swal.fire({
+            imageUrl: url,
+            imageAlt: 'Bill Preview',
+            width: 'auto',
+            padding: '1em',
+            showConfirmButton: false,
+            showCloseButton: true,
+            customClass: {
+                image: 'swal2-image-custom'
+            }
+        });
+    };
+    
+    // Custom style for image preview to not overflow
+    const style = document.createElement('style');
+    style.innerHTML = `
+        .swal2-image-custom { max-height: 80vh; max-width: 100%; object-fit: contain; }
+    `;
+    document.head.appendChild(style);
+</script>
+@endpush
 @endsection

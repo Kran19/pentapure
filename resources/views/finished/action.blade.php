@@ -30,7 +30,7 @@
     </select>
   </div>
   
-  <div id="materials-section" class="hidden" style="margin-top: 2rem; border-top: 1px dashed var(--glass-border); padding-top: 1.5rem;">
+  <div id="materials-section" style="margin-top: 2rem; border-top: 1px dashed var(--glass-border); padding-top: 1.5rem;">
     <div class="form-group">
       <label>Expected Output Quantity (kg)</label>
       <input type="number" id="prod-out-qty" placeholder="Quantity produced" step="0.001">
@@ -170,6 +170,12 @@ function submitTransfer(e) {
   window.productsList = @json($pageData['products']);
   window.availableInputStock = @json(array_merge($pageData['rawStock'], $pageData['semiStock']));
 
+  document.addEventListener('DOMContentLoaded', () => {
+    if(document.getElementById('input-rows') && document.getElementById('input-rows').children.length === 0) {
+      addInputRow();
+    }
+  });
+
   function onTargetProductSelected() {
     const productId = document.getElementById('prod-output').value;
     const p = window.productsList.find(x => x.id == productId);
@@ -182,21 +188,13 @@ function submitTransfer(e) {
         p.gradeNames.map(g => `<option value="${g}">${g}</option>`).join('') + 
         (p.gradeNames.includes('N/A') ? '' : `<option value="N/A">N/A</option>`);
       gradeGroup.classList.remove('hidden');
-      document.getElementById('materials-section').classList.add('hidden');
     } else {
       gradeGroup.classList.add('hidden');
-      document.getElementById('materials-section').classList.remove('hidden');
-      if(document.getElementById('input-rows').children.length === 0) {
-        addInputRow();
-      }
     }
   }
 
   function onGradeSelected() {
-    document.getElementById('materials-section').classList.remove('hidden');
-    if(document.getElementById('input-rows').children.length === 0) {
-      addInputRow();
-    }
+    // Keeping this function for html onchange compatibility
   }
 
   function addInputRow() {

@@ -9,7 +9,7 @@
 
   <!-- Add Form -->
   <div id="prod-form" class="card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
-    <div class="card-title">Add / Edit Product</div>
+    <div class="card-title">Add Product</div>
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
       <div class="form-group">
         <label>Name *</label>
@@ -54,7 +54,7 @@
     <div style="margin-top:1rem; border-top:1px solid var(--glass-border); padding-top:1rem;">
         <label style="font-size:0.9rem; color:var(--primary-light); margin-bottom:0.5rem; display:block;">Visible To / Allowed User Types</label>
         <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px;">
-            @foreach(['ADMIN', 'RAW', 'SEMI', 'FINISHED', 'SALES', 'DISPATCH', 'ATTENDANCE'] as $role)
+            @foreach(['ADMIN', 'RAW', 'SEMI', 'FINISHED', 'SALES', 'DISPATCH'] as $role)
             <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; background:var(--bg-hover); border:1px solid var(--border-soft); padding:6px 10px; border-radius:6px; cursor:pointer;">
                 <input type="checkbox" name="p-roles" value="{{ $role }}" checked style="width:auto;"> {{ $role }}
             </label>
@@ -187,48 +187,161 @@ function getSelectedUnitValue() {
   return sel;
 }
 
+const allGrades = @json($pageData['allGrades']);
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[char]));
+}
+
 let editingProductId = null;
 
 function adminEditProduct(prod) {
   editingProductId = prod.id;
-  document.getElementById('prod-form').style.display = 'block';
-  document.querySelector('#prod-form .card-title').innerText = 'Edit Product';
-  document.getElementById('p-name').value = prod.name;
-  document.getElementById('p-type').value = prod.type;
   
+  // Build the grades HTML
+  let gradesHtml = '';
+  const prodGradeIds = prod.gradeIds || [];
+  allGrades.forEach(g => {
+    const isChecked = prodGradeIds.includes(g.id) ? 'checked' : '';
+    gradesHtml += `<label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; background:var(--bg-hover); border:1px solid var(--border-soft); padding:6px 10px; border-radius:6px; cursor:pointer;"><input type="checkbox" id="swal-grade-${g.id}" value="${g.id}" ${isChecked} style="width:auto;"> ${escapeHtml(g.name)}</label>`;
+  });
+
+  // Build the roles HTML
+  let rolesHtml = '';
+  const allRoles = ['ADMIN', 'RAW', 'SEMI', 'FINISHED', 'SALES', 'DISPATCH'];
+  const prodRoles = prod.allowed_roles || [];
+  allRoles.forEach(r => {
+    const isChecked = prodRoles.includes(r) ? 'checked' : '';
+    rolesHtml += `<label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; background:var(--bg-hover); border:1px solid var(--border-soft); padding:6px 10px; border-radius:6px; cursor:pointer;"><input type="checkbox" id="swal-role-${r}" value="${r}" ${isChecked} style="width:auto;"> ${r}</label>`;
+  });
+
+  // Build the Unit logic
   const unitUpper = (prod.unit || 'KG').toUpperCase();
-  if (['KG', 'LTR', 'NO'].includes(unitUpper)) {
-    document.getElementById('p-unit-select').value = unitUpper;
-    document.getElementById('p-unit-custom').style.display = 'none';
-    document.getElementById('p-unit-custom').value = '';
-  } else {
-    document.getElementById('p-unit-select').value = 'OTHER';
-    document.getElementById('p-unit-custom').style.display = 'block';
-    document.getElementById('p-unit-custom').value = prod.unit || '';
-  }
+  const isCustomUnit = !['KG', 'LTR', 'NO'].includes(unitUpper);
 
-  document.getElementById('p-threshold').value = prod.threshold || '0.00';
-  
-  // Reset and set grades
-  document.querySelectorAll('input[name="p-grades"]').forEach(cb => cb.checked = false);
-  if (prod.gradeIds) {
-    prod.gradeIds.forEach(id => {
-      const cb = document.querySelector(`input[name="p-grades"][value="${id}"]`);
-      if (cb) cb.checked = true;
-    });
-  }
+  Swal.fire({
+    title: 'Edit Product',
+    width: '600px',
+    html: `
+      <div style="text-align:left; display:flex; flex-direction:column; gap:1rem;">
+        <div class="form-group">
+          <label style="font-size:0.85rem; font-weight:600; color:#6b7280; display:block; margin-bottom:4px;">Name *</label>
+          <input type="text" id="swal-p-name" value="${escapeHtml(prod.name)}" style="width:100%; padding:0.65rem; border-radius:8px; border:1px solid #d1d5db; background:#fff; color:#333;">
+        </div>
 
-  // Reset and set roles
-  document.querySelectorAll('input[name="p-roles"]').forEach(cb => cb.checked = false);
-  if (prod.allowed_roles) {
-    prod.allowed_roles.forEach(role => {
-      const cb = document.querySelector(`input[name="p-roles"][value="${role}"]`);
-      if (cb) cb.checked = true;
-    });
-  }
+        <div style="display:flex; gap:1rem;">
+          <div class="form-group" style="flex:1;">
+            <label style="font-size:0.85rem; font-weight:600; color:#6b7280; display:block; margin-bottom:4px;">Type *</label>
+            <select id="swal-p-type" style="width:100%; padding:0.65rem; border-radius:8px; border:1px solid #d1d5db; background:#fff; color:#333;" onchange="document.getElementById('swal-grades-area').style.display = this.value === 'RAW' ? 'none' : 'block'">
+              <option value="RAW" ${prod.type === 'RAW' ? 'selected' : ''}>RAW (Input Material)</option>
+              <option value="FINISHED" ${prod.type === 'FINISHED' ? 'selected' : ''}>FINISHED (Packaged)</option>
+            </select>
+          </div>
+          
+          <div class="form-group" style="flex:1;">
+            <label style="font-size:0.85rem; font-weight:600; color:#6b7280; display:block; margin-bottom:4px;">Threshold</label>
+            <input type="number" id="swal-p-threshold" step="0.01" value="${prod.threshold || '0.00'}" style="width:100%; padding:0.65rem; border-radius:8px; border:1px solid #d1d5db; background:#fff; color:#333;">
+          </div>
+        </div>
 
-  toggleGradeDisplay();
-  document.getElementById('prod-form').scrollIntoView({ behavior: 'smooth' });
+        <div class="form-group">
+          <label style="font-size:0.85rem; font-weight:600; color:#6b7280; display:block; margin-bottom:4px;">Unit *</label>
+          <select id="swal-p-unit-select" style="width:100%; padding:0.65rem; border-radius:8px; border:1px solid #d1d5db; background:#fff; color:#333;" onchange="document.getElementById('swal-p-unit-custom').style.display = this.value === 'OTHER' ? 'block' : 'none'">
+            <option value="KG" ${unitUpper === 'KG' ? 'selected' : ''}>KG</option>
+            <option value="LTR" ${unitUpper === 'LTR' ? 'selected' : ''}>LTR</option>
+            <option value="NO" ${unitUpper === 'NO' ? 'selected' : ''}>NO</option>
+            <option value="OTHER" ${isCustomUnit ? 'selected' : ''}>OTHER (TYPE CUSTOM)</option>
+          </select>
+          <input type="text" id="swal-p-unit-custom" value="${isCustomUnit ? unitUpper : ''}" placeholder="Type custom unit (e.g. BOTTLE)" style="display:${isCustomUnit ? 'block' : 'none'}; width:100%; padding:0.65rem; margin-top:8px; border-radius:8px; border:1px solid #d1d5db; background:#fff; color:#333;">
+        </div>
+
+        <div id="swal-grades-area" style="display:${prod.type === 'RAW' ? 'none' : 'block'}; margin-top:0.5rem;">
+          <label style="font-size:0.85rem; font-weight:600; color:#6b7280; display:block; margin-bottom:8px;">Select Allowed Grades</label>
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:8px;">
+            ${gradesHtml}
+          </div>
+        </div>
+
+        <div style="margin-top:0.5rem;">
+          <label style="font-size:0.85rem; font-weight:600; color:#6b7280; display:block; margin-bottom:8px;">Visible To / Allowed User Types</label>
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(100px, 1fr)); gap:8px;">
+            ${rolesHtml}
+          </div>
+        </div>
+      </div>
+    `,
+    background: '#ffffff',
+    color: '#333333',
+    showCancelButton: true,
+    confirmButtonText: 'Update Product',
+    confirmButtonColor: '#f59e0b',
+    cancelButtonColor: '#9ca3af',
+    preConfirm: () => {
+      const name = document.getElementById('swal-p-name').value;
+      if(!name) {
+        Swal.showValidationMessage('Name is required');
+        return false;
+      }
+      
+      const type = document.getElementById('swal-p-type').value;
+      const threshold = document.getElementById('swal-p-threshold').value;
+      
+      const selUnit = document.getElementById('swal-p-unit-select').value;
+      let unit = selUnit;
+      if(selUnit === 'OTHER') {
+        unit = document.getElementById('swal-p-unit-custom').value.trim();
+      }
+      
+      const selectedGrades = [];
+      allGrades.forEach(g => {
+        if(document.getElementById(`swal-grade-${g.id}`) && document.getElementById(`swal-grade-${g.id}`).checked) selectedGrades.push(g.id);
+      });
+      
+      const selectedRoles = [];
+      allRoles.forEach(r => {
+        if(document.getElementById(`swal-role-${r}`) && document.getElementById(`swal-role-${r}`).checked) selectedRoles.push(r);
+      });
+
+      return { name, type, unit, threshold, grades: selectedGrades, roles: selectedRoles };
+    }
+  }).then(result => {
+    if(result.isConfirmed) {
+      const formData = new FormData();
+      formData.append('product_id', prod.id);
+      formData.append('name', result.value.name);
+      formData.append('type', result.value.type);
+      formData.append('unit', result.value.unit);
+      formData.append('rate', prod.rate || '0.00'); // preserve existing rate or default
+      formData.append('threshold', result.value.threshold || '0.00');
+      formData.append('grades', JSON.stringify(result.value.grades));
+      formData.append('allowed_roles', JSON.stringify(result.value.roles));
+
+      fetch('/admin/products', {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': csrfToken },
+        body: formData
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          Swal.fire({ icon:'success', title:'Updated!', text:data.message, background: '#ffffff', color: '#333333', confirmButtonColor:'#f59e0b', timer:1500, showConfirmButton:false})
+          .then(() => location.reload());
+        } else {
+          Swal.fire({ icon:'error', title:'Error', text:data.message || data.error || 'Failed to save', background: '#ffffff', color: '#333333', confirmButtonColor:'#f59e0b'});
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        Swal.fire({ icon:'error', title:'Error', text:'Network error', background: '#ffffff', color: '#333333', confirmButtonColor:'#f59e0b'});
+      });
+    }
+  });
 }
 
 function adminSaveProduct() {

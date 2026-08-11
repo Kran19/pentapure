@@ -30,7 +30,7 @@
     </select>
   </div>
   
-  <div id="materials-section" class="hidden" style="margin-top: 2rem; border-top: 1px dashed var(--glass-border); padding-top: 1.5rem;">
+  <div id="materials-section" style="margin-top: 2rem; border-top: 1px dashed var(--glass-border); padding-top: 1.5rem;">
     <div class="form-group">
       <label>Expected Output Quantity (kg)</label>
       <input type="number" id="prod-out-qty" placeholder="Quantity produced">
@@ -161,6 +161,9 @@ function submitTransfer(e) {
       select.innerHTML = locs.map(l => `<option value="${l}">${l}</option>`).join('');
     }
     window.currentAvailableInputStock = @json($pageData['rawStock']);
+    if(document.getElementById('input-rows') && document.getElementById('input-rows').children.length === 0) {
+      app.addInputRow();
+    }
   });
 </script>
 @endsection

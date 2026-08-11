@@ -81,12 +81,43 @@ function resetLocationForm() {
 }
 
 function adminEditLocation(loc) {
-  editingLocationId = loc.id;
-  document.getElementById('loc-form-card').style.display = 'block';
-  document.getElementById('loc-card-title').innerText = 'Edit Warehouse Location';
-  document.getElementById('loc-name').value = loc.name || '';
-  document.getElementById('loc-description').value = loc.description || '';
-  document.getElementById('loc-form-card').scrollIntoView({ behavior: 'smooth' });
+  Swal.fire({
+    title: 'Edit Warehouse Location',
+    html: `
+      <div style="display:flex; flex-direction:column; gap:10px; text-align:left;">
+        <label style="font-weight:600; color:#4b5563;">Location Name *</label>
+        <input type="text" id="edit-loc-name" class="swal2-input" style="margin:0;" value="${escapeHtml(loc.name || '')}">
+        <label style="font-weight:600; color:#4b5563; margin-top:10px;">Description / Notes</label>
+        <input type="text" id="edit-loc-desc" class="swal2-input" style="margin:0;" value="${escapeHtml(loc.description || '')}">
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: 'Save Changes',
+    confirmButtonColor: '#f59e0b',
+    preConfirm: () => {
+      const name = document.getElementById('edit-loc-name').value.trim();
+      const description = document.getElementById('edit-loc-desc').value.trim();
+      if (!name) Swal.showValidationMessage('Location name is required');
+      return { name, description };
+    }
+  }).then((res) => {
+    if (res.isConfirmed) {
+      fetch('/api/locations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify({ location_id: loc.id, name: res.value.name, description: res.value.description })
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          Swal.fire('Success', d.message, 'success');
+          setTimeout(() => location.reload(), 700);
+        } else {
+          Swal.fire('Error', d.message || 'Could not save location.', 'error');
+        }
+      });
+    }
+  });
 }
 
 function adminSaveLocation() {

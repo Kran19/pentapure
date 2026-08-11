@@ -380,18 +380,14 @@ class AdminController extends Controller
         }
         $stages = array_map('strtoupper', $stages);
         
-        $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
+        $date = $request->input('date');
 
         $stockQuery = DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
             ->whereIn('stocks.stage', $stages);
 
-        if ($startDate) {
-            $stockQuery->where('stocks.created_at', '>=', $startDate . ' 00:00:00');
-        }
-        if ($endDate) {
-            $stockQuery->where('stocks.created_at', '<=', $endDate . ' 23:59:59');
+        if ($date) {
+            $stockQuery->where('stocks.created_at', '<=', $date . ' 23:59:59');
         }
 
         $stockData = $stockQuery->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.rate')
@@ -414,11 +410,8 @@ class AdminController extends Controller
             ->leftJoin('locations', 'stocks.location_id', '=', 'locations.id')
             ->whereIn('stocks.stage', $stages);
 
-        if ($startDate) {
-            $locQuery->where('stocks.created_at', '>=', $startDate . ' 00:00:00');
-        }
-        if ($endDate) {
-            $locQuery->where('stocks.created_at', '<=', $endDate . ' 23:59:59');
+        if ($date) {
+            $locQuery->where('stocks.created_at', '<=', $date . ' 23:59:59');
         }
 
         $allLocations = $locQuery->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'stocks.location_id', 'locations.name')
@@ -487,8 +480,7 @@ class AdminController extends Controller
             'totalValuation' => $totalValuation,
             'generatedOn' => now()->format('d M Y, h:i A'),
             'stages' => $stages,
-            'startDate' => $startDate,
-            'endDate' => $endDate,
+            'date' => $date,
         ];
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.live-stock', $pdfData)
@@ -497,12 +489,8 @@ class AdminController extends Controller
             ->setOption('isHtml5ParserEnabled', true)
             ->setOption('isFontSubsettingEnabled', true);
         
-        if ($startDate && $endDate) {
-            $filename = 'PentaPure_Stock_Valuation_Report_' . \Carbon\Carbon::parse($startDate)->format('Ymd') . '_to_' . \Carbon\Carbon::parse($endDate)->format('Ymd') . '.pdf';
-        } elseif ($startDate) {
-            $filename = 'PentaPure_Stock_Valuation_Report_From_' . \Carbon\Carbon::parse($startDate)->format('Ymd') . '.pdf';
-        } elseif ($endDate) {
-            $filename = 'PentaPure_Stock_Valuation_Report_Up_To_' . \Carbon\Carbon::parse($endDate)->format('Ymd') . '.pdf';
+        if ($date) {
+            $filename = 'PentaPure_Stock_Valuation_Report_Up_To_' . \Carbon\Carbon::parse($date)->format('Ymd') . '.pdf';
         } else {
             $filename = 'PentaPure_Live_Stock_Valuation_Report_' . now()->format('Ymd_His') . '.pdf';
         }
@@ -583,6 +571,20 @@ class AdminController extends Controller
         );
 
         return response()->json(['success' => true, 'message' => 'Stock alert limit updated!']);
+    }
+
+    public function updateProductRate(Request $request)
+    {
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'rate' => 'required|numeric|min:0'
+        ]);
+
+        $product = \App\Models\Product::findOrFail($request->product_id);
+        $product->rate = $request->rate;
+        $product->save();
+
+        return response()->json(['success' => true, 'message' => 'Product rate updated successfully!']);
     }
 
     // ── PURCHASE ORDERS ────────────────────────────────────────────────────
@@ -867,23 +869,16 @@ class AdminController extends Controller
 
         $status = $request->status;
         if ($status) {
-            if ($status === 'SINGLE_PENDING') {
+            if ($status === 'PENDING') {
                 $query->where('dispatch_status', 'PENDING');
-            } elseif ($status === 'SINGLE_DONE') {
-                $query->where('dispatch_status', 'DONE')
-                      ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) <= 1');
-            } elseif ($status === 'PARTIAL' || $status === 'PENDING_PARTIAL') {
+            } elseif ($status === 'PARTIAL_PENDING') {
                 $query->where('dispatch_status', 'PARTIAL');
-            } elseif ($status === 'DONE_PARTIAL') {
+            } elseif ($status === 'PARTIAL_DISPATCH') {
                 $query->where('dispatch_status', 'DONE')
                       ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) > 1');
-            } elseif ($status === 'ALL_DONE') {
-                $query->where('dispatch_status', 'DONE');
-            } elseif ($status === 'ALL_PARTIAL') {
-                $query->where(function($q) {
-                    $q->where('dispatch_status', 'PARTIAL')
-                      ->orWhereRaw("dispatch_status = 'DONE' AND (SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) > 1");
-                });
+            } elseif ($status === 'FULLY_DISPATCH') {
+                $query->where('dispatch_status', 'DONE')
+                      ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) <= 1');
             }
         }
         if ($request->date_from) {
@@ -918,23 +913,16 @@ class AdminController extends Controller
 
         $status = $request->status;
         if ($status) {
-            if ($status === 'SINGLE_PENDING') {
+            if ($status === 'PENDING') {
                 $query->where('dispatch_status', 'PENDING');
-            } elseif ($status === 'SINGLE_DONE') {
-                $query->where('dispatch_status', 'DONE')
-                      ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) <= 1');
-            } elseif ($status === 'PARTIAL' || $status === 'PENDING_PARTIAL') {
+            } elseif ($status === 'PARTIAL_PENDING') {
                 $query->where('dispatch_status', 'PARTIAL');
-            } elseif ($status === 'DONE_PARTIAL') {
+            } elseif ($status === 'PARTIAL_DISPATCH') {
                 $query->where('dispatch_status', 'DONE')
                       ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) > 1');
-            } elseif ($status === 'ALL_DONE') {
-                $query->where('dispatch_status', 'DONE');
-            } elseif ($status === 'ALL_PARTIAL') {
-                $query->where(function($q) {
-                    $q->where('dispatch_status', 'PARTIAL')
-                      ->orWhereRaw("dispatch_status = 'DONE' AND (SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) > 1");
-                });
+            } elseif ($status === 'FULLY_DISPATCH') {
+                $query->where('dispatch_status', 'DONE')
+                      ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) <= 1');
             }
         }
         if ($request->date_from) {
@@ -952,7 +940,7 @@ class AdminController extends Controller
 
     public function cashierOverview()
     {
-        $txs = \App\Models\Transaction::with('user')->orderByDesc('created_at')->get();
+        $txs = \App\Models\Transaction::with(['user', 'bills'])->orderByDesc('created_at')->get();
         
         $summary = [
             'totalIn'  => $txs->where('type', 'IN')->sum('amount'),

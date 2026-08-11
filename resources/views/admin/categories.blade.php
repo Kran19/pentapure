@@ -8,7 +8,7 @@
   </div>
 
   <!-- Add/Edit Form Card (Open by default) -->
-  <div id="category-form-card" class="card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
+  <div id="category-form-card" class="card white-orange-card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
     <div class="card-title" id="form-card-title">Add New Category</div>
     <form id="category-form">
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1rem;">
@@ -83,11 +83,38 @@
   }
 
   function adminEditCategory(c) {
-    editingCategoryId = c.id;
-    document.getElementById('form-card-title').innerText = 'Edit Category';
-    document.getElementById('category-name').value = c.name;
-    document.getElementById('category-form-card').style.display = 'block';
-    document.getElementById('category-form-card').scrollIntoView({ behavior: 'smooth' });
+    Swal.fire({
+        title: 'Edit Category',
+        html: `
+            <div style="display:flex; flex-direction:column; gap:10px; text-align:left;">
+                <label style="font-weight:600; color:#4b5563;">Category Name</label>
+                <input type="text" id="edit-category-name" class="swal2-input" style="margin:0;" value="${c.name}">
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Save Changes',
+        confirmButtonColor: '#f59e0b',
+        preConfirm: () => {
+            const name = document.getElementById('edit-category-name').value.trim();
+            if (!name) Swal.showValidationMessage('Category name is required');
+            return name;
+        }
+    }).then((res) => {
+        if (res.isConfirmed) {
+            fetch('/admin/categories', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+              body: JSON.stringify({ category_id: c.id, name: res.value })
+            }).then(r => r.json()).then(d => {
+              if(d.success) {
+                Swal.fire('Success', d.message, 'success');
+                setTimeout(() => location.reload(), 800);
+              } else {
+                Swal.fire('Error', d.message || 'Error', 'error');
+              }
+            });
+        }
+    });
   }
 
   function closeCategoryForm() {
@@ -152,3 +179,52 @@
 </script>
 @endsection
 
+
+<style>
+/* White and Orange Theme for Forms */
+.white-orange-card {
+    background-color: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+}
+.white-orange-card .card-title,
+.white-orange-card h4 {
+    color: #333333 !important;
+    font-weight: 700 !important;
+}
+.white-orange-card label {
+    color: #4b5563 !important;
+    font-weight: 600 !important;
+}
+.white-orange-card input,
+.white-orange-card select,
+.white-orange-card textarea {
+    background-color: #f9fafb !important;
+    border: 1px solid #d1d5db !important;
+    color: #333333 !important;
+    -webkit-text-fill-color: #333333 !important;
+}
+.white-orange-card input::placeholder,
+.white-orange-card textarea::placeholder {
+    color: #9ca3af !important;
+    -webkit-text-fill-color: #9ca3af !important;
+}
+.white-orange-card .btn-primary,
+.white-orange-card button[type="submit"] {
+    background-color: #f59e0b !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    border: none !important;
+}
+.white-orange-card .btn-secondary,
+.white-orange-card button[type="button"] {
+    background-color: #e5e7eb !important;
+    color: #374151 !important;
+    -webkit-text-fill-color: #374151 !important;
+    border: none !important;
+}
+.white-orange-card span {
+    color: #333333 !important;
+}
+</style>

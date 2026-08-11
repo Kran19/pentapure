@@ -8,7 +8,7 @@
   </div>
 
   <!-- Add/Edit Form -->
-  <div id="user-form-card" class="card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
+  <div id="user-form-card" class="card white-orange-card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
     <div class="card-title">Create New User</div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
       <div class="form-group">
@@ -381,3 +381,52 @@ function openNotifyModal(userId, userName) {
 }
 </script>
 @endsection
+
+<style>
+/* White and Orange Theme for Forms */
+.white-orange-card {
+    background-color: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+}
+.white-orange-card .card-title,
+.white-orange-card h4 {
+    color: #333333 !important;
+    font-weight: 700 !important;
+}
+.white-orange-card label {
+    color: #4b5563 !important;
+    font-weight: 600 !important;
+}
+.white-orange-card input,
+.white-orange-card select,
+.white-orange-card textarea {
+    background-color: #f9fafb !important;
+    border: 1px solid #d1d5db !important;
+    color: #333333 !important;
+    -webkit-text-fill-color: #333333 !important;
+}
+.white-orange-card input::placeholder,
+.white-orange-card textarea::placeholder {
+    color: #9ca3af !important;
+    -webkit-text-fill-color: #9ca3af !important;
+}
+.white-orange-card .btn-primary,
+.white-orange-card button[type="submit"] {
+    background-color: #f59e0b !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    border: none !important;
+}
+.white-orange-card .btn-secondary,
+.white-orange-card button[type="button"] {
+    background-color: #e5e7eb !important;
+    color: #374151 !important;
+    -webkit-text-fill-color: #374151 !important;
+    border: none !important;
+}
+.white-orange-card span {
+    color: #333333 !important;
+}
+</style>

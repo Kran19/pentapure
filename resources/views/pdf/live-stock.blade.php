@@ -70,16 +70,10 @@
         </div>
     </div>
     <div class="title">
-        @if(!empty($startDate) || !empty($endDate))
+        @if(!empty($date))
             Stock Valuation Report <br>
             <span style="font-size: 16px; font-weight: normal; color: #667085; text-transform: none;">
-                @if(!empty($startDate) && !empty($endDate))
-                    From {{ \Carbon\Carbon::parse($startDate)->format('d M Y') }} To {{ \Carbon\Carbon::parse($endDate)->format('d M Y') }}
-                @elseif(!empty($startDate))
-                    From {{ \Carbon\Carbon::parse($startDate)->format('d M Y') }} Onwards
-                @else
-                    Up To {{ \Carbon\Carbon::parse($endDate)->format('d M Y') }}
-                @endif
+                Up To {{ \Carbon\Carbon::parse($date)->format('d M Y') }}
             </span>
         @else
             Live Stock Valuation Report
@@ -88,7 +82,7 @@
 
     <div class="meta">
         <div class="meta-col">
-            <div class="meta-row"><span class="label">Report Type</span><span class="colon">:</span>{{ (empty($startDate) && empty($endDate)) ? 'Stock Valuation (Live)' : 'Stock Valuation (Historical)' }}</div>
+            <div class="meta-row"><span class="label">Report Type</span><span class="colon">:</span>{{ empty($date) ? 'Stock Valuation (Live)' : 'Stock Valuation (Historical)' }}</div>
             <div class="meta-row"><span class="label">Generated On</span><span class="colon">:</span>{{ $generatedOn }}</div>
         </div>
         <div class="meta-col">
@@ -152,8 +146,8 @@
         <div class="notes">
             <div class="notes-title">Notes:</div>
             <div>
-                @if(!empty($startDate) || !empty($endDate))
-                    This is a system generated report representing stock estimates for the selected period.<br>
+                @if(!empty($date))
+                    This is a system generated report representing stock estimates up to the selected date.<br>
                 @else
                     This is a system generated report representing live stock estimates.<br>
                 @endif

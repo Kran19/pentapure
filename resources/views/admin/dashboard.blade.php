@@ -123,6 +123,7 @@
       <a href="{{ route('admin.products') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">🏷️ Products</a>
       <a href="{{ route('admin.stock') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">📦 Live Stock</a>
       <a href="{{ route('admin.po') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">📋 Purchase Requests</a>
+      <a href="{{ route('admin.attendance.dashboard') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">🧑‍💼 Attendance</a>
       <a href="{{ route('admin.logs') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">🕐 Activity Logs</a>
 
     </div>

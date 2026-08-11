@@ -557,21 +557,13 @@ const app = {
         p.gradeNames.map(g => `<option value="${g}">${g}</option>`).join('') + 
         (p.gradeNames.includes('N/A') ? '' : `<option value="N/A">N/A</option>`);
       gradeGroup.classList.remove('hidden');
-      document.getElementById('materials-section').classList.add('hidden');
     } else {
       gradeGroup.classList.add('hidden');
-      document.getElementById('materials-section').classList.remove('hidden');
-      if(document.getElementById('input-rows').children.length === 0) {
-        this.addInputRow();
-      }
     }
   },
 
   onGradeSelected() {
-    document.getElementById('materials-section').classList.remove('hidden');
-    if(document.getElementById('input-rows').children.length === 0) {
-      this.addInputRow();
-    }
+    // Keep empty or just remove
   },
 
   addInputRow() {

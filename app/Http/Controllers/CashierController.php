@@ -210,9 +210,11 @@ class CashierController extends Controller
         $path = Storage::disk('public')->path($bill->file_path);
         if (!file_exists($path)) abort(404);
 
+        $disposition = request('download') ? 'attachment' : 'inline';
+        
         return response()->file($path, [
             'Content-Type'        => $bill->mime_type ?? 'application/octet-stream',
-            'Content-Disposition' => 'inline; filename="' . $bill->original_name . '"',
+            'Content-Disposition' => $disposition . '; filename="' . $bill->original_name . '"',
         ]);
     }
 

@@ -160,7 +160,6 @@ Route::prefix('cashier')->middleware('auth.role:CASHIER')->controller(CashierCon
     // Bill management
     Route::post('/bill/upload',        'uploadBill')->name('cashier.bill.upload');
     Route::delete('/bill/{id}',        'destroyBill')->name('cashier.bill.destroy');
-    Route::get('/bill/{id}/view',      'viewBill')->name('cashier.bill.view');
     // Transaction management
     Route::put('/action/{id}',         'updateTransaction')->name('cashier.action.update');
     Route::delete('/action/{id}',      'destroyTransaction')->name('cashier.action.destroy');
@@ -170,6 +169,11 @@ Route::prefix('cashier')->middleware('auth.role:CASHIER')->controller(CashierCon
 Route::get('/admin/cashier/{userId}/pdf', [AdminController::class, 'downloadCashierPdf'])
     ->middleware('auth.role:ADMIN')
     ->name('admin.cashier.pdf');
+
+// Shared Bill View (Admin & Cashier)
+Route::get('/cashier/bill/{id}/view', [CashierController::class, 'viewBill'])
+    ->middleware('auth.role:ADMIN,CASHIER')
+    ->name('cashier.bill.view');
 
 // ── ADMIN ROUTES ───────────────────────────────────────────────────────────
 Route::prefix('admin')->middleware('auth.role:ADMIN')->controller(AdminController::class)->group(function () {
@@ -191,6 +195,7 @@ Route::prefix('admin')->middleware('auth.role:ADMIN')->controller(AdminControlle
     Route::get('/stock',              'stock')->name('admin.stock');
     Route::post('/stock/adjust',      'adjustStock');
     Route::post('/stock/limit',       'setStockLimit');
+    Route::post('/stock/rate',        'updateProductRate');
     Route::post('/stock/pdf',         'downloadStockPdf')->name('admin.stock.pdf');
     Route::get('/po',                 'po')->name('admin.po');
     Route::post('/po/approve',        'approvePO');

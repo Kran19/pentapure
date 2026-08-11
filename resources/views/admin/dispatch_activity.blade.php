@@ -16,13 +16,10 @@
         <label style="display:block; font-size:0.85rem; margin-bottom:0.4rem; color:var(--text-muted);">Status</label>
         <select name="status" class="form-control" style="width:100%;" onchange="this.form.submit()">
           <option value="">All Statuses</option>
-          <option value="SINGLE_PENDING" {{ request('status') === 'SINGLE_PENDING' ? 'selected' : '' }}>Single Pending</option>
-          <option value="SINGLE_DONE" {{ request('status') === 'SINGLE_DONE' ? 'selected' : '' }}>Single Done</option>
-          <option value="PARTIAL" {{ request('status') === 'PARTIAL' ? 'selected' : '' }}>Partial Dispatch</option>
-          <option value="PENDING_PARTIAL" {{ request('status') === 'PENDING_PARTIAL' ? 'selected' : '' }}>Pending Partial Dispatch</option>
-          <option value="DONE_PARTIAL" {{ request('status') === 'DONE_PARTIAL' ? 'selected' : '' }}>Done Partial Dispatch</option>
-          <option value="ALL_DONE" {{ request('status') === 'ALL_DONE' ? 'selected' : '' }}>All Done Orders</option>
-          <option value="ALL_PARTIAL" {{ request('status') === 'ALL_PARTIAL' ? 'selected' : '' }}>All Partial Dispatch Orders</option>
+          <option value="PENDING" {{ request('status') === 'PENDING' ? 'selected' : '' }}>Pending</option>
+          <option value="PARTIAL_PENDING" {{ request('status') === 'PARTIAL_PENDING' ? 'selected' : '' }}>Partial Pending</option>
+          <option value="PARTIAL_DISPATCH" {{ request('status') === 'PARTIAL_DISPATCH' ? 'selected' : '' }}>Partial Dispatch</option>
+          <option value="FULLY_DISPATCH" {{ request('status') === 'FULLY_DISPATCH' ? 'selected' : '' }}>Fully Dispatch</option>
         </select>
       </div>
       <div style="flex:1; min-width:150px;">
