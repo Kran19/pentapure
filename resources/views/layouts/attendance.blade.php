@@ -77,6 +77,20 @@
 
         <!-- Content -->
         <div class="main-content" id="content-area">
+          @php 
+            $seg2 = request()->segment(2) ?? 'home';
+          @endphp
+          @if(!in_array($seg2, ['home', 'dashboard']))
+            <div style="margin-bottom: 1rem;">
+              <button onclick="history.back()" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:8px; padding:0.4rem 0.8rem; cursor:pointer; color:var(--text-main); display:inline-flex; align-items:center; gap:5px; transition:all 0.2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border-color)'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                   <line x1="19" y1="12" x2="5" y2="12"></line>
+                   <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Back
+              </button>
+            </div>
+          @endif
           @yield('content')
         </div>
       </div>
