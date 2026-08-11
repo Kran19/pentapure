@@ -1324,6 +1324,11 @@ document.addEventListener('DOMContentLoaded', () => {
   outline: none !important;
 }
 
+.swal-stock-popup input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: brightness(0) opacity(0.7) !important;
+  cursor: pointer !important;
+}
+
 .swal2-validation-message {
   background-color: #fee2e2 !important;
   color: #991b1b !important;
