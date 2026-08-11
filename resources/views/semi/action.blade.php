@@ -51,6 +51,30 @@
         <!-- Injected by JS -->
       </select>
     </div>
+
+    <div class="form-group" style="margin-bottom:1.5rem;">
+      <label style="font-weight:600;">Reference Type</label>
+      <select id="semi-ref-type" name="reference_type" onchange="toggleSemiRefFields()" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+        <option value="">None</option>
+        <option value="PO">Purchase Order</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+
+    <div class="form-group" id="semi-po-group" style="margin-bottom:1.5rem; display:none;">
+      <label style="font-weight:600;">Select Purchase Order</label>
+      <select id="semi-po-id" name="po_id" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+        <option value="">-- Select PO --</option>
+        @foreach($pageData['purchaseOrders'] as $po)
+          <option value="{{ $po->id }}">PO #{{ $po->id }} - {{ $po->product ? $po->product->name : 'Unknown' }} ({{ $po->quantity }}kg)</option>
+        @endforeach
+      </select>
+    </div>
+
+    <div class="form-group" id="semi-other-group" style="margin-bottom:1.5rem; display:none;">
+      <label style="font-weight:600;">Other Reference Note</label>
+      <input type="text" id="semi-other-note" name="other_note" placeholder="Enter reference..." style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+    </div>
     
     <button class="btn mt-2" onclick="app.reviewProduction('RAW', 'SEMI', 'rawStock')">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -165,5 +189,11 @@ function submitTransfer(e) {
       app.addInputRow();
     }
   });
+
+  function toggleSemiRefFields() {
+    const type = document.getElementById('semi-ref-type').value;
+    document.getElementById('semi-po-group').style.display = type === 'PO' ? 'block' : 'none';
+    document.getElementById('semi-other-group').style.display = type === 'Other' ? 'block' : 'none';
+  }
 </script>
 @endsection

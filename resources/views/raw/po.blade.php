@@ -44,8 +44,8 @@
       <div class="form-group">
         <label>Select Material</label>
         <select name="product_id" required>
-            @foreach(\App\Models\Product::raw()->active()->get() as $rm)
-                <option value="{{ $rm->id }}">{{ $rm->name }} - (grade- N/A) (type - raw)</option>
+            @foreach($pageData['products'] as $rm)
+                <option value="{{ $rm->id }}">{{ $rm->name }} - (grade- N/A) (type - {{ strtolower($pageData['type']) }})</option>
             @endforeach
         </select>
       </div>

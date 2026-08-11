@@ -71,9 +71,24 @@ class RawController extends Controller
     // ── ACTION: Inward form ────────────────────────────────────────────────
     public function action()
     {
-        $rawMaterials = Product::raw()->active()->visibleTo($this->authUser()['role'])->get(['id', 'name', 'unit', 'image_url']);
+        $user = $this->authUser();
+        $rawMaterials = Product::raw()->active()->visibleTo($user['role'])->get(['id', 'name', 'unit', 'image_url']);
         $rawStock = $this->getLiveStock('RAW');
-        $pageData = ['rawMaterialsList' => $rawMaterials, 'rawStock' => $rawStock];
+        
+        $purchaseOrders = PurchaseOrder::with('product')
+            ->whereHas('product', function($q) {
+                $q->where('type', 'RAW');
+            })
+            ->where('user_id', $user['id'])
+            ->where('status', 'DONE')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $pageData = [
+            'rawMaterialsList' => $rawMaterials, 
+            'rawStock' => $rawStock,
+            'purchaseOrders' => $purchaseOrders
+        ];
         return view('raw.action', compact('pageData'));
     }
 
@@ -100,6 +115,15 @@ class RawController extends Controller
             $locationId = \App\Models\Location::firstOrCreate(['name' => $locationName])->id;
 
             $notes = trim($request->notes ?? '');
+            
+            $refType = $request->reference_type;
+            if ($refType === 'PO' && $request->po_id) {
+                $po = PurchaseOrder::find($request->po_id);
+                if ($po) $notes .= ($notes ? ' | ' : '') . "PO Ref: #" . $po->id;
+            } elseif ($refType === 'Other' && !empty($request->other_note)) {
+                $notes .= ($notes ? ' | ' : '') . trim($request->other_note);
+            }
+
             if ($notes === '') {
                 $notes = 'ADD BY SELF';
             }
@@ -200,11 +224,13 @@ class RawController extends Controller
     {
         $user = $this->authUser();
         $pos = PurchaseOrder::with('product')
+            ->whereHas('product', function($q) { $q->where('type', 'RAW'); })
             ->where('user_id', $user['id'])
             ->orderByDesc('created_at')
             ->paginate(15);
             
-        $pageData = ['purchaseOrders' => $pos];
+        $products = Product::raw()->active()->visibleTo($user['role'])->get();
+        $pageData = ['purchaseOrders' => $pos, 'products' => $products, 'type' => 'raw'];
         return view('raw.po', compact('pageData'));
     }
 

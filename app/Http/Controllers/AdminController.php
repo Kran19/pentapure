@@ -210,6 +210,17 @@ class AdminController extends Controller
             ->orderBy('name')
             ->paginate(10, ['*'], 'raw_page');
             
+        $semiProducts = Product::with('grades')
+            ->where('type', 'SEMI')
+            ->orderBy('name')
+            ->paginate(10, ['*'], 'semi_page');
+
+        $semiProducts->getCollection()->transform(function($p) {
+            $p->gradeIds = $p->grades->pluck('id')->toArray();
+            $p->gradeNames = $p->grades->pluck('name')->toArray();
+            return $p;
+        });
+
         $finishedProducts = Product::with('grades')
             ->where('type', 'FINISHED')
             ->orderBy('name')
@@ -225,6 +236,7 @@ class AdminController extends Controller
         
         $pageData = [
             'rawProducts' => $rawProducts,
+            'semiProducts' => $semiProducts,
             'finishedProducts' => $finishedProducts,
             'allGrades' => $allActiveGrades,
         ];
@@ -235,7 +247,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'type' => 'required|in:RAW,FINISHED',
+            'type' => 'required|in:RAW,SEMI,FINISHED',
             'rate' => 'nullable|numeric|min:0',
             'threshold' => 'nullable|numeric|min:0',
             'grades' => 'nullable', // Could be stringified JSON or array

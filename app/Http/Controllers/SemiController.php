@@ -85,13 +85,24 @@ class SemiController extends Controller
 
     public function action()
     {
+        $user = $this->authUser();
         $rawStock = $this->getLiveStock('RAW');
         $grades   = \App\Models\Grade::where('is_active', true)->pluck('name')->toArray();
+        
+        $purchaseOrders = \App\Models\PurchaseOrder::with('product')
+            ->whereHas('product', function($q) {
+                $q->where('type', 'SEMI');
+            })
+            ->where('user_id', $user['id'])
+            ->where('status', 'DONE')
+            ->orderByDesc('created_at')
+            ->get();
 
         $pageData = [
             'rawStock' => $rawStock,
             'grades'   => $grades,
-            'products' => Product::with('grades')->active()->where('type', 'SEMI')->visibleTo($this->authUser()['role'])->get()->map(fn($p)=>[
+            'purchaseOrders' => $purchaseOrders,
+            'products' => Product::with('grades')->active()->where('type', 'SEMI')->visibleTo($user['role'])->get()->map(fn($p)=>[
                 'id'=>$p->id,'name'=>$p->name,'type'=>$p->type,'unit'=>$p->unit,
                 'gradeNames'=>$p->grades->pluck('name')
             ]),
@@ -103,13 +114,15 @@ class SemiController extends Controller
     public function po()
     {
         $user = $this->authUser();
-        $pos = PurchaseOrder::with('product')
+        $pos = \App\Models\PurchaseOrder::with('product')
+            ->whereHas('product', function($q) { $q->where('type', 'SEMI'); })
             ->where('user_id', $user['id'])
             ->orderByDesc('created_at')
             ->paginate(15);
-            
-        $pageData = ['purchaseOrders' => $pos];
-        return view('raw.po', compact('pageData')); // Share view with raw
+
+        $products = \App\Models\Product::where('type', 'SEMI')->active()->visibleTo($user['role'])->get();
+        $pageData = ['purchaseOrders' => $pos, 'products' => $products, 'type' => 'semi'];
+        return view('raw.po', compact('pageData')); // Shares view with raw
     }
 
     // POST: Log semi production — deduct raw inputs, add semi output
@@ -161,7 +174,16 @@ class SemiController extends Controller
         $locationName = $request->location ?: 'Main Warehouse';
         $locationId = \App\Models\Location::firstOrCreate(['name' => $locationName])->id;
 
-        DB::transaction(function () use ($request, $user, $locationId) {
+        $refNote = '';
+        $refType = $request->reference_type;
+        if ($refType === 'PO' && $request->po_id) {
+            $po = PurchaseOrder::find($request->po_id);
+            if ($po) $refNote = "PO Ref: #" . $po->id;
+        } elseif ($refType === 'Other' && !empty($request->other_note)) {
+            $refNote = trim($request->other_note);
+        }
+
+        DB::transaction(function () use ($request, $user, $locationId, $refNote) {
             // 1. Create production log
             $log = ProductionLog::create([
                 'user_id'           => $user['id'],
@@ -169,6 +191,7 @@ class SemiController extends Controller
                 'output_product_id' => $request->output_product_id,
                 'output_grade'      => $request->output_grade,
                 'output_qty'        => $request->output_qty,
+                'notes'             => $refNote,
             ]);
 
             // 2. Deduct each raw input from RAW stock

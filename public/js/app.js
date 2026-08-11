@@ -434,8 +434,12 @@ const app = {
     const outProdId = document.getElementById('finished-output-id').value;
     const outGrade = document.getElementById('finished-grade') ? document.getElementById('finished-grade').value : 'NONE';
     const outQty = Number(document.getElementById('finished-out-qty').value);
-    const notes = document.getElementById('finished-notes').value;
+    const notes = document.getElementById('finished-notes') ? document.getElementById('finished-notes').value : '';
     const loc = document.getElementById('finished-storage-location').value;
+    
+    const refType = document.getElementById('finished-ref-type') ? document.getElementById('finished-ref-type').value : '';
+    const poId = document.getElementById('finished-po-id') ? document.getElementById('finished-po-id').value : '';
+    const otherNote = document.getElementById('finished-other-note') ? document.getElementById('finished-other-note').value : '';
 
     if (!outProdId) return this.toast('Select output product', 'error');
     if (!outQty || outQty <= 0) return this.toast('Enter valid output quantity', 'error');
@@ -465,7 +469,7 @@ const app = {
     if (validationFailed) return;
     if (inputs.length === 0) return this.toast('Add at least one consumed material', 'error');
 
-    window.tempFinishedProductionData = { outProdId, outGrade, outQty, notes, loc, inputs };
+    window.tempFinishedProductionData = { outProdId, outGrade, outQty, notes, loc, inputs, refType, poId, otherNote };
     const outProdName = ((window.serverPageData && window.serverPageData.products) || []).find(x => x.id == outProdId)?.name;
     
     this.openDrawer(`
@@ -508,6 +512,9 @@ const app = {
       output_qty:        data.outQty,
       location:          data.loc,
       notes:             data.notes,
+      reference_type:    data.refType,
+      po_id:             data.poId,
+      other_note:        data.otherNote,
       inputs: data.inputs.map(inp => ({
         product_id: inp.productId,
         grade:      inp.grade,
@@ -668,8 +675,11 @@ const app = {
     if (inputs.length === 0) return this.toast('Add at least one consumed material', 'error');
 
     const loc = document.getElementById('semi-storage-location').value;
+    const refType = document.getElementById('semi-ref-type') ? document.getElementById('semi-ref-type').value : '';
+    const poId = document.getElementById('semi-po-id') ? document.getElementById('semi-po-id').value : '';
+    const otherNote = document.getElementById('semi-other-note') ? document.getElementById('semi-other-note').value : '';
 
-    window.tempProductionData = { inputType, outputType, inputStockKey, outProdId, outGrade, outQty, inputs, loc };
+    window.tempProductionData = { inputType, outputType, inputStockKey, outProdId, outGrade, outQty, inputs, loc, refType, poId, otherNote };
     const outProdName = ((window.serverPageData && window.serverPageData.products) || []).find(x => x.id == outProdId)?.name;
     
     this.openDrawer(`
@@ -711,6 +721,9 @@ const app = {
       output_grade:      data.outGrade,
       output_qty:        data.outQty,
       location:          data.loc,
+      reference_type:    data.refType,
+      po_id:             data.poId,
+      other_note:        data.otherNote,
       inputs: data.inputs.map(inp => ({
         product_id: inp.productId,
         grade:      inp.grade,

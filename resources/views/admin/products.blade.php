@@ -19,6 +19,7 @@
         <label>Type *</label>
         <select id="p-type" onchange="toggleGradeDisplay()">
           <option value="RAW">RAW (Input Material)</option>
+          <option value="SEMI">SEMI (Semi-Finished)</option>
           <option value="FINISHED">FINISHED (Packaged / Intermediate Goods)</option>
         </select>
       </div>
@@ -71,11 +72,12 @@
 
   @php 
     $rawProds = $pageData['rawProducts'];
+    $semiProds = $pageData['semiProducts'];
     $finishedProds = $pageData['finishedProducts'];
   @endphp
 
   <!-- RAW Products -->
-  <div class="card" style="padding:1.2rem; margin-bottom:1.5rem;">
+  <div id="raw-section" class="card" style="padding:1.2rem; margin-bottom:1.5rem;">
     <div class="card-title" style="color:var(--primary-light);">🌿 RAW Materials ({{ $rawProds->total() }})</div>
     <div class="table-container">
       <table>
@@ -83,7 +85,7 @@
         <tbody>
           @foreach($rawProds as $p)
           <tr>
-            <td>{{ $loop->iteration }}</td>
+            <td>{{ ($rawProds->currentPage() - 1) * $rawProds->perPage() + $loop->iteration }}</td>
             <td style="font-weight:600;">{{ $p['name'] }}</td>
             <td>{{ $p['unit'] }}</td>
             <td style="font-weight:bold; color:var(--danger);">{{ $p['threshold'] ?? '0.00' }}</td>
@@ -109,12 +111,56 @@
       </table>
     </div>
     <div style="margin-top:1rem; display:flex; justify-content:flex-end;">
-      {{ $rawProds->appends(request()->except('raw_page'))->links() }}
+      {{ $rawProds->appends(request()->except('raw_page'))->fragment('raw-section')->links('pagination::bootstrap-4') }}
+    </div>
+  </div>
+
+  <!-- SEMI Products -->
+  <div id="semi-section" class="card" style="padding:1.2rem; margin-bottom:1.5rem;">
+    <div class="card-title" style="color:var(--warning);">⏳ SEMI Products ({{ $semiProds->total() }})</div>
+    <div class="table-container">
+      <table>
+        <thead><tr><th>#</th><th>Name</th><th>Grades</th><th>Unit</th><th>Threshold</th><th>Active</th><th>Actions</th></tr></thead>
+        <tbody>
+          @foreach($semiProds as $p)
+          <tr>
+            <td>{{ ($semiProds->currentPage() - 1) * $semiProds->perPage() + $loop->iteration }}</td>
+            <td style="font-weight:600;">{{ $p['name'] }}</td>
+            <td style="white-space:normal; min-width:200px;">
+                @foreach($p['gradeNames'] as $gn)
+                    <span style="font-size:0.75rem; background:var(--bg-hover); color:var(--warning); padding:4px 8px; border-radius:6px; margin:2px; display:inline-block; border:1px solid var(--warning); font-weight:600;">{{ $gn }}</span>
+                @endforeach
+            </td>
+            <td>{{ $p['unit'] }}</td>
+            <td style="font-weight:bold; color:var(--danger);">{{ $p['threshold'] ?? '0.00' }}</td>
+            <td>
+              <label class="switch">
+                <input type="checkbox" {{ $p['is_active'] ? 'checked' : '' }} onchange="adminToggleProduct({{ $p['id'] }})">
+                <span class="slider"></span>
+              </label>
+            </td>
+            <td>
+              <div class="action-btns">
+                <button class="btn-icon edit" onclick="adminEditProduct({{ json_encode($p) }})" title="Edit">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+                </button>
+                <button class="btn-icon delete" onclick="adminDeleteProduct({{ $p['id'] }})" title="Delete">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+          @endforeach
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:1rem; display:flex; justify-content:flex-end;">
+      {{ $semiProds->appends(request()->except('semi_page'))->fragment('semi-section')->links('pagination::bootstrap-4') }}
     </div>
   </div>
 
   <!-- FINISHED Products -->
-  <div class="card" style="padding:1.2rem; margin-bottom:1.5rem;">
+  <div id="finished-section" class="card" style="padding:1.2rem; margin-bottom:1.5rem;">
     <div class="card-title" style="color:var(--secondary);">📦 FINISHED Products ({{ $finishedProds->total() }})</div>
     <div class="table-container">
       <table>
@@ -122,7 +168,7 @@
         <tbody>
           @foreach($finishedProds as $p)
           <tr>
-            <td>{{ $loop->iteration }}</td>
+            <td>{{ ($finishedProds->currentPage() - 1) * $finishedProds->perPage() + $loop->iteration }}</td>
             <td style="font-weight:600;">{{ $p['name'] }}</td>
             <td style="white-space:normal; min-width:200px;">
                 @foreach($p['gradeNames'] as $gn)
@@ -153,7 +199,7 @@
       </table>
     </div>
     <div style="margin-top:1rem; display:flex; justify-content:flex-end;">
-      {{ $finishedProds->appends(request()->except('fin_page'))->links() }}
+      {{ $finishedProds->appends(request()->except('fin_page'))->fragment('finished-section')->links('pagination::bootstrap-4') }}
     </div>
   </div>
 
@@ -240,6 +286,7 @@ function adminEditProduct(prod) {
             <label style="font-size:0.85rem; font-weight:600; color:#6b7280; display:block; margin-bottom:4px;">Type *</label>
             <select id="swal-p-type" style="width:100%; padding:0.65rem; border-radius:8px; border:1px solid #d1d5db; background:#fff; color:#333;" onchange="document.getElementById('swal-grades-area').style.display = this.value === 'RAW' ? 'none' : 'block'">
               <option value="RAW" ${prod.type === 'RAW' ? 'selected' : ''}>RAW (Input Material)</option>
+              <option value="SEMI" ${prod.type === 'SEMI' ? 'selected' : ''}>SEMI (Semi-Finished)</option>
               <option value="FINISHED" ${prod.type === 'FINISHED' ? 'selected' : ''}>FINISHED (Packaged)</option>
             </select>
           </div>

@@ -1494,3 +1494,6 @@ div:where(.swal2-container) div:where(.swal2-html-container) {
   border-color: var(--primary, #F4B400) !important;
   background: var(--bg-hover, #FFF1CC) !important;
 }
+
+/* Custom Pagination Styles */
+.pagination { display: flex; padding-left: 0; list-style: none; border-radius: 0.25rem; margin: 0; flex-wrap: wrap; gap: 4px; } .page-item .page-link { position: relative; display: block; padding: 0.5rem 0.75rem; color: var(--text-main); background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; } .page-item.active .page-link { z-index: 3; color: #000; background-color: var(--primary); border-color: var(--primary); } .page-item.disabled .page-link { color: var(--text-muted-extra); pointer-events: none; cursor: auto; background-color: var(--bg-main); border-color: var(--border-soft); } .page-item .page-link:hover { z-index: 2; color: var(--dark-brand); background-color: var(--bg-hover); border-color: var(--border-color); }

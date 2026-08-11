@@ -86,17 +86,28 @@ class FinishedController extends Controller
 
     public function action()
     {
+        $user = $this->authUser();
         $semiStock = $this->getLiveStock('SEMI');
         $rawStock  = $this->getLiveStock('RAW');
         $grades    = \App\Models\Grade::where('is_active', true)->pluck('name')->toArray();
         $locations = \App\Models\Location::orderBy('name')->pluck('name')->toArray();
+
+        $purchaseOrders = \App\Models\PurchaseOrder::with('product')
+            ->whereHas('product', function($q) {
+                $q->where('type', 'FINISHED');
+            })
+            ->where('user_id', $user['id'])
+            ->where('status', 'DONE')
+            ->orderByDesc('created_at')
+            ->get();
 
         $pageData = [
             'semiStock' => $semiStock,
             'rawStock'  => $rawStock,
             'grades'    => $grades,
             'locations' => $locations,
-            'products'  => Product::with('grades')->active()->where('type', 'FINISHED')->visibleTo($this->authUser()['role'])->get()->map(fn($p)=>[
+            'purchaseOrders' => $purchaseOrders,
+            'products'  => Product::with('grades')->active()->where('type', 'FINISHED')->visibleTo($user['role'])->get()->map(fn($p)=>[
                 'id'=>$p->id,'name'=>$p->name,'type'=>$p->type,'unit'=>$p->unit,
                 'gradeNames'=>$p->grades->pluck('name')
             ]),
@@ -155,7 +166,21 @@ class FinishedController extends Controller
         $locationName = $request->location ?: 'Main Warehouse';
         $locationId = \App\Models\Location::firstOrCreate(['name' => $locationName])->id;
 
-        DB::transaction(function () use ($request, $user, $locationId) {
+        $refNote = '';
+        $refType = $request->reference_type;
+        if ($refType === 'PO' && $request->po_id) {
+            $po = \App\Models\PurchaseOrder::find($request->po_id);
+            if ($po) $refNote = "PO Ref: #" . $po->id;
+        } elseif ($refType === 'Other' && !empty($request->other_note)) {
+            $refNote = trim($request->other_note);
+        }
+
+        $finalNotes = $request->notes ?? '';
+        if ($refNote) {
+            $finalNotes = $finalNotes ? $finalNotes . " | " . $refNote : $refNote;
+        }
+
+        DB::transaction(function () use ($request, $user, $locationId, $finalNotes) {
             // Auto-update product type to FINISHED if it was SEMI, ensuring it becomes visible to Sales
             $product = Product::find($request->output_product_id);
             if ($product && $product->type === 'SEMI') {
@@ -169,7 +194,7 @@ class FinishedController extends Controller
                 'output_product_id' => $request->output_product_id,
                 'output_grade'      => $request->output_grade,
                 'output_qty'        => $request->output_qty,
-                'notes'             => $request->notes,
+                'notes'             => $finalNotes,
             ]);
 
             foreach ($request->inputs as $inp) {
@@ -200,7 +225,7 @@ class FinishedController extends Controller
                 'location_id'      => $locationId,
                 'quantity'         => $request->output_qty,
                 'transaction_type' => 'IN',
-                'notes'            => $request->notes ? "Produced: Production log #{$log->id}. Notes: " . $request->notes : "Produced: Production log #{$log->id}",
+                'notes'            => $finalNotes ? "Produced: Production log #{$log->id}. Notes: " . $finalNotes : "Produced: Production log #{$log->id}",
             ]);
         });
 
@@ -245,11 +270,13 @@ class FinishedController extends Controller
     {
         $user = $this->authUser();
         $pos = \App\Models\PurchaseOrder::with('product')
+            ->whereHas('product', function($q) { $q->where('type', 'FINISHED'); })
             ->where('user_id', $user['id'])
             ->orderByDesc('created_at')
             ->paginate(15);
 
-        $pageData = ['purchaseOrders' => $pos];
+        $products = \App\Models\Product::where('type', 'FINISHED')->active()->visibleTo($user['role'])->get();
+        $pageData = ['purchaseOrders' => $pos, 'products' => $products, 'type' => 'finished'];
         return view('raw.po', compact('pageData')); // Share view with raw
     }
 

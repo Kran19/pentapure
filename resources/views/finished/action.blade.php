@@ -64,6 +64,30 @@
       </select>
     </div>
     
+    <div class="form-group" style="margin-bottom:1.5rem;">
+      <label style="font-weight:600;">Reference Type</label>
+      <select id="finished-ref-type" name="reference_type" onchange="toggleFinishedRefFields()" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+        <option value="">None</option>
+        <option value="PO">Purchase Order</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+
+    <div class="form-group" id="finished-po-group" style="margin-bottom:1.5rem; display:none;">
+      <label style="font-weight:600;">Select Purchase Order</label>
+      <select id="finished-po-id" name="po_id" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+        <option value="">-- Select PO --</option>
+        @foreach($pageData['purchaseOrders'] as $po)
+          <option value="{{ $po->id }}">PO #{{ $po->id }} - {{ $po->product ? $po->product->name : 'Unknown' }} ({{ $po->quantity }}kg)</option>
+        @endforeach
+      </select>
+    </div>
+
+    <div class="form-group" id="finished-other-group" style="margin-bottom:1.5rem; display:none;">
+      <label style="font-weight:600;">Other Reference Note</label>
+      <input type="text" id="finished-other-note" name="other_note" placeholder="Enter reference..." style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+    </div>
+    
     <button class="btn mt-2" onclick="reviewFinishedProduction()">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
       Review Production
@@ -176,6 +200,12 @@ function submitTransfer(e) {
     }
   });
 
+  function toggleFinishedRefFields() {
+    const type = document.getElementById('finished-ref-type').value;
+    document.getElementById('finished-po-group').style.display = type === 'PO' ? 'block' : 'none';
+    document.getElementById('finished-other-group').style.display = type === 'Other' ? 'block' : 'none';
+  }
+
   function onTargetProductSelected() {
     const productId = document.getElementById('prod-output').value;
     const p = window.productsList.find(x => x.id == productId);
@@ -254,6 +284,10 @@ function submitTransfer(e) {
     const notes = document.getElementById('finish-notes').value;
     const loc = document.getElementById('finished-storage-location').value;
 
+    const refType = document.getElementById('finished-ref-type') ? document.getElementById('finished-ref-type').value : '';
+    const poId = document.getElementById('finished-po-id') ? document.getElementById('finished-po-id').value : '';
+    const otherNote = document.getElementById('finished-other-note') ? document.getElementById('finished-other-note').value : '';
+
     if (!outProdId) return app.toast('Select target product', 'error');
     if (!gradeHidden && !outGrade) return app.toast('Select grade', 'error');
     if (!outQty || outQty <= 0) return app.toast('Enter valid output quantity', 'error');
@@ -284,7 +318,7 @@ function submitTransfer(e) {
     if (validationFailed) return;
     if (inputs.length === 0) return app.toast('Add at least one consumed material', 'error');
 
-    window.tempFinishedProductionData = { outProdId, outGrade, outQty, notes, loc, inputs };
+    window.tempFinishedProductionData = { outProdId, outGrade, outQty, notes, loc, inputs, refType, poId, otherNote };
     const outProdName = window.productsList.find(x => x.id == outProdId)?.name;
     
     app.openDrawer(`
@@ -326,6 +360,9 @@ function submitTransfer(e) {
       output_qty:        data.outQty,
       location:          data.loc,
       notes:             data.notes,
+      reference_type:    data.refType,
+      po_id:             data.poId,
+      other_note:        data.otherNote,
       inputs: data.inputs.map(inp => ({
         product_id: inp.productId,
         grade:      inp.grade,

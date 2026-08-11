@@ -40,6 +40,30 @@
       <select id="raw-storage-location" name="location" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
       </select>
     </div>
+    
+    <div class="form-group" style="margin-bottom:1.5rem;">
+      <label style="font-weight:600;">Reference Type</label>
+      <select id="raw-ref-type" name="reference_type" onchange="toggleRawRefFields()" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+        <option value="">None</option>
+        <option value="PO">Purchase Order</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+
+    <div class="form-group" id="raw-po-group" style="margin-bottom:1.5rem; display:none;">
+      <label style="font-weight:600;">Select Purchase Order</label>
+      <select id="raw-po-id" name="po_id" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+        <option value="">-- Select PO --</option>
+        @foreach($pageData['purchaseOrders'] as $po)
+          <option value="{{ $po->id }}">PO #{{ $po->id }} - {{ $po->product ? $po->product->name : 'Unknown' }} ({{ $po->quantity }}kg)</option>
+        @endforeach
+      </select>
+    </div>
+
+    <div class="form-group" id="raw-other-group" style="margin-bottom:1.5rem; display:none;">
+      <label style="font-weight:600;">Other Reference Note</label>
+      <input type="text" id="raw-other-note" name="other_note" placeholder="Enter reference..." style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+    </div>
 
     <div class="form-group" style="margin-bottom:1.5rem;">
       <label style="font-weight:600;">Notes</label>
@@ -108,6 +132,9 @@ function submitRawInward(e) {
   const prodId = document.getElementById('raw-prod').value;
   const qty = Number(document.getElementById('raw-qty').value);
   const loc = document.getElementById('raw-storage-location').value;
+  const refType = document.getElementById('raw-ref-type').value;
+  const poId = document.getElementById('raw-po-id').value;
+  const otherNote = document.getElementById('raw-other-note').value;
   const notes = document.getElementById('raw-notes').value;
   const btn = document.getElementById('raw-submit-btn');
 
@@ -130,7 +157,16 @@ function submitRawInward(e) {
       'Accept': 'application/json',
       'X-CSRF-TOKEN': csrfToken 
     },
-    body: JSON.stringify({ product_id: prodId, quantity: qty, grade: 'NONE', location: loc, notes: notes })
+    body: JSON.stringify({ 
+      product_id: prodId, 
+      quantity: qty, 
+      grade: 'NONE', 
+      location: loc, 
+      reference_type: refType,
+      po_id: poId,
+      other_note: otherNote,
+      notes: notes 
+    })
   })
   .then(r => r.json())
   .then(data => {
@@ -211,5 +247,11 @@ document.addEventListener('DOMContentLoaded', () => {
     select.innerHTML = locs.map(l => `<option value="${l}">${l}</option>`).join('');
   }
 });
+
+function toggleRawRefFields() {
+  const type = document.getElementById('raw-ref-type').value;
+  document.getElementById('raw-po-group').style.display = type === 'PO' ? 'block' : 'none';
+  document.getElementById('raw-other-group').style.display = type === 'Other' ? 'block' : 'none';
+}
 </script>
 @endsection
