@@ -168,6 +168,9 @@ body {
 body.admin-mode .app-container {
   max-width: 100%;
   flex-direction: row;
+  height: 100vh !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
 }
 
 /* Toggle Switch */

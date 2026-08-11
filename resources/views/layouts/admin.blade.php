@@ -73,59 +73,59 @@
 
           @if($can('module_dashboard'))
           <a href="{{ url('admin/home') }}" class="nav-item {{ $seg=='home' || $seg=='dashboard'?'active':'' }}">
-            📊 Dashboard
+            Dashboard
           </a>
           @endif
 
           @if($can('module_users'))
           <a href="{{ url('admin/users') }}" class="nav-item {{ $seg=='users'?'active':'' }}">
-            👥 Users &amp; Hierarchy
+            Users &amp; Hierarchy
           </a>
           @endif
 
           @if($can('module_stock'))
           <a href="{{ url('admin/stock') }}" class="nav-item {{ $seg=='stock'?'active':'' }}">
-            📦 Live Stock
+            Live Stock
           </a>
           @endif
 
           @if($can('module_products'))
           <a href="{{ url('admin/products') }}" class="nav-item {{ $seg=='products'?'active':'' }}">
-            🏷️ Products Master
+            Products Master
           </a>
           @endif
 
           @if($can('module_grades'))
           <a href="{{ url('admin/grades') }}" class="nav-item {{ $seg=='grades'?'active':'' }}">
-            ✅ Grades Master
+            Grades Master
           </a>
           @endif
 
           <a href="{{ url('admin/locations') }}" class="nav-item {{ $seg=='locations'?'active':'' }}">
-            📍 Warehouse Master
+            Warehouse Master
           </a>
 
           @if($can('module_po'))
           <a href="{{ url('admin/po') }}" class="nav-item {{ $seg=='po'?'active':'' }}">
-            📋 Purchase Requests
+            Purchase Requests
           </a>
           @endif
 
           @if($can('module_dispatch'))
           <a href="{{ url('admin/dispatch-activity') }}" class="nav-item {{ $seg=='dispatch-activity'?'active':'' }}">
-            🚚 Dispatch Activity
+            Dispatch Activity
           </a>
           @endif
 
           @if($can('module_cashier'))
           <a href="{{ url('admin/cashier-overview') }}" class="nav-item {{ $seg=='cashier-overview'?'active':'' }}">
-            💰 Cashier Overview
+            Cashier Overview
           </a>
           @endif
 
           @if($can('module_categories'))
           <a href="{{ url('admin/categories') }}" class="nav-item {{ $seg=='categories'?'active':'' }}">
-            🏷️ Expense Category Master
+            Expense Category Master
           </a>
           @endif
 
@@ -135,25 +135,25 @@
           <div>
             <div class="nav-item" id="att-toggle" onclick="toggleAttMenu()"
               style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-              <span>🧑‍💼 Attendance & HR</span>
+              <span>Attendance & HR</span>
               <svg id="att-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 style="transition:transform 0.3s;"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
             <div id="att-submenu" style="display:none; padding-left:1rem; border-left:2px solid var(--primary);">
               <a href="{{ url('admin/attendance/dashboard') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
-                📊 Dashboard
+                Dashboard
               </a>
               <a href="{{ url('admin/attendance/departments') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
-                🏢 Departments
+                Departments
               </a>
               <a href="{{ url('admin/attendance/workers') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
-                👷 Workers List
+                Workers List
               </a>
               <a href="{{ url('admin/attendance/daily') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
-                @if($authUser['role'] === 'ATTENDANCE') 📝 Daily Entry @else 🔍 Daily Review @endif
+                @if($authUser['role'] === 'ATTENDANCE') Daily Entry @else Daily Review @endif
               </a>
               <a href="{{ url('admin/attendance/reports') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
-                📑 Monthly Reports
+                Monthly Reports
               </a>
             </div>
           </div>
@@ -161,14 +161,14 @@
 
           @if($can('module_logs'))
           <a href="{{ url('admin/logs') }}" class="nav-item {{ $seg=='logs'?'active':'' }}">
-            🕐 Activity Logs
+            Activity Logs
           </a>
           @endif
 
           @if($can('module_notifications'))
           <a href="{{ url('admin/notifications') }}" class="nav-item {{ $seg=='notifications'?'active':'' }}"
              style="display:flex; justify-content:space-between; align-items:center;">
-            <span>🔔 Notifications</span>
+            <span>Notifications</span>
             <span id="nav-notif-count" class="badge badge-danger" style="display:none; font-size:0.7rem; padding:2px 6px;">0</span>
           </a>
           @endif
@@ -182,7 +182,7 @@
               @csrf
               <button type="submit" class="nav-item"
                 style="width:100%;background:none;border:none;cursor:pointer;color:var(--danger);display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1.2rem;font-size:1rem;">
-                🚪 Logout
+                Logout
               </button>
             </form>
           </div>
