@@ -34,6 +34,6 @@ php artisan migrate --force
 
 # 7. Sync public assets to public_html
 echo "Syncing public assets to live web directory..."
-rsync -av public/ ../public_html/penta-pure/
+rsync -av --exclude='index.php' --exclude='.htaccess' public/ ../public_html/penta-pure/
 
 echo "Application deployed successfully!"
