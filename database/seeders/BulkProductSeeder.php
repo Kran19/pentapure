@@ -31,10 +31,17 @@ class BulkProductSeeder extends Seeder
             return;
         }
 
+        // Truncate existing data to prevent duplicates
+        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        \Illuminate\Support\Facades\DB::table('grade_product')->truncate();
+        \Illuminate\Support\Facades\DB::table('grades')->truncate();
+        \Illuminate\Support\Facades\DB::table('products')->truncate();
+        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+
         // Define the grades as per user request
         $gradeNames = [
             'A GRADE', 'PURE', 'REGULAR', 'GOLD', 'PPF', 'PREMIUM', 'SORTED', 
-            'UNSORTED', 'EXTRASTRONG', 'RICHPLUS', 'RICH', 'AB 30', 'TPA', 'TPM', 
+            'UNSORTED', 'EXTRASTRONG', 'EXTRA STRONG', 'RICHPLUS', 'RICH PLUS', 'RICH', 'AB 30', 'TPA', 'TPM', 
             'TPR', 'TPS', 'UNIQUE', 'NONE'
         ];
 
@@ -62,48 +69,52 @@ class BulkProductSeeder extends Seeder
                 $dbType = 'RAW';
             }
 
-            // Clean up the name: remove (FG), (RM), (SM), or (RAW), (SEMI)
-            // Example: "CHEESE POWDER SD PREMIUM (FG)" -> "CHEESE POWDER SD PREMIUM"
-            $cleanName = preg_replace('/\s*\((FG|RM|SM|RAW|SEMI)\)$/i', '', $rawName);
-            $cleanName = trim($cleanName);
+            // DO NOT CLEAN NAME. The user wants the exact name from the file!
+            $name = $rawName;
 
-            // Extract grade from the end of the name
+            // Extract grade from the string (checking if the grade exists in the string)
             $foundGrade = null;
-            // Sort grade names by length descending to match 'RICHPLUS' before 'RICH'
+            // Sort grade names by length descending to match 'RICH PLUS' before 'RICH'
             $sortedGrades = $gradeNames;
             usort($sortedGrades, function($a, $b) { return strlen($b) - strlen($a); });
 
+            // Look for a hyphen and the grade after it, or just the grade before the parenthesis
             foreach ($sortedGrades as $g) {
+                // Remove spaces for comparison just in case
                 $gNoSpace = str_replace(' ', '', $g);
-                if (preg_match('/' . preg_quote($gNoSpace, '/') . '$/i', str_replace(' ', '', $cleanName))) {
+                $nameNoSpace = str_replace(' ', '', $rawName);
+                
+                // If the user explicitly added a hyphen like `- UNIQUE` or `-UNIQUE`
+                if (preg_match('/-' . preg_quote($gNoSpace, '/') . '/i', $nameNoSpace)) {
                     $foundGrade = $g;
-                    // Strip the grade from the name allowing arbitrary spaces
-                    $regexGrade = preg_replace('/(.)/i', '$1\s*', $gNoSpace);
-                    $cleanName = preg_replace('/' . $regexGrade . '$/i', '', $cleanName);
+                    break;
+                }
+                
+                // Or if the grade is just in the string (before the parenthesis)
+                if (preg_match('/' . preg_quote($gNoSpace, '/') . '\(+/i', $nameNoSpace)) {
+                    $foundGrade = $g;
                     break;
                 }
             }
 
-            $name = trim($cleanName);
-
-            $product = Product::updateOrCreate(
-                ['name' => $name, 'type' => $dbType], // unique by name and type
-                [
-                    'unit' => 'KG', // default unit
-                    'rate' => 0,
-                    'threshold' => 0,
-                    'is_active' => true,
-                ]
-            );
+            // Create product with the full exact name
+            $product = Product::create([
+                'name' => $name,
+                'type' => $dbType,
+                'unit' => 'KG', // default unit
+                'rate' => 0,
+                'threshold' => 0,
+                'is_active' => true,
+            ]);
 
             // Attach grade if found
             if ($foundGrade && isset($gradeMap[$foundGrade])) {
-                $product->grades()->syncWithoutDetaching([$gradeMap[$foundGrade]]);
+                $product->grades()->attach($gradeMap[$foundGrade]);
             }
 
             $count++;
         }
 
-        $this->command->info("Successfully processed and imported {$count} products!");
+        $this->command->info("Successfully processed and imported {$count} distinct products!");
     }
 }
