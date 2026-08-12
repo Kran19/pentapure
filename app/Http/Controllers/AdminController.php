@@ -316,12 +316,13 @@ class AdminController extends Controller
                      ->on('stocks.stage', '=', 'stock_limits.stage')
                      ->on('stocks.grade', '=', 'stock_limits.grade');
             })
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.threshold', 'stock_limits.alert_limit')
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.threshold', 'products.rate', 'stock_limits.alert_limit')
             ->selectRaw("
                 stocks.product_id as productId,
                 products.name,
                 products.unit,
                 products.threshold,
+                products.rate,
                 stocks.stage,
                 stocks.grade,
                 IFNULL(stock_limits.alert_limit, 0) as alert_limit,

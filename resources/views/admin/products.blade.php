@@ -29,7 +29,7 @@
           <select id="p-unit-select" onchange="toggleCustomUnitInput()" style="width:100%;">
             <option value="KG" selected>KG</option>
             <option value="LTR">LTR</option>
-            <option value="NO">NO</option>
+            <option value="PCS">PCS</option>
             <option value="OTHER">OTHER (TYPE CUSTOM)</option>
           </select>
           <input type="text" id="p-unit-custom" placeholder="Type custom unit (e.g. BOTTLE, BOX)" style="display:none; width:100%; margin-top:4px;">
@@ -61,7 +61,7 @@
             </label>
             @endforeach
         </div>
-        <small style="color:var(--text-muted); font-size:0.75rem; margin-top:8px; display:block;">If none selected, it will be visible to all users by default.</small>
+
     </div>
 
     <div style="display:flex; gap:1rem; margin-top:1.5rem;">
@@ -269,7 +269,7 @@ function adminEditProduct(prod) {
 
   // Build the Unit logic
   const unitUpper = (prod.unit || 'KG').toUpperCase();
-  const isCustomUnit = !['KG', 'LTR', 'NO'].includes(unitUpper);
+  const isCustomUnit = !['KG', 'LTR', 'PCS'].includes(unitUpper);
 
   Swal.fire({
     title: 'Edit Product',
@@ -302,7 +302,7 @@ function adminEditProduct(prod) {
           <select id="swal-p-unit-select" style="width:100%; padding:0.65rem; border-radius:8px; border:1px solid #d1d5db; background:#fff; color:#333;" onchange="document.getElementById('swal-p-unit-custom').style.display = this.value === 'OTHER' ? 'block' : 'none'">
             <option value="KG" ${unitUpper === 'KG' ? 'selected' : ''}>KG</option>
             <option value="LTR" ${unitUpper === 'LTR' ? 'selected' : ''}>LTR</option>
-            <option value="NO" ${unitUpper === 'NO' ? 'selected' : ''}>NO</option>
+            <option value="PCS" ${unitUpper === 'PCS' ? 'selected' : ''}>PCS</option>
             <option value="OTHER" ${isCustomUnit ? 'selected' : ''}>OTHER (TYPE CUSTOM)</option>
           </select>
           <input type="text" id="swal-p-unit-custom" value="${isCustomUnit ? unitUpper : ''}" placeholder="Type custom unit (e.g. BOTTLE)" style="display:${isCustomUnit ? 'block' : 'none'}; width:100%; padding:0.65rem; margin-top:8px; border-radius:8px; border:1px solid #d1d5db; background:#fff; color:#333;">

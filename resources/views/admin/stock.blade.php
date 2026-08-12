@@ -35,7 +35,7 @@
         </select>
       </div>
 
-      <div class="form-group">
+      <div class="form-group" style="display: none;">
         <label>Grade *</label>
         <div id="card-stock-grade-container">
           <!-- Populated dynamically -->
@@ -56,7 +56,7 @@
       </div>
 
       <div class="form-group">
-        <label>Quantity *</label>
+        <label>MIN.QTY *</label>
         <input id="card-stock-qty" type="number" min="0.001" step="0.001" placeholder="e.g. 200.00" class="form-control">
       </div>
 
@@ -552,7 +552,7 @@ function adminUpdateRate(productId, currentRate, name) {
     }
   }).then((result) => {
     if (result.isConfirmed) {
-      fetch('/stock/rate', {
+      fetch('/admin/stock/rate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -90,6 +90,20 @@
     </a>
   </div>
 
+  <!-- Quick Links -->
+  <div class="card" style="padding:1.2rem; margin-bottom:2rem;">
+    <div class="card-title">Quick Actions</div>
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:0.75rem; margin-top:0.5rem;">
+      <a href="{{ route('admin.users') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">👥 Manage Users</a>
+      <a href="{{ route('admin.products') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">🏷️ Products</a>
+      <a href="{{ route('admin.stock') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">📦 Live Stock</a>
+      <a href="{{ route('admin.po') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">📋 Purchase Requests</a>
+      <a href="{{ route('admin.attendance.dashboard') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">🧑‍💼 Attendance</a>
+      <a href="{{ route('admin.logs') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">🕐 Activity Logs</a>
+
+    </div>
+  </div>
+
   <!-- Charts Section -->
   <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:1.5rem; margin-bottom:2rem;">
     <!-- Sales Trend Chart -->
@@ -112,20 +126,6 @@
       <div style="height: 250px; position: relative;">
         <canvas id="productionChart"></canvas>
       </div>
-    </div>
-  </div>
-
-  <!-- Quick Links -->
-  <div class="card" style="padding:1.2rem;">
-    <div class="card-title">Quick Actions</div>
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:0.75rem; margin-top:0.5rem;">
-      <a href="{{ route('admin.users') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">👥 Manage Users</a>
-      <a href="{{ route('admin.products') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">🏷️ Products</a>
-      <a href="{{ route('admin.stock') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">📦 Live Stock</a>
-      <a href="{{ route('admin.po') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">📋 Purchase Requests</a>
-      <a href="{{ route('admin.attendance.dashboard') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">🧑‍💼 Attendance</a>
-      <a href="{{ route('admin.logs') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">🕐 Activity Logs</a>
-
     </div>
   </div>
 
