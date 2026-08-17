@@ -14,7 +14,7 @@
     } elseif (request()->query('from') === 'home') {
         $backUrl = url(strtolower($role) . '/home');
     } elseif (request()->query('from') === 'products') {
-        $backUrl = url('admin/products');
+        $backUrl = url(request()->segment(1) . '/products');
     }
 @endphp
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">

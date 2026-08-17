@@ -35,7 +35,7 @@
             <td style="color:var(--primary-light); font-weight:bold;">{{ number_format($po->quantity, 1) }}</td>
             <td style="font-size:0.85rem; color:var(--text-muted);">{{ $po->note ?? '—' }}</td>
             <td>
-              <span class="badge {{ $po->status === 'DONE' ? 'badge-done' : 'badge-pending' }}">
+              <span class="badge {{ in_array($po->status, ['DONE', 'RECEIVED']) ? 'badge-done' : 'badge-pending' }}">
                 {{ $po->status === 'DONE' ? 'READ' : $po->status }}
               </span>
             </td>
@@ -46,8 +46,18 @@
                   onclick="adminApprovePO({{ $po->id }}, this)">
                   ✅ Mark as Read
                 </button>
-                @else
+                <button class="btn btn-sm" style="width:auto; padding:0.3rem 0.8rem; background:var(--primary);"
+                  onclick="adminReceivePO({{ $po->id }}, this)">
+                  📦 Mark as Received
+                </button>
+                @elseif($po->status === 'DONE')
                   <span style="font-size:0.8rem; color:var(--secondary); margin-right:8px;">✓ Read</span>
+                  <button class="btn btn-sm" style="width:auto; padding:0.3rem 0.8rem; background:var(--primary);"
+                    onclick="adminReceivePO({{ $po->id }}, this)">
+                    📦 Mark as Received
+                  </button>
+                @elseif($po->status === 'RECEIVED')
+                  <span style="font-size:0.8rem; color:var(--primary); margin-right:8px;">📦 Received</span>
                 @endif
                 <button class="btn-icon delete" onclick="adminDeletePO({{ $po->id }})" title="Delete">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
@@ -105,7 +115,7 @@ function adminApprovePO(id, btn) {
     if (result.isConfirmed) {
       btn.disabled = true;
       btn.textContent = 'Processing...';
-      fetch('/admin/po/approve', {
+      fetch('/' + window.userSlug + '/po/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
         body: JSON.stringify({ po_id: id })
@@ -117,6 +127,35 @@ function adminApprovePO(id, btn) {
           Swal.fire('Error!', d.message || 'Error', 'error');
           btn.disabled = false;
           btn.textContent = '✅ Mark as Read';
+        }
+      });
+    }
+  });
+}
+
+function adminReceivePO(id, btn) {
+  Swal.fire({
+    title: 'Mark as Received?',
+    text: "This will acknowledge the physical receipt of the order.",
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, mark as received'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      btn.disabled = true;
+      btn.textContent = 'Processing...';
+      fetch('/' + window.userSlug + '/po/receive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify({ po_id: id })
+      }).then(r => r.json()).then(d => {
+        if (d.success) {
+          Swal.fire('Received!', d.message, 'success');
+          setTimeout(() => location.reload(), 800);
+        } else {
+          Swal.fire('Error!', d.message || 'Error', 'error');
+          btn.disabled = false;
+          btn.textContent = '📦 Mark as Received';
         }
       });
     }

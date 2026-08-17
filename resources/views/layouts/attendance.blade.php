@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <meta name="base-url" content="{{ url('/') }}">
+  <meta name="base-url" content="{{ url(request()->segment(1) . '/') }}">
+  <script>window.userSlug = '{{ request()->segment(1) }}';</script>
   <title>Pentapure Factory - Attendance Management</title>
   <link rel="stylesheet" href="{{ asset('css/style.css') }}">
   <link rel="stylesheet" href="{{ asset('css/tabulator-custom.css') }}">
@@ -47,25 +48,25 @@
 
           @php $seg = request()->segment(2) ?? 'home'; @endphp
 
-          <a href="{{ url('attendance/home') }}" class="nav-item {{ $seg=='home'?'active':'' }}">
+          <a href="{{ url(request()->segment(1) . '/home') }}" class="nav-item {{ $seg=='home'?'active':'' }}">
             📊 Dashboard
           </a>
-          <a href="{{ url('attendance/departments') }}" class="nav-item {{ $seg=='departments'?'active':'' }}">
+          <a href="{{ url(request()->segment(1) . '/departments') }}" class="nav-item {{ $seg=='departments'?'active':'' }}">
             🏢 Departments
           </a>
-          <a href="{{ url('attendance/workers') }}" class="nav-item {{ $seg=='workers'?'active':'' }}">
+          <a href="{{ url(request()->segment(1) . '/workers') }}" class="nav-item {{ $seg=='workers'?'active':'' }}">
             👷‍♂️ Workers Master
           </a>
-          <a href="{{ url('attendance/daily') }}" class="nav-item {{ $seg=='daily'?'active':'' }}">
+          <a href="{{ url(request()->segment(1) . '/daily') }}" class="nav-item {{ $seg=='daily'?'active':'' }}">
             📅 Daily Attendance
           </a>
-          <a href="{{ url('attendance/reports') }}" class="nav-item {{ $seg=='reports'?'active':'' }}">
+          <a href="{{ url(request()->segment(1) . '/reports') }}" class="nav-item {{ $seg=='reports'?'active':'' }}">
             📑 Monthly Reports
           </a>
 
           <!-- Logout -->
           <div style="margin-top:auto;border-top:1px solid var(--glass-border);padding-top:0.5rem;">
-            <form method="POST" action="{{ route('logout') }}" style="margin:0;">
+            <form method="POST" action="{{ route(request()->segment(1) . '.logout') }}" style="margin:0;">
               @csrf
               <button type="submit" class="nav-item"
                 style="width:100%;background:none;border:none;cursor:pointer;color:var(--danger);display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1.2rem;font-size:1rem;">
@@ -105,7 +106,7 @@
   <script>
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
     window.csrfToken = csrfToken;
-    window.logoutUrl = "{{ route('logout') }}";
+    window.logoutUrl = "{{ route(request()->segment(1) . '.logout') }}";
   </script>
 </body>
 </html>

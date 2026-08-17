@@ -23,7 +23,7 @@
         <label>Role *</label>
         <select id="u-role" onchange="toggleRoleFields(this.value)">
           <option value="">-- Select Role --</option>
-          @foreach(['RAW','SEMI','FINISHED','CASHIER','SALES','DISPATCH','ATTENDANCE','ADMIN','SUB_ADMIN'] as $r)
+          @foreach(['RAW','SEMI','FINISHED','CASHIER','SALES','DISPATCH','ATTENDANCE','ADMIN','SUB_ADMIN','STOCK_MANAGER'] as $r)
             <option value="{{ $r }}">{{ $r }}</option>
           @endforeach
         </select>
@@ -50,7 +50,7 @@
     </div>
     
     <div id="permissions-container" style="display:none; margin-top:1rem; border:1px solid var(--glass-border); padding:1.2rem; border-radius:8px; background:var(--glass-bg);">
-      <h4 style="margin-top:0; margin-bottom:1rem; color:var(--primary); font-size:1.1rem; text-transform:none;">Sub-Admin Permissions</h4>
+      <h4 style="margin-top:0; margin-bottom:1rem; color:var(--primary); font-size:1.1rem; text-transform:none;">Sub-Admin / Stock Manager Permissions</h4>
       <div style="margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px solid var(--glass-border);">
         <div style="display:flex; align-items:center; gap:10px;">
           <input type="checkbox" id="perm-can_manage" value="can_manage" style="width:20px; height:20px; margin:0; cursor:pointer;">
@@ -67,6 +67,7 @@
         <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_po" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Purchase Requests</span></div>
         <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_logs" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Activity Logs</span></div>
         <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_grades" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Grades Master</span></div>
+        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_locations" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Storage Location</span></div>
         <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_categories" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Expense Category Master</span></div>
         <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_dispatch" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Dispatch Activity</span></div>
         <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_cashier" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Cashier Overview</span></div>
@@ -197,7 +198,7 @@ function toggleRoleFields(role) {
     document.getElementById('u-branch').value = '';
   }
   
-  if (role === 'SUB_ADMIN') {
+  if (role === 'SUB_ADMIN' || role === 'STOCK_MANAGER') {
     permContainer.style.display = 'block';
   } else {
     permContainer.style.display = 'none';
@@ -214,7 +215,7 @@ function adminEditUser(user) {
   document.getElementById('u-branch').value = user.branch || '';
   toggleRoleFields(user.role);
   
-  // Set permissions if it's a SUB_ADMIN
+  // Set permissions if it's a SUB_ADMIN or STOCK_MANAGER
   const perms = user.permissions || [];
   document.getElementById('perm-can_manage').checked = perms.includes('can_manage');
   document.querySelectorAll('.sub-perm').forEach(cb => {
@@ -260,7 +261,7 @@ function adminSaveUser() {
     Swal.fire('Required', 'Password is required for new users', 'warning'); return;
   }
 
-  fetch('/admin/users', {
+  fetch('/' + window.userSlug + '/users', {
     method: 'POST',
     headers: { 
         'Content-Type': 'application/json', 
@@ -289,7 +290,7 @@ function adminSaveUser() {
 }
 
 function adminToggleUser(id) {
-  fetch('/admin/users/toggle', {
+  fetch('/' + window.userSlug + '/users/toggle', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
     body: JSON.stringify({ user_id: id })
@@ -360,7 +361,7 @@ function openNotifyModal(userId, userName) {
         }
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch('/admin/notifications/send', {
+            fetch('/' + window.userSlug + '/notifications/send', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
                 body: JSON.stringify({

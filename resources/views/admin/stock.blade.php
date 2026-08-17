@@ -18,66 +18,180 @@
       <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('stock-form-card').style.display='none'" style="width:auto; padding:0.3rem 0.8rem;">✕ Close</button>
     </div>
 
-    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-top:1rem;">
-      <div class="form-group">
-        <label>Stock Type *</label>
-        <select id="card-stock-stage" onchange="onCardStockStageChange()" class="form-control" style="width:100%;">
-          <option value="RAW" selected>RAW (Input Material)</option>
-          <option value="SEMI">SEMI (Intermediate Production)</option>
-          <option value="FINISHED">FINISHED (Packaged Goods)</option>
-        </select>
-      </div>
+    <div id="stock-rows-wrapper">
+        <div class="bulk-stock-row" id="single-stock-row" style="padding: 1rem; margin-bottom: 1rem; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;">
+        <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+            
+            <div class="form-group" style="margin:0; flex: 1 1 90px;">
+                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Stock Type *</label>
+                <select class="form-control form-control-sm bs-stage" onchange="onBsStageChange(this)" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem;">
+                    <option value="RAW" selected>RAW</option>
+                    <option value="SEMI">SEMI</option>
+                    <option value="FINISHED">FINISHED</option>
+                </select>
+            </div>
+            
+            <div class="form-group" style="margin:0; flex: 2 1 160px;">
+                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Product *</label>
+                <select class="form-control form-control-sm bs-product">
+                    <option></option>
+                </select>
+            </div>
+            
 
-      <div class="form-group">
-        <label>Product *</label>
-        <select id="card-stock-product" onchange="onCardStockProductChange()" class="form-control" style="width:100%;">
-          <!-- Populated dynamically -->
-        </select>
-      </div>
 
-      <div class="form-group" style="display: none;">
-        <label>Grade *</label>
-        <div id="card-stock-grade-container">
-          <!-- Populated dynamically -->
+            <div class="bs-location-row" style="display:flex; gap:0.5rem; flex: 2 1 180px; margin:0; position:relative;">
+                <div class="form-group" style="margin:0; flex:2;">
+                    <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280; display:block;">Storage Location *</label>
+                    <div class="custom-location-dropdown" style="width: 100%; position: relative;">
+                        <button class="btn" type="button" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'block' ? 'none' : 'block'" style="width:100%; text-align:left; display:flex; justify-content:space-between; align-items:center; background:#fff; border: 1px solid #d1d5db; height:1.8rem; padding: 0.1rem 0.5rem; font-size:0.8rem; color:#333; cursor:pointer;">
+                            <span class="loc-dropdown-text">Main Warehouse</span>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
+                        <ul class="dropdown-menu p-2 shadow" style="display:none; position:absolute; top:100%; left:0; z-index:1000; width: 220px; max-height:250px; overflow-y:auto; background:#fff; border:1px solid #d1d5db; border-radius:0.25rem; list-style:none; margin-top:0.125rem;">
+                            @php $allLocs = \App\Models\Location::orderBy('name')->get(); @endphp
+                            
+                            <li style="margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; font-weight:600; color:var(--primary-dark);">
+                                <span style="padding-left: 0.2rem;">MAIN WAREHOUSE</span>
+                                <input type="number" min="0" step="0.001" class="form-control form-control-sm loc-qty-input no-spinners" data-loc="Main Warehouse" style="width: 60px; text-align:center; padding: 0.1rem; height:1.6rem; font-size:0.8rem;" value="0">
+                            </li>
+                            
+                            @foreach($allLocs as $loc)
+                                @if($loc->name !== 'Main Warehouse')
+                                <li style="margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:#333;">
+                                    <span style="padding-left: 0.2rem;">{{ strtoupper($loc->name) }}</span>
+                                    <input type="number" min="0" step="0.001" class="form-control form-control-sm loc-qty-input no-spinners" data-loc="{{ $loc->name }}" style="width: 60px; text-align:center; padding: 0.1rem; height:1.6rem; font-size:0.8rem;" value="0">
+                                </li>
+                                @endif
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
+                <div class="form-group" style="margin:0; flex:1;">
+                    <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Qty *</label>
+                    <input type="number" min="0.001" step="0.001" class="form-control form-control-sm bs-loc-qty no-spinners" placeholder="0.00" readonly style="background-color: #f9fafb; height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem;">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin:0; flex: 1 1 80px;">
+                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">MIN.QTY</label>
+                <input type="number" min="0" step="0.01" class="form-control form-control-sm bs-min-qty no-spinners" placeholder="0.00" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem;">
+            </div>
+
+            <div class="form-group" style="margin:0; flex: 1 1 80px;">
+                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Rate</label>
+                <input type="number" min="0" step="0.01" class="form-control form-control-sm bs-rate no-spinners" placeholder="0.00" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem;">
+            </div>
+
+            <div class="form-group" style="margin:0; flex: 1 1 100px;">
+                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Note</label>
+                <input type="text" class="form-control form-control-sm bs-note" placeholder="Optional" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem;">
+            </div>
         </div>
-      </div>
-
-      <div class="form-group">
-        <label>Storage Location</label>
-        <select id="card-stock-location" class="form-control" style="width:100%;">
-          <option value="Main Warehouse" selected>Main Warehouse</option>
-          @php $allLocs = \App\Models\Location::orderBy('name')->get(); @endphp
-          @foreach($allLocs as $loc)
-            @if($loc->name !== 'Main Warehouse')
-              <option value="{{ $loc->name }}">{{ $loc->name }}</option>
-            @endif
-          @endforeach
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label>MIN.QTY *</label>
-        <input id="card-stock-qty" type="number" min="0.001" step="0.001" placeholder="e.g. 200.00" class="form-control">
-      </div>
-
-      <div class="form-group">
-        <label>Note / Reason</label>
-        <input id="card-stock-note" type="text" placeholder="Optional details (e.g. Inward arrival)" class="form-control">
-      </div>
     </div>
+    </div> <!-- end wrapper -->
 
-    <div style="display:flex; gap:1rem; margin-top:1.5rem;">
-      <button class="btn" id="btn-save-stock-card" onclick="adminSaveStockFromCard()" style="width:auto; padding:0.6rem 1.8rem;">Add Stock</button>
-      <button class="btn btn-secondary" onclick="document.getElementById('stock-form-card').style.display='none'" style="width:auto; padding:0.6rem 1.5rem;">Cancel</button>
+    <div style="display:flex; gap:1rem; margin-top:1.5rem; justify-content: space-between; align-items: center;">
+      <div>
+        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addStockRow()" style="width:auto; padding:0.4rem 1rem; border: 1px solid var(--primary); color: var(--primary); background: transparent; font-weight: 600;">+ Add Another Product</button>
+      </div>
+      <div style="display:flex; gap:1rem;">
+        <button class="btn" id="btn-save-stock-card" onclick="adminSaveBulkStock()" style="width:auto; padding:0.6rem 1.8rem;">Save Stock</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('stock-form-card').style.display='none'" style="width:auto; padding:0.6rem 1.5rem;">Cancel</button>
+      </div>
     </div>
   </div>
+
+  <template id="bulk-stock-location-template">
+    <div class="bs-location-row" style="display:flex; gap:0.5rem; align-items:flex-end; margin-bottom:0.5rem;">
+        <div class="form-group" style="flex:2; margin:0;">
+            <label style="font-size: 0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Location</label>
+            <select class="form-control form-control-sm bs-loc-name" style="width:100%; height: 1.8rem; padding: 0.1rem 0.5rem; font-size: 0.8rem;">
+                <option value="Main Warehouse" selected>Main Warehouse</option>
+                @php $allLocs = \App\Models\Location::orderBy('name')->get(); @endphp
+                @foreach($allLocs as $loc)
+                    @if($loc->name !== 'Main Warehouse')
+                        <option value="{{ $loc->name }}">{{ $loc->name }}</option>
+                    @endif
+                @endforeach
+            </select>
+        </div>
+        <div class="form-group" style="flex:1; margin:0;">
+            <label style="font-size: 0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Qty *</label>
+            <input type="number" min="0.001" step="0.001" class="form-control form-control-sm bs-loc-qty no-spinners" placeholder="0.00" oninput="recalcBsTotal(this)" style="height: 1.8rem; padding: 0.1rem 0.5rem; font-size: 0.8rem;">
+        </div>
+        <button type="button" class="btn btn-danger btn-sm" onclick="removeBsLocation(this)" style="padding:0.2rem 0.5rem; height: 1.8rem; background: #dc3545; color:#fff; border:none; font-size: 0.8rem;">X</button>
+    </div>
+  </template>
 
   @php
     $typeFilter = request('type') ? strtoupper(request('type')) : null;
     $rawItems      = collect($pageData['allStock'])->where('stage', 'RAW');
     $semiItems     = collect($pageData['allStock'])->where('stage', 'SEMI');
     $finishedItems = collect($pageData['allStock'])->where('stage', 'FINISHED');
+    $adminAllGrades = \App\Models\Grade::orderBy('id')->get();
   @endphp
+  <script>
+    const adminAllGrades = {!! json_encode($adminAllGrades) !!};
+  </script>
+  <style>
+    /* Low Stock Styling */
+    tbody tr.low-stock-row,
+    tbody tr.low-stock-row:hover,
+    tbody tr.low-stock-row td,
+    tbody tr.low-stock-row:hover td {
+        background-color: #dc3545 !important;
+    }
+    
+    tbody tr.low-stock-row td,
+    tbody tr.low-stock-row td *,
+    tbody tr.low-stock-row td span,
+    tbody tr.low-stock-row td div,
+    tbody tr.low-stock-row button {
+        color: #ffffff !important;
+    }
+    
+    tbody tr.low-stock-row button.btn-icon svg {
+        stroke: #ffffff !important;
+        fill: none !important;
+    }
+    
+    tbody tr.low-stock-row .btn.btn-sm {
+        background-color: rgba(255, 255, 255, 0.25) !important;
+        color: #ffffff !important;
+        border-color: transparent !important;
+    }
+    
+    tbody tr.low-stock-row .btn.btn-sm:hover {
+        background-color: rgba(255, 255, 255, 0.4) !important;
+    }
+
+    /* Hide spin arrows on number inputs globally in this context */
+    input[type=number].no-spinners::-webkit-outer-spin-button,
+    input[type=number].no-spinners::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number].no-spinners {
+      -moz-appearance: textfield;
+    }
+    
+    /* Fix Select2 visibility inside white-orange-card and make it compact */
+    .select2-container .select2-selection--single .select2-selection__rendered {
+        color: #333333 !important;
+        font-weight: 600;
+        font-size: 0.8rem;
+        line-height: 1.6rem !important;
+    }
+    .select2-container--default .select2-selection--single {
+        background-color: #f9fafb !important;
+        border: 1px solid #d1d5db !important;
+        height: 1.8rem !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 1.6rem !important;
+    }
+  </style>
 
   @if(!$typeFilter || $typeFilter === 'RAW')
   <!-- RAW Stock -->
@@ -88,17 +202,19 @@
     @else
     <div class="table-container">
       <table>
-        <thead><tr><th>Product</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>Location</th><th>Action</th></tr></thead>
+        <thead><tr><th>Product</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>min_qty</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="raw-stock-tbody">
 @foreach($rawItems as $s)
           @php 
-            $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit;
-            $gStr = ($s->grade && $s->grade !== 'NONE' && $s->grade !== 'N/A') ? ' - ' . strtoupper($s->grade) : '';
-            $displayType = $s->stage === 'FINISHED' ? 'FG' : ($s->stage === 'SEMI' ? 'Semi-Finished' : 'Raw');
+            $isLow = $s->alert_limit > 0 && $s->quantity <= $s->alert_limit;
           @endphp
-          <tr @if($isLow) style="background-color: rgba(220, 38, 38, 0.35) !important; color: #ffffff !important;" title="Low Stock! Threshold is {{ $s->alert_limit }}" @endif>
-            <td style="font-weight:600;">{{ $s->name }}{{ $gStr }} ({{ $displayType }})</td>
-            <td @if($isLow) style="font-weight:bold; color:#333;" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
+          <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
+            <td style="font-weight:400;">
+              <div style="font-weight:normal; color:var(--text-color);">
+                {{ $s->name }}@if($s->grade && $s->grade !== 'NONE')_<strong>{{ $s->grade }}</strong>@endif (RAW)
+              </div>
+            </td>
+            <td style="font-weight:bold; color:var(--secondary);">{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold;">
               ₹{{ number_format($s->rate ?? 0, 2) }}
@@ -106,16 +222,17 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
             </td>
-            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="RAW" style="cursor:pointer; text-decoration:underline; @if($isLow) color:#333; @else color:var(--primary-light); @endif" onclick="showLocationBreakdown(this)">📍 View Locations</td>
+            <td style="font-weight:bold; color:var(--text-color);">{{ number_format($s->alert_limit, 2) }}</td>
+            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="RAW" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
               <div style="display:flex; align-items:center; gap:0.4rem;">
-                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust" @if($isLow) style="color:#333;" @endif>
+                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }}, {{ $s->alert_limit }})" title="Adjust">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
-                <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" @if($isLow) style="color:#ffcccc;" @else style="color:var(--danger);" @endif>
+                <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Set Alert Limit" style="color:var(--danger);">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 </button>
-                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem; @if($isLow) background:rgba(255,255,255,0.2); color:#fff; border-color:transparent; @endif">Details</button>
+                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
               </div>
             </td>
           </tr>
@@ -136,17 +253,19 @@
     @else
     <div class="table-container">
       <table>
-        <thead><tr><th>Product</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>Location</th><th>Action</th></tr></thead>
+        <thead><tr><th>Product</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>min_qty</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="semi-stock-tbody">
           @foreach($semiItems as $s)
           @php 
-            $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit;
-            $gStr = ($s->grade && $s->grade !== 'NONE' && $s->grade !== 'N/A') ? ' - ' . strtoupper($s->grade) : '';
-            $displayType = $s->stage === 'FINISHED' ? 'FG' : ($s->stage === 'SEMI' ? 'Semi-Finished' : 'Raw');
+            $isLow = $s->alert_limit > 0 && $s->quantity <= $s->alert_limit;
           @endphp
-          <tr @if($isLow) style="background-color: rgba(220, 38, 38, 0.35) !important; color: #ffffff !important;" title="Low Stock! Threshold is {{ $s->alert_limit }}" @endif>
-            <td style="font-weight:600;">{{ $s->name }}{{ $gStr }} ({{ $displayType }})</td>
-            <td @if($isLow) style="font-weight:bold; color:#333;" @else style="font-weight:bold; color:var(--warning);" @endif>{{ number_format($s->quantity, 2) }}</td>
+          <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
+            <td style="font-weight:400;">
+              <div style="font-weight:normal; color:var(--text-color);">
+                {{ $s->name }}@if($s->grade && $s->grade !== 'NONE')_<strong>{{ $s->grade }}</strong>@endif (SEMI)
+              </div>
+            </td>
+            <td style="font-weight:bold; color:var(--warning);">{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold;">
               ₹{{ number_format($s->rate ?? 0, 2) }}
@@ -154,16 +273,17 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
             </td>
-            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="SEMI" style="cursor:pointer; text-decoration:underline; @if($isLow) color:#333; @else color:var(--primary-light); @endif" onclick="showLocationBreakdown(this)">📍 View Locations</td>
+            <td style="font-weight:bold; color:var(--text-color);">{{ number_format($s->alert_limit, 2) }}</td>
+            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="SEMI" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
               <div style="display:flex; align-items:center; gap:0.4rem;">
-                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust" @if($isLow) style="color:#333;" @endif>
+                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }}, {{ $s->alert_limit }})" title="Adjust">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
-                <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" @if($isLow) style="color:#ffcccc;" @else style="color:var(--danger);" @endif>
+                <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Set Alert Limit" style="color:var(--danger);">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 </button>
-                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem; @if($isLow) background:rgba(255,255,255,0.2); color:#fff; border-color:transparent; @endif">Details</button>
+                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
               </div>
             </td>
           </tr>
@@ -184,17 +304,19 @@
     @else
     <div class="table-container">
       <table>
-        <thead><tr><th>Product</th><th>Total Qty</th><th>Unit</th><th>Rate (Ref)</th><th>Location</th><th>Action</th></tr></thead>
+        <thead><tr><th>Product</th><th>Total Qty</th><th>Unit</th><th>Rate (Ref)</th><th>min_qty</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="finished-stock-tbody">
           @foreach($finishedItems as $s)
           @php 
-            $isLow = $s->alert_limit > 0 && $s->quantity < $s->alert_limit;
-            $gStr = ($s->grade && $s->grade !== 'NONE' && $s->grade !== 'N/A') ? ' - ' . strtoupper($s->grade) : '';
-            $displayType = $s->stage === 'FINISHED' ? 'FG' : ($s->stage === 'SEMI' ? 'Semi-Finished' : 'Raw');
+            $isLow = $s->alert_limit > 0 && $s->quantity <= $s->alert_limit;
           @endphp
-          <tr @if($isLow) style="background-color: rgba(220, 38, 38, 0.35) !important; color: #ffffff !important;" title="Low Stock! Threshold is {{ $s->alert_limit }}" @endif>
-            <td style="font-weight:600;">{{ $s->name }}{{ $gStr }} ({{ $displayType }})</td>
-            <td @if($isLow) style="font-weight:bold; color:#333;" @else style="font-weight:bold; color:var(--secondary);" @endif>{{ number_format($s->quantity, 2) }}</td>
+          <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
+            <td style="font-weight:400;">
+              <div style="font-weight:normal; color:var(--text-color);">
+                {{ $s->name }}@if($s->grade && $s->grade !== 'NONE')_<strong>{{ $s->grade }}</strong>@endif (FINISHED)
+              </div>
+            </td>
+            <td style="font-weight:bold; color:var(--secondary);">{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold;">
               ₹{{ number_format($s->rate ?? 0, 2) }}
@@ -202,16 +324,17 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
             </td>
-            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="FINISHED" style="cursor:pointer; text-decoration:underline; @if($isLow) color:#333; @else color:var(--primary-light); @endif" onclick="showLocationBreakdown(this)">📍 View Locations</td>
+            <td style="font-weight:bold; color:var(--text-color);">{{ number_format($s->alert_limit, 2) }}</td>
+            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="FINISHED" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
               <div style="display:flex; align-items:center; gap:0.4rem;">
-                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}')" title="Adjust" @if($isLow) style="color:#333;" @endif>
+                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }}, {{ $s->alert_limit }})" title="Adjust">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
-                <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}')" title="Set Alert Limit" @if($isLow) style="color:#ffcccc;" @else style="color:var(--danger);" @endif>
+                <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Set Alert Limit" style="color:var(--danger);">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 </button>
-                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem; @if($isLow) background:rgba(255,255,255,0.2); color:#fff; border-color:transparent; @endif">Details</button>
+                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
               </div>
             </td>
           </tr>
@@ -284,85 +407,34 @@ function adminAddStock() {
         
         productSelect.innerHTML = filteredProducts.map(p => {
           let t = stage.toLowerCase() === 'finished' ? 'fg' : stage.toLowerCase();
-          return `<option value="${p.id}" data-unit="${escapeHtml(p.unit || 'kg')}">${escapeHtml(p.name)} - (grade- N/A) (type - ${t})</option>`;
+          if (p.grades && p.grades.length > 0) {
+            return p.grades.map(g => {
+                let gradeText = g.name !== 'NONE' ? `_${escapeHtml(g.name)}` : '';
+                return `<option value="${p.id}|${g.name}" data-unit="${escapeHtml(p.unit || 'kg')}">${escapeHtml(p.name)}${gradeText} (${t})</option>`;
+            }).join('');
+          } else {
+            return `<option value="${p.id}|NONE" data-unit="${escapeHtml(p.unit || 'kg')}">${escapeHtml(p.name)} (${t})</option>`;
+          }
         }).join('');
         
         onStockProductChange();
       };
 
       window.onStockProductChange = function() {
-        const productSelect = document.getElementById('add-stock-product');
-        const productId = productSelect.value;
-        const product = adminStockProducts.find(p => p.id == productId);
         const gradeContainer = document.getElementById('add-stock-grade-container');
-        
-        if (!product) {
-          gradeContainer.innerHTML = `<input id="add-stock-grade" value="NONE" style="width:100%; padding:0.65rem; border-radius:8px; background:#fff; border:1px solid #d1d5db; color:#333;">`;
-          return;
-        }
-
-        const stage = document.getElementById('add-stock-stage').value;
-        if (stage === 'RAW') {
-          gradeContainer.innerHTML = `
-            <select id="add-stock-grade" style="width:100%; padding:0.65rem; border-radius:8px; background:#fff; border:1px solid #d1d5db; color:#333;">
-              <option value="NONE">NONE</option>
-              <option value="CUSTOM">Type custom grade...</option>
-            </select>
-            <input id="add-stock-grade-custom" placeholder="Enter custom grade" style="display:none; width:100%; padding:0.65rem; margin-top:0.5rem; border-radius:8px; background:#fff; border:1px solid #d1d5db; color:#333;">
-          `;
-          
-          const select = document.getElementById('add-stock-grade');
-          const customInput = document.getElementById('add-stock-grade-custom');
-          select.onchange = function() {
-            customInput.style.display = select.value === 'CUSTOM' ? 'block' : 'none';
-          };
-          return;
-        }
-
-        const grades = product.grades || [];
-        if (grades.length > 0) {
-          const options = grades.map(g => `<option value="${escapeHtml(g.name)}">${escapeHtml(g.name)}</option>`).join('');
-          gradeContainer.innerHTML = `
-            <select id="add-stock-grade" style="width:100%; padding:0.65rem; border-radius:8px; background:#fff; border:1px solid #d1d5db; color:#333;">
-              ${options}
-              <option value="CUSTOM">Type custom grade...</option>
-            </select>
-            <input id="add-stock-grade-custom" placeholder="Enter custom grade" style="display:none; width:100%; padding:0.65rem; margin-top:0.5rem; border-radius:8px; background:#fff; border:1px solid #d1d5db; color:#333;">
-          `;
-        } else {
-          gradeContainer.innerHTML = `<input id="add-stock-grade" placeholder="e.g. PREMIUM" style="width:100%; padding:0.65rem; border-radius:8px; background:#fff; border:1px solid #d1d5db; color:#333;">`;
-        }
-
-        const select = document.getElementById('add-stock-grade');
-        const customInput = document.getElementById('add-stock-grade-custom');
-        if (select && customInput) {
-          select.onchange = function() {
-            customInput.style.display = select.value === 'CUSTOM' ? 'block' : 'none';
-          };
+        if (gradeContainer) {
+            gradeContainer.innerHTML = '';
+            gradeContainer.style.display = 'none';
         }
       };
 
       onStockStageChange();
     },
     preConfirm: () => {
-      const productId = document.getElementById('add-stock-product').value;
+      const val = document.getElementById('add-stock-product').value;
+      const [productId, gradeVal] = val ? val.split('|') : ['', 'NONE'];
       const stage = document.getElementById('add-stock-stage').value;
-      
-      let grade = 'NONE';
-      const gradeEl = document.getElementById('add-stock-grade');
-      if (gradeEl) {
-        if (gradeEl.tagName === 'SELECT') {
-          if (gradeEl.value === 'CUSTOM') {
-            grade = document.getElementById('add-stock-grade-custom').value.trim();
-          } else {
-            grade = gradeEl.value;
-          }
-        } else {
-          grade = gradeEl.value.trim();
-        }
-      }
-      grade = grade || 'NONE';
-
+      let grade = gradeVal || 'NONE';
       const quantity = parseFloat(document.getElementById('add-stock-qty').value);
       const reason = document.getElementById('add-stock-note').value.trim();
 
@@ -378,7 +450,7 @@ function adminAddStock() {
     }
   }).then(result => {
     if (!result.isConfirmed) return;
-    fetch('/admin/stock/adjust', {
+    fetch('/' + window.userSlug + '/stock/adjust', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
       body: JSON.stringify(result.value)
@@ -386,7 +458,7 @@ function adminAddStock() {
     .then(r => r.json())
     .then(d => {
       if (d.success) {
-        Swal.fire('Saved', d.message || 'Stock added.', 'success').then(() => location.reload());
+        Swal.fire('Saved', d.message || 'Stock added.', 'success').then(() => fetchLiveStock());
       } else {
         Swal.fire('Error', d.message || 'Could not add stock.', 'error');
       }
@@ -394,14 +466,16 @@ function adminAddStock() {
   });
 }
 
-function adminAdjustStock(productId, stage, grade) {
+function adminAdjustStock(productId, stage, grade, productName = '', currentQty = 0, currentMinQty = 0) {
   const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG' }[stage] || stage;
+  const displayGrade = grade !== 'NONE' ? ` &nbsp;·&nbsp; Grade: <strong style="color:#333;">${grade}</strong>` : '';
 
   Swal.fire({
     title: 'Adjust Stock',
     html: `
       <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:#6b7280;">
-        <strong style="color:#333;">${grade}</strong> &nbsp;·&nbsp; ${stageLabel}
+        <strong style="color:var(--primary); font-size:1.05rem;">${productName}</strong><br>
+        <span style="font-size:0.85rem;">${stageLabel}${displayGrade}</span>
       </div>
 
       <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
@@ -420,7 +494,16 @@ function adminAdjustStock(productId, stage, grade) {
       <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
         Quantity (kg)
       </label>
-      <input id="swal-qty" type="number" min="0" step="0.01" placeholder="e.g. 150.00" style="
+      <input id="swal-qty" type="number" min="0" step="0.01" value="${currentQty}" placeholder="e.g. 150.00" style="
+        width:100%; padding:0.65rem 0.8rem; border-radius:8px;
+        background:#fff; border:1px solid #d1d5db; color:#333;
+        font-size:1rem; margin-bottom:1rem; outline:none; box-sizing:border-box;
+      ">
+
+      <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
+        Min Qty (Alert Limit)
+      </label>
+      <input id="swal-min-qty" type="number" min="0" step="0.01" value="${currentMinQty}" placeholder="e.g. 50.00" style="
         width:100%; padding:0.65rem 0.8rem; border-radius:8px;
         background:#fff; border:1px solid #d1d5db; color:#333;
         font-size:1rem; margin-bottom:1rem; outline:none; box-sizing:border-box;
@@ -453,17 +536,18 @@ function adminAdjustStock(productId, stage, grade) {
       const qty    = parseFloat(document.getElementById('swal-qty').value);
       const type   = document.getElementById('swal-adj-type').value;
       const reason = document.getElementById('swal-reason').value.trim();
+      const minQty = parseFloat(document.getElementById('swal-min-qty').value) || 0;
 
       if (isNaN(qty) || qty < 0) {
         Swal.showValidationMessage('⚠️ Please enter a valid quantity (≥ 0).');
         return false;
       }
-      return { qty, type, reason };
+      return { qty, type, reason, min_qty: minQty };
     }
   }).then(result => {
     if (!result.isConfirmed) return;
 
-    const { qty, type, reason } = result.value;
+    const { qty, type, reason, min_qty } = result.value;
 
     Swal.fire({
       title: 'Applying…',
@@ -474,7 +558,7 @@ function adminAdjustStock(productId, stage, grade) {
       didOpen: () => Swal.showLoading()
     });
 
-    fetch('/admin/stock/adjust', {
+    fetch('/' + window.userSlug + '/stock/adjust', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
       body: JSON.stringify({
@@ -483,7 +567,8 @@ function adminAdjustStock(productId, stage, grade) {
         grade,
         quantity: qty,
         adjust_type: type,
-        reason
+        reason,
+        min_qty
       })
     })
     .then(r => r.json())
@@ -499,7 +584,7 @@ function adminAdjustStock(productId, stage, grade) {
           timer: 2000,
           timerProgressBar: true,
           showConfirmButton: false
-        }).then(() => location.reload());
+        }).then(() => fetchLiveStock());
       } else {
         Swal.fire({
           icon: 'error',
@@ -552,7 +637,7 @@ function adminUpdateRate(productId, currentRate, name) {
     }
   }).then((result) => {
     if (result.isConfirmed) {
-      fetch('/admin/stock/rate', {
+      fetch('/' + window.userSlug + '/stock/rate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -576,7 +661,7 @@ function adminUpdateRate(productId, currentRate, name) {
             confirmButtonColor: '#f59e0b',
             timer: 1500, 
             showConfirmButton: false 
-          }).then(() => location.reload());
+          }).then(() => fetchLiveStock());
         } else {
           Swal.fire({ 
             icon: 'error', 
@@ -603,14 +688,16 @@ function adminUpdateRate(productId, currentRate, name) {
   });
 }
 
-function adminSetLimit(productId, stage, grade, currentLimit) {
+function adminSetLimit(productId, stage, grade, currentLimit, productName = '') {
   const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG' }[stage] || stage;
+  const displayGrade = grade !== 'NONE' ? ` &nbsp;·&nbsp; Grade: <strong style="color:#333;">${grade}</strong>` : '';
 
   Swal.fire({
     title: 'Set Alert Limit',
     html: `
       <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:#6b7280;">
-        <strong style="color:#333;">${grade}</strong> &nbsp;·&nbsp; ${stageLabel}
+        <strong style="color:var(--primary); font-size:1.05rem;">${productName}</strong><br>
+        <span style="font-size:0.85rem;">${stageLabel}${displayGrade}</span>
       </div>
 
       <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
@@ -648,7 +735,7 @@ function adminSetLimit(productId, stage, grade, currentLimit) {
   }).then(result => {
     if (!result.isConfirmed) return;
 
-    fetch('/admin/stock/limit', {
+    fetch('/' + window.userSlug + '/stock/limit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
       body: JSON.stringify({
@@ -670,7 +757,7 @@ function adminSetLimit(productId, stage, grade, currentLimit) {
           confirmButtonColor: '#f59e0b',
           timer: 1500,
           showConfirmButton: false
-        }).then(() => location.reload());
+        }).then(() => fetchLiveStock());
       } else {
         Swal.fire({
           icon: 'error',
@@ -685,9 +772,8 @@ function adminSetLimit(productId, stage, grade, currentLimit) {
   });
 }
 
-// AJAX Polling every 30 seconds
-setInterval(() => {
-  fetch('/stock/live', {
+function fetchLiveStock() {
+  fetch('/' + window.userSlug + '/stock/live', {
     headers: { 'Accept': 'application/json' }
   })
   .then(res => res.json())
@@ -697,10 +783,14 @@ setInterval(() => {
         locationMappings = data.locationMappings;
       }
       updateStockTables(data.data);
+      updateAllLocationLabels();
     }
   })
   .catch(err => console.error('Polling error:', err));
-}, 30000);
+}
+
+// AJAX Polling every 30 seconds
+setInterval(fetchLiveStock, 30000);
 
 function updateStockTables(stockData) {
   const stages = { 'RAW': 'raw-stock-tbody', 'SEMI': 'semi-stock-tbody', 'FINISHED': 'finished-stock-tbody' };
@@ -728,12 +818,9 @@ function updateStockTables(stockData) {
     items.forEach(s => {
       const limit = parseFloat(s.alert_limit) || 0;
       const qty = parseFloat(s.quantity);
-      const isLow = limit > 0 && qty < limit;
-const rowStyle = isLow ? 'background-color: #8b0000; color:#333;' : '';
-      const titleAttr = isLow ? `title="Low Stock! Threshold is ${limit}"` : '';
-
-      // Disable hover ONLY visually for low rows without breaking the click buttons
-      const disableHoverClass = isLow ? 'low-stock-no-hover' : '';
+      const isLow = limit > 0 && qty <= limit;
+      const rowClass = isLow ? 'low-stock-row' : '';
+      const titleAttr = isLow ? `title="Low Stock! min_qty is ${limit}"` : '';
 
       const formattedQty = qty.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
       
@@ -741,12 +828,13 @@ const rowStyle = isLow ? 'background-color: #8b0000; color:#333;' : '';
       if (stage === 'RAW') qtyColor = 'var(--secondary)';
       if (stage === 'SEMI') qtyColor = 'var(--warning)';
       if (stage === 'FINISHED') qtyColor = 'var(--secondary)';
-      if (isLow) qtyColor = '#ffffff';
 
       html += `
-        <tr style="${rowStyle}" ${titleAttr} class="${disableHoverClass}">
-          <td style="font-weight:600;">
-            ${s.name}${s.grade && s.grade !== 'NONE' && s.grade !== 'N/A' ? ' - ' + s.grade : ''} (${stage === 'FINISHED' ? 'FG' : (stage === 'SEMI' ? 'Semi-Finished' : 'Raw')})
+        <tr class="${rowClass}" ${titleAttr}>
+          <td>
+            <div style="font-weight:normal; color:var(--text-color);">
+              ${s.name}${s.grade && s.grade !== 'NONE' ? '_<strong>' + s.grade + '</strong>' : ''} (${s.stage})
+            </div>
           </td>
           <td style="font-weight:bold; color:${qtyColor};">${formattedQty}</td>
           <td>${s.unit || ''}</td>
@@ -756,17 +844,17 @@ const rowStyle = isLow ? 'background-color: #8b0000; color:#333;' : '';
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
             </button>
           </td>
-          <td class="location-col" data-product="${s.productId}" data-grade="${s.grade}" data-stage="${stage}" style="cursor:pointer; text-decoration:underline; ${isLow ? 'color:#333;' : 'color:var(--primary-light);'}" onclick="showLocationBreakdown(this)">📍 View Locations</td>
+          <td style="font-weight:bold; color:var(--text-color);">${limit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+          <td class="location-col" data-product="${s.productId}" data-grade="${s.grade}" data-stage="${stage}" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
           <td>
-
             <div style="display:flex; align-items:center; gap:0.4rem;">
-              <button class="btn-icon edit" onclick="adminAdjustStock('${s.productId}', '${s.stage}', '${s.grade}')" title="Adjust" ${isLow ? 'style="color:#333;"' : ''}>
+              <button class="btn-icon edit" onclick="adminAdjustStock('${s.productId}', '${s.stage}', '${s.grade}', '${escapeHtml(s.name)}', ${s.quantity}, ${limit})" title="Adjust">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
-              <button class="btn-icon edit" onclick="adminSetLimit('${s.productId}', '${s.stage}', '${s.grade}', '${limit}')" title="Set Alert Limit" style="color:${isLow ? '#ffcccc' : 'var(--danger)'};">
+              <button class="btn-icon edit" onclick="adminSetLimit('${s.productId}', '${s.stage}', '${s.grade}', '${limit}', '${escapeHtml(s.name)}')" title="Set Alert Limit" style="color:var(--danger);">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
               </button>
-              <button class="btn btn-sm" onclick="window.location.href='{{ url('/product') }}/' + s.productId + '/' + s.stage + '/' + s.grade + '/history'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem; ${isLow ? 'background:rgba(255,255,255,0.2); color:#fff; border-color:transparent;' : ''}">Details</button>
+              <button class="btn btn-sm" onclick="window.location.href='{{ url(request()->segment(1) . '/product') }}/' + s.productId + '/' + s.stage + '/' + s.grade + '/history'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
             </div>
           </td>
         </tr>
@@ -817,7 +905,7 @@ async function showLocationBreakdown(el) {
   // Fetch available locations from DB
   let allLocations = [];
   try {
-    const locRes = await fetch('/api/locations');
+    const locRes = await fetch('/' + window.userSlug + '/api/locations');
     const locData = await locRes.json();
     if (locData.success) {
       allLocations = locData.locations;
@@ -851,21 +939,19 @@ async function showLocationBreakdown(el) {
   if (Object.keys(locMap).length > 0) {
     transferHtml = `
       <div style="border-top:1px dashed var(--border-soft); padding-top:1rem; margin-top:1rem; text-align:left;">
-        <label style="display:block; font-size:0.8rem; color:#6b7280; margin-bottom:0.5rem;">Transfer Stock Between Locations</label>
-        <div style="display:flex; gap:8px; margin-bottom:0.5rem;">
-          <select id="swal-transfer-from" style="flex:1; padding:0.55rem; background:#ffffff; border:1px solid #d1d5db; color:#333333; border-radius:8px; font-size:0.85rem;">
+        <label style="display:block; font-size:0.8rem; color:#6b7280; margin-bottom:0.5rem;">Transfer Stock</label>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <select id="swal-transfer-from" style="flex:1; min-width:100px; padding:0.45rem; background:#ffffff; border:1px solid #d1d5db; color:#333333; border-radius:6px; font-size:0.8rem;">
             <option value="" disabled selected>From Location</option>
             ${fromOptionsHtml}
           </select>
-          <span style="color:#6b7280; align-self:center;">➡</span>
-          <select id="swal-transfer-to" style="flex:1; padding:0.55rem; background:#ffffff; border:1px solid #d1d5db; color:#333333; border-radius:8px; font-size:0.85rem;">
+          <span style="color:#6b7280; font-size:0.8rem;">➡</span>
+          <select id="swal-transfer-to" style="flex:1; min-width:100px; padding:0.45rem; background:#ffffff; border:1px solid #d1d5db; color:#333333; border-radius:6px; font-size:0.8rem;">
             <option value="" disabled selected>To Location</option>
             ${optionsHtml}
           </select>
-        </div>
-        <div style="display:flex; gap:8px;">
-          <input type="number" id="swal-transfer-qty" min="0.01" step="0.01" placeholder="Qty (kg)" style="width:100px; padding:0.55rem; background:#ffffff; border:1px solid #d1d5db; color:#333333; border-radius:8px;">
-          <button class="btn btn-sm" onclick="transferLocationMapping('${pId}', '${stage}', '${grade}', this)" style="flex:1;">Transfer Stock</button>
+          <input type="number" id="swal-transfer-qty" min="0.01" step="0.01" placeholder="Qty (kg)" style="width:80px; padding:0.45rem; background:#ffffff; border:1px solid #d1d5db; color:#333333; border-radius:6px; font-size:0.8rem;">
+          <button class="btn btn-sm" onclick="transferLocationMapping('${pId}', '${stage}', '${grade}', this)" style="padding:0.45rem 0.8rem;">Transfer</button>
         </div>
       </div>
     `;
@@ -874,35 +960,13 @@ async function showLocationBreakdown(el) {
   Swal.fire({
     title: '📍 Stock Storage Locations',
     html: `
-      <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:#6b7280;">
-        Product locations for this item.
-      </div>
-      <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:1rem; text-align:center;">
-        <div style="background:var(--bg-sidebar, #FFF8EA); border:1px solid var(--border-soft, #ECE4CF); border-radius:8px; padding:8px;">
-          <div style="font-size:0.7rem; color:#6b7280;">Available</div>
-          <div style="font-weight:700; color:#333;">${availableQty.toFixed(2)} kg</div>
-        </div>
-        <div style="background:var(--bg-sidebar, #FFF8EA); border:1px solid var(--border-soft, #ECE4CF); border-radius:8px; padding:8px;">
-          <div style="font-size:0.7rem; color:#6b7280;">Assigned</div>
-          <div style="font-weight:700; color:var(--secondary);">${assignedQty.toFixed(2)} kg</div>
-        </div>
-        <div style="background:var(--bg-sidebar, #FFF8EA); border:1px solid var(--border-soft, #ECE4CF); border-radius:8px; padding:8px;">
-          <div style="font-size:0.7rem; color:#6b7280;">Unassigned</div>
-          <div style="font-weight:700; color:#333;">${remainingQty.toFixed(2)} kg</div>
-        </div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:1rem; font-size:0.85rem; color:#333; background:var(--bg-sidebar, #FFF8EA); border:1px solid var(--border-soft, #ECE4CF); border-radius:8px; padding:10px; flex-wrap:wrap; gap:0.5rem;">
+        <div><span style="color:#6b7280;">Available:</span> <strong>${availableQty.toFixed(2)} kg</strong></div>
+        <div><span style="color:#6b7280;">Assigned:</span> <strong style="color:var(--secondary);">${assignedQty.toFixed(2)} kg</strong></div>
+        <div><span style="color:#6b7280;">Unassigned:</span> <strong>${remainingQty.toFixed(2)} kg</strong></div>
       </div>
       <div style="margin-bottom:1rem; max-height:200px; overflow-y:auto;">
         ${locationsListHtml}
-      </div>
-      <div style="border-top:1px dashed var(--border-soft); padding-top:1rem; text-align:left;">
-        <label style="display:block; font-size:0.8rem; color:#6b7280; margin-bottom:0.5rem;">Link Quantity to Location</label>
-        <div style="display:flex; gap:8px; margin-bottom:0.5rem;">
-          <select id="swal-loc-select" style="flex:1; padding:0.55rem; background:#ffffff; border:1px solid #d1d5db; color:#333333; border-radius:8px;">
-            ${optionsHtml}
-          </select>
-          <input type="number" id="swal-loc-qty" min="0.01" max="${remainingQty.toFixed(2)}" step="0.01" placeholder="Qty (kg)" style="width:100px; padding:0.55rem; background:#ffffff; border:1px solid #d1d5db; color:#333333; border-radius:8px;">
-        </div>
-        <button class="btn btn-sm" onclick="addLocationMapping('${pId}', '${stage}', '${grade}', ${remainingQty}, this)" style="width:100%;">Save Location link</button>
       </div>
       ${transferHtml}
     `,
@@ -928,7 +992,7 @@ window.addLocationMapping = async function(productId, stage, grade, remainingQty
   }
 
   try {
-    const res = await fetch('/api/stock/locations/transfer', {
+    const res = await fetch('/' + window.userSlug + '/api/stock/locations/transfer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
       body: JSON.stringify({
@@ -950,7 +1014,7 @@ window.addLocationMapping = async function(productId, stage, grade, remainingQty
         timer: 1000,
         showConfirmButton: false
       }).then(() => {
-        location.reload();
+        fetchLiveStock();
       });
     } else {
       Swal.showValidationMessage(data.message || 'Failed to save mapping');
@@ -975,7 +1039,7 @@ window.transferLocationMapping = async function(productId, stage, grade, buttonE
   }
 
   try {
-    const res = await fetch('/api/stock/locations/transfer', {
+    const res = await fetch('/' + window.userSlug + '/api/stock/locations/transfer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
       body: JSON.stringify({
@@ -997,7 +1061,7 @@ window.transferLocationMapping = async function(productId, stage, grade, buttonE
         timer: 1000,
         showConfirmButton: false
       }).then(() => {
-        location.reload();
+        fetchLiveStock();
       });
     } else {
       Swal.showValidationMessage(data.message || 'Failed to transfer stock');
@@ -1071,78 +1135,65 @@ function adminExportStockPdf() {
     const { stages, selectedDate } = result.value;
     const btn = document.querySelector('button[onclick="adminExportStockPdf()"]');
     
-    window.downloadPdfAsync('{{ route("admin.stock.pdf") }}', {
+    window.downloadPdfAsync('{{ route(request()->segment(1) . ".stock.pdf") }}', {
       stages: stages.join(','),
       date: selectedDate
     }, btn);
   });
 }
 
-window.onCardStockStageChange = function() {
-  const stage = document.getElementById('card-stock-stage').value;
-  const productSelect = document.getElementById('card-stock-product');
-  const targetType = stage === 'RAW' ? 'RAW' : 'FINISHED';
+
+
+window.onBsStageChange = function(element) {
+  const row = element.closest('.bulk-stock-row');
+  const stage = row.querySelector('.bs-stage').value;
+  const productSelect = row.querySelector('.bs-product');
+  
+  const targetType = stage; // 'RAW', 'SEMI', or 'FINISHED'
   const filteredProducts = adminStockProducts.filter(p => p.type === targetType && p.is_active);
   
-  productSelect.innerHTML = filteredProducts.map(p => {
-    let t = stage.toLowerCase() === 'finished' ? 'fg' : stage.toLowerCase();
-    return `<option value="${p.id}" data-unit="${escapeHtml(p.unit || 'kg')}">${escapeHtml(p.name)} - (grade- N/A) (type - ${t})</option>`;
-  }).join('');
+  // Empty the select and add a blank option for the placeholder
+  $(productSelect).empty();
   
-  onCardStockProductChange();
+  // Add a disabled placeholder option for standard select
+  const placeholderOpt = new Option('SELECT PRODUCT...', '', false, false);
+  placeholderOpt.disabled = true;
+  placeholderOpt.selected = true;
+  $(productSelect).append(placeholderOpt);
+  
+  // Append new options dynamically
+  filteredProducts.forEach(p => {
+    let t = targetType.toLowerCase() === 'finished' ? 'fg' : targetType.toLowerCase();
+    if (p.grades && p.grades.length > 0) {
+      p.grades.forEach(g => {
+        const val = `${p.id}|${g.name}`;
+        const gradeText = g.name !== 'NONE' ? `_${g.name}` : '';
+        const text = `${p.name}${gradeText} (${t})`;
+        const opt = new Option(text, val, false, false);
+        opt.setAttribute('data-unit', p.unit || 'kg');
+        $(productSelect).append(opt);
+      });
+    } else {
+      const val = `${p.id}|NONE`;
+      const text = `${p.name} (${t})`;
+      const opt = new Option(text, val, false, false);
+      opt.setAttribute('data-unit', p.unit || 'kg');
+      $(productSelect).append(opt);
+    }
+  });
+  
+  $(productSelect).off('change').on('change', function() {
+    onBsProductChange(this);
+  });
+  
+  onBsProductChange(productSelect);
 };
 
-window.onCardStockProductChange = function() {
-  const productSelect = document.getElementById('card-stock-product');
-  const productId = productSelect.value;
-  const product = adminStockProducts.find(p => p.id == productId);
-  const gradeContainer = document.getElementById('card-stock-grade-container');
-  
-  if (!product) {
-    gradeContainer.innerHTML = `<input id="card-stock-grade" value="NONE" class="form-control" style="width:100%;">`;
-    return;
-  }
-
-  const stage = document.getElementById('card-stock-stage').value;
-  if (stage === 'RAW') {
-    gradeContainer.innerHTML = `
-      <select id="card-stock-grade" class="form-control" style="width:100%;">
-        <option value="NONE">NONE</option>
-        <option value="CUSTOM">Type custom grade...</option>
-      </select>
-      <input id="card-stock-grade-custom" placeholder="Enter custom grade" style="display:none; width:100%; margin-top:0.5rem;" class="form-control">
-    `;
-    
-    const select = document.getElementById('card-stock-grade');
-    const customInput = document.getElementById('card-stock-grade-custom');
-    select.onchange = function() {
-      customInput.style.display = select.value === 'CUSTOM' ? 'block' : 'none';
-    };
-    return;
-  }
-
-  const grades = product.grades || [];
-  if (grades.length > 0) {
-    const options = grades.map(g => `<option value="${escapeHtml(g.name)}">${escapeHtml(g.name)}</option>`).join('');
-    gradeContainer.innerHTML = `
-      <select id="card-stock-grade" class="form-control" style="width:100%;">
-        ${options}
-        <option value="CUSTOM">Type custom grade...</option>
-      </select>
-      <input id="card-stock-grade-custom" placeholder="Enter custom grade" style="display:none; width:100%; margin-top:0.5rem;" class="form-control">
-    `;
-  } else {
-    gradeContainer.innerHTML = `<input id="card-stock-grade" placeholder="e.g. PREMIUM" class="form-control" style="width:100%;">`;
-  }
-
-  const select = document.getElementById('card-stock-grade');
-  const customInput = document.getElementById('card-stock-grade-custom');
-  if (select && customInput) {
-    select.onchange = function() {
-      customInput.style.display = select.value === 'CUSTOM' ? 'block' : 'none';
-    };
-  }
+window.onBsProductChange = function(element) {
+  // Grade dropdown removed, do nothing
 };
+
+
 
 window.toggleStockFormCard = function() {
   const card = document.getElementById('stock-form-card');
@@ -1154,72 +1205,235 @@ window.toggleStockFormCard = function() {
   }
 };
 
-window.adminSaveStockFromCard = function() {
+window.adminSaveBulkStock = function() {
   const btn = document.getElementById('btn-save-stock-card');
-  const productId = document.getElementById('card-stock-product').value;
-  const stage = document.getElementById('card-stock-stage').value;
-  const locationName = document.getElementById('card-stock-location').value;
+  const rows = document.querySelectorAll('.bulk-stock-row');
   
-  let grade = 'NONE';
-  const gradeEl = document.getElementById('card-stock-grade');
-  if (gradeEl) {
-    if (gradeEl.tagName === 'SELECT') {
-      if (gradeEl.value === 'CUSTOM') {
-        grade = document.getElementById('card-stock-grade-custom')?.value.trim() || 'NONE';
-      } else {
-        grade = gradeEl.value;
+  if (rows.length === 0) {
+    Swal.fire('Error', 'No products to add.', 'error');
+    return;
+  }
+  
+  const items = [];
+  let hasError = false;
+  
+  rows.forEach(row => {
+    const val = row.querySelector('.bs-product').value;
+    const [productId, gradeVal] = val ? val.split('|') : ['', 'NONE'];
+    const stage = row.querySelector('.bs-stage').value;
+    let grade = gradeVal || 'NONE';
+    const alertLimit = parseFloat(row.querySelector('.bs-min-qty').value);
+    const rate = parseFloat(row.querySelector('.bs-rate') ? row.querySelector('.bs-rate').value : NaN);
+    const note = row.querySelector('.bs-note').value.trim();
+    const locInputs = row.querySelectorAll('.loc-qty-input');
+    const locations = [];
+    locInputs.forEach(input => {
+      const qty = parseFloat(input.value) || 0;
+      if (qty > 0) {
+        locations.push({ name: input.getAttribute('data-loc'), qty: qty });
       }
+    });
+    
+    if (locations.length > 0) {
+      items.push({
+        product_id: productId,
+        stage: stage,
+        grade: grade,
+        alert_limit: isNaN(alertLimit) ? null : alertLimit,
+        rate: isNaN(rate) ? null : rate,
+        note: note,
+        locations: locations
+      });
     } else {
-      grade = gradeEl.value.trim();
+      hasError = true;
     }
-  }
-  grade = grade || 'NONE';
-
-  const quantity = parseFloat(document.getElementById('card-stock-qty').value);
-  const reason = document.getElementById('card-stock-note').value.trim();
-
-  if (!productId) {
-    Swal.fire('Error', 'Please select a product.', 'error');
+  });
+  
+  if (hasError && items.length === 0) {
+    Swal.fire('Error', 'Please fill in product, quantity (>0) and at least one location for all rows.', 'error');
     return;
   }
-  if (isNaN(quantity) || quantity <= 0) {
-    Swal.fire('Error', 'Please enter a quantity greater than 0.', 'error');
-    return;
-  }
-
+  
   btn.disabled = true;
-  btn.style.opacity = '0.7';
-
-  fetch('/stock/adjust', {
+  btn.textContent = 'Saving...';
+  
+  fetch('/' + window.userSlug + '/stock/bulk-add', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-    body: JSON.stringify({ product_id: productId, stage, grade, quantity, adjust_type: 'add', location_name: locationName, reason })
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': csrfToken,
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({ items })
   })
-  .then(r => r.json())
-  .then(d => {
-    if (d.success) {
-      Swal.fire('Saved', d.message || 'Stock added.', 'success').then(() => location.reload());
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      // 1. Instantly hide and reset form
+      document.getElementById('stock-form-card').style.display = 'none';
+      document.querySelectorAll('.loc-qty-input').forEach(inp => inp.value = '0');
+      document.querySelector('.bs-loc-qty').value = '';
+      const btnText = document.querySelector('.loc-dropdown-text');
+      if (btnText) btnText.innerHTML = '📍 Select Locations <span style="float:right;">▼</span>';
+
+      // 2. Instantly update live stock
+      if (typeof fetchLiveStock === 'function') fetchLiveStock();
+      if (typeof fetchDashboardStats === 'function') fetchDashboardStats();
+
+      // 3. Show success message
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: 'Stock entries added successfully!',
+        timer: 1000,
+        showConfirmButton: false,
+        background: '#ffffff',
+        color: '#333333'
+      });
     } else {
-      Swal.fire('Error', d.message || 'Could not add stock.', 'error');
-      btn.disabled = false;
-      btn.style.opacity = '1';
+      Swal.fire('Error', data.message || 'Something went wrong.', 'error');
     }
   })
-  .catch(() => {
+  .catch(err => {
+    console.error(err);
+    Swal.fire('Error', 'Server error while saving.', 'error');
+  })
+  .finally(() => {
     btn.disabled = false;
-    btn.style.opacity = '1';
+    btn.textContent = 'Save Stock';
   });
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-  updateAllLocationLabels();
-  if (typeof onCardStockStageChange === 'function') {
-    onCardStockStageChange();
+document.addEventListener('input', function(e) {
+  if (e.target.classList.contains('loc-qty-input')) {
+    const row = e.target.closest('.bulk-stock-row');
+    if (!row) return;
+    
+    const inputs = row.querySelectorAll('.loc-qty-input');
+    let total = 0;
+    let selectedLocs = [];
+    
+    inputs.forEach(input => {
+      const val = parseFloat(input.value) || 0;
+      if (val > 0) {
+        total += val;
+        selectedLocs.push(input.getAttribute('data-loc'));
+      }
+    });
+    
+    const totalInput = row.querySelector('.bs-loc-qty');
+    if (totalInput) {
+      totalInput.value = total > 0 ? total : '';
+    }
+    
+    const btnText = row.querySelector('.loc-dropdown-text');
+    if (btnText) {
+      if (selectedLocs.length === 0) {
+        btnText.textContent = 'Main Warehouse';
+      } else if (selectedLocs.length === 1) {
+        btnText.textContent = selectedLocs[0];
+      } else {
+        btnText.textContent = selectedLocs.length + ' Locations';
+      }
+    }
   }
 });
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.custom-location-dropdown')) {
+    document.querySelectorAll('.custom-location-dropdown .dropdown-menu').forEach(menu => {
+      menu.style.display = 'none';
+    });
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Initialize the single form on load
+  const stageSelect = document.querySelector('#single-stock-row .bs-stage');
+  if (stageSelect) {
+    onBsStageChange(stageSelect);
+  }
+  
+  // Instantly update all location labels on page load
+  updateAllLocationLabels();
+});
+
+function addStockRow() {
+    const wrapper = document.getElementById('stock-rows-wrapper');
+    const firstRow = wrapper.querySelector('.bulk-stock-row');
+    const newRow = firstRow.cloneNode(true);
+    
+    // Clear inputs in new row
+    newRow.querySelectorAll('input').forEach(inp => {
+        if (inp.type === 'number' || inp.type === 'text') inp.value = '';
+    });
+    // Set location quantities to 0
+    newRow.querySelectorAll('.loc-qty-input').forEach(inp => inp.value = '0');
+    
+    const dropdownText = newRow.querySelector('.loc-dropdown-text');
+    if (dropdownText) dropdownText.textContent = 'Main Warehouse';
+    
+    // For Select2, remove cloned artifacts
+    const select2Span = newRow.querySelector('.select2-container');
+    if (select2Span) select2Span.remove();
+    
+    const bsProduct = newRow.querySelector('.bs-product');
+    if (bsProduct) {
+        bsProduct.classList.remove('select2-hidden-accessible');
+        bsProduct.removeAttribute('data-select2-id');
+        bsProduct.removeAttribute('tabindex');
+        bsProduct.removeAttribute('aria-hidden');
+    }
+    
+    // Make sure select elements are un-selected
+    newRow.querySelectorAll('select').forEach(sel => {
+        sel.selectedIndex = 0;
+        sel.removeAttribute('data-select2-id');
+    });
+    
+    // Hide grade wrapper initially
+    const gradeWrapper = newRow.querySelector('.bs-grade-wrapper');
+    if (gradeWrapper) gradeWrapper.style.display = 'none';
+
+    // Add remove button
+    let actionsDiv = newRow.querySelector('.row-actions');
+    if (!actionsDiv) {
+        actionsDiv = document.createElement('div');
+        actionsDiv.className = 'row-actions form-group';
+        actionsDiv.style.cssText = 'margin:0; display:flex; align-items:flex-end; padding-bottom: 0.1rem;';
+        newRow.firstElementChild.appendChild(actionsDiv);
+    }
+    actionsDiv.innerHTML = `<button type="button" class="btn btn-sm btn-danger" onclick="this.closest('.bulk-stock-row').remove()" style="height: 2rem; padding: 0 0.5rem; background: #dc3545; color: white; border: none; font-weight: bold; line-height: 1;" title="Remove row">✖</button>`;
+
+    // Add top border/margin to separate rows
+    newRow.style.borderTop = '1px dashed #d1d5db';
+    newRow.style.paddingTop = '1rem';
+    newRow.style.marginTop = '1rem';
+
+    // Remove any leftover IDs
+    newRow.removeAttribute('id');
+
+    wrapper.appendChild(newRow);
+    
+    // Trigger onBsStageChange to re-populate products and re-init any select2
+    const stageSelect = newRow.querySelector('.bs-stage');
+    if (typeof onBsStageChange === 'function') {
+        onBsStageChange(stageSelect);
+    }
+}
 </script>
 
 <style>
+/* Hide spin arrows on location quantity inputs */
+.loc-qty-input::-webkit-outer-spin-button,
+.loc-qty-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.loc-qty-input {
+  -moz-appearance: textfield;
+}
+
 /* High Contrast Overrides for Stock SweetAlert Modals */
 .swal-stock-popup,
 .swal2-popup.swal-stock-popup {

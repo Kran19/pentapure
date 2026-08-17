@@ -18,7 +18,7 @@
       </select>
     </div>
 
-    <form method="POST" action="{{ route('logout') }}" style="margin:0;">
+    <form method="POST" action="{{ route(request()->segment(1) . '.logout') }}" style="margin:0;">
       @csrf
       <button type="submit" class="btn btn-danger" style="padding:1rem; width:100%; display:flex; align-items:center; justify-content:center; gap:0.5rem;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>

@@ -19,32 +19,34 @@
       </div>
     @endif
 
-    {{-- Step 1: Role Selection (shown by default) --}}
-    <div id="users-list" style="display:flex; flex-direction:column; gap:0.5rem; text-align:left;">
+    {{-- Step 1: Role Selection --}}
+    <div id="users-list" style="display:{{ $selectedUser ? 'none' : 'flex' }}; flex-direction:column; gap:0.5rem; text-align:left;">
       @foreach($users as $u)
-        <button class="user-btn" onclick="selectUser({{ $u->id }}, '{{ $u->name }}', '{{ $u->role }}')">
+        <a href="{{ url($u->login_slug . '/login') }}" class="user-btn" style="text-decoration:none; color:inherit; display:flex; justify-content:space-between; align-items:center;">
           <div>
             <div style="font-weight:600;">{{ $u->name }}</div>
             <div style="font-size:0.8rem; color:var(--text-muted);">{{ $u->role }}</div>
           </div>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </button>
+        </a>
       @endforeach
     </div>
 
-    {{-- Step 2: Password entry (hidden until a user is selected) --}}
-    <div id="password-step" style="display:none; margin-top:1rem;">
+    {{-- Step 2: Password entry --}}
+    <div id="password-step" style="display:{{ $selectedUser ? 'block' : 'none' }}; margin-top:1rem;">
       <div style="display:flex; align-items:center; gap:0.8rem; margin-bottom:1.2rem; padding:0.8rem; background:rgba(255,255,255,0.05); border-radius:10px;">
-        <div id="selected-avatar" style="width:40px; height:40px; background:var(--primary); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem; font-weight:bold;"></div>
+        <div id="selected-avatar" style="width:40px; height:40px; background:var(--primary); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem; font-weight:bold;">
+          {{ $selectedUser ? strtoupper(substr($selectedUser->name, 0, 1)) : '' }}
+        </div>
         <div>
-          <div id="selected-name" style="font-weight:600;"></div>
-          <div id="selected-role" style="font-size:0.8rem; color:var(--text-muted);"></div>
+          <div id="selected-name" style="font-weight:600;">{{ $selectedUser ? $selectedUser->name : '' }}</div>
+          <div id="selected-role" style="font-size:0.8rem; color:var(--text-muted);">{{ $selectedUser ? $selectedUser->role : '' }}</div>
         </div>
       </div>
 
-      <form id="login-form" action="{{ route('login.post') }}" method="POST">
+      <form id="login-form" action="{{ url()->current() }}" method="POST">
         @csrf
-        <input type="hidden" id="user_id_field" name="user_id">
+        <input type="hidden" id="user_id_field" name="user_id" value="{{ $selectedUser ? $selectedUser->id : '' }}">
         <input type="hidden" id="push_subscription_field" name="push_subscription">
         <div class="form-group" style="margin-bottom:1rem;">
           <label style="font-size:0.85rem; color:var(--text-muted);">Password</label>
@@ -64,9 +66,9 @@
         </button>
       </form>
 
-      <button onclick="backToSelect()" style="margin-top:0.8rem; background:none; border:none; color:var(--text-muted); font-size:0.85rem; cursor:pointer; width:100%;">
+      <a href="{{ url('login') }}" style="display:block; margin-top:0.8rem; background:none; border:none; color:var(--text-muted); font-size:0.85rem; cursor:pointer; width:100%; text-decoration:none;">
         &larr; Back to user list
-      </button>
+      </a>
     </div>
   </div>
 </div>
@@ -88,25 +90,7 @@
 </div>
 
 <script>
-  let pendingUser = null;
-
-  async function selectUser(id, name, role) {
-    pendingUser = { id, name, role };
-    showPasswordStep();
-
-    // Background push subscription attempt if permitted (non-blocking)
-    if (window.Notification && Notification.permission === 'granted' && window.app && typeof app.subscribeUser === 'function') {
-      try {
-        const subscription = await app.subscribeUser();
-        if (subscription) {
-          document.getElementById('push_subscription_field').value = JSON.stringify(subscription);
-        }
-      } catch (e) {
-        console.warn('Background push subscription skipped:', e);
-      }
-    }
-  }
-
+  // Request notification permission if required in the future
   async function handleNotificationPermission(allow) {
     document.getElementById('notification-modal').classList.remove('active');
     if (allow) {
@@ -126,24 +110,6 @@
         app.toast('Warning: You will not receive real-time updates.', 'warning');
       }
     }
-    showPasswordStep();
-  }
-
-  function showPasswordStep() {
-    const { id, name, role } = pendingUser;
-    document.getElementById('user_id_field').value = id;
-    document.getElementById('selected-name').innerText = name;
-    document.getElementById('selected-role').innerText = role;
-    document.getElementById('selected-avatar').innerText = name.charAt(0).toUpperCase();
-    document.getElementById('users-list').style.display = 'none';
-    document.getElementById('password-step').style.display = 'block';
-    setTimeout(() => document.getElementById('password-input').focus(), 100);
-  }
-
-  function backToSelect() {
-    document.getElementById('users-list').style.display = 'flex';
-    document.getElementById('password-step').style.display = 'none';
-    document.getElementById('password-input').value = '';
   }
 
   function togglePassword(id) {

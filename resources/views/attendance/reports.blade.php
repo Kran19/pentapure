@@ -11,7 +11,7 @@
         <input type="month" name="month" value="{{ $month }}" onchange="this.form.submit()" style="padding:0.4rem; border-radius:4px; border:1px solid #ccc;">
       </form>
       <button class="btn btn-sm" onclick="exportToExcel()" style="width:auto; padding:0.4rem 1rem; background:#27ae60; color:white;">📗 Export to Excel</button>
-      <a class="btn btn-sm" href="{{ url('/history/attendance/pdf?month=' . $month) }}" target="_blank" style="width:auto; padding:0.4rem 1rem; background:var(--secondary); text-decoration:none;">Download PDF</a>
+      <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/history/attendance/pdf?month=' . $month) }}" target="_blank" style="width:auto; padding:0.4rem 1rem; background:var(--secondary); text-decoration:none;">Download PDF</a>
     </div>
   </div>
 

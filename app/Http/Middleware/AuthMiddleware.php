@@ -16,7 +16,7 @@ class AuthMiddleware
         }
 
         if (!empty($roles) && !in_array($user['role'], $roles)) {
-            if ($user['role'] === 'SUB_ADMIN' && in_array('ADMIN', $roles)) {
+            if (in_array($user['role'], ['SUB_ADMIN', 'STOCK_MANAGER']) && in_array('ADMIN', $roles)) {
                 $path = $request->path();
                 $method = $request->method();
                 $isWrite = in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -29,6 +29,7 @@ class AuthMiddleware
                 elseif (str_contains($path, 'admin/po')) $module = 'po';
                 elseif (str_contains($path, 'admin/logs') || str_contains($path, 'admin/cashier-logs')) $module = 'logs';
                 elseif (str_contains($path, 'admin/grades')) $module = 'grades';
+                elseif (str_contains($path, 'admin/locations')) $module = 'locations';
                 elseif (str_contains($path, 'admin/categories')) $module = 'categories';
                 elseif (str_contains($path, 'admin/dispatch-activity')) $module = 'dispatch';
                 elseif (str_contains($path, 'admin/cashier-overview') || str_contains($path, 'admin/cashier')) $module = 'cashier';

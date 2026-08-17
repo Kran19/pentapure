@@ -4,14 +4,14 @@
 <div style="padding:1.5rem;">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
     <h2 style="margin:0;">🚚 Dispatch Order Activity</h2>
-    <button type="button" class="btn" onclick="window.downloadPdfAsync('{{ route('admin.dispatch.pdf') }}', {{ json_encode(request()->all()) }}, this)" style="width:auto; padding:0.6rem 1.2rem; background:var(--secondary); cursor:pointer;">
+    <button type="button" class="btn" onclick="window.downloadPdfAsync('{{ route(request()->segment(1) . '.dispatch.pdf') }}', {{ json_encode(request()->all()) }}, this)" style="width:auto; padding:0.6rem 1.2rem; background:var(--secondary); cursor:pointer;">
       📥 Download PDF Report
     </button>
   </div>
 
   <!-- Filters -->
   <div class="card" style="padding:1.2rem; margin-bottom:1.5rem;">
-    <form method="GET" action="{{ route('admin.dispatch.activity') }}" style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end;">
+    <form method="GET" action="{{ route(request()->segment(1) . '.dispatch.activity') }}" style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end;">
       <div style="flex:1; min-width:200px;">
         <label style="display:block; font-size:0.85rem; margin-bottom:0.4rem; color:var(--text-muted);">Status</label>
         <select name="status" class="form-control" style="width:100%;" onchange="this.form.submit()">
@@ -32,7 +32,7 @@
       </div>
       <div style="display:flex; gap:0.5rem;">
         <button type="submit" class="btn" style="width:auto; padding:0.6rem 1.2rem;">🔍 Filter</button>
-        <a href="{{ route('admin.dispatch.activity') }}" class="btn" style="width:auto; padding:0.6rem 1.2rem; background:var(--glass-bg); color:var(--text);">🔄 Reset</a>
+        <a href="{{ route(request()->segment(1) . '.dispatch.activity') }}" class="btn" style="width:auto; padding:0.6rem 1.2rem; background:var(--glass-bg); color:var(--text);">🔄 Reset</a>
       </div>
     </form>
   </div>
@@ -102,10 +102,12 @@
                     
                     if ($order->dispatch_status === 'DONE') {
                         $badgeClass = 'badge-done';
-                        $label = $order->dispatch_logs_count > 1 ? 'DONE (PARTIAL)' : 'DONE (SINGLE)';
+                        $label = $order->dispatch_logs_count > 1 ? 'Partial Dispatch' : 'Fully Dispatch';
                     } elseif ($order->dispatch_status === 'PARTIAL') {
                         $badgeClass = 'badge-warning';
-                        $label = 'PARTIAL (PENDING)';
+                        $label = 'Partial Pending';
+                    } elseif ($order->dispatch_status === 'PENDING') {
+                        $label = 'Pending';
                     }
                 @endphp
                 <span class="badge {{ $badgeClass }}">{{ $label }}</span>

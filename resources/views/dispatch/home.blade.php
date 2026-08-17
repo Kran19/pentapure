@@ -124,7 +124,7 @@
       <div class="card" style="border-left: 4px solid {{ $progressColor }}; background:rgba(255,255,255,0.02); transition: transform 0.2s; margin-bottom: 0;">
         <div class="flex-between mb-1">
           <span style="font-weight:bold; font-size:1.1rem; color:#fff;">Order #{{ strtoupper((string)$o['id']) }}</span>
-          <a class="btn btn-sm" href="{{ url('dispatch/action') }}" onclick="localStorage.setItem('auto_dispatch_id', '{{ $o['id'] }}');" style="width:auto; text-decoration:none; background:{{ $progressColor }};">
+          <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action') }}" onclick="localStorage.setItem('auto_dispatch_id', '{{ $o['id'] }}');" style="width:auto; text-decoration:none; background:{{ $progressColor }};">
             {{ $pct === 0 ? 'Dispatch' : 'Partial Dispatch' }}
           </a>
         </div>

@@ -4,12 +4,29 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <meta name="base-url" content="{{ url('/') }}">
+  <meta name="base-url" content="{{ url(request()->segment(1) . '/') }}">
+  <script>window.userSlug = '{{ request()->segment(1) }}';</script>
   <title>Pentapure Factory Operations - Admin</title>
   <link rel="stylesheet" href="{{ asset('css/style.css') }}?v=2.0">
   <link rel="stylesheet" href="{{ asset('css/tabulator-custom.css') }}">
   <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <script>
+    // UX - Maintain Scroll Position Across Reloads
+    window.addEventListener('beforeunload', function() {
+        sessionStorage.setItem('scroll_pos_' + window.location.pathname, window.scrollY);
+    });
+    document.addEventListener('DOMContentLoaded', function() {
+        let scrollPos = sessionStorage.getItem('scroll_pos_' + window.location.pathname);
+        if (scrollPos) {
+            window.scrollTo(0, parseInt(scrollPos));
+        }
+    });
+  </script>
+  <!-- Select2 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
   <script>
     if (localStorage.getItem('theme') === 'dark') {
       document.documentElement.classList.add('dark-mode');
@@ -38,7 +55,7 @@
 
         <div id="admin-mobile-header" class="admin-mobile-header">
           Pentapure Admin
-          <a href="{{ url('admin/notifications') }}" id="notif-bell-container" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:inherit; text-decoration:none;">
+          <a href="{{ url(request()->segment(1) . '/notifications') }}" id="notif-bell-container" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:inherit; text-decoration:none;">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
               <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
@@ -72,59 +89,59 @@
           @endphp
 
           @if($can('module_dashboard'))
-          <a href="{{ url('admin/home') }}" class="nav-item {{ $seg=='home' || $seg=='dashboard'?'active':'' }}">
+          <a href="{{ url(request()->segment(1) . '/home') }}" class="nav-item {{ $seg=='home' || $seg=='dashboard'?'active':'' }}">
             Dashboard
           </a>
           @endif
 
           @if($can('module_users'))
-          <a href="{{ url('admin/users') }}" class="nav-item {{ $seg=='users'?'active':'' }}">
+          <a href="{{ url(request()->segment(1) . '/users') }}" class="nav-item {{ $seg=='users'?'active':'' }}">
             Users &amp; Hierarchy
           </a>
           @endif
 
           @if($can('module_stock'))
-          <a href="{{ url('admin/stock') }}" class="nav-item {{ $seg=='stock'?'active':'' }}">
+          <a href="{{ url(request()->segment(1) . '/stock') }}" class="nav-item {{ $seg=='stock'?'active':'' }}">
             Live Stock
           </a>
           @endif
 
           @if($can('module_products'))
-          <a href="{{ url('admin/products') }}" class="nav-item {{ $seg=='products'?'active':'' }}">
+          <a href="{{ url(request()->segment(1) . '/products') }}" class="nav-item {{ $seg=='products'?'active':'' }}">
             Products Master
           </a>
           @endif
 
           @if($can('module_grades'))
-          <a href="{{ url('admin/grades') }}" class="nav-item {{ $seg=='grades'?'active':'' }}">
+          <a href="{{ url(request()->segment(1) . '/grades') }}" class="nav-item {{ $seg=='grades'?'active':'' }}">
             Grades Master
           </a>
           @endif
 
-          <a href="{{ url('admin/locations') }}" class="nav-item {{ $seg=='locations'?'active':'' }}">
-            Warehouse Master
+          <a href="{{ url(request()->segment(1) . '/locations') }}" class="nav-item {{ $seg=='locations'?'active':'' }}">
+            Storage Location
           </a>
 
           @if($can('module_po'))
-          <a href="{{ url('admin/po') }}" class="nav-item {{ $seg=='po'?'active':'' }}">
+          <a href="{{ url(request()->segment(1) . '/po') }}" class="nav-item {{ $seg=='po'?'active':'' }}">
             Purchase Requests
           </a>
           @endif
 
           @if($can('module_dispatch'))
-          <a href="{{ url('admin/dispatch-activity') }}" class="nav-item {{ $seg=='dispatch-activity'?'active':'' }}">
+          <a href="{{ url(request()->segment(1) . '/dispatch-activity') }}" class="nav-item {{ $seg=='dispatch-activity'?'active':'' }}">
             Dispatch Activity
           </a>
           @endif
 
           @if($can('module_cashier'))
-          <a href="{{ url('admin/cashier-overview') }}" class="nav-item {{ $seg=='cashier-overview'?'active':'' }}">
+          <a href="{{ url(request()->segment(1) . '/cashier-overview') }}" class="nav-item {{ $seg=='cashier-overview'?'active':'' }}">
             Cashier Overview
           </a>
           @endif
 
           @if($can('module_categories'))
-          <a href="{{ url('admin/categories') }}" class="nav-item {{ $seg=='categories'?'active':'' }}">
+          <a href="{{ url(request()->segment(1) . '/categories') }}" class="nav-item {{ $seg=='categories'?'active':'' }}">
             Expense Category Master
           </a>
           @endif
@@ -140,19 +157,19 @@
                 style="transition:transform 0.3s;"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
             <div id="att-submenu" style="display:none; padding-left:1rem; border-left:2px solid var(--primary);">
-              <a href="{{ url('admin/attendance/dashboard') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
+              <a href="{{ url(request()->segment(1) . '/dashboard') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
                 Dashboard
               </a>
-              <a href="{{ url('admin/attendance/departments') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
+              <a href="{{ url(request()->segment(1) . '/departments') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
                 Departments
               </a>
-              <a href="{{ url('admin/attendance/workers') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
+              <a href="{{ url(request()->segment(1) . '/workers') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
                 Workers List
               </a>
-              <a href="{{ url('admin/attendance/daily') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
+              <a href="{{ url(request()->segment(1) . '/daily') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
                 @if($authUser['role'] === 'ATTENDANCE') Daily Entry @else Daily Review @endif
               </a>
-              <a href="{{ url('admin/attendance/reports') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
+              <a href="{{ url(request()->segment(1) . '/reports') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
                 Monthly Reports
               </a>
             </div>
@@ -160,13 +177,13 @@
           @endif
 
           @if($can('module_logs'))
-          <a href="{{ url('admin/logs') }}" class="nav-item {{ $seg=='logs'?'active':'' }}">
+          <a href="{{ url(request()->segment(1) . '/logs') }}" class="nav-item {{ $seg=='logs'?'active':'' }}">
             Activity Logs
           </a>
           @endif
 
           @if($can('module_notifications'))
-          <a href="{{ url('admin/notifications') }}" class="nav-item {{ $seg=='notifications'?'active':'' }}"
+          <a href="{{ url(request()->segment(1) . '/notifications') }}" class="nav-item {{ $seg=='notifications'?'active':'' }}"
              style="display:flex; justify-content:space-between; align-items:center;">
             <span>Notifications</span>
             <span id="nav-notif-count" class="badge badge-danger" style="display:none; font-size:0.7rem; padding:2px 6px;">0</span>
@@ -178,7 +195,7 @@
             <div class="nav-item" style="cursor:pointer; display:flex; align-items:center; gap:0.75rem; padding:0.85rem 1.2rem; font-size:1rem;" onclick="toggleTheme()">
               <span id="theme-icon">🌙</span> <span id="theme-text">Dark Mode</span>
             </div>
-            <form method="POST" action="{{ route('logout') }}" style="margin:0;">
+            <form method="POST" action="{{ route(request()->segment(1) . '.logout') }}" style="margin:0;">
               @csrf
               <button type="submit" class="nav-item"
                 style="width:100%;background:none;border:none;cursor:pointer;color:var(--danger);display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1.2rem;font-size:1rem;">
@@ -215,6 +232,8 @@
   <script src="{{ asset('js/table-sorter.js') }}"></script>
   <script src="{{ asset('js/table-filter.js') }}"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}"></script>
   <script>
     function toggleTheme() {
@@ -233,7 +252,7 @@
     });
 
     window.csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-    window.logoutUrl = "{{ route('logout') }}";
+    window.logoutUrl = "{{ route(request()->segment(1) . '.logout') }}";
 
     @if(isset($pageData))
     window.serverPageData = @json($pageData);
@@ -274,7 +293,7 @@
 
     async function openLocationsAdminModal() {
       try {
-        const response = await fetch('/api/locations');
+        const response = await fetch('/' + window.userSlug + '/api/locations');
         const data = await response.json();
         if (!data.success) throw new Error(data.message);
         
@@ -312,7 +331,7 @@
       if(!val) return app.toast('Enter location name', 'error');
 
       try {
-        const response = await fetch('/admin/locations', {
+        const response = await fetch('/' + window.userSlug + '/locations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
           body: JSON.stringify({ name: val })
@@ -357,6 +376,27 @@
         }
       });
     }
+  </script>
+
+  <!-- Scroll Position Restoration -->
+  <script>
+    window.addEventListener('beforeunload', function() {
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            sessionStorage.setItem('adminScrollPosition', mainContent.scrollTop);
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const mainContent = document.querySelector('.main-content');
+        const savedScroll = sessionStorage.getItem('adminScrollPosition');
+        if (mainContent && savedScroll) {
+            // Use setTimeout to ensure rendering doesn't interfere
+            setTimeout(() => {
+                mainContent.scrollTop = parseInt(savedScroll, 10);
+            }, 100);
+        }
+    });
   </script>
 </body>
 </html>

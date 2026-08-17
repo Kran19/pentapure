@@ -11,6 +11,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->web(prepend: [
+            \App\Http\Middleware\ScopeSessionBySlug::class,
+        ]);
         $middleware->alias([
             'auth.role' => \App\Http\Middleware\AuthMiddleware::class,
         ]);

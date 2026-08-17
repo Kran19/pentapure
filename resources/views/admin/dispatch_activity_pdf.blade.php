@@ -60,9 +60,11 @@
                 @php
                     $label = $order->dispatch_status;
                     if ($order->dispatch_status === 'DONE') {
-                        $label = $order->dispatch_logs_count > 1 ? 'DONE (PARTIAL)' : 'DONE (SINGLE)';
+                        $label = $order->dispatch_logs_count > 1 ? 'Partial Dispatch' : 'Fully Dispatch';
                     } elseif ($order->dispatch_status === 'PARTIAL') {
-                        $label = 'PARTIAL (PENDING)';
+                        $label = 'Partial Pending';
+                    } elseif ($order->dispatch_status === 'PENDING') {
+                        $label = 'Pending';
                     }
                 @endphp
                 <tr>

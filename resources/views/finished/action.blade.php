@@ -160,7 +160,7 @@ function submitTransfer(e) {
   btn.disabled = true;
   btn.innerHTML = `Transferring...`;
 
-  fetch('{{ route("finished.transfer_to_semi") }}', {
+  fetch('{{ route(request()->segment(1) . ".transfer_to_semi") }}', {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json', 
@@ -371,7 +371,7 @@ function submitTransfer(e) {
       }))
     };
 
-    fetch('/finished/action', {
+    fetch('/' + window.userSlug + '/action', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json', 
@@ -390,7 +390,7 @@ function submitTransfer(e) {
         document.getElementById('finish-notes').value = '';
         document.querySelectorAll('.prod-in-qty').forEach(el => el.value = '');
         if (btn) { btn.disabled = false; btn.innerHTML = `Confirm Production`; }
-        setTimeout(() => window.location.href = '{{ route('finished.home') }}', 1000);
+        setTimeout(() => window.location.href = '{{ route(request()->segment(1) . '.home') }}', 1000);
       } else {
         app.toast(res.message || 'Error logging production', 'error');
         if (btn) { btn.disabled = false; btn.innerHTML = `Confirm Production`; }

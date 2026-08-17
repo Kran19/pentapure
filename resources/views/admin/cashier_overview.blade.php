@@ -6,10 +6,10 @@
         <h2 style="margin:0;">💰 Cashier Overview</h2>
         <div style="display:flex; gap:0.5rem;">
             <button class="btn btn-secondary" onclick="location.reload()" style="width:auto; padding:0.6rem 1rem;">🔄 Refresh</button>
-            <a href="{{ route('admin.cashier.logs') }}" class="btn" style="width:auto; padding:0.6rem 1rem; background-color:var(--primary-light); text-decoration:none; display:flex; align-items:center; gap:5px;">
+            <a href="{{ route(request()->segment(1) . '.cashier.logs') }}" class="btn" style="width:auto; padding:0.6rem 1rem; background-color:var(--primary-light); text-decoration:none; display:flex; align-items:center; gap:5px;">
                 📝 View Edit Logs
             </a>
-            <button type="button" class="btn" onclick="window.downloadPdfAsync('{{ route('admin.cashier_overview.pdf') }}', {}, this)" style="width:auto; padding:0.6rem 1rem; display:flex; align-items:center; gap:5px; cursor:pointer;">
+            <button type="button" class="btn" onclick="window.downloadPdfAsync('{{ route(request()->segment(1) . '.cashier_overview.pdf') }}', {}, this)" style="width:auto; padding:0.6rem 1rem; display:flex; align-items:center; gap:5px; cursor:pointer;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                 Export PDF
             </button>

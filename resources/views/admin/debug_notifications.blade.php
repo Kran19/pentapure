@@ -106,7 +106,7 @@
     async function sendServerPush() {
         log('Triggering server-side push notification...');
         try {
-            const res = await fetch('/notifications/test');
+            const res = await fetch('/' + window.userSlug + '/notifications/test');
             const text = await res.text();
             log('Server Response: ' + text);
             Swal.fire('Push Triggered', text, 'success');
@@ -134,7 +134,7 @@
     async function checkSubscriptionOnServer() {
         log('Checking if server has your token...');
         try {
-            const res = await fetch('/admin/debug-check-sub');
+            const res = await fetch('/' + window.userSlug + '/debug-check-sub');
             const data = await res.json();
             if (data.exists) {
                 log('SUCCESS: Server has ' + data.count + ' subscription(s) for you.');

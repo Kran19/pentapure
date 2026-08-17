@@ -18,12 +18,9 @@ class BulkProductSeeder extends Seeder
         
         if (!file_exists($filePath)) {
             $this->command->error("File not found: {$filePath}");
-            $this->command->info("Please paste the raw text of products into this file and run the seeder again.");
             return;
         }
 
-        $content = file_get_contents($filePath);
-        
         $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         
         if (empty($lines)) {
@@ -33,88 +30,56 @@ class BulkProductSeeder extends Seeder
 
         // Truncate existing data to prevent duplicates
         \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        \Illuminate\Support\Facades\DB::table('stocks')->truncate();
         \Illuminate\Support\Facades\DB::table('grade_product')->truncate();
-        \Illuminate\Support\Facades\DB::table('grades')->truncate();
         \Illuminate\Support\Facades\DB::table('products')->truncate();
         \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
-        // Define the grades as per user request
-        $gradeNames = [
-            'A GRADE', 'PURE', 'REGULAR', 'GOLD', 'PPF', 'PREMIUM', 'SORTED', 
-            'UNSORTED', 'EXTRASTRONG', 'EXTRA STRONG', 'RICHPLUS', 'RICH PLUS', 'RICH', 'AB 30', 'TPA', 'TPM', 
-            'TPR', 'TPS', 'UNIQUE', 'NONE'
-        ];
-
-        // Ensure all grades exist in DB
-        $gradeMap = [];
-        foreach ($gradeNames as $gName) {
-            $g = \App\Models\Grade::firstOrCreate(
-                ['name' => $gName],
-                ['is_active' => true]
-            );
-            $gradeMap[$gName] = $g->id;
-        }
-
-        $count = 0;
+        $count = 1;
         foreach ($lines as $line) {
             $rawName = trim($line);
             
-            // Map type code to DB enum based on tag
-            $dbType = 'RAW'; // default
-            if (preg_match('/\((FG)\)$/i', $rawName)) {
+            // Assign type based on line number
+            if ($count >= 1 && $count <= 127) {
                 $dbType = 'FINISHED';
-            } elseif (preg_match('/\((SEMI|SM)\)$/i', $rawName)) {
-                $dbType = 'SEMI';
-            } elseif (preg_match('/\((RAW|RM)\)$/i', $rawName)) {
+            } elseif ($count >= 128 && $count <= 178) {
                 $dbType = 'RAW';
+            } else {
+                $dbType = 'SEMI';
             }
 
-            // DO NOT CLEAN NAME. The user wants the exact name from the file!
-            $name = $rawName;
+            // Strip the stage tag from the name
+            $name = preg_replace('/\s*\((FG|RAW|RM|SEMI|SM)\)$/i', '', $rawName);
+            $name = trim($name);
 
-            // Extract grade from the string (checking if the grade exists in the string)
-            $foundGrade = null;
-            // Sort grade names by length descending to match 'RICH PLUS' before 'RICH'
-            $sortedGrades = $gradeNames;
-            usort($sortedGrades, function($a, $b) { return strlen($b) - strlen($a); });
-
-            // Look for a hyphen and the grade after it, or just the grade before the parenthesis
-            foreach ($sortedGrades as $g) {
-                // Remove spaces for comparison just in case
-                $gNoSpace = str_replace(' ', '', $g);
-                $nameNoSpace = str_replace(' ', '', $rawName);
-                
-                // If the user explicitly added a hyphen like `- UNIQUE` or `-UNIQUE`
-                if (preg_match('/-' . preg_quote($gNoSpace, '/') . '/i', $nameNoSpace)) {
-                    $foundGrade = $g;
-                    break;
-                }
-                
-                // Or if the grade is just in the string (before the parenthesis)
-                if (preg_match('/' . preg_quote($gNoSpace, '/') . '\(+/i', $nameNoSpace)) {
-                    $foundGrade = $g;
-                    break;
-                }
+            $gradeName = 'NONE';
+            if (strpos($name, ' - ') !== false) {
+                $parts = explode(' - ', $name);
+                $gradeName = trim(array_pop($parts));
+                $name = trim(implode(' - ', $parts));
             }
 
-            // Create product with the full exact name
-            $product = Product::create([
+            // Create or get base product
+            $product = Product::firstOrCreate([
                 'name' => $name,
                 'type' => $dbType,
-                'unit' => 'KG', // default unit
+            ], [
+                'unit' => 'KG',
                 'rate' => 0,
                 'threshold' => 0,
                 'is_active' => true,
+                'sort_order' => $count,
             ]);
 
-            // Attach grade if found
-            if ($foundGrade && isset($gradeMap[$foundGrade])) {
-                $product->grades()->attach($gradeMap[$foundGrade]);
-            }
+            // Create or get grade
+            $grade = \App\Models\Grade::firstOrCreate(['name' => $gradeName]);
+
+            // Attach grade
+            $product->grades()->syncWithoutDetaching([$grade->id]);
 
             $count++;
         }
 
-        $this->command->info("Successfully processed and imported {$count} distinct products!");
+        $this->command->info("Successfully processed and imported " . ($count - 1) . " products!");
     }
 }

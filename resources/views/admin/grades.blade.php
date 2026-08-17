@@ -29,7 +29,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th>ID</th>
+                        <th>#</th>
                         <th>Grade Name</th>
                         <th>Status</th>
                         <th>Created At</th>
@@ -39,7 +39,7 @@
                 <tbody>
                     @foreach($pageData['grades'] as $g)
                     <tr>
-                        <td>{{ $g->id }}</td>
+                        <td>{{ ($pageData['grades']->currentPage() - 1) * $pageData['grades']->perPage() + $loop->iteration }}</td>
                         <td style="font-weight:600; color:var(--primary-light);">{{ $g->name }}</td>
                         <td>
                             <label class="switch">
@@ -103,7 +103,7 @@ function adminEditGrade(g) {
         }
     }).then((res) => {
         if (res.isConfirmed) {
-            fetch('/admin/grades', {
+            fetch('/' + window.userSlug + '/grades', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
                 body: JSON.stringify({ grade_id: g.id, name: res.value })
@@ -128,7 +128,7 @@ document.getElementById('grade-form').onsubmit = function(e) {
     const name = document.getElementById('grade-name').value;
     if(!name) return;
 
-    fetch('/admin/grades', {
+    fetch('/' + window.userSlug + '/grades', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
         body: JSON.stringify({ grade_id: editingGradeId, name })
@@ -143,7 +143,7 @@ document.getElementById('grade-form').onsubmit = function(e) {
 };
 
 function adminToggleGrade(id) {
-    fetch('/admin/grades', {
+    fetch('/' + window.userSlug + '/grades', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
         body: JSON.stringify({ grade_id: id, toggle: true })

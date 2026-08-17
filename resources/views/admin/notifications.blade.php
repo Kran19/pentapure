@@ -185,7 +185,7 @@ function markOneRead(id) {
 }
 
 function markAllRead() {
-  fetch('/api/notifications/read-all', {
+  fetch('/' + window.userSlug + '/api/notifications/read-all', {
     method: 'POST',
     headers: { 'X-CSRF-TOKEN': csrfToken, 'Content-Type': 'application/json' }
   })

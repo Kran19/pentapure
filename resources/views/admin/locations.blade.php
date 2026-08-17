@@ -102,7 +102,7 @@ function adminEditLocation(loc) {
     }
   }).then((res) => {
     if (res.isConfirmed) {
-      fetch('/api/locations', {
+      fetch('/' + window.userSlug + '/api/locations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
         body: JSON.stringify({ location_id: loc.id, name: res.value.name, description: res.value.description })
@@ -136,7 +136,7 @@ function adminSaveLocation() {
   const payload = { name, description };
   if (editingLocationId) payload.location_id = editingLocationId;
 
-  fetch('/api/locations', {
+  fetch('/' + window.userSlug + '/api/locations', {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json',

@@ -4,12 +4,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <meta name="base-url" content="{{ url('/') }}">
+  <meta name="base-url" content="{{ url(request()->segment(1) . '/') }}">
+  <script>window.userSlug = '{{ request()->segment(1) }}';</script>
   <title>Pentapure Factory Operations</title>
   <link rel="stylesheet" href="{{ asset('css/style.css') }}">
   <link rel="stylesheet" href="{{ asset('css/tabulator-custom.css') }}">
   <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
+  <script>
+    // UX - Maintain Scroll Position Across Reloads
+    window.addEventListener('beforeunload', function() {
+        sessionStorage.setItem('scroll_pos_' + window.location.pathname, window.scrollY);
+    });
+    document.addEventListener('DOMContentLoaded', function() {
+        let scrollPos = sessionStorage.getItem('scroll_pos_' + window.location.pathname);
+        if (scrollPos) {
+            window.scrollTo(0, parseInt(scrollPos));
+        }
+    });
+  </script>
 </head>
 <body>
   <!-- Toast Notification Container -->
@@ -33,22 +47,13 @@
     <div id="main-app" class="app-main-layout">
 
       <!-- Navigation (Sidebar on Desktop, Bottom on Mobile) -->
-      <div class="bottom-nav" id="bottom-nav">
         @php
-          $prefix = request()->segment(1) ?? 'user';
-          $validPrefixes = ['admin', 'raw', 'semi', 'finished', 'cashier', 'sales', 'dispatch', 'attendance'];
-          if (!in_array($prefix, $validPrefixes)) {
-              $sessUser = session('auth_user');
-              if ($sessUser && isset($sessUser['role'])) {
-                  $prefix = strtolower($sessUser['role']);
-                  if ($prefix === 'sub_admin') $prefix = 'admin';
-              }
-          }
+          $sessUser = session('auth_user') ?? (auth()->user() ? auth()->user()->toArray() : null);
+          $role = strtolower($sessUser['role'] ?? 'user');
+          if ($role === 'sub_admin' || $role === 'stock_manager') $role = 'admin';
+          
+          $prefix = request()->segment(1);
           $currentRoute = request()->segment(2) ?? 'home';
-          if (!in_array(request()->segment(1), $validPrefixes)) {
-              // If we are on a detail page like product history, highlight the Home tab
-              $currentRoute = 'home';
-          }
         @endphp
 
         <div class="nav-logo desktop-only">
@@ -68,13 +73,13 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
           <span>Reports</span>
         </a>
-        @if($prefix === 'cashier')
+        @if($role === 'cashier')
         <a href="{{ url($prefix . '/ledger') }}" class="nav-item {{ $currentRoute == 'ledger' ? 'active' : '' }}" style="text-decoration:none;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
           <span>Ledger</span>
         </a>
         @endif
-        @if($prefix === 'attendance')
+        @if($role === 'attendance')
         <a href="{{ url($prefix . '/team') }}" class="nav-item {{ $currentRoute == 'team' ? 'active' : '' }}" style="text-decoration:none;">
           <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
           <span>Team</span>
@@ -97,19 +102,19 @@
         <!-- Standard Header (Except Admin) -->
         <header id="app-header">
           <div class="user-info">
-            @php
+              @php
                 $segments = [
-                    'raw' => ['Amit (Raw)', 'RAW'],
-                    'semi' => ['Rahul (Semi)', 'SEMI'],
-                    'finished' => ['Vikram (FG)', 'FINISHED'],
-                    'cashier' => ['Sneha (Cashier)', 'CASHIER'],
-                    'sales' => ['Raj (Sales)', 'SALES'],
-                    'dispatch' => ['Ravi (Dispatch)', 'DISPATCH'],
-                    'attendance' => ['Manager (Attendance)', 'ATTENDANCE'],
+                  'raw' => ['Raw', 'RAW MATERIAL'],
+                  'semi' => ['Semi', 'SEMI PRODUCT'],
+                  'finished' => ['Finished', 'FINISHED GOODS'],
+                  'cashier' => ['Cashier', 'FINANCE'],
+                  'sales' => ['Sales', 'SALES'],
+                  'dispatch' => ['Dispatch', 'DISPATCH'],
+                  'attendance' => ['Attendance', 'ATTENDANCE']
                 ];
-                $userName = $segments[$prefix][0] ?? 'User';
-                $userRole = $segments[$prefix][1] ?? strtoupper($prefix);
-            @endphp
+                $userName = $sessUser['name'] ?? ($segments[$role][0] ?? 'User');
+                $userRole = $sessUser['role'] ?? ($segments[$role][1] ?? strtoupper($role));
+              @endphp
             <span class="user-name" id="current-user-name">{{ $userName }}</span>
             <span class="role-badge" id="current-user-role">{{ $userRole }}</span>
           </div>
@@ -160,7 +165,7 @@
   <script>
     // ── CSRF for all fetch() calls ─────────────────────────────────────────
     window.csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-    window.logoutUrl = "{{ route('logout') }}";
+    window.logoutUrl = "{{ route(request()->segment(1) . '.logout') }}";
 
     // ── Global Server Page Data ───────────────────────────────────────────
     window.serverPageData = {!! json_encode($pageData ?? []) !!};

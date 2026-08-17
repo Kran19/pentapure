@@ -6,9 +6,9 @@
 
 @php
   $prefix = request()->segment(1) == 'admin' ? 'admin' : 'attendance';
-  $workersUrl = $prefix == 'admin' ? route('admin.attendance.workers') : route('attendance.workers');
-  $dailyUrl = $prefix == 'admin' ? route('admin.attendance.daily') : route('attendance.daily');
-  $reportsUrl = $prefix == 'admin' ? route('admin.attendance.reports') : route('attendance.history');
+  $workersUrl = $prefix == 'admin' ? route(request()->segment(1) . '.attendance.workers') : route(request()->segment(1) . '.workers');
+  $dailyUrl = $prefix == 'admin' ? route(request()->segment(1) . '.attendance.daily') : route(request()->segment(1) . '.daily');
+  $reportsUrl = $prefix == 'admin' ? route(request()->segment(1) . '.attendance.reports') : route(request()->segment(1) . '.history');
 @endphp
 
   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">

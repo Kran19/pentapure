@@ -47,7 +47,7 @@
   </div>
   
   <button class="btn mt-2" onclick="app.submitDispatch()">Dispatch Items</button>
-<a href="{{ url('admin/po') }}" class="btn mt-2" style="margin-left:0.5rem;">Purchase Requests</a>
+<a href="{{ url(request()->segment(1) . '/po') }}" class="btn mt-2" style="margin-left:0.5rem;">Purchase Requests</a>
 </div>
 
 <script>

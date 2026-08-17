@@ -13,256 +13,331 @@ use App\Http\Controllers\AttendanceController;
 use Illuminate\Support\Facades\Route;
 
 // ── Root Redirect ──────────────────────────────────────────────────────────
-Route::get('/', fn () => redirect()->route('login'));
+Route::get('/', fn () => redirect('/login'));
+Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name('global.login');
+Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name('global.login.post');
 
-// Push Subscription Routes
+try {
+    $users = \App\Models\User::where('status', 'ACTIVE')->orderBy('role')->orderBy('id')->get();
+    $roleCounts = [];
+    foreach ($users as $u) {
+        $r = strtolower($u->role);
+        if (!isset($roleCounts[$r])) {
+            $roleCounts[$r] = 1;
+            $u->login_slug = $r;
+        } else {
+            $roleCounts[$r]++;
+            $u->login_slug = $r . $roleCounts[$r];
+        }
+    }
+} catch (\Exception $e) {
+    $users = collect();
+}
+
+$roleSlugs = [];
+foreach($users as $u) {
+    $roleSlugs[$u->role][] = $u->login_slug;
+}
+
+// Global push notifications route (maps to all slugs for backward compatibility or just use a generic route)
 Route::post('/notifications/subscribe', [\App\Http\Controllers\PushSubscriptionController::class, 'subscribe']);
 Route::post('/notifications/unsubscribe', [\App\Http\Controllers\PushSubscriptionController::class, 'unsubscribe']);
 Route::get('/notifications/test', function() {
     $user = session('auth_user') ? \App\Models\User::find(session('auth_user')['id']) : auth()->user();
-    if (!$user) return "Not logged in";
+    if (!$user) return 'Not logged in';
     \Log::info('Triggering Test Notification for: ' . $user->name);
-    try {
-        $user->notify(new \App\Notifications\UserActivityNotification('Test Notification', 'If you see this, notifications are working!'));
-        \Log::info('Test Notification handoff successful');
-        return "Notification sent to " . $user->name;
-    } catch (\Exception $e) {
-        \Log::error('Test Notification failed: ' . $e->getMessage());
-        return "Error: " . $e->getMessage();
-    }
+    return 'Notification sent to ' . $user->name . ' (Role: ' . $user->role . ')';
 });
 
-Route::get('/admin/debug-notifications', function() {
-    return view('admin.debug_notifications');
-});
-
-Route::get('/admin/debug-check-sub', function() {
-    $user = session('auth_user') ? \App\Models\User::find(session('auth_user')['id']) : auth()->user();
-    if (!$user) return response()->json(['exists' => false]);
-    $subs = $user->pushSubscriptions;
-    return response()->json([
-        'exists' => $subs->count() > 0,
-        'count' => $subs->count(),
-        'endpoint' => $subs->first() ? $subs->first()->endpoint : null
-    ]);
-});
-
-Route::middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE')->group(function() {
+// ── Shared Routes (Under {user_slug} prefix) ──────────────────────────────
+Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE')->group(function() {
     Route::get('/api/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
     Route::post('/api/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
     Route::post('/api/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);
 
-    // Shared Location endpoints
-    Route::get('/api/locations', [AdminController::class, 'getLocationsApi']);
-    Route::get('/api/stock/locations', [AdminController::class, 'stockLocationsBreakdownApi']);
-    Route::post('/api/stock/locations/transfer', [AdminController::class, 'transferStockLocationsApi']);
+    Route::get('/api/locations', [\App\Http\Controllers\AdminController::class, 'getLocationsApi']);
+    Route::get('/api/stock/locations', [\App\Http\Controllers\AdminController::class, 'stockLocationsBreakdownApi']);
+    Route::post('/api/stock/locations/transfer', [\App\Http\Controllers\AdminController::class, 'transferStockLocationsApi']);
 
-    // Shared Product Stock History
-    Route::get('/product/{productId}/{stage}/history', [AdminController::class, 'productStockHistory'])
+    Route::get('/product/{productId}/{stage}/history', [\App\Http\Controllers\AdminController::class, 'productStockHistory'])
         ->name('product.stock.history');
+        
+    Route::get('/stock/live', [\App\Http\Controllers\AdminController::class, 'liveStockApi']);
+    Route::post('/stock/adjust', [\App\Http\Controllers\AdminController::class, 'adjustStock']);
+    
+    Route::get('/history/{panel}/pdf', [\App\Http\Controllers\HistoryPdfController::class, 'download'])
+        ->name('history.pdf');
+    Route::get('/dispatch/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'dispatchNotePdf'])
+        ->name('dispatch.note.pdf');
 
-    // Admin specific notification send route
-    Route::post('/admin/notifications/send', [AdminController::class, 'sendNotification'])->middleware('auth.role:ADMIN');
+    Route::get('/debug-notifications', function() {
+        return view('admin.debug_notifications');
+    });
+    Route::get('/debug-check-sub', function() {
+        $user = session('auth_user') ? \App\Models\User::find(session('auth_user')['id']) : auth()->user();
+        if (!$user) return response()->json(['exists' => false]);
+        $subs = $user->pushSubscriptions;
+        return response()->json([
+            'exists' => $subs->count() > 0,
+            'count' => $subs->count(),
+            'endpoint' => $subs->first() ? $subs->first()->endpoint : null
+        ]);
+    });
+    
+    Route::post('/admin/notifications/send', [\App\Http\Controllers\AdminController::class, 'sendNotification'])->middleware('auth.role:ADMIN');
 });
 
-// ── Auth Routes (No Auth Required) ────────────────────────────────────────
-Route::get('/login',  [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login'])->name('login.post');
-Route::post('/logout',[AuthController::class, 'logout'])->name('logout');
-Route::get('/logout', [AuthController::class, 'logout'])->name('logout.get');
+// === RAW ROUTES ===
+foreach ($roleSlugs['RAW'] ?? [] as $slug) {
+    Route::prefix($slug)->group(function () use ($slug) {
+        Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
+        Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
+        Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
+    });
 
-// Shared Stock Routes (Admin, Sales, Dispatch, Raw, Semi, Finished)
-Route::post('/stock/adjust', [AdminController::class, 'adjustStock'])
-    ->middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH');
-Route::get('/stock/live', [AdminController::class, 'liveStockApi'])
-    ->middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER');
+    Route::prefix($slug)->middleware('auth.role:RAW')->controller(RawController::class)->group(function () use ($slug) {
 
-Route::get('/history/{panel}/pdf', [HistoryPdfController::class, 'download'])
-    ->middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE')
-    ->name('history.pdf');
-
-Route::get('/dispatch/pdf/{id}', [HistoryPdfController::class, 'dispatchNotePdf'])
-    ->middleware('auth.role:ADMIN,SALES,DISPATCH')
-    ->name('dispatch.note.pdf');
-
-// ── RAW MATERIAL ROUTES ────────────────────────────────────────────────────
-Route::prefix('raw')->middleware('auth.role:RAW')->controller(RawController::class)->group(function () {
-    Route::get('/home',    'home')->name('raw.home');
-    Route::get('/action',  'action')->name('raw.action');
-    Route::post('/action', 'storeInward')->name('raw.action.store');
-    Route::post('/transfer-to-semi', 'transferToSemi')->name('raw.transfer_to_semi');
-    Route::get('/po',      'po')->name('raw.po');
+    Route::get('/home',    'home')->name($slug.'.home');
+    Route::get('/action',  'action')->name($slug.'.action');
+    Route::post('/action', 'storeInward')->name($slug.'.action.store');
+    Route::post('/transfer-to-semi', 'transferToSemi')->name($slug.'.transfer_to_semi');
+    Route::get('/po',      'po')->name($slug.'.po');
     Route::post('/po',     'storePO');
-    Route::get('/history', 'history')->name('raw.history');
-    Route::get('/profile', 'profile')->name('raw.profile');
-});
+    Route::get('/history', 'history')->name($slug.'.history');
+    Route::get('/profile', 'profile')->name($slug.'.profile');
+    });
+}
 
-// ── SEMI PRODUCTION ROUTES ─────────────────────────────────────────────────
-Route::prefix('semi')->middleware('auth.role:SEMI')->controller(SemiController::class)->group(function () {
-    Route::get('/home',    'home')->name('semi.home');
-    Route::get('/action',  'action')->name('semi.action');
-    Route::get('/po',      'po')->name('semi.po');
+// === SEMI ROUTES ===
+foreach ($roleSlugs['SEMI'] ?? [] as $slug) {
+    Route::prefix($slug)->group(function () use ($slug) {
+        Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
+        Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
+        Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
+    });
+
+    Route::prefix($slug)->middleware('auth.role:SEMI')->controller(SemiController::class)->group(function () use ($slug) {
+
+    Route::get('/home',    'home')->name($slug.'.home');
+    Route::get('/action',  'action')->name($slug.'.action');
+    Route::get('/po',      'po')->name($slug.'.po');
     Route::post('/po',     [RawController::class, 'storePO']); // Shared logic from RawController
     Route::post('/action', 'storeProduction');
-    Route::post('/transfer-to-semi', [RawController::class, 'transferToSemi'])->name('semi.transfer_to_semi');
-    Route::get('/history', 'history')->name('semi.history');
-    Route::get('/profile', 'profile')->name('semi.profile');
-});
+    Route::post('/transfer-to-semi', [RawController::class, 'transferToSemi'])->name($slug.'.transfer_to_semi');
+    Route::get('/history', 'history')->name($slug.'.history');
+    Route::get('/profile', 'profile')->name($slug.'.profile');
+    });
+}
 
-// ── FINISHED PRODUCTION ROUTES ─────────────────────────────────────────────
-Route::prefix('finished')->middleware('auth.role:FINISHED')->controller(FinishedController::class)->group(function () {
-    Route::get('/home',    'home')->name('finished.home');
-    Route::get('/action',  'action')->name('finished.action');
-    Route::get('/po',      'po')->name('finished.po');
+// === FINISHED ROUTES ===
+foreach ($roleSlugs['FINISHED'] ?? [] as $slug) {
+    Route::prefix($slug)->group(function () use ($slug) {
+        Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
+        Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
+        Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
+    });
+
+    Route::prefix($slug)->middleware('auth.role:FINISHED')->controller(FinishedController::class)->group(function () use ($slug) {
+
+    Route::get('/home',    'home')->name($slug.'.home');
+    Route::get('/action',  'action')->name($slug.'.action');
+    Route::get('/po',      'po')->name($slug.'.po');
     Route::post('/po',     [RawController::class, 'storePO']); // Shared logic from RawController
     Route::post('/action', 'storeProduction');
     Route::post('/quick-product', [AdminController::class, 'storeProduct']);
-    Route::post('/transfer-to-semi', [RawController::class, 'transferToSemi'])->name('finished.transfer_to_semi');
-    Route::get('/history', 'history')->name('finished.history');
-    Route::get('/profile', 'profile')->name('finished.profile');
-});
+    Route::post('/transfer-to-semi', [RawController::class, 'transferToSemi'])->name($slug.'.transfer_to_semi');
+    Route::get('/history', 'history')->name($slug.'.history');
+    Route::get('/profile', 'profile')->name($slug.'.profile');
+    });
+}
 
-// ── SALES ROUTES ───────────────────────────────────────────────────────────
-Route::prefix('sales')->middleware('auth.role:SALES')->controller(SalesController::class)->group(function () {
-    Route::get('/home',          'home')->name('sales.home');
-    Route::get('/action',        'action')->name('sales.action');
+// === SALES ROUTES ===
+foreach ($roleSlugs['SALES'] ?? [] as $slug) {
+    Route::prefix($slug)->group(function () use ($slug) {
+        Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
+        Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
+        Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
+    });
+
+    Route::prefix($slug)->middleware('auth.role:SALES')->controller(SalesController::class)->group(function () use ($slug) {
+
+    Route::get('/home',          'home')->name($slug.'.home');
+    Route::get('/action',        'action')->name($slug.'.action');
     Route::post('/order',        'storeOrder');
     Route::post('/order/{id}',   'updateOrder');
     Route::post('/order/{id}/cancel', 'cancelOrder');
     Route::post('/company',      'storeCompany');
     Route::post('/company/{id}', 'updateCompany');
     Route::post('/transport',    'storeTransporter');
-    Route::get('/history',       'history')->name('sales.history');
-    Route::get('/profile',       'profile')->name('sales.profile');
-    Route::get('/order/pdf/{id}', [HistoryPdfController::class, 'salesOrderPdf'])->name('sales.order.pdf');
-});
+    Route::get('/history',       'history')->name($slug.'.history');
+    Route::get('/profile',       'profile')->name($slug.'.profile');
+    Route::get('/order/pdf/{id}', [HistoryPdfController::class, 'salesOrderPdf'])->name($slug.'.order.pdf');
+    });
+}
 
-// ── DISPATCH ROUTES ────────────────────────────────────────────────────────
-Route::prefix('dispatch')->middleware('auth.role:DISPATCH')->controller(DispatchController::class)->group(function () {
-    Route::get('/home',     'home')->name('dispatch.home');
-    Route::get('/action',   'action')->name('dispatch.action');
+// === DISPATCH ROUTES ===
+foreach ($roleSlugs['DISPATCH'] ?? [] as $slug) {
+    Route::prefix($slug)->group(function () use ($slug) {
+        Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
+        Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
+        Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
+    });
+
+    Route::prefix($slug)->middleware('auth.role:DISPATCH')->controller(DispatchController::class)->group(function () use ($slug) {
+
+    Route::get('/home',     'home')->name($slug.'.home');
+    Route::get('/action',   'action')->name($slug.'.action');
     Route::post('/action',  'storeDispatch');
     Route::post('/update-lr', 'updateLR');
     Route::post('/revert/{id}', 'revertDispatch');
-    Route::get('/history',  'history')->name('dispatch.history');
-    Route::get('/profile',  'profile')->name('dispatch.profile');
-});
+    Route::get('/history',  'history')->name($slug.'.history');
+    Route::get('/profile',  'profile')->name($slug.'.profile');
+    });
+}
 
-// ── CASHIER ROUTES ─────────────────────────────────────────────────────────
-Route::prefix('cashier')->middleware('auth.role:CASHIER')->controller(CashierController::class)->group(function () {
-    Route::get('/home',                'home')->name('cashier.home');
-    Route::get('/action',              'action')->name('cashier.action');
+// === CASHIER ROUTES ===
+foreach ($roleSlugs['CASHIER'] ?? [] as $slug) {
+    Route::prefix($slug)->group(function () use ($slug) {
+        Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
+        Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
+        Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
+    });
+
+    Route::prefix($slug)->middleware('auth.role:CASHIER')->controller(CashierController::class)->group(function () use ($slug) {
+
+    Route::get('/home',                'home')->name($slug.'.home');
+    Route::get('/action',              'action')->name($slug.'.action');
     Route::post('/action',             'storeTransaction');
-    Route::get('/history',             'history')->name('cashier.history');
-    Route::get('/history/pdf',         'downloadPdf')->name('cashier.pdf');
-    Route::get('/ledger',              'ledger')->name('cashier.ledger');
-    Route::get('/profile',             'profile')->name('cashier.profile');
+    Route::get('/history',             'history')->name($slug.'.history');
+    Route::get('/history/pdf',         'downloadPdf')->name($slug.'.pdf');
+    Route::get('/ledger',              'ledger')->name($slug.'.ledger');
+    Route::get('/profile',             'profile')->name($slug.'.profile');
     // Bill management
-    Route::post('/bill/upload',        'uploadBill')->name('cashier.bill.upload');
-    Route::delete('/bill/{id}',        'destroyBill')->name('cashier.bill.destroy');
+    Route::post('/bill/upload',        'uploadBill')->name($slug.'.bill.upload');
+    Route::delete('/bill/{id}',        'destroyBill')->name($slug.'.bill.destroy');
     // Transaction management
-    Route::put('/action/{id}',         'updateTransaction')->name('cashier.action.update');
-    Route::delete('/action/{id}',      'destroyTransaction')->name('cashier.action.destroy');
-});
+    Route::put('/action/{id}',         'updateTransaction')->name($slug.'.action.update');
+    Route::delete('/action/{id}',      'destroyTransaction')->name($slug.'.action.destroy');
+    });
+}
 
-// Admin can also generate any cashier's PDF
-Route::get('/admin/cashier/{userId}/pdf', [AdminController::class, 'downloadCashierPdf'])
-    ->middleware('auth.role:ADMIN')
-    ->name('admin.cashier.pdf');
+// === ADMIN ROUTES ===
+foreach ($roleSlugs['ADMIN'] ?? [] as $slug) {
+    Route::prefix($slug)->group(function () use ($slug) {
+        Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
+        Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
+        Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
+    });
 
-// Shared Bill View (Admin & Cashier)
-Route::get('/cashier/bill/{id}/view', [CashierController::class, 'viewBill'])
-    ->middleware('auth.role:ADMIN,CASHIER')
-    ->name('cashier.bill.view');
+    Route::prefix($slug)->middleware('auth.role:ADMIN')->controller(AdminController::class)->group(function () use ($slug) {
 
-// ── ADMIN ROUTES ───────────────────────────────────────────────────────────
-Route::prefix('admin')->middleware('auth.role:ADMIN')->controller(AdminController::class)->group(function () {
-    Route::get('/dashboard',          'dashboard')->name('admin.dashboard');
-    Route::get('/home',               'dashboard')->name('admin.home');
-    Route::get('/users',              'users')->name('admin.users');
+    Route::get('/dashboard',          'dashboard')->name($slug.'.dashboard');
+    Route::get('/home',               'dashboard')->name($slug.'.home');
+    Route::get('/users',              'users')->name($slug.'.users');
     Route::post('/users',             'storeUser');
     Route::post('/users/toggle',      'toggleUserStatus');
 
     // Locations admin management
-    Route::get('/locations',          'locations')->name('admin.locations');
+    Route::get('/locations',          'locations')->name($slug.'.locations');
     Route::post('/locations',         'storeLocationApi');
     Route::delete('/locations/{id}',  'destroyLocationApi');
     Route::delete('/users/{id}',      'destroyUser');
-    Route::get('/products',           'products')->name('admin.products');
+    Route::get('/products',           'products')->name($slug.'.products');
     Route::post('/products',          'storeProduct');
     Route::post('/products/toggle/{id}', 'toggleProductStatus');
     Route::delete('/products/{id}',   'destroyProduct');
-    Route::get('/stock',              'stock')->name('admin.stock');
+    Route::get('/stock',              'stock')->name($slug.'.stock');
     Route::post('/stock/adjust',      'adjustStock');
     Route::post('/stock/limit',       'setStockLimit');
     Route::post('/stock/rate',        'updateProductRate');
-    Route::post('/stock/pdf',         'downloadStockPdf')->name('admin.stock.pdf');
-    Route::get('/po',                 'po')->name('admin.po');
+    Route::post('/stock/pdf',         'downloadStockPdf')->name($slug.'.stock.pdf');
+    Route::get('/po',                 'po')->name($slug.'.po');
     Route::post('/po/approve',        'approvePO');
+    Route::post('/po/receive',        'receivePO');
     Route::delete('/po/{id}',         'destroyPO');
-    Route::get('/logs',               'logs')->name('admin.logs');
-    Route::get('/cashier-logs',       'cashierActivityLogs')->name('admin.cashier.logs');
-    Route::get('/grades',             'grades')->name('admin.grades');
+    Route::get('/logs',               'logs')->name($slug.'.logs');
+    Route::get('/cashier-logs',       'cashierActivityLogs')->name($slug.'.cashier.logs');
+    Route::get('/grades',             'grades')->name($slug.'.grades');
     Route::post('/grades',            'storeGrade');
     Route::delete('/grades/{id}',     'destroyGrade');
-    Route::get('/notifications',      'notificationHistory')->name('admin.notifications');
+    Route::get('/notifications',      'notificationHistory')->name($slug.'.notifications');
 
     // Categories (Cashier expense categories)
-    Route::get('/categories',        'categories')->name('admin.categories');
+    Route::get('/categories',        'categories')->name($slug.'.categories');
     Route::post('/categories',       'storeCategory');
     Route::post('/categories/toggle','toggleCategoryStatus');
     Route::delete('/categories/{id}','destroyCategory');
 
     // Dispatch Activity
-    Route::get('/dispatch-activity', 'dispatchActivity')->name('admin.dispatch.activity');
-    Route::get('/dispatch-activity/pdf', 'dispatchActivityPdf')->name('admin.dispatch.pdf');
+    Route::get('/dispatch-activity', 'dispatchActivity')->name($slug.'.dispatch.activity');
+    Route::get('/dispatch-activity/pdf', 'dispatchActivityPdf')->name($slug.'.dispatch.pdf');
 
     // ── CASHIER OVERVIEW ───────────────────────────────────────────────────
-    Route::get('/cashier-overview',   'cashierOverview')->name('admin.cashier_overview');
-    Route::get('/cashier-overview/pdf','overviewPdf')->name('admin.cashier_overview.pdf');
-    Route::get('/cashier-logs',       'cashierActivityLogs')->name('admin.cashier.logs');
+    Route::get('/cashier-overview',   'cashierOverview')->name($slug.'.cashier_overview');
+    Route::get('/cashier-overview/pdf','overviewPdf')->name($slug.'.cashier_overview.pdf');
+    Route::get('/cashier-logs',       'cashierActivityLogs')->name($slug.'.cashier.logs');
 
     // Admin Attendance sub-pages (read + full access)
 
-    Route::get('/attendance/dashboard',   [AttendanceController::class, 'home'])->name('admin.attendance.dashboard');
-    Route::get('/attendance/departments', [AttendanceController::class, 'departments'])->name('admin.attendance.departments');
+    Route::get('/attendance/dashboard',   [AttendanceController::class, 'home'])->name($slug.'.attendance.dashboard');
+    Route::get('/attendance/departments', [AttendanceController::class, 'departments'])->name($slug.'.attendance.departments');
     Route::post('/attendance/departments',[AttendanceController::class, 'storeDepartment']);
     Route::delete('/attendance/departments/{id}', [AttendanceController::class, 'destroyDepartment']);
-    Route::get('/attendance/workers',     [AttendanceController::class, 'workers'])->name('admin.attendance.workers');
+    Route::get('/attendance/workers',     [AttendanceController::class, 'workers'])->name($slug.'.attendance.workers');
     Route::post('/attendance/workers',    [AttendanceController::class, 'storeWorker']);
     Route::delete('/attendance/workers/{id}', [AttendanceController::class, 'destroyWorker']);
-    Route::get('/attendance/daily',       [AttendanceController::class, 'daily'])->name('admin.attendance.daily');
+    Route::get('/attendance/daily',       [AttendanceController::class, 'daily'])->name($slug.'.attendance.daily');
     Route::post('/attendance/daily',      [AttendanceController::class, 'storeDailyAttendance']);
-    Route::get('/attendance/reports',     [AttendanceController::class, 'reports'])->name('admin.attendance.reports');
+    Route::get('/attendance/reports',     [AttendanceController::class, 'reports'])->name($slug.'.attendance.reports');
     Route::get('/attendance/reports/worker/{id}', [AttendanceController::class, 'workerReport']);
-});
+    });
 
-// ── ATTENDANCE ROUTES ──────────────────────────────────────────────────────
+    // Admin can also generate any cashier's PDF
+Route::get('/$slug/cashier/{userId}/pdf', [AdminController::class, 'downloadCashierPdf'])
+    ->middleware('auth.role:ADMIN')
+    ->name($slug.'.cashier.pdf');
 
-Route::prefix('attendance')->middleware('auth.role:ATTENDANCE')->controller(AttendanceController::class)->group(function () {
-    Route::get('/home',               'home')->name('attendance.home');
-    Route::get('/departments',        'departments')->name('attendance.departments');
+// Shared Bill View (Admin & Cashier)
+Route::get('/$slug/cashier/bill/{id}/view', [CashierController::class, 'viewBill'])
+    ->middleware('auth.role:ADMIN,CASHIER')
+    ->name('cashier.bill.view');
+}
+
+// === ATTENDANCE ROUTES ===
+foreach ($roleSlugs['ATTENDANCE'] ?? [] as $slug) {
+    Route::prefix($slug)->group(function () use ($slug) {
+        Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
+        Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
+        Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
+    });
+
+    Route::prefix($slug)->middleware('auth.role:ATTENDANCE')->controller(AttendanceController::class)->group(function () use ($slug) {
+
+    Route::get('/home',               'home')->name($slug.'.home');
+    Route::get('/departments',        'departments')->name($slug.'.departments');
     Route::post('/departments',       'storeDepartment');
     Route::delete('/departments/{id}','destroyDepartment');
 
-    Route::get('/workers',            'workers')->name('attendance.workers');
+    Route::get('/workers',            'workers')->name($slug.'.workers');
     Route::post('/workers',           'storeWorker');
     Route::delete('/workers/{id}',    'destroyWorker');
 
-    Route::get('/daily',              'daily')->name('attendance.daily');
+    Route::get('/daily',              'daily')->name($slug.'.daily');
     Route::post('/daily',             'storeDailyAttendance');
-    Route::get('/team',               'team')->name('attendance.team');
+    Route::get('/team',               'team')->name($slug.'.team');
 
     // JSON APIs for SPA views
     Route::get('/api/workers',        'workersJson');
     Route::get('/api/departments',    'departmentsJson');
     Route::get('/api/daily',          'dailyJson');
 
-    Route::get('/history',            'reports')->name('attendance.history');
+    Route::get('/history',            'reports')->name($slug.'.history');
     Route::get('/history/worker/{id}','workerReport');
 
     // Standard mobile nav aliases
-    Route::get('/action',             'daily')->name('attendance.action');
-    Route::get('/history',            'reports')->name('attendance.history');
-    Route::get('/profile',            'home')->name('attendance.profile');
-});
+    Route::get('/action',             'daily')->name($slug.'.action');
+    Route::get('/history',            'reports')->name($slug.'.history');
+    Route::get('/profile',            'home')->name($slug.'.profile');
+    });
+}
+

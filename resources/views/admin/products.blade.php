@@ -18,9 +18,9 @@
       <div class="form-group">
         <label>Type *</label>
         <select id="p-type" onchange="toggleGradeDisplay()">
-          <option value="RAW">RAW (Input Material)</option>
-          <option value="SEMI">SEMI (Semi-Finished)</option>
-          <option value="FINISHED">FINISHED (Packaged / Intermediate Goods)</option>
+          <option value="RAW">RAW</option>
+          <option value="SEMI">SEMI</option>
+          <option value="FINISHED">FINISHED</option>
         </select>
       </div>
       <div class="form-group">
@@ -36,7 +36,7 @@
         </div>
       </div>
       <div class="form-group">
-        <label>Low Stock Threshold</label>
+        <label>min_qty</label>
         <input type="number" id="p-threshold" step="0.01" value="0.00" placeholder="e.g. 50.00">
       </div>
     </div>
@@ -46,7 +46,7 @@
         <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:8px;">
             @foreach($pageData['allGrades'] as $g)
             <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; background:var(--bg-hover); border:1px solid var(--border-soft); padding:6px 10px; border-radius:6px; cursor:pointer;">
-                <input type="checkbox" name="p-grades" value="{{ $g->id }}" style="width:auto;"> {{ $g->name }}
+                <input type="checkbox" name="p-grades" value="{{ $g->id }}" {{ $g->name === 'NONE' ? 'checked' : '' }} style="width:auto;"> {{ $g->name }}
             </label>
             @endforeach
         </div>
@@ -78,15 +78,31 @@
 
   <!-- RAW Products -->
   <div id="raw-section" class="card" style="padding:1.2rem; margin-bottom:1.5rem;">
-    <div class="card-title" style="color:var(--primary-light);">🌿 RAW Materials ({{ $rawProds->total() }})</div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+      <div class="card-title" style="color:var(--primary-light); margin:0;">🌿 RAW Materials ({{ $rawProds->count() }})</div>
+    </div>
     <div class="table-container">
       <table>
-        <thead><tr><th>#</th><th>Name</th><th>Unit</th><th>Threshold</th><th>Active</th><th>Actions</th></tr></thead>
-        <tbody>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Grades</th>
+            <th>Unit</th><th>min_qty</th><th>Active</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="raw-tbody">
           @foreach($rawProds as $p)
           <tr>
-            <td>{{ ($rawProds->currentPage() - 1) * $rawProds->perPage() + $loop->iteration }}</td>
-            <td style="font-weight:600;">{{ $p['name'] }}</td>
+            <td>{{ $loop->iteration }}</td>
+            <td class="prod-name" style="font-weight:400;">{{ $p['name'] }}</td>
+            <td style="white-space:normal; min-width:200px;">
+                @if(!empty($p['gradeNames']))
+                  @foreach($p['gradeNames'] as $gn)
+                      <span style="font-size:0.75rem; background:var(--bg-hover); color:var(--primary-light); padding:4px 8px; border-radius:6px; margin:2px; display:inline-block; border:1px solid var(--primary-light); font-weight:600;">{{ $gn }}</span>
+                  @endforeach
+                @endif
+            </td>
             <td>{{ $p['unit'] }}</td>
             <td style="font-weight:bold; color:var(--danger);">{{ $p['threshold'] ?? '0.00' }}</td>
             <td>
@@ -109,27 +125,35 @@
           @endforeach
         </tbody>
       </table>
-    </div>
-    <div style="margin-top:1rem; display:flex; justify-content:flex-end;">
-      {{ $rawProds->appends(request()->except('raw_page'))->fragment('raw-section')->links('pagination::bootstrap-4') }}
     </div>
   </div>
 
   <!-- SEMI Products -->
   <div id="semi-section" class="card" style="padding:1.2rem; margin-bottom:1.5rem;">
-    <div class="card-title" style="color:var(--warning);">⏳ SEMI Products ({{ $semiProds->total() }})</div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+      <div class="card-title" style="color:var(--warning); margin:0;">⏳ SEMI Products ({{ $semiProds->count() }})</div>
+    </div>
     <div class="table-container">
       <table>
-        <thead><tr><th>#</th><th>Name</th><th>Grades</th><th>Unit</th><th>Threshold</th><th>Active</th><th>Actions</th></tr></thead>
-        <tbody>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Grades</th>
+            <th>Unit</th><th>min_qty</th><th>Active</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="semi-tbody">
           @foreach($semiProds as $p)
           <tr>
-            <td>{{ ($semiProds->currentPage() - 1) * $semiProds->perPage() + $loop->iteration }}</td>
-            <td style="font-weight:600;">{{ $p['name'] }}</td>
+            <td>{{ $loop->iteration }}</td>
+            <td class="prod-name" style="font-weight:400;">{{ $p['name'] }}</td>
             <td style="white-space:normal; min-width:200px;">
-                @foreach($p['gradeNames'] as $gn)
-                    <span style="font-size:0.75rem; background:var(--bg-hover); color:var(--warning); padding:4px 8px; border-radius:6px; margin:2px; display:inline-block; border:1px solid var(--warning); font-weight:600;">{{ $gn }}</span>
-                @endforeach
+                @if(!empty($p['gradeNames']))
+                  @foreach($p['gradeNames'] as $gn)
+                      <span style="font-size:0.75rem; background:var(--bg-hover); color:var(--warning); padding:4px 8px; border-radius:6px; margin:2px; display:inline-block; border:1px solid var(--warning); font-weight:600;">{{ $gn }}</span>
+                  @endforeach
+                @endif
             </td>
             <td>{{ $p['unit'] }}</td>
             <td style="font-weight:bold; color:var(--danger);">{{ $p['threshold'] ?? '0.00' }}</td>
@@ -153,27 +177,35 @@
           @endforeach
         </tbody>
       </table>
-    </div>
-    <div style="margin-top:1rem; display:flex; justify-content:flex-end;">
-      {{ $semiProds->appends(request()->except('semi_page'))->fragment('semi-section')->links('pagination::bootstrap-4') }}
     </div>
   </div>
 
   <!-- FINISHED Products -->
   <div id="finished-section" class="card" style="padding:1.2rem; margin-bottom:1.5rem;">
-    <div class="card-title" style="color:var(--secondary);">📦 FINISHED Products ({{ $finishedProds->total() }})</div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+      <div class="card-title" style="color:var(--secondary); margin:0;">📦 FINISHED Products ({{ $finishedProds->count() }})</div>
+    </div>
     <div class="table-container">
       <table>
-        <thead><tr><th>#</th><th>Name</th><th>Grades</th><th>Unit</th><th>Threshold</th><th>Active</th><th>Actions</th></tr></thead>
-        <tbody>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Grades</th>
+            <th>Unit</th><th>min_qty</th><th>Active</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="fin-tbody">
           @foreach($finishedProds as $p)
           <tr>
-            <td>{{ ($finishedProds->currentPage() - 1) * $finishedProds->perPage() + $loop->iteration }}</td>
-            <td style="font-weight:600;">{{ $p['name'] }}</td>
+            <td>{{ $loop->iteration }}</td>
+            <td class="prod-name" style="font-weight:400;">{{ $p['name'] }}</td>
             <td style="white-space:normal; min-width:200px;">
-                @foreach($p['gradeNames'] as $gn)
-                    <span style="font-size:0.75rem; background:var(--bg-hover); color:var(--secondary); padding:4px 8px; border-radius:6px; margin:2px; display:inline-block; border:1px solid var(--secondary); font-weight:600;">{{ $gn }}</span>
-                @endforeach
+                @if(!empty($p['gradeNames']))
+                  @foreach($p['gradeNames'] as $gn)
+                      <span style="font-size:0.75rem; background:var(--bg-hover); color:var(--secondary); padding:4px 8px; border-radius:6px; margin:2px; display:inline-block; border:1px solid var(--secondary); font-weight:600;">{{ $gn }}</span>
+                  @endforeach
+                @endif
             </td>
             <td>{{ $p['unit'] }}</td>
             <td style="font-weight:bold; color:var(--danger);">{{ $p['threshold'] ?? '0.00' }}</td>
@@ -197,9 +229,6 @@
           @endforeach
         </tbody>
       </table>
-    </div>
-    <div style="margin-top:1rem; display:flex; justify-content:flex-end;">
-      {{ $finishedProds->appends(request()->except('fin_page'))->fragment('finished-section')->links('pagination::bootstrap-4') }}
     </div>
   </div>
 
@@ -208,6 +237,24 @@
 
 
 <script>
+function filterTable(input, tbodyId) {
+    const filter = input.value.toUpperCase();
+    const tbody = document.getElementById(tbodyId);
+    const trs = tbody.getElementsByTagName('tr');
+    
+    for (let i = 0; i < trs.length; i++) {
+        const td = trs[i].querySelector('.prod-name');
+        if (td) {
+            const txtValue = td.textContent || td.innerText;
+            if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                trs[i].style.display = "";
+            } else {
+                trs[i].style.display = "none";
+            }
+        }
+    }
+}
+
 function toggleGradeDisplay() {
     const type = document.getElementById('p-type').value;
     const area = document.getElementById('grade-selection-area');
@@ -261,7 +308,8 @@ function adminEditProduct(prod) {
   // Build the roles HTML
   let rolesHtml = '';
   const allRoles = ['ADMIN', 'RAW', 'SEMI', 'FINISHED', 'SALES', 'DISPATCH'];
-  const prodRoles = prod.allowed_roles || [];
+  // Default to all roles if none are explicitly set
+  const prodRoles = (prod.allowed_roles && prod.allowed_roles.length > 0) ? prod.allowed_roles : allRoles;
   allRoles.forEach(r => {
     const isChecked = prodRoles.includes(r) ? 'checked' : '';
     rolesHtml += `<label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; background:var(--bg-hover); border:1px solid var(--border-soft); padding:6px 10px; border-radius:6px; cursor:pointer;"><input type="checkbox" id="swal-role-${r}" value="${r}" ${isChecked} style="width:auto;"> ${r}</label>`;
@@ -285,14 +333,14 @@ function adminEditProduct(prod) {
           <div class="form-group" style="flex:1;">
             <label style="font-size:0.85rem; font-weight:600; color:#6b7280; display:block; margin-bottom:4px;">Type *</label>
             <select id="swal-p-type" style="width:100%; padding:0.65rem; border-radius:8px; border:1px solid #d1d5db; background:#fff; color:#333;" onchange="document.getElementById('swal-grades-area').style.display = this.value === 'RAW' ? 'none' : 'block'">
-              <option value="RAW" ${prod.type === 'RAW' ? 'selected' : ''}>RAW (Input Material)</option>
-              <option value="SEMI" ${prod.type === 'SEMI' ? 'selected' : ''}>SEMI (Semi-Finished)</option>
-              <option value="FINISHED" ${prod.type === 'FINISHED' ? 'selected' : ''}>FINISHED (Packaged)</option>
+              <option value="RAW" ${prod.type === 'RAW' ? 'selected' : ''}>RAW</option>
+              <option value="SEMI" ${prod.type === 'SEMI' ? 'selected' : ''}>SEMI</option>
+              <option value="FINISHED" ${prod.type === 'FINISHED' ? 'selected' : ''}>FINISHED</option>
             </select>
           </div>
           
           <div class="form-group" style="flex:1;">
-            <label style="font-size:0.85rem; font-weight:600; color:#6b7280; display:block; margin-bottom:4px;">Threshold</label>
+            <label style="font-size:0.85rem; font-weight:600; color:#6b7280; display:block; margin-bottom:4px;">min_qty</label>
             <input type="number" id="swal-p-threshold" step="0.01" value="${prod.threshold || '0.00'}" style="width:100%; padding:0.65rem; border-radius:8px; border:1px solid #d1d5db; background:#fff; color:#333;">
           </div>
         </div>
@@ -369,7 +417,7 @@ function adminEditProduct(prod) {
       formData.append('grades', JSON.stringify(result.value.grades));
       formData.append('allowed_roles', JSON.stringify(result.value.roles));
 
-      fetch('/admin/products', {
+      fetch('/' + window.userSlug + '/products', {
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': csrfToken },
         body: formData
@@ -409,14 +457,21 @@ function adminSaveProduct() {
   formData.append('grades', JSON.stringify(selectedGrades));
   formData.append('allowed_roles', JSON.stringify(selectedRoles));
   
-  fetch('/admin/products', {
+  fetch('/' + window.userSlug + '/products', {
     method: 'POST',
     headers: { 'X-CSRF-TOKEN': csrfToken },
     body: formData
   }).then(r => r.json()).then(d => {
     if (d.success) { 
-        Swal.fire('Success', d.message, 'success');
-        setTimeout(() => location.reload(), 800); 
+        Swal.fire({
+          icon: 'success',
+          title: 'Success',
+          text: d.message,
+          timer: 1000,
+          showConfirmButton: false,
+          background: '#ffffff',
+          color: '#333333'
+        }).then(() => location.reload()); 
     } else {
         Swal.fire('Error', d.message || 'Error', 'error');
         btn.disabled = false;

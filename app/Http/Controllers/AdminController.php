@@ -95,7 +95,7 @@ class AdminController extends Controller
     {
         $rules = [
             'name'   => 'required|string|max:100',
-            'role'   => 'required|in:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE',
+            'role'   => 'required|in:ADMIN,SUB_ADMIN,STOCK_MANAGER,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE',
             'branch' => 'nullable|string|max:100',
             'permissions' => 'nullable',
             'visible_cashiers' => 'nullable|array',
@@ -113,7 +113,7 @@ class AdminController extends Controller
         $request->validate($rules);
         
         $permissions = is_string($request->permissions) ? json_decode($request->permissions, true) : ($request->permissions ?? []);
-        if ($request->role !== 'SUB_ADMIN') {
+        if (!in_array($request->role, ['SUB_ADMIN', 'STOCK_MANAGER'])) {
             $permissions = [];
         }
         
@@ -207,15 +207,15 @@ class AdminController extends Controller
     public function products()
     {
         $rawProducts = Product::where('type', 'RAW')
-            ->orderBy('name')
-            ->paginate(10, ['*'], 'raw_page');
+            ->orderBy('sort_order')
+            ->get();
             
         $semiProducts = Product::with('grades')
             ->where('type', 'SEMI')
-            ->orderBy('name')
-            ->paginate(10, ['*'], 'semi_page');
+            ->orderBy('sort_order')
+            ->get();
 
-        $semiProducts->getCollection()->transform(function($p) {
+        $semiProducts->transform(function($p) {
             $p->gradeIds = $p->grades->pluck('id')->toArray();
             $p->gradeNames = $p->grades->pluck('name')->toArray();
             return $p;
@@ -223,16 +223,16 @@ class AdminController extends Controller
 
         $finishedProducts = Product::with('grades')
             ->where('type', 'FINISHED')
-            ->orderBy('name')
-            ->paginate(10, ['*'], 'fin_page');
+            ->orderBy('sort_order')
+            ->get();
             
-        $finishedProducts->getCollection()->transform(function($p) {
+        $finishedProducts->transform(function($p) {
             $p->gradeIds = $p->grades->pluck('id')->toArray();
             $p->gradeNames = $p->grades->pluck('name')->toArray();
             return $p;
         });
             
-        $allActiveGrades = \App\Models\Grade::where('is_active', true)->orderBy('name')->get();
+        $allActiveGrades = \App\Models\Grade::where('is_active', true)->orderByRaw("CASE WHEN UPPER(name) = 'NONE' THEN 0 ELSE 1 END")->orderBy('id')->get();
         
         $pageData = [
             'rawProducts' => $rawProducts,
@@ -282,6 +282,12 @@ class AdminController extends Controller
             $product = Product::findOrFail($request->product_id);
             $product->update($data);
             $product->grades()->sync($grades);
+            
+            // Sync to stock_limits table
+            \Illuminate\Support\Facades\DB::table('stock_limits')
+                ->where('product_id', $product->id)
+                ->update(['alert_limit' => $data['threshold']]);
+                
             $msg = 'Product updated!';
         } else {
             $product = Product::create($data);
@@ -316,7 +322,7 @@ class AdminController extends Controller
                      ->on('stocks.stage', '=', 'stock_limits.stage')
                      ->on('stocks.grade', '=', 'stock_limits.grade');
             })
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.threshold', 'products.rate', 'stock_limits.alert_limit')
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.threshold', 'products.rate', 'products.sort_order', 'stock_limits.alert_limit')
             ->selectRaw("
                 stocks.product_id as productId,
                 products.name,
@@ -325,16 +331,16 @@ class AdminController extends Controller
                 products.rate,
                 stocks.stage,
                 stocks.grade,
-                IFNULL(stock_limits.alert_limit, 0) as alert_limit,
+                IFNULL(stock_limits.alert_limit, products.threshold) as alert_limit,
                 SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
             ")
             ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
             ->orderBy('stocks.stage')
-            ->orderBy('products.name')
+            ->orderBy('products.sort_order')
             ->get();
 
         $allProducts = Product::with('grades')->orderBy('type')
-            ->orderBy('name')
+            ->orderBy('sort_order')
             ->get();
 
         $stockLogsByKey = Stock::with(['user:id,name', 'product:id,name,unit'])
@@ -403,7 +409,7 @@ class AdminController extends Controller
             $stockQuery->where('stocks.created_at', '<=', $date . ' 23:59:59');
         }
 
-        $stockData = $stockQuery->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.rate')
+        $stockData = $stockQuery->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.rate', 'products.sort_order')
             ->selectRaw("
                 stocks.product_id as productId,
                 products.name,
@@ -415,7 +421,7 @@ class AdminController extends Controller
             ")
             ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
             ->orderBy('stocks.stage')
-            ->orderBy('products.name')
+            ->orderBy('products.sort_order')
             ->get();
 
         // Bulk query for all location breakdowns in a single SQL call
@@ -520,20 +526,21 @@ class AdminController extends Controller
                      ->on('stocks.stage', '=', 'stock_limits.stage')
                      ->on('stocks.grade', '=', 'stock_limits.grade');
             })
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.rate', 'stock_limits.alert_limit')
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.type', 'products.unit', 'products.rate', 'stock_limits.alert_limit')
             ->selectRaw("
                 stocks.product_id as productId,
                 products.name,
+                products.type,
                 products.unit,
                 products.rate,
                 stocks.stage,
                 stocks.grade,
-                IFNULL(stock_limits.alert_limit, 0) as alert_limit,
+                IFNULL(stock_limits.alert_limit, products.threshold) as alert_limit,
                 SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
             ")
             ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
             ->orderBy('stocks.stage')
-            ->orderBy('products.name')
+            ->orderBy('products.sort_order')
             ->get();
 
         // Fetch location mappings from DB
@@ -619,6 +626,17 @@ class AdminController extends Controller
         });
 
         return response()->json(['success' => true, 'message' => 'PO marked as read!']);
+    }
+
+    public function receivePO(Request $request)
+    {
+        DB::transaction(function() use ($request) {
+            $po = PurchaseOrder::findOrFail($request->po_id);
+            $po->status = 'RECEIVED';
+            $po->save();
+        });
+
+        return response()->json(['success' => true, 'message' => 'PO marked as received!']);
     }
 
     public function destroyPO($id)
@@ -713,7 +731,7 @@ class AdminController extends Controller
 
     public function grades()
     {
-        $grades = \App\Models\Grade::orderBy('name')->paginate(15);
+        $grades = \App\Models\Grade::orderByRaw("CASE WHEN UPPER(name) = 'NONE' THEN 0 ELSE 1 END")->orderBy('id')->paginate(50);
         return view('admin.grades', ['pageData' => ['grades' => $grades]]);
     }
 
@@ -803,7 +821,15 @@ class AdminController extends Controller
             'quantity'    => 'required|numeric|min:0',
             'adjust_type' => 'nullable|in:set,add,subtract',
             'reason'      => 'nullable|string|max:255',
+            'min_qty'     => 'nullable|numeric|min:0',
         ]);
+
+        if ($request->has('min_qty')) {
+            \App\Models\StockLimit::updateOrCreate(
+                ['product_id' => $request->product_id, 'stage' => $request->stage, 'grade' => $request->grade],
+                ['alert_limit' => $request->min_qty]
+            );
+        }
 
         $type   = $request->input('adjust_type', 'set');
         $qty    = (float) $request->quantity;
@@ -869,6 +895,64 @@ class AdminController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => "Stock updated! {$summary}."]);
+    }
+
+    public function bulkAddStock(Request $request)
+    {
+        $request->validate([
+            'items' => 'required|array',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.stage' => 'required|in:RAW,SEMI,FINISHED',
+            'items.*.grade' => 'required',
+            'items.*.alert_limit' => 'nullable|numeric|min:0',
+            'items.*.rate' => 'nullable|numeric|min:0',
+            'items.*.locations' => 'required|array',
+            'items.*.locations.*.name' => 'required|string',
+            'items.*.locations.*.qty' => 'required|numeric|min:0.01',
+            'items.*.note' => 'nullable|string|max:255',
+        ]);
+
+        DB::transaction(function () use ($request) {
+            foreach ($request->items as $item) {
+                $productId = $item['product_id'];
+                $stage = $item['stage'];
+                $grade = $item['grade'];
+                $noteText = 'Bulk stock entry' . (!empty($item['note']) ? " — {$item['note']}" : '');
+                $userId = session('auth_user')['id'] ?? auth()->id();
+
+                if (isset($item['alert_limit'])) {
+                    \App\Models\StockLimit::updateOrCreate(
+                        ['product_id' => $productId, 'stage' => $stage, 'grade' => $grade],
+                        ['alert_limit' => $item['alert_limit']]
+                    );
+                }
+
+                if (isset($item['rate']) && $item['rate'] > 0) {
+                    $product = Product::find($productId);
+                    if ($product) {
+                        $product->update(['rate' => $item['rate']]);
+                    }
+                }
+
+                foreach ($item['locations'] as $loc) {
+                    $locationId = Location::firstOrCreate(['name' => $loc['name']])->id;
+                    $qty = (float) $loc['qty'];
+
+                    Stock::create([
+                        'product_id'       => $productId,
+                        'user_id'          => $userId,
+                        'stage'            => $stage,
+                        'grade'            => $grade,
+                        'location_id'      => $locationId,
+                        'quantity'         => $qty,
+                        'transaction_type' => 'IN',
+                        'notes'            => "{$noteText} [Added {$qty} kg]",
+                    ]);
+                }
+            }
+        });
+
+        return response()->json(['success' => true, 'message' => 'Stock entries added successfully!']);
     }
     // ── DISPATCH ACTIVITY ───────────────────────────────────────────────────
     public function dispatchActivity(Request $request)

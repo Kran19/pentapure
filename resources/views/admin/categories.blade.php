@@ -101,7 +101,7 @@
         }
     }).then((res) => {
         if (res.isConfirmed) {
-            fetch('/admin/categories', {
+            fetch('/' + window.userSlug + '/categories', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
               body: JSON.stringify({ category_id: c.id, name: res.value })
@@ -127,7 +127,7 @@
     const name = document.getElementById('category-name').value.trim();
     if(!name) return;
 
-    fetch('/admin/categories', {
+    fetch('/' + window.userSlug + '/categories', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
       body: JSON.stringify({ category_id: editingCategoryId, name })
@@ -142,7 +142,7 @@
   };
 
   function adminToggleCategory(id) {
-    fetch('/admin/categories/toggle', {
+    fetch('/' + window.userSlug + '/categories/toggle', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
       body: JSON.stringify({ category_id: id })

@@ -13,12 +13,12 @@
     @if(($pageData['lowRawCount'] ?? 0) > 0)
     <div style="background-color: #fff3cd; color: #856404; padding: 1rem; border-radius: 8px; border: 1px solid #ffeeba; display: flex; align-items: center; gap: 8px;">
       <span style="font-size: 1.2rem;">⚠</span>
-      <a href="{{ route('admin.stock', ['type' => 'raw']) }}" style="font-size: 1.1rem; font-weight: bold; color: inherit; text-decoration: none;">Raw Material Low Stock: {{ $pageData['lowRawCount'] }}</a>
+      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'raw']) }}" style="font-size: 1.1rem; font-weight: bold; color: inherit; text-decoration: none;">Raw Material Low Stock: {{ $pageData['lowRawCount'] }}</a>
     </div>
     @else
     <div style="background-color: #d4edda; color: #155724; padding: 1rem; border-radius: 8px; border: 1px solid #c3e6cb; display: flex; align-items: center; gap: 8px;">
       <span style="font-size: 1.2rem;">✅</span>
-      <a href="{{ route('admin.stock', ['type' => 'raw']) }}" style="font-size: 1.1rem; font-weight: bold; color: inherit; text-decoration: none;">Raw Material Low Stock: 0</a>
+      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'raw']) }}" style="font-size: 1.1rem; font-weight: bold; color: inherit; text-decoration: none;">Raw Material Low Stock: 0</a>
     </div>
     @endif
 
@@ -26,63 +26,63 @@
     @if(($pageData['lowFinishedCount'] ?? 0) > 0)
     <div style="background-color: #fff3cd; color: #856404; padding: 1rem; border-radius: 8px; border: 1px solid #ffeeba; display: flex; align-items: center; gap: 8px;">
       <span style="font-size: 1.2rem;">⚠</span>
-      <a href="{{ route('admin.stock', ['type' => 'finished']) }}" style="font-size: 1.1rem; font-weight: bold; color: inherit; text-decoration: none;">FG Low Stock: {{ $pageData['lowFinishedCount'] }}</a>
+      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'finished']) }}" style="font-size: 1.1rem; font-weight: bold; color: inherit; text-decoration: none;">FG Low Stock: {{ $pageData['lowFinishedCount'] }}</a>
     </div>
     @else
     <div style="background-color: #d4edda; color: #155724; padding: 1rem; border-radius: 8px; border: 1px solid #c3e6cb; display: flex; align-items: center; gap: 8px;">
       <span style="font-size: 1.2rem;">✅</span>
-      <a href="{{ route('admin.stock', ['type' => 'finished']) }}" style="font-size: 1.1rem; font-weight: bold; color: inherit; text-decoration: none;">FG Low Stock: 0</a>
+      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'finished']) }}" style="font-size: 1.1rem; font-weight: bold; color: inherit; text-decoration: none;">FG Low Stock: 0</a>
     </div>
     @endif
   </div>
 
   <!-- KPI Cards -->
   <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:1rem; margin-bottom:2rem;">
-    <a href="{{ route('admin.stock', ['type' => 'raw']) }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
+    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'raw']) }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
       <div style="font-size:1.6rem; font-weight:bold; color:var(--primary-light); word-break:break-word;">
         {{ number_format($pageData['rawQty'] ?? 0, 1) }}
       </div>
       <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Raw Stock (kg)</div>
     </a>
-    <a href="{{ route('admin.stock', ['type' => 'semi']) }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
+    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'semi']) }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
       <div style="font-size:1.6rem; font-weight:bold; color:var(--secondary); word-break:break-word;">
         {{ number_format($pageData['semiQty'] ?? 0, 1) }}
       </div>
       <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Semi Stock (kg)</div>
     </a>
-    <a href="{{ route('admin.stock', ['type' => 'finished']) }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
+    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'finished']) }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
       <div style="font-size:1.6rem; font-weight:bold; color:var(--warning); word-break:break-word;">
         {{ number_format($pageData['finishedQty'] ?? 0, 1) }}
       </div>
       <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">FG Stock (kg)</div>
     </a>
 
-    <a href="{{ route('admin.dispatch.activity') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
+    <a href="{{ route(request()->segment(1) . '.dispatch.activity') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
       <div style="font-size:1.6rem; font-weight:bold; color:var(--text-main); word-break:break-word;">
         {{ $pageData['totalOrders'] ?? 0 }}
       </div>
       <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Total Orders</div>
     </a>
 
-    <a href="{{ route('admin.logs') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
+    <a href="{{ route(request()->segment(1) . '.logs') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
       <div style="font-size:1.6rem; font-weight:bold; color:var(--secondary); word-break:break-word;">
         ₹{{ number_format($pageData['totalRevenue'] ?? 0, 0) }}
       </div>
       <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Total Revenue</div>
     </a>
-    <a href="{{ route('admin.po') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
+    <a href="{{ route(request()->segment(1) . '.po') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
       <div style="font-size:1.6rem; font-weight:bold; color:var(--danger); word-break:break-word;">
         {{ $pageData['pendingPOs'] ?? 0 }}
       </div>
       <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Pending POs</div>
     </a>
-    <a href="{{ route('admin.attendance.workers') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
+    <a href="{{ route(request()->segment(1) . '.attendance.workers') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
       <div style="font-size:1.6rem; font-weight:bold; color:var(--info); word-break:break-word;">
         {{ $pageData['totalWorkers'] ?? 0 }}
       </div>
       <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Total Employees</div>
     </a>
-    <a href="{{ route('admin.attendance.daily') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
+    <a href="{{ route(request()->segment(1) . '.attendance.daily') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
       <div style="font-size:1.6rem; font-weight:bold; color:var(--secondary); word-break:break-word;">
         {{ $pageData['presentToday'] ?? 0 }}
       </div>
@@ -94,12 +94,12 @@
   <div class="card" style="padding:1.2rem; margin-bottom:2rem;">
     <div class="card-title">Quick Actions</div>
     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:0.75rem; margin-top:0.5rem;">
-      <a href="{{ route('admin.users') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">👥 Manage Users</a>
-      <a href="{{ route('admin.products') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">🏷️ Products</a>
-      <a href="{{ route('admin.stock') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">📦 Live Stock</a>
-      <a href="{{ route('admin.po') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">📋 Purchase Requests</a>
-      <a href="{{ route('admin.attendance.dashboard') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">🧑‍💼 Attendance</a>
-      <a href="{{ route('admin.logs') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">🕐 Activity Logs</a>
+      <a href="{{ route(request()->segment(1) . '.users') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">👥 Manage Users</a>
+      <a href="{{ route(request()->segment(1) . '.products') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">🏷️ Products</a>
+      <a href="{{ route(request()->segment(1) . '.stock') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">📦 Live Stock</a>
+      <a href="{{ route(request()->segment(1) . '.po') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">📋 Purchase Requests</a>
+      <a href="{{ route(request()->segment(1) . '.attendance.dashboard') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">🧑‍💼 Attendance</a>
+      <a href="{{ route(request()->segment(1) . '.logs') }}" class="btn btn-secondary" style="text-align:center; text-decoration:none;">🕐 Activity Logs</a>
 
     </div>
   </div>

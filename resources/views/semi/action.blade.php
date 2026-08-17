@@ -148,7 +148,7 @@ function submitTransfer(e) {
   btn.disabled = true;
   btn.innerHTML = `Transferring...`;
 
-  fetch('{{ route("semi.transfer_to_semi") }}', {
+  fetch('{{ route(request()->segment(1) . ".transfer_to_semi") }}', {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json', 
