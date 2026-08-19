@@ -16,8 +16,12 @@
         <input type="text" id="u-name" placeholder="User name">
       </div>
       <div class="form-group">
-        <label>Email *</label>
+        <label>Email (Optional)</label>
         <input type="email" id="u-email" placeholder="email@pentapure.com">
+      </div>
+      <div class="form-group">
+        <label>Phone Number *</label>
+        <input type="text" id="u-phone" placeholder="Phone number">
       </div>
       <div class="form-group">
         <label>Role *</label>
@@ -104,7 +108,7 @@
           <tr>
             <th>#</th>
             <th>Name</th>
-            <th>Email</th>
+            <th>Contact Info</th>
             <th>Role</th>
             <th>Status</th>
             <th>Actions</th>
@@ -115,7 +119,10 @@
           <tr>
             <td>{{ $loop->iteration }}</td>
             <td style="font-weight:600;">{{ $user['name'] }}</td>
-            <td style="font-size:0.85rem; color:var(--text-muted);">{{ $user['email'] }}</td>
+            <td style="font-size:0.85rem; color:var(--text-muted);">
+                <div>{{ $user['phone'] }}</div>
+                @if($user['email'])<div style="font-size:0.75rem;">{{ $user['email'] }}</div>@endif
+            </td>
             <td><span class="badge badge-info">{{ $user['role'] }}</span></td>
             <td>
               @if($user['id'] == auth()->id())
@@ -164,6 +171,7 @@ function resetUserForm() {
   document.querySelector('#user-form-card .card-title').innerText = 'Create New User';
   document.getElementById('u-name').value = '';
   document.getElementById('u-email').value = '';
+  document.getElementById('u-phone').value = '';
   document.getElementById('u-role').value = '';
   document.getElementById('u-branch').value = '';
   document.getElementById('u-password').value = '';
@@ -210,7 +218,8 @@ function adminEditUser(user) {
   document.getElementById('user-form-card').style.display = 'block';
   document.querySelector('#user-form-card .card-title').innerText = 'Edit User';
   document.getElementById('u-name').value = user.name;
-  document.getElementById('u-email').value = user.email;
+  document.getElementById('u-email').value = user.email || '';
+  document.getElementById('u-phone').value = user.phone || '';
   document.getElementById('u-role').value = user.role;
   document.getElementById('u-branch').value = user.branch || '';
   toggleRoleFields(user.role);
@@ -247,6 +256,7 @@ function adminSaveUser() {
     user_id: editingUserId,
     name: document.getElementById('u-name').value,
     email: document.getElementById('u-email').value,
+    phone: document.getElementById('u-phone').value,
     role: document.getElementById('u-role').value,
     branch: document.getElementById('u-branch').value,
     password: document.getElementById('u-password').value,
@@ -254,14 +264,14 @@ function adminSaveUser() {
     visible_cashiers: Array.from(document.querySelectorAll('.visible-cashier-cb:checked')).map(cb => parseInt(cb.value))
   };
   
-  if (!payload.name || !payload.email || !payload.role) {
-    Swal.fire('Required', 'Name, Email and Role are required', 'warning'); return;
+  if (!payload.name || !payload.role || !payload.phone) {
+    Swal.fire('Required', 'Name, Phone and Role are required', 'warning'); return;
   }
   if (!editingUserId && !payload.password) {
     Swal.fire('Required', 'Password is required for new users', 'warning'); return;
   }
 
-  fetch('/' + window.userSlug + '/users', {
+  fetch(window.location.origin + '/' + window.userSlug + '/users', {
     method: 'POST',
     headers: { 
         'Content-Type': 'application/json', 
@@ -290,7 +300,7 @@ function adminSaveUser() {
 }
 
 function adminToggleUser(id) {
-  fetch('/' + window.userSlug + '/users/toggle', {
+  fetch(window.location.origin + '/' + window.userSlug + '/users/toggle', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
     body: JSON.stringify({ user_id: id })
@@ -361,7 +371,7 @@ function openNotifyModal(userId, userName) {
         }
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch('/' + window.userSlug + '/notifications/send', {
+            fetch(window.location.origin + '/' + window.userSlug + '/notifications/send', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
                 body: JSON.stringify({

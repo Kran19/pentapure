@@ -150,7 +150,7 @@ function submitRawInward(e) {
   btn.disabled = true;
   btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin" style="vertical-align: middle; margin-right:5px;"><circle cx="12" cy="12" r="10" opacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path></svg> Adding...`;
 
-  fetch('/' + window.userSlug + '/action', {
+  fetch(window.location.origin + '/' + window.userSlug + '/action', {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json', 
@@ -213,7 +213,7 @@ function submitTransfer(e) {
   btn.disabled = true;
   btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin" style="vertical-align: middle; margin-right:5px;"><circle cx="12" cy="12" r="10" opacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path></svg> Transferring...`;
 
-  fetch('/' + window.userSlug + '/transfer-to-semi', {
+  fetch(window.location.origin + '/' + window.userSlug + '/transfer-to-semi', {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json', 

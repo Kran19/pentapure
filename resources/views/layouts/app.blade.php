@@ -47,6 +47,7 @@
     <div id="main-app" class="app-main-layout">
 
       <!-- Navigation (Sidebar on Desktop, Bottom on Mobile) -->
+      <div class="bottom-nav" id="bottom-nav">
         @php
           $sessUser = session('auth_user') ?? (auth()->user() ? auth()->user()->toArray() : null);
           $role = strtolower($sessUser['role'] ?? 'user');

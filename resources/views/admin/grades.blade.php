@@ -103,9 +103,9 @@ function adminEditGrade(g) {
         }
     }).then((res) => {
         if (res.isConfirmed) {
-            fetch('/' + window.userSlug + '/grades', {
+            fetch(window.location.origin + '/' + window.userSlug + '/grades', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
                 body: JSON.stringify({ grade_id: g.id, name: res.value })
             }).then(r => r.json()).then(d => {
                 if(d.success) {
@@ -128,9 +128,9 @@ document.getElementById('grade-form').onsubmit = function(e) {
     const name = document.getElementById('grade-name').value;
     if(!name) return;
 
-    fetch('/' + window.userSlug + '/grades', {
+    fetch(window.location.origin + '/' + window.userSlug + '/grades', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
         body: JSON.stringify({ grade_id: editingGradeId, name })
     }).then(r => r.json()).then(d => {
         if(d.success) {
@@ -143,9 +143,9 @@ document.getElementById('grade-form').onsubmit = function(e) {
 };
 
 function adminToggleGrade(id) {
-    fetch('/' + window.userSlug + '/grades', {
+    fetch(window.location.origin + '/' + window.userSlug + '/grades', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
         body: JSON.stringify({ grade_id: id, toggle: true })
     }).then(r => r.json()).then(d => {
         if(d.success) app.toast('Status updated');
@@ -163,9 +163,9 @@ function adminDeleteGrade(id) {
         confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch(`/admin/grades/${id}`, {
+            fetch(window.location.origin + '/' + window.userSlug + '/grades/' + id, {
                 method: 'DELETE',
-                headers: { 'X-CSRF-TOKEN': csrfToken }
+                headers: { 'X-CSRF-TOKEN': window.csrfToken }
             }).then(r => r.json()).then(d => {
                 if(d.success) {
                     Swal.fire('Deleted!', d.message, 'success');

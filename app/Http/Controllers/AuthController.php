@@ -43,7 +43,7 @@ class AuthController extends Controller
 
         $user = User::find($request->user_id);
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user || !(Hash::check($request->password, $user->password) || Hash::check(strtolower($request->password), $user->password) || Hash::check(strtoupper($request->password), $user->password))) {
             return back()->with('error', 'Invalid password. Please try again.')->withInput();
         }
 

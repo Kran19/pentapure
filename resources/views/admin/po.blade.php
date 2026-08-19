@@ -115,7 +115,7 @@ function adminApprovePO(id, btn) {
     if (result.isConfirmed) {
       btn.disabled = true;
       btn.textContent = 'Processing...';
-      fetch('/' + window.userSlug + '/po/approve', {
+      fetch(window.location.origin + '/' + window.userSlug + '/po/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
         body: JSON.stringify({ po_id: id })
@@ -144,7 +144,7 @@ function adminReceivePO(id, btn) {
     if (result.isConfirmed) {
       btn.disabled = true;
       btn.textContent = 'Processing...';
-      fetch('/' + window.userSlug + '/po/receive', {
+      fetch(window.location.origin + '/' + window.userSlug + '/po/receive', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
         body: JSON.stringify({ po_id: id })

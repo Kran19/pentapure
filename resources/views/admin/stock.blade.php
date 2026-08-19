@@ -11,8 +11,8 @@
     </div>
   </div>
 
-  <!-- In-Page Add / Adjust Stock Card (Open by Default) -->
-  <div id="stock-form-card" class="card white-orange-card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
+  <!-- In-Page Add / Adjust Stock Card (Hidden by Default) -->
+  <div id="stock-form-card" class="card white-orange-card" style="display:none; margin-bottom:1.5rem; padding:1.2rem;">
     <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
       <span>📦 Add Stock Entry</span>
       <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('stock-form-card').style.display='none'" style="width:auto; padding:0.3rem 0.8rem;">✕ Close</button>
@@ -211,7 +211,7 @@
           <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:400;">
               <div style="font-weight:normal; color:var(--text-color);">
-                {{ $s->name }}@if($s->grade && $s->grade !== 'NONE')_<strong>{{ $s->grade }}</strong>@endif (RAW)
+                {{ $s->name }}@if($s->grade && $s->grade !== 'NONE')_<strong>{{ $s->grade }}</strong>@endif <span style='font-weight:bold;'>(RAW)</span>
               </div>
             </td>
             <td style="font-weight:bold; color:var(--secondary);">{{ number_format($s->quantity, 2) }}</td>
@@ -262,7 +262,7 @@
           <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:400;">
               <div style="font-weight:normal; color:var(--text-color);">
-                {{ $s->name }}@if($s->grade && $s->grade !== 'NONE')_<strong>{{ $s->grade }}</strong>@endif (SEMI)
+                {{ $s->name }}@if($s->grade && $s->grade !== 'NONE')_<strong>{{ $s->grade }}</strong>@endif <span style='font-weight:bold;'>(SEMI)</span>
               </div>
             </td>
             <td style="font-weight:bold; color:var(--warning);">{{ number_format($s->quantity, 2) }}</td>
@@ -313,7 +313,7 @@
           <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:400;">
               <div style="font-weight:normal; color:var(--text-color);">
-                {{ $s->name }}@if($s->grade && $s->grade !== 'NONE')_<strong>{{ $s->grade }}</strong>@endif (FINISHED)
+                {{ $s->name }}@if($s->grade && $s->grade !== 'NONE')_<strong>{{ $s->grade }}</strong>@endif <span>(FINISHED)</span>
               </div>
             </td>
             <td style="font-weight:bold; color:var(--secondary);">{{ number_format($s->quantity, 2) }}</td>
@@ -450,7 +450,7 @@ function adminAddStock() {
     }
   }).then(result => {
     if (!result.isConfirmed) return;
-    fetch('/' + window.userSlug + '/stock/adjust', {
+    fetch(window.location.origin + '/' + window.userSlug + '/stock/adjust', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
       body: JSON.stringify(result.value)
@@ -474,7 +474,7 @@ function adminAdjustStock(productId, stage, grade, productName = '', currentQty 
     title: 'Adjust Stock',
     html: `
       <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:#6b7280;">
-        <strong style="color:var(--primary); font-size:1.05rem;">${productName}</strong><br>
+        <strong style="color:var(--primary); font-size:1.05rem;">${productName} (${stage})</strong><br>
         <span style="font-size:0.85rem;">${stageLabel}${displayGrade}</span>
       </div>
 
@@ -558,7 +558,7 @@ function adminAdjustStock(productId, stage, grade, productName = '', currentQty 
       didOpen: () => Swal.showLoading()
     });
 
-    fetch('/' + window.userSlug + '/stock/adjust', {
+    fetch(window.location.origin + '/' + window.userSlug + '/stock/adjust', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
       body: JSON.stringify({
@@ -637,7 +637,7 @@ function adminUpdateRate(productId, currentRate, name) {
     }
   }).then((result) => {
     if (result.isConfirmed) {
-      fetch('/' + window.userSlug + '/stock/rate', {
+      fetch(window.location.origin + '/' + window.userSlug + '/stock/rate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -696,7 +696,7 @@ function adminSetLimit(productId, stage, grade, currentLimit, productName = '') 
     title: 'Set Alert Limit',
     html: `
       <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:#6b7280;">
-        <strong style="color:var(--primary); font-size:1.05rem;">${productName}</strong><br>
+        <strong style="color:var(--primary); font-size:1.05rem;">${productName} (${stage})</strong><br>
         <span style="font-size:0.85rem;">${stageLabel}${displayGrade}</span>
       </div>
 
@@ -735,7 +735,7 @@ function adminSetLimit(productId, stage, grade, currentLimit, productName = '') 
   }).then(result => {
     if (!result.isConfirmed) return;
 
-    fetch('/' + window.userSlug + '/stock/limit', {
+    fetch(window.location.origin + '/' + window.userSlug + '/stock/limit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
       body: JSON.stringify({
@@ -773,7 +773,7 @@ function adminSetLimit(productId, stage, grade, currentLimit, productName = '') 
 }
 
 function fetchLiveStock() {
-  fetch('/' + window.userSlug + '/stock/live', {
+  fetch(window.location.origin + '/' + window.userSlug + '/stock/live', {
     headers: { 'Accept': 'application/json' }
   })
   .then(res => res.json())
@@ -833,7 +833,7 @@ function updateStockTables(stockData) {
         <tr class="${rowClass}" ${titleAttr}>
           <td>
             <div style="font-weight:normal; color:var(--text-color);">
-              ${s.name}${s.grade && s.grade !== 'NONE' ? '_<strong>' + s.grade + '</strong>' : ''} (${s.stage})
+              ${s.name}${s.grade && s.grade !== 'NONE' ? '_<strong>' + s.grade + '</strong>' : ''}(${s.stage === 'FINISHED' ? 'FG' : s.stage})
             </div>
           </td>
           <td style="font-weight:bold; color:${qtyColor};">${formattedQty}</td>
@@ -905,7 +905,7 @@ async function showLocationBreakdown(el) {
   // Fetch available locations from DB
   let allLocations = [];
   try {
-    const locRes = await fetch('/' + window.userSlug + '/api/locations');
+    const locRes = await fetch(window.location.origin + '/' + window.userSlug + '/api/locations');
     const locData = await locRes.json();
     if (locData.success) {
       allLocations = locData.locations;
@@ -992,7 +992,7 @@ window.addLocationMapping = async function(productId, stage, grade, remainingQty
   }
 
   try {
-    const res = await fetch('/' + window.userSlug + '/api/stock/locations/transfer', {
+    const res = await fetch(window.location.origin + '/' + window.userSlug + '/api/stock/locations/transfer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
       body: JSON.stringify({
@@ -1039,7 +1039,7 @@ window.transferLocationMapping = async function(productId, stage, grade, buttonE
   }
 
   try {
-    const res = await fetch('/' + window.userSlug + '/api/stock/locations/transfer', {
+    const res = await fetch(window.location.origin + '/' + window.userSlug + '/api/stock/locations/transfer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
       body: JSON.stringify({
@@ -1163,19 +1163,19 @@ window.onBsStageChange = function(element) {
   
   // Append new options dynamically
   filteredProducts.forEach(p => {
-    let t = targetType.toLowerCase() === 'finished' ? 'fg' : targetType.toLowerCase();
+    let t = targetType === 'FINISHED' ? 'FG' : targetType;
     if (p.grades && p.grades.length > 0) {
       p.grades.forEach(g => {
         const val = `${p.id}|${g.name}`;
         const gradeText = g.name !== 'NONE' ? `_${g.name}` : '';
-        const text = `${p.name}${gradeText} (${t})`;
+        const text = `${p.name}${gradeText}(${t})`;
         const opt = new Option(text, val, false, false);
         opt.setAttribute('data-unit', p.unit || 'kg');
         $(productSelect).append(opt);
       });
     } else {
       const val = `${p.id}|NONE`;
-      const text = `${p.name} (${t})`;
+      const text = `${p.name}(${t})`;
       const opt = new Option(text, val, false, false);
       opt.setAttribute('data-unit', p.unit || 'kg');
       $(productSelect).append(opt);
@@ -1257,7 +1257,7 @@ window.adminSaveBulkStock = function() {
   btn.disabled = true;
   btn.textContent = 'Saving...';
   
-  fetch('/' + window.userSlug + '/stock/bulk-add', {
+  fetch(window.location.origin + '/' + window.userSlug + '/stock/bulk-add', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -1269,8 +1269,7 @@ window.adminSaveBulkStock = function() {
   .then(res => res.json())
   .then(data => {
     if (data.success) {
-      // 1. Instantly hide and reset form
-      document.getElementById('stock-form-card').style.display = 'none';
+      // 1. Reset form (but don't hide it)
       document.querySelectorAll('.loc-qty-input').forEach(inp => inp.value = '0');
       document.querySelector('.bs-loc-qty').value = '';
       const btnText = document.querySelector('.loc-dropdown-text');

@@ -4,11 +4,14 @@
 <div style="padding:1.5rem;">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
     <h2 style="margin:0;">🏷️ Products Master</h2>
-    <button class="btn" onclick="document.getElementById('prod-form').style.display='block'" style="width:auto; padding:0.6rem 1.2rem;">+ Add Product</button>
+    <div style="display:flex; gap:0.5rem;">
+      <a href="{{ url(request()->segment(1) . '/products/pdf') }}" class="btn btn-secondary" style="width:auto; padding:0.6rem 1.2rem; border-color:#DDCFAF !important;">📄 Generate PDF Report</a>
+      <button class="btn" onclick="document.getElementById('prod-form').style.display='block'" style="width:auto; padding:0.6rem 1.2rem;">+ Add Product</button>
+    </div>
   </div>
 
   <!-- Add Form -->
-  <div id="prod-form" class="card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
+  <div id="prod-form" class="card" style="display:none; margin-bottom:1.5rem; padding:1.2rem;">
     <div class="card-title">Add Product</div>
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
       <div class="form-group">
@@ -35,10 +38,7 @@
           <input type="text" id="p-unit-custom" placeholder="Type custom unit (e.g. BOTTLE, BOX)" style="display:none; width:100%; margin-top:4px;">
         </div>
       </div>
-      <div class="form-group">
-        <label>min_qty</label>
-        <input type="number" id="p-threshold" step="0.01" value="0.00" placeholder="e.g. 50.00">
-      </div>
+      <input type="hidden" id="p-threshold" value="0.00">
     </div>
 
     <div id="grade-selection-area" style="margin-top:1rem; border-top:1px solid var(--glass-border); padding-top:1rem;">
@@ -88,7 +88,7 @@
             <th>#</th>
             <th>Name</th>
             <th>Grades</th>
-            <th>Unit</th><th>min_qty</th><th>Active</th><th>Actions</th>
+            <th>Unit</th><th>Active</th><th>Actions</th>
           </tr>
         </thead>
         <tbody id="raw-tbody">
@@ -104,7 +104,7 @@
                 @endif
             </td>
             <td>{{ $p['unit'] }}</td>
-            <td style="font-weight:bold; color:var(--danger);">{{ $p['threshold'] ?? '0.00' }}</td>
+
             <td>
               <label class="switch">
                 <input type="checkbox" {{ $p['is_active'] ? 'checked' : '' }} onchange="adminToggleProduct({{ $p['id'] }})">
@@ -140,7 +140,7 @@
             <th>#</th>
             <th>Name</th>
             <th>Grades</th>
-            <th>Unit</th><th>min_qty</th><th>Active</th><th>Actions</th>
+            <th>Unit</th><th>Active</th><th>Actions</th>
           </tr>
         </thead>
         <tbody id="semi-tbody">
@@ -156,7 +156,7 @@
                 @endif
             </td>
             <td>{{ $p['unit'] }}</td>
-            <td style="font-weight:bold; color:var(--danger);">{{ $p['threshold'] ?? '0.00' }}</td>
+
             <td>
               <label class="switch">
                 <input type="checkbox" {{ $p['is_active'] ? 'checked' : '' }} onchange="adminToggleProduct({{ $p['id'] }})">
@@ -192,7 +192,7 @@
             <th>#</th>
             <th>Name</th>
             <th>Grades</th>
-            <th>Unit</th><th>min_qty</th><th>Active</th><th>Actions</th>
+            <th>Unit</th><th>Active</th><th>Actions</th>
           </tr>
         </thead>
         <tbody id="fin-tbody">
@@ -208,7 +208,7 @@
                 @endif
             </td>
             <td>{{ $p['unit'] }}</td>
-            <td style="font-weight:bold; color:var(--danger);">{{ $p['threshold'] ?? '0.00' }}</td>
+
             <td>
               <label class="switch">
                 <input type="checkbox" {{ $p['is_active'] ? 'checked' : '' }} onchange="adminToggleProduct({{ $p['id'] }})">
@@ -339,10 +339,7 @@ function adminEditProduct(prod) {
             </select>
           </div>
           
-          <div class="form-group" style="flex:1;">
-            <label style="font-size:0.85rem; font-weight:600; color:#6b7280; display:block; margin-bottom:4px;">min_qty</label>
-            <input type="number" id="swal-p-threshold" step="0.01" value="${prod.threshold || '0.00'}" style="width:100%; padding:0.65rem; border-radius:8px; border:1px solid #d1d5db; background:#fff; color:#333;">
-          </div>
+          <input type="hidden" id="swal-p-threshold" value="${prod.threshold || '0.00'}">
         </div>
 
         <div class="form-group">
@@ -417,7 +414,7 @@ function adminEditProduct(prod) {
       formData.append('grades', JSON.stringify(result.value.grades));
       formData.append('allowed_roles', JSON.stringify(result.value.roles));
 
-      fetch('/' + window.userSlug + '/products', {
+      fetch(window.location.origin + '/' + window.userSlug + '/products', {
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': csrfToken },
         body: formData
@@ -457,7 +454,7 @@ function adminSaveProduct() {
   formData.append('grades', JSON.stringify(selectedGrades));
   formData.append('allowed_roles', JSON.stringify(selectedRoles));
   
-  fetch('/' + window.userSlug + '/products', {
+  fetch(window.location.origin + '/' + window.userSlug + '/products', {
     method: 'POST',
     headers: { 'X-CSRF-TOKEN': csrfToken },
     body: formData
@@ -471,7 +468,10 @@ function adminSaveProduct() {
           showConfirmButton: false,
           background: '#ffffff',
           color: '#333333'
-        }).then(() => location.reload()); 
+        }).then(() => {
+            sessionStorage.setItem('keepProdFormOpen', 'true');
+            location.reload();
+        }); 
     } else {
         Swal.fire('Error', d.message || 'Error', 'error');
         btn.disabled = false;
@@ -484,7 +484,7 @@ function adminSaveProduct() {
 }
 
 function adminToggleProduct(id) {
-  fetch(`/admin/products/toggle/${id}`, {
+  fetch(window.location.origin + '/' + window.userSlug + '/products/toggle/' + id, {
     method: 'POST',
     headers: { 'X-CSRF-TOKEN': csrfToken }
   }).then(r => r.json()).then(d => {
@@ -504,7 +504,7 @@ function adminDeleteProduct(id) {
     confirmButtonText: 'Yes, delete it!'
   }).then((result) => {
     if (result.isConfirmed) {
-      fetch(`/admin/products/${id}`, {
+      fetch(window.location.origin + '/' + window.userSlug + '/products/' + id, {
         method: 'DELETE',
         headers: { 'X-CSRF-TOKEN': csrfToken }
       }).then(r => r.json()).then(d => {
@@ -519,5 +519,12 @@ function adminDeleteProduct(id) {
   });
 }
 toggleGradeDisplay();
+
+document.addEventListener('DOMContentLoaded', function() {
+  if (sessionStorage.getItem('keepProdFormOpen') === 'true') {
+    document.getElementById('prod-form').style.display = 'block';
+    sessionStorage.removeItem('keepProdFormOpen');
+  }
+});
 </script>
 @endsection

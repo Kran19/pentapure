@@ -78,7 +78,7 @@
                         <ul class="items-list" style="margin: 0; padding-left: 15px; list-style-type: none; padding: 0;">
                         @foreach($order->items as $item)
                             <li style="margin-bottom: 5px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
-                                • {{ $item->product ? $item->product->formatName($item->grade) : 'Unknown' }}: <strong>{{ $item->quantity }} {{ $item->product?->unit }}</strong>
+                                - {{ $item->product ? $item->product->formatName($item->grade) : 'Unknown' }}: <strong>{{ $item->quantity }} {{ $item->product?->unit }}</strong>
                                 @if($order->dispatch_status === 'PARTIAL' || ($order->dispatch_status === 'DONE' && $order->dispatch_logs_count > 1))
                                     <div style="font-size:10px; color:#555; padding-left: 10px;">
                                         Dispatched: {{ $item->dispatched_qty ?? 0 }} {{ $item->product?->unit }} |

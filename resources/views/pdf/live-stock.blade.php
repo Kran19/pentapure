@@ -29,8 +29,8 @@
         .details-col { display: table-cell; width: 50%; vertical-align: top; }
         .divider { border-left: 1px solid #d0d5dd; padding-left: 34px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-        th { background: #f8c300; color: #101828; padding: 14px 10px; border: 1px solid #667085; font-size: 14px; text-align: left; }
-        td { padding: 13px 10px; border: 1px solid #d9dee7; vertical-align: top; }
+        th { background: #f8c300; color: #101828; padding: 18px 12px; border: 1px solid #667085; font-size: 15px; text-align: left; }
+        td { padding: 18px 12px; border: 1px solid #d9dee7; vertical-align: top; font-size: 14px; }
         td.center, th.center { text-align: center; }
         td.amount { text-align: right; font-weight: 700; }
         .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }
@@ -99,8 +99,7 @@
     <table>
         <thead>
             <tr>
-                <th style="width:30%; color:#111827;">Product Name</th>
-                <th style="width:12%; color:#111827;">Stage</th>
+                <th style="width:42%; color:#111827;">Product Name</th>
                 <th style="width:23%; color:#111827;">Location</th>
                 <th style="width:15%; text-align: right; color:#111827;">Available Qty</th>
                 <th style="width:10%; text-align: right; color:#111827;">Rate / Unit</th>
@@ -115,13 +114,8 @@
                     $displayType = strtolower($item['stage']) === 'finished' ? 'fg' : strtolower($item['stage']);
                 @endphp
                 <tr>
-                    <td style="font-weight: 600;">{{ $item['name'] }}{{ $gStr }} ({{ $displayType }})</td>
-                    <td>
-                        <span class="badge {{ $item['stage'] === 'RAW' ? 'badge-raw' : ($item['stage'] === 'SEMI' ? 'badge-semi' : 'badge-finished') }}">
-                            {{ $item['stage'] === 'FINISHED' ? 'FG' : $item['stage'] }}
-                        </span>
-                    </td>
-                    <td style="font-size: 11px; text-transform: uppercase;">{{ $item['location'] }}</td>
+                    <td style="font-weight: normal;">{{ $item['name'] }}<span style="font-weight: bold;">{{ $gStr }}</span> ({{ strtoupper($displayType) }})</td>
+                    <td style="font-size: 11px; text-transform: uppercase;">{!! $item['location'] !!}</td>
                     <td style="text-align: right; font-weight: 600;">
                         {{ number_format($item['quantity'], 2) }} <span style="font-size: 10px; font-weight: normal; color: #667085;">{{ $item['unit'] }}</span>
                     </td>
@@ -130,12 +124,12 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" class="center">No live stock records found matching filters.</td>
+                    <td colspan="5" class="center">No live stock records found matching filters.</td>
                 </tr>
             @endforelse
             @if(!empty($items))
                 <tr style="background-color: #fffdf5; font-weight: bold; font-size: 14px;">
-                    <td colspan="5" style="text-align: right; border-top: 2px solid #f8c300; padding: 15px 10px;">Total Stock Valuation (Ref):</td>
+                    <td colspan="4" style="text-align: right; border-top: 2px solid #f8c300; padding: 15px 10px;">Total Stock Valuation (Ref):</td>
                     <td class="amount" style="border-top: 2px solid #f8c300; padding: 15px 10px; color: #b37400;">₹{{ number_format($totalValuation, 2) }}</td>
                 </tr>
             @endif

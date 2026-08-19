@@ -522,7 +522,7 @@ const app = {
       }))
     };
 
-    fetch('/finished/action', {
+    fetch('/action', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json', 
@@ -904,9 +904,18 @@ const app = {
 
   addOrderProductRow(prefillData = null) {
     const finProds = window.currentFinProds || [];
-    const allGrades = (window.serverPageData && window.serverPageData.grades) || [];
     const div = document.createElement('div');
     div.className = 'dynamic-row';
+
+    const toBold = (str) => {
+        if (!str) return '';
+        return str.split('').map(c => {
+            if (c >= 'A' && c <= 'Z') return String.fromCodePoint(c.codePointAt(0) - 65 + 0x1D5D4);
+            if (c >= 'a' && c <= 'z') return String.fromCodePoint(c.codePointAt(0) - 97 + 0x1D5EE);
+            if (c >= '0' && c <= '9') return String.fromCodePoint(c.codePointAt(0) - 48 + 0x1D7EC);
+            return c;
+        }).join('');
+    };
     
     const selectedProdId = prefillData ? prefillData.product_id : '';
     const selectedGrade = prefillData ? prefillData.grade : '';
@@ -917,19 +926,22 @@ const app = {
     div.innerHTML = `
       ${itemId ? `<input type="hidden" class="o-item-id" value="${itemId}">` : ''}
       <div class="form-group" style="flex:1 1 100%;">
-        <select class="o-prod-id" style="width:100%;" onchange="app.onSalesProductSelect(this)">
+        <select class="o-prod-id" style="width:100%;">
           <option value="" disabled ${!selectedProdId ? 'selected' : ''}>Product</option>
           ${finProds.map(p => {
             const displayType = p.type === 'FINISHED' ? 'FG' : (p.type ? p.type.toLowerCase() : '');
-            return `<option value="${p.id}" ${p.id == selectedProdId ? 'selected' : ''}>${p.name} - (grade- N/A) (type - ${displayType})</option>`;
+            let grades = (p.grades && p.grades.length > 0) ? p.grades : ['N/A'];
+            return grades.map(g => {
+              let text = p.name;
+              let suffix = '';
+              if (g && g !== 'N/A') suffix += `${g} `;
+              suffix += `(${displayType})`;
+              text += ` ` + toBold(suffix.trim());
+              let val = `${p.id}|${g}`;
+              let isSelected = (p.id == selectedProdId && g == selectedGrade) ? 'selected' : '';
+              return `<option value="${val}" ${isSelected}>${text}</option>`;
+            }).join('');
           }).join('')}
-        </select>
-      </div>
-      <div class="form-group grade-container" style="flex:1 1 30%;${prefillData && prefillData.product && prefillData.product.type === 'RAW' ? ' display:none;' : ''}">
-        <select class="o-prod-grade" style="width:100%;">
-          <option value="" disabled ${!selectedGrade ? 'selected' : ''}>Grade</option>
-          ${allGrades.map(g => `<option value="${g}" ${g === selectedGrade ? 'selected' : ''}>${g}</option>`).join('')}
-          ${allGrades.includes('N/A') ? '' : `<option value="N/A" ${selectedGrade === 'N/A' ? 'selected' : ''}>N/A</option>`}
         </select>
       </div>
       <div class="form-group" style="flex:1 1 25%;">
@@ -944,52 +956,6 @@ const app = {
     `;
     const container = document.getElementById('order-products');
     if (container) container.appendChild(div);
-  },
-
-  onSalesProductSelect(selectEl) {
-    const prodId = selectEl.value;
-    const allProds = (window.serverPageData && window.serverPageData.products) || [];
-    const prod = allProds.find(p => p.id == prodId);
-    if (!prod) return;
-    
-    const row = selectEl.closest('.dynamic-row');
-    const gradeContainer = row.querySelector('.grade-container');
-    const gradeSelect = row.querySelector('.o-prod-grade');
-    const allGrades = (window.serverPageData && window.serverPageData.grades) || [];
-    const currentVal = gradeSelect.value;
-    
-    if (prod.type === 'RAW') {
-      gradeContainer.style.display = 'none';
-      
-      let html = `<option value="" disabled>Grade</option>`;
-      html += `<option value="N/A" selected>N/A</option>`;
-      gradeSelect.innerHTML = html;
-      gradeSelect.value = 'N/A';
-    } else {
-      gradeContainer.style.display = 'block';
-      let validGrades = prod.grades && prod.grades.length > 0 ? prod.grades : allGrades;
-      let html = `<option value="" disabled>Grade</option>`;
-      
-      let foundCurrent = false;
-      validGrades.forEach(g => {
-         if (g === currentVal && currentVal !== 'N/A') foundCurrent = true;
-         html += `<option value="${g}">${g}</option>`;
-      });
-      
-      // If we don't have valid grades or N/A is globally allowed and we have no other options
-      if (allGrades.includes('N/A') && !validGrades.includes('N/A')) {
-          html += `<option value="N/A">N/A</option>`;
-          if (currentVal === 'N/A') foundCurrent = true;
-      }
-
-      gradeSelect.innerHTML = html;
-
-      if (foundCurrent) {
-        gradeSelect.value = currentVal;
-      } else {
-        gradeSelect.value = gradeSelect.options[1] ? gradeSelect.options[1].value : '';
-      }
-    }
   },
 
   submitCompany() {
@@ -1037,7 +1003,7 @@ const app = {
     if(gst && gst.toUpperCase() !== 'N/A' && !/^[A-Za-z0-9]{15}$/.test(gst)) return this.toast('GST must be 15 alphanumeric characters or N/A', 'error');
     if(!/^(\+91\s*)?[0-9]{10}$/.test(contact)) return this.toast('Mobile number must be 10 digits', 'error');
 
-    fetch('/sales/transport', {
+    fetch('/transport', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json', 
@@ -1063,8 +1029,8 @@ const app = {
 
     const items = [];
     document.querySelectorAll('#order-products .dynamic-row').forEach(row => {
-      const id       = row.querySelector('.o-prod-id').value;
-      const grade    = row.querySelector('.o-prod-grade').value;
+      const prodVal  = row.querySelector('.o-prod-id').value;
+      const [id, grade] = prodVal ? prodVal.split('|') : [null, null];
       const qty      = Number(row.querySelector('.o-prod-qty').value);
       const price    = Number(row.querySelector('.o-prod-price').value);
       const itemIdEl = row.querySelector('.o-item-id');
@@ -1085,7 +1051,7 @@ const app = {
       body.order_id = editOrderIdEl.value;
     }
 
-    fetch('/sales/order', {
+    fetch('/order', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json', 
@@ -1184,7 +1150,7 @@ const app = {
     if (hasError) return;
     if (items.length === 0) return this.toast('Enter at least one item quantity to dispatch', 'error');
 
-    fetch('/dispatch/action', {
+    fetch('/action', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json', 
@@ -1381,7 +1347,7 @@ const app = {
     if (!imageData) return this.toast('No image data found', 'error');
     
     this.toast('Uploading LR...', 'info');
-    fetch('/dispatch/update-lr', {
+    fetch('/update-lr', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': window.csrfToken || csrfToken },
       body: JSON.stringify({ log_id: logId, lr_image: imageData })
@@ -1438,7 +1404,7 @@ const app = {
     const name = nameInput.value.trim();
     if (!name) return this.toast('Enter a category name', 'error');
     
-    fetch('/cashier/category', {
+    fetch('/category', {
       method: 'POST',
       headers: { 'X-CSRF-TOKEN': window.csrfToken || csrfToken, 'Content-Type': 'application/json' },
       body: JSON.stringify({ name })
@@ -1467,7 +1433,7 @@ const app = {
   deleteExpenseCategory(id, name) {
     if (!confirm(`Are you sure you want to delete the category "${name}"?`)) return;
     
-    fetch(`/cashier/category/${id}`, {
+    fetch(`/category/${id}`, {
       method: 'DELETE',
       headers: { 'X-CSRF-TOKEN': window.csrfToken || csrfToken, 'Content-Type': 'application/json' }
     })
@@ -1506,7 +1472,7 @@ const app = {
     formData.append('reference', ref);
     if (billFile) formData.append('bill_file', billFile);
 
-    fetch('/cashier/action', {
+    fetch('/action', {
       method: 'POST',
       headers: { 
         'Accept': 'application/json',
@@ -1656,7 +1622,7 @@ const app = {
     
     if (!amount || amount <= 0) return this.toast('Invalid amount', 'error');
 
-    fetch(`/cashier/action/${id}`, {
+    fetch(`/action/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken || csrfToken },
       body: JSON.stringify({ amount, category, note })
@@ -1676,7 +1642,7 @@ const app = {
   deleteTransaction(id) {
     if (!confirm('Are you sure you want to completely delete this transaction? This action is permanent and will affect the balance.')) return;
     
-    fetch(`/cashier/action/${id}`, {
+    fetch(`/action/${id}`, {
       method: 'DELETE',
       headers: { 'X-CSRF-TOKEN': window.csrfToken || csrfToken }
     })
@@ -1751,7 +1717,7 @@ const app = {
       formData.append('bill_file', result.value);
       formData.append('_token', window.csrfToken || csrfToken);
 
-      fetch('/cashier/bill/upload', { method: 'POST', body: formData })
+      fetch('/bill/upload', { method: 'POST', body: formData })
         .then(r => r.json())
         .then(d => {
           if (d.success) {
@@ -1778,7 +1744,7 @@ const app = {
       cancelButtonColor: '#30363d',
     }).then(result => {
       if (!result.isConfirmed) return;
-      fetch(`/cashier/bill/${billId}`, {
+      fetch(`/bill/${billId}`, {
         method: 'DELETE',
         headers: { 'X-CSRF-TOKEN': window.csrfToken || csrfToken, 'Content-Type': 'application/json' }
       })
@@ -1849,7 +1815,7 @@ const app = {
     const category = document.getElementById('edit-tx-category').value;
     const note = document.getElementById('edit-tx-note').value;
 
-    fetch('/cashier/action/' + id, {
+    fetch('/action/' + id, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': window.csrfToken || csrfToken },
         body: JSON.stringify({ amount, category, note })
@@ -1961,7 +1927,7 @@ const app = {
       confirmButtonColor: '#dc2626'
     }).then(result => {
       if (result.isConfirmed) {
-        fetch('/sales/order/' + id + '/cancel', {
+        fetch('/order/' + id + '/cancel', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -2088,7 +2054,7 @@ const app = {
       confirmButtonColor: '#dc2626'
     }).then(result => {
       if (result.isConfirmed) {
-        fetch('/dispatch/revert/' + id, {
+        fetch('/revert/' + id, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',

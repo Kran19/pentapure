@@ -69,6 +69,7 @@ Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALE
         
     Route::get('/stock/live', [\App\Http\Controllers\AdminController::class, 'liveStockApi']);
     Route::post('/stock/adjust', [\App\Http\Controllers\AdminController::class, 'adjustStock']);
+    Route::post('/stock/bulk-add', [\App\Http\Controllers\AdminController::class, 'bulkAddStock']);
     
     Route::get('/history/{panel}/pdf', [\App\Http\Controllers\HistoryPdfController::class, 'download'])
         ->name('history.pdf');

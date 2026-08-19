@@ -148,27 +148,31 @@
 </div>
 
 @push('scripts')
-<script>
-    window.app = window.app || {};
-    window.app.viewImage = function(url) {
-        Swal.fire({
-            imageUrl: url,
-            imageAlt: 'Bill Preview',
-            width: 'auto',
-            padding: '1em',
-            showConfirmButton: false,
-            showCloseButton: true,
-            customClass: {
-                image: 'swal2-image-custom'
-            }
-        });
-    };
-    
-    // Custom style for image preview to not overflow
-    const style = document.createElement('style');
-    style.innerHTML = `
-        .swal2-image-custom { max-height: 80vh; max-width: 100%; object-fit: contain; }
-    `;
+  <script>
+      window.app = window.app || {};
+      window.app.viewImage = function(url) {
+          Swal.fire({
+              imageUrl: url,
+              imageAlt: 'Bill Preview',
+              width: 'auto',
+              padding: '0',
+              background: 'transparent',
+              backdrop: 'rgba(0,0,0,0.8)',
+              showConfirmButton: false,
+              showCloseButton: true,
+              customClass: {
+                  popup: 'swal2-popup-custom',
+                  image: 'swal2-image-custom'
+              }
+          });
+      };
+      
+      // Custom style for image preview to not overflow
+      const style = document.createElement('style');
+      style.innerHTML = `
+          .swal2-popup-custom { width: auto !important; max-width: 95vw !important; padding: 0 !important; background: transparent !important; }
+          .swal2-image-custom { max-height: 90vh !important; max-width: 95vw !important; object-fit: contain; margin: 0 auto; display: block; border-radius: 8px; }
+      `;
     document.head.appendChild(style);
 </script>
 @endpush

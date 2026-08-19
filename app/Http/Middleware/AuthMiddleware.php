@@ -12,7 +12,11 @@ class AuthMiddleware
         $user = session('auth_user');
 
         if (!$user) {
-            return redirect()->route('login')->with('error', 'Please login to continue.');
+            $slug = $request->segment(1);
+            if ($slug && \Illuminate\Support\Facades\Route::has($slug . '.login.show')) {
+                return redirect()->route($slug . '.login.show')->with('error', 'Please login to continue.');
+            }
+            return redirect('/')->with('error', 'Please login to continue.');
         }
 
         if (!empty($roles) && !in_array($user['role'], $roles)) {
@@ -21,20 +25,23 @@ class AuthMiddleware
                 $method = $request->method();
                 $isWrite = in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE']);
                 
+                $segments = explode('/', $path);
+                $endpoint = count($segments) > 1 ? $segments[1] : '';
+                
                 $module = null;
-                if (str_contains($path, 'admin/dashboard') || str_contains($path, 'admin/home')) $module = 'dashboard';
-                elseif (str_contains($path, 'admin/users')) $module = 'users';
-                elseif (str_contains($path, 'admin/products')) $module = 'products';
-                elseif (str_contains($path, 'admin/stock')) $module = 'stock';
-                elseif (str_contains($path, 'admin/po')) $module = 'po';
-                elseif (str_contains($path, 'admin/logs') || str_contains($path, 'admin/cashier-logs')) $module = 'logs';
-                elseif (str_contains($path, 'admin/grades')) $module = 'grades';
-                elseif (str_contains($path, 'admin/locations')) $module = 'locations';
-                elseif (str_contains($path, 'admin/categories')) $module = 'categories';
-                elseif (str_contains($path, 'admin/dispatch-activity')) $module = 'dispatch';
-                elseif (str_contains($path, 'admin/cashier-overview') || str_contains($path, 'admin/cashier')) $module = 'cashier';
-                elseif (str_contains($path, 'admin/notifications')) $module = 'notifications';
-                elseif (str_contains($path, 'admin/attendance')) $module = 'attendance';
+                if ($endpoint === 'dashboard' || $endpoint === 'home') $module = 'dashboard';
+                elseif ($endpoint === 'users') $module = 'users';
+                elseif ($endpoint === 'products') $module = 'products';
+                elseif ($endpoint === 'stock') $module = 'stock';
+                elseif ($endpoint === 'po') $module = 'po';
+                elseif ($endpoint === 'logs' || $endpoint === 'cashier-logs') $module = 'logs';
+                elseif ($endpoint === 'grades') $module = 'grades';
+                elseif ($endpoint === 'locations') $module = 'locations';
+                elseif ($endpoint === 'categories') $module = 'categories';
+                elseif ($endpoint === 'dispatch-activity') $module = 'dispatch';
+                elseif ($endpoint === 'cashier-overview' || $endpoint === 'cashier') $module = 'cashier';
+                elseif ($endpoint === 'notifications') $module = 'notifications';
+                elseif ($endpoint === 'attendance') $module = 'attendance';
 
                 $userPermissions = $user['permissions'] ?? [];
                 

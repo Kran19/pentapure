@@ -102,9 +102,9 @@ function adminEditLocation(loc) {
     }
   }).then((res) => {
     if (res.isConfirmed) {
-      fetch('/' + window.userSlug + '/api/locations', {
+      fetch(window.location.origin + '/' + window.userSlug + '/locations', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
         body: JSON.stringify({ location_id: loc.id, name: res.value.name, description: res.value.description })
       })
       .then(r => r.json())
@@ -136,11 +136,11 @@ function adminSaveLocation() {
   const payload = { name, description };
   if (editingLocationId) payload.location_id = editingLocationId;
 
-  fetch('/' + window.userSlug + '/api/locations', {
+  fetch(window.location.origin + '/' + window.userSlug + '/locations', {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json',
-      'X-CSRF-TOKEN': csrfToken 
+      'X-CSRF-TOKEN': window.csrfToken 
     },
     body: JSON.stringify(payload)
   })
@@ -171,9 +171,9 @@ function adminDeleteLocation(id, name) {
     cancelButtonText: 'Cancel'
   }).then(result => {
     if (result.isConfirmed) {
-      fetch(`/api/locations/${id}`, {
+      fetch(window.location.origin + '/' + window.userSlug + '/locations/' + id, {
         method: 'DELETE',
-        headers: { 'X-CSRF-TOKEN': csrfToken }
+        headers: { 'X-CSRF-TOKEN': window.csrfToken }
       })
       .then(r => r.json())
       .then(d => {

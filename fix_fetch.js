@@ -1,0 +1,1 @@
+const fs = require('fs'); let c = fs.readFileSync('public/js/app.js', 'utf8'); c = c.replace(/fetch\('(\/)(sales|dispatch|cashier|finished)\//g, "fetch('/"); c = c.replace(/fetch\(\(\/)(sales|dispatch|cashier|finished)\//g, "fetch(\/"); fs.writeFileSync('public/js/app.js', c);

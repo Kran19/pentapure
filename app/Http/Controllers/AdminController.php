@@ -97,16 +97,17 @@ class AdminController extends Controller
             'name'   => 'required|string|max:100',
             'role'   => 'required|in:ADMIN,SUB_ADMIN,STOCK_MANAGER,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE',
             'branch' => 'nullable|string|max:100',
+            'phone'  => 'nullable|string|max:20',
             'permissions' => 'nullable',
             'visible_cashiers' => 'nullable|array',
             'visible_cashiers.*' => 'exists:users,id',
         ];
 
         if (!$request->user_id) {
-            $rules['email']    = 'required|email|unique:users,email';
+            $rules['email']    = 'nullable|email|unique:users,email';
             $rules['password'] = 'required|string|min:4';
         } else {
-            $rules['email']    = 'required|email|unique:users,email,' . $request->user_id;
+            $rules['email']    = 'nullable|email|unique:users,email,' . $request->user_id;
             $rules['password'] = 'nullable|string|min:4';
         }
 
@@ -125,6 +126,7 @@ class AdminController extends Controller
             $user = User::findOrFail($request->user_id);
             $user->name  = $request->name;
             $user->email = $request->email;
+            $user->phone = $request->phone;
             $user->role  = $request->role;
             if ($request->password) {
                 $user->password = Hash::make($request->password);
@@ -232,7 +234,7 @@ class AdminController extends Controller
             return $p;
         });
             
-        $allActiveGrades = \App\Models\Grade::where('is_active', true)->orderByRaw("CASE WHEN UPPER(name) = 'NONE' THEN 0 ELSE 1 END")->orderBy('id')->get();
+        $allActiveGrades = \App\Models\Grade::where('is_active', true)->orderByRaw("CASE WHEN UPPER(name) IN ('NONE', 'N/A') THEN 0 ELSE 1 END")->orderBy('id')->get();
         
         $pageData = [
             'rawProducts' => $rawProducts,
@@ -241,6 +243,41 @@ class AdminController extends Controller
             'allGrades' => $allActiveGrades,
         ];
         return view('admin.products', compact('pageData'));
+    }
+
+    public function productsPdf()
+    {
+        $rawProducts = Product::where('type', 'RAW')
+            ->orderBy('sort_order')
+            ->get();
+            
+        $semiProducts = Product::with('grades')
+            ->where('type', 'SEMI')
+            ->orderBy('sort_order')
+            ->get();
+
+        $semiProducts->transform(function($p) {
+            $p->gradeNames = $p->grades->pluck('name')->toArray();
+            return $p;
+        });
+
+        $finishedProducts = Product::with('grades')
+            ->where('type', 'FINISHED')
+            ->orderBy('sort_order')
+            ->get();
+            
+        $finishedProducts->transform(function($p) {
+            $p->gradeNames = $p->grades->pluck('name')->toArray();
+            return $p;
+        });
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.products_pdf', [
+            'rawProducts' => $rawProducts,
+            'semiProducts' => $semiProducts,
+            'finishedProducts' => $finishedProducts,
+        ])->setPaper('A4', 'portrait');
+
+        return $pdf->download('PentaPure_Products_List_' . now()->format('Ymd_His') . '.pdf');
     }
 
     public function storeProduct(Request $request)
@@ -475,15 +512,14 @@ class AdminController extends Controller
                 $locStrings[] = "Unspecified ({$unassigned} {$s->unit})";
             }
             
-            $locationText = !empty($locStrings) ? implode(', ', $locStrings) : 'Not Specified';
+            $locationText = !empty($locStrings) ? '&bull; ' . implode('<br>&bull; ', $locStrings) : 'Not Specified';
 
             $rate = (float) ($s->rate ?? 0.00);
             $amount = $s->quantity * $rate;
             $totalValuation += $amount;
 
-            $product = $productsMap->get($s->productId);
             $items[] = [
-                'name' => ($product instanceof Product) ? $product->formatName($s->grade) : $s->name,
+                'name' => $s->name,
                 'stage' => $s->stage,
                 'grade' => $s->grade,
                 'quantity' => $s->quantity,
@@ -503,7 +539,7 @@ class AdminController extends Controller
         ];
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.live-stock', $pdfData)
-            ->setPaper('A4', 'portrait')
+            ->setPaper('A4', 'landscape')
             ->setOption('isRemoteEnabled', true)
             ->setOption('isHtml5ParserEnabled', true)
             ->setOption('isFontSubsettingEnabled', true);
@@ -731,7 +767,7 @@ class AdminController extends Controller
 
     public function grades()
     {
-        $grades = \App\Models\Grade::orderByRaw("CASE WHEN UPPER(name) = 'NONE' THEN 0 ELSE 1 END")->orderBy('id')->paginate(50);
+        $grades = \App\Models\Grade::orderByRaw("CASE WHEN UPPER(name) IN ('NONE', 'N/A') THEN 0 ELSE 1 END")->orderBy('id')->paginate(50);
         return view('admin.grades', ['pageData' => ['grades' => $grades]]);
     }
 
@@ -1031,7 +1067,8 @@ class AdminController extends Controller
 
         $orders = $query->get();
         
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.dispatch_activity_pdf', compact('orders'));
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.dispatch_activity_pdf', compact('orders'))
+            ->setPaper('A4', 'landscape');
         return $pdf->download('dispatch-activity-' . now()->format('Y-m-d') . '.pdf');
     }
 

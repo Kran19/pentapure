@@ -118,9 +118,11 @@
           </a>
           @endif
 
+          @if($can('module_locations'))
           <a href="{{ url(request()->segment(1) . '/locations') }}" class="nav-item {{ $seg=='locations'?'active':'' }}">
             Storage Location
           </a>
+          @endif
 
           @if($can('module_po'))
           <a href="{{ url(request()->segment(1) . '/po') }}" class="nav-item {{ $seg=='po'?'active':'' }}">
@@ -157,19 +159,19 @@
                 style="transition:transform 0.3s;"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
             <div id="att-submenu" style="display:none; padding-left:1rem; border-left:2px solid var(--primary);">
-              <a href="{{ url(request()->segment(1) . '/dashboard') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
+              <a href="{{ url(request()->segment(1) . '/attendance/dashboard') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
                 Dashboard
               </a>
-              <a href="{{ url(request()->segment(1) . '/departments') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
+              <a href="{{ url(request()->segment(1) . '/attendance/departments') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
                 Departments
               </a>
-              <a href="{{ url(request()->segment(1) . '/workers') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
+              <a href="{{ url(request()->segment(1) . '/attendance/workers') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
                 Workers List
               </a>
-              <a href="{{ url(request()->segment(1) . '/daily') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
+              <a href="{{ url(request()->segment(1) . '/attendance/daily') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
                 @if($authUser['role'] === 'ATTENDANCE') Daily Entry @else Daily Review @endif
               </a>
-              <a href="{{ url(request()->segment(1) . '/reports') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
+              <a href="{{ url(request()->segment(1) . '/attendance/reports') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
                 Monthly Reports
               </a>
             </div>
@@ -293,7 +295,7 @@
 
     async function openLocationsAdminModal() {
       try {
-        const response = await fetch('/' + window.userSlug + '/api/locations');
+        const response = await fetch(window.location.origin + '/' + window.userSlug + '/api/locations');
         const data = await response.json();
         if (!data.success) throw new Error(data.message);
         
@@ -331,7 +333,7 @@
       if(!val) return app.toast('Enter location name', 'error');
 
       try {
-        const response = await fetch('/' + window.userSlug + '/locations', {
+        const response = await fetch(window.location.origin + '/' + window.userSlug + '/locations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
           body: JSON.stringify({ name: val })

@@ -64,6 +64,7 @@ Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALE
         
     Route::get('/stock/live', [\App\Http\Controllers\AdminController::class, 'liveStockApi']);
     Route::post('/stock/adjust', [\App\Http\Controllers\AdminController::class, 'adjustStock']);
+    Route::post('/stock/bulk-add', [\App\Http\Controllers\AdminController::class, 'bulkAddStock']);
     
     Route::get('/history/{panel}/pdf', [\App\Http\Controllers\HistoryPdfController::class, 'download'])
         ->name('history.pdf');
@@ -222,7 +223,12 @@ foreach ($roleSlugs['CASHIER'] ?? [] as $slug) {
 }
 
 // === ADMIN ROUTES ===
-foreach ($roleSlugs['ADMIN'] ?? [] as $slug) {
+$adminSlugs = array_merge(
+    $roleSlugs['ADMIN'] ?? [],
+    $roleSlugs['SUB_ADMIN'] ?? [],
+    $roleSlugs['STOCK_MANAGER'] ?? []
+);
+foreach ($adminSlugs as $slug) {
     Route::prefix($slug)->group(function () use ($slug) {
         Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
         Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
@@ -243,6 +249,7 @@ foreach ($roleSlugs['ADMIN'] ?? [] as $slug) {
     Route::delete('/locations/{id}',  'destroyLocationApi');
     Route::delete('/users/{id}',      'destroyUser');
     Route::get('/products',           'products')->name($slug.'.products');
+    Route::get('/products/pdf',       'productsPdf')->name($slug.'.products.pdf');
     Route::post('/products',          'storeProduct');
     Route::post('/products/toggle/{id}', 'toggleProductStatus');
     Route::delete('/products/{id}',   'destroyProduct');
@@ -293,14 +300,14 @@ foreach ($roleSlugs['ADMIN'] ?? [] as $slug) {
     });
 
     // Admin can also generate any cashier's PDF
-Route::get('/$slug/cashier/{userId}/pdf', [AdminController::class, 'downloadCashierPdf'])
-    ->middleware('auth.role:ADMIN')
-    ->name($slug.'.cashier.pdf');
+    Route::get("/{$slug}/cashier/{userId}/pdf", [AdminController::class, 'downloadCashierPdf'])
+        ->middleware('auth.role:ADMIN')
+        ->name($slug.'.cashier.pdf');
 
-// Shared Bill View (Admin & Cashier)
-Route::get('/$slug/cashier/bill/{id}/view', [CashierController::class, 'viewBill'])
-    ->middleware('auth.role:ADMIN,CASHIER')
-    ->name('cashier.bill.view');
+    // Shared Bill View (Admin & Cashier)
+    Route::get("/{$slug}/cashier/bill/{id}/view", [CashierController::class, 'viewBill'])
+        ->middleware('auth.role:ADMIN,CASHIER')
+        ->name('cashier.bill.view');
 }
 
 // === ATTENDANCE ROUTES ===
