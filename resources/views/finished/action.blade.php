@@ -371,7 +371,7 @@ function submitTransfer(e) {
       }))
     };
 
-    fetch(window.location.origin + '/' + window.userSlug + '/action', {
+    fetch(window.baseUrl + '/' + window.userSlug + '/action', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json', 

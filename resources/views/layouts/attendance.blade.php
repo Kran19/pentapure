@@ -5,7 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <meta name="base-url" content="{{ url(request()->segment(1) . '/') }}">
-  <script>window.userSlug = '{{ request()->segment(1) }}';</script>
+  <script>
+    window.baseUrl = '{{ url('') }}';
+    window.userSlug = '{{ request()->segment(1) }}';
+  </script>
   <title>Pentapure Factory - Attendance Management</title>
   <link rel="stylesheet" href="{{ asset('css/style.css') }}">
   <link rel="stylesheet" href="{{ asset('css/tabulator-custom.css') }}">

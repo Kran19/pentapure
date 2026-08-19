@@ -102,7 +102,7 @@ function adminEditLocation(loc) {
     }
   }).then((res) => {
     if (res.isConfirmed) {
-      fetch(window.location.origin + '/' + window.userSlug + '/locations', {
+      fetch(window.baseUrl + '/' + window.userSlug + '/locations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
         body: JSON.stringify({ location_id: loc.id, name: res.value.name, description: res.value.description })
@@ -136,7 +136,7 @@ function adminSaveLocation() {
   const payload = { name, description };
   if (editingLocationId) payload.location_id = editingLocationId;
 
-  fetch(window.location.origin + '/' + window.userSlug + '/locations', {
+  fetch(window.baseUrl + '/' + window.userSlug + '/locations', {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json',
@@ -171,7 +171,7 @@ function adminDeleteLocation(id, name) {
     cancelButtonText: 'Cancel'
   }).then(result => {
     if (result.isConfirmed) {
-      fetch(window.location.origin + '/' + window.userSlug + '/locations/' + id, {
+      fetch(window.baseUrl + '/' + window.userSlug + '/locations/' + id, {
         method: 'DELETE',
         headers: { 'X-CSRF-TOKEN': window.csrfToken }
       })

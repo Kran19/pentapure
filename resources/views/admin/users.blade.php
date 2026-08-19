@@ -271,7 +271,7 @@ function adminSaveUser() {
     Swal.fire('Required', 'Password is required for new users', 'warning'); return;
   }
 
-  fetch(window.location.origin + '/' + window.userSlug + '/users', {
+  fetch(window.baseUrl + '/' + window.userSlug + '/users', {
     method: 'POST',
     headers: { 
         'Content-Type': 'application/json', 
@@ -300,7 +300,7 @@ function adminSaveUser() {
 }
 
 function adminToggleUser(id) {
-  fetch(window.location.origin + '/' + window.userSlug + '/users/toggle', {
+  fetch(window.baseUrl + '/' + window.userSlug + '/users/toggle', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
     body: JSON.stringify({ user_id: id })
@@ -371,7 +371,7 @@ function openNotifyModal(userId, userName) {
         }
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch(window.location.origin + '/' + window.userSlug + '/notifications/send', {
+            fetch(window.baseUrl + '/' + window.userSlug + '/notifications/send', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
                 body: JSON.stringify({

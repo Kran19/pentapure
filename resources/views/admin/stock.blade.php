@@ -450,7 +450,7 @@ function adminAddStock() {
     }
   }).then(result => {
     if (!result.isConfirmed) return;
-    fetch(window.location.origin + '/' + window.userSlug + '/stock/adjust', {
+    fetch(window.baseUrl + '/' + window.userSlug + '/stock/adjust', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
       body: JSON.stringify(result.value)
@@ -558,7 +558,7 @@ function adminAdjustStock(productId, stage, grade, productName = '', currentQty 
       didOpen: () => Swal.showLoading()
     });
 
-    fetch(window.location.origin + '/' + window.userSlug + '/stock/adjust', {
+    fetch(window.baseUrl + '/' + window.userSlug + '/stock/adjust', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
       body: JSON.stringify({
@@ -637,7 +637,7 @@ function adminUpdateRate(productId, currentRate, name) {
     }
   }).then((result) => {
     if (result.isConfirmed) {
-      fetch(window.location.origin + '/' + window.userSlug + '/stock/rate', {
+      fetch(window.baseUrl + '/' + window.userSlug + '/stock/rate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -735,7 +735,7 @@ function adminSetLimit(productId, stage, grade, currentLimit, productName = '') 
   }).then(result => {
     if (!result.isConfirmed) return;
 
-    fetch(window.location.origin + '/' + window.userSlug + '/stock/limit', {
+    fetch(window.baseUrl + '/' + window.userSlug + '/stock/limit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
       body: JSON.stringify({
@@ -773,7 +773,7 @@ function adminSetLimit(productId, stage, grade, currentLimit, productName = '') 
 }
 
 function fetchLiveStock() {
-  fetch(window.location.origin + '/' + window.userSlug + '/stock/live', {
+  fetch(window.baseUrl + '/' + window.userSlug + '/stock/live', {
     headers: { 'Accept': 'application/json' }
   })
   .then(res => res.json())
@@ -905,7 +905,7 @@ async function showLocationBreakdown(el) {
   // Fetch available locations from DB
   let allLocations = [];
   try {
-    const locRes = await fetch(window.location.origin + '/' + window.userSlug + '/api/locations');
+    const locRes = await fetch(window.baseUrl + '/' + window.userSlug + '/api/locations');
     const locData = await locRes.json();
     if (locData.success) {
       allLocations = locData.locations;
@@ -992,7 +992,7 @@ window.addLocationMapping = async function(productId, stage, grade, remainingQty
   }
 
   try {
-    const res = await fetch(window.location.origin + '/' + window.userSlug + '/api/stock/locations/transfer', {
+    const res = await fetch(window.baseUrl + '/' + window.userSlug + '/api/stock/locations/transfer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
       body: JSON.stringify({
@@ -1039,7 +1039,7 @@ window.transferLocationMapping = async function(productId, stage, grade, buttonE
   }
 
   try {
-    const res = await fetch(window.location.origin + '/' + window.userSlug + '/api/stock/locations/transfer', {
+    const res = await fetch(window.baseUrl + '/' + window.userSlug + '/api/stock/locations/transfer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
       body: JSON.stringify({
@@ -1257,7 +1257,7 @@ window.adminSaveBulkStock = function() {
   btn.disabled = true;
   btn.textContent = 'Saving...';
   
-  fetch(window.location.origin + '/' + window.userSlug + '/stock/bulk-add', {
+  fetch(window.baseUrl + '/' + window.userSlug + '/stock/bulk-add', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

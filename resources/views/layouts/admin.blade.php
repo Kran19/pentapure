@@ -5,7 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <meta name="base-url" content="{{ url(request()->segment(1) . '/') }}">
-  <script>window.userSlug = '{{ request()->segment(1) }}';</script>
+  <script>
+    window.baseUrl = '{{ url('') }}';
+    window.userSlug = '{{ request()->segment(1) }}';
+  </script>
   <title>Pentapure Factory Operations - Admin</title>
   <link rel="stylesheet" href="{{ asset('css/style.css') }}?v=2.0">
   <link rel="stylesheet" href="{{ asset('css/tabulator-custom.css') }}">
@@ -295,7 +298,7 @@
 
     async function openLocationsAdminModal() {
       try {
-        const response = await fetch(window.location.origin + '/' + window.userSlug + '/api/locations');
+        const response = await fetch(window.baseUrl + '/' + window.userSlug + '/api/locations');
         const data = await response.json();
         if (!data.success) throw new Error(data.message);
         
@@ -333,7 +336,7 @@
       if(!val) return app.toast('Enter location name', 'error');
 
       try {
-        const response = await fetch(window.location.origin + '/' + window.userSlug + '/locations', {
+        const response = await fetch(window.baseUrl + '/' + window.userSlug + '/locations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
           body: JSON.stringify({ name: val })

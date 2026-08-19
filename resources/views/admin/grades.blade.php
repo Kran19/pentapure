@@ -103,7 +103,7 @@ function adminEditGrade(g) {
         }
     }).then((res) => {
         if (res.isConfirmed) {
-            fetch(window.location.origin + '/' + window.userSlug + '/grades', {
+            fetch(window.baseUrl + '/' + window.userSlug + '/grades', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
                 body: JSON.stringify({ grade_id: g.id, name: res.value })
@@ -128,7 +128,7 @@ document.getElementById('grade-form').onsubmit = function(e) {
     const name = document.getElementById('grade-name').value;
     if(!name) return;
 
-    fetch(window.location.origin + '/' + window.userSlug + '/grades', {
+    fetch(window.baseUrl + '/' + window.userSlug + '/grades', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
         body: JSON.stringify({ grade_id: editingGradeId, name })
@@ -143,7 +143,7 @@ document.getElementById('grade-form').onsubmit = function(e) {
 };
 
 function adminToggleGrade(id) {
-    fetch(window.location.origin + '/' + window.userSlug + '/grades', {
+    fetch(window.baseUrl + '/' + window.userSlug + '/grades', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
         body: JSON.stringify({ grade_id: id, toggle: true })
@@ -163,7 +163,7 @@ function adminDeleteGrade(id) {
         confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch(window.location.origin + '/' + window.userSlug + '/grades/' + id, {
+            fetch(window.baseUrl + '/' + window.userSlug + '/grades/' + id, {
                 method: 'DELETE',
                 headers: { 'X-CSRF-TOKEN': window.csrfToken }
             }).then(r => r.json()).then(d => {

@@ -414,7 +414,7 @@ function adminEditProduct(prod) {
       formData.append('grades', JSON.stringify(result.value.grades));
       formData.append('allowed_roles', JSON.stringify(result.value.roles));
 
-      fetch(window.location.origin + '/' + window.userSlug + '/products', {
+      fetch(window.baseUrl + '/' + window.userSlug + '/products', {
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': csrfToken },
         body: formData
@@ -454,7 +454,7 @@ function adminSaveProduct() {
   formData.append('grades', JSON.stringify(selectedGrades));
   formData.append('allowed_roles', JSON.stringify(selectedRoles));
   
-  fetch(window.location.origin + '/' + window.userSlug + '/products', {
+  fetch(window.baseUrl + '/' + window.userSlug + '/products', {
     method: 'POST',
     headers: { 'X-CSRF-TOKEN': csrfToken },
     body: formData
@@ -484,7 +484,7 @@ function adminSaveProduct() {
 }
 
 function adminToggleProduct(id) {
-  fetch(window.location.origin + '/' + window.userSlug + '/products/toggle/' + id, {
+  fetch(window.baseUrl + '/' + window.userSlug + '/products/toggle/' + id, {
     method: 'POST',
     headers: { 'X-CSRF-TOKEN': csrfToken }
   }).then(r => r.json()).then(d => {
@@ -504,7 +504,7 @@ function adminDeleteProduct(id) {
     confirmButtonText: 'Yes, delete it!'
   }).then((result) => {
     if (result.isConfirmed) {
-      fetch(window.location.origin + '/' + window.userSlug + '/products/' + id, {
+      fetch(window.baseUrl + '/' + window.userSlug + '/products/' + id, {
         method: 'DELETE',
         headers: { 'X-CSRF-TOKEN': csrfToken }
       }).then(r => r.json()).then(d => {
