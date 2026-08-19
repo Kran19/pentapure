@@ -458,7 +458,7 @@ function adminAddStock() {
     .then(r => r.json())
     .then(d => {
       if (d.success) {
-        Swal.fire('Saved', d.message || 'Stock added.', 'success').then(() => fetchLiveStock());
+        Swal.fire('Saved', d.message || 'Stock added.', 'success').then(() => location.reload());
       } else {
         Swal.fire('Error', d.message || 'Could not add stock.', 'error');
       }
@@ -661,7 +661,7 @@ function adminUpdateRate(productId, currentRate, name) {
             confirmButtonColor: '#f59e0b',
             timer: 1500, 
             showConfirmButton: false 
-          }).then(() => fetchLiveStock());
+          }).then(() => location.reload());
         } else {
           Swal.fire({ 
             icon: 'error', 
@@ -757,7 +757,7 @@ function adminSetLimit(productId, stage, grade, currentLimit, productName = '') 
           confirmButtonColor: '#f59e0b',
           timer: 1500,
           showConfirmButton: false
-        }).then(() => fetchLiveStock());
+        }).then(() => location.reload());
       } else {
         Swal.fire({
           icon: 'error',
@@ -1017,7 +1017,7 @@ window.addLocationMapping = async function(productId, stage, grade, remainingQty
         timer: 1000,
         showConfirmButton: false
       }).then(() => {
-        fetchLiveStock();
+        location.reload();
       });
     } else {
       Swal.showValidationMessage(data.message || 'Failed to save mapping');
@@ -1064,7 +1064,7 @@ window.transferLocationMapping = async function(productId, stage, grade, buttonE
         timer: 1000,
         showConfirmButton: false
       }).then(() => {
-        fetchLiveStock();
+        location.reload();
       });
     } else {
       Swal.showValidationMessage(data.message || 'Failed to transfer stock');
@@ -1278,11 +1278,11 @@ window.adminSaveBulkStock = function() {
       const btnText = document.querySelector('.loc-dropdown-text');
       if (btnText) btnText.innerHTML = '📍 Select Locations <span style="float:right;">▼</span>';
 
-      // 2. Instantly update live stock
-      if (typeof fetchLiveStock === 'function') fetchLiveStock();
-      if (typeof fetchDashboardStats === 'function') fetchDashboardStats();
+      // 2. Refresh page instantly
+      sessionStorage.setItem('keepStockFormOpen', 'true');
+      location.reload();
 
-      // 3. Show success message
+      // 3. Show success message (will not show due to reload, but kept for logic)
       Swal.fire({
         icon: 'success',
         title: 'Success',
@@ -1423,6 +1423,13 @@ function addStockRow() {
         onBsStageChange(stageSelect);
     }
 }
+document.addEventListener('DOMContentLoaded', function() {
+  if (sessionStorage.getItem('keepStockFormOpen') === 'true') {
+    const el = document.getElementById('bulk-stock-container');
+    if (el) el.style.display = 'block';
+    sessionStorage.removeItem('keepStockFormOpen');
+  }
+});
 </script>
 
 <style>
