@@ -773,8 +773,11 @@ function adminSetLimit(productId, stage, grade, currentLimit, productName = '') 
 }
 
 function fetchLiveStock() {
-  fetch(window.baseUrl + '/' + window.userSlug + '/stock/live', {
-    headers: { 'Accept': 'application/json' }
+  fetch(window.baseUrl + '/' + window.userSlug + '/stock/live?_t=' + new Date().getTime(), {
+    headers: { 
+      'Accept': 'application/json',
+      'Cache-Control': 'no-cache' 
+    }
   })
   .then(res => res.json())
   .then(data => {
