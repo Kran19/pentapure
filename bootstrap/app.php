@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(prepend: [
             \App\Http\Middleware\ScopeSessionBySlug::class,
+            \App\Http\Middleware\NoCache::class,
         ]);
         $middleware->alias([
             'auth.role' => \App\Http\Middleware\AuthMiddleware::class,
