@@ -307,7 +307,7 @@ foreach ($adminSlugs as $slug) {
     // Shared Bill View (Admin & Cashier)
     Route::get("/{$slug}/cashier/bill/{id}/view", [CashierController::class, 'viewBill'])
         ->middleware('auth.role:ADMIN,CASHIER')
-        ->name('cashier.bill.view');
+        ->name($slug.'.cashier.bill.view');
 }
 
 // === ATTENDANCE ROUTES ===
