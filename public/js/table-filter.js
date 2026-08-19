@@ -245,43 +245,7 @@
     filterBar.style.background = '#fdfbf7';
     filterBar.style.borderRadius = '0.75rem';
     filterBar.style.border = '1px solid #DDCFAF';
-
-    headerCells.forEach((th, index) => {
-      const label = normalizeText(th.textContent) || `Column ${index + 1}`;
-      
-      if (th.classList.contains('no-print') || label.toLowerCase() === 'action' || !label) {
-        return;
-      }
-
-      const values = rows.map((row) => normalizeText((row.children[index] || {}).textContent));
-      const nonEmptyValues = values.filter(v => v !== '');
-      const unique = uniqueValues(values).sort((a, b) => a.localeCompare(b));
-      
-      const isDateHeader = /(date|created|updated)/i.test(label);
-      const isDate = isDateHeader || (nonEmptyValues.length > 0 && nonEmptyValues.every((val) => DATE_VALUE_PATTERN.test(val)));
-      
-      const isNumberHeader = /(qty|quantity|amount|price|cost|total|kg|#|no|count|present|absent|half|ot|hrs|hours)/i.test(label);
-      const isNumber = isNumberHeader || (nonEmptyValues.length > 0 && nonEmptyValues.every((val) => !Number.isNaN(Number(val.replace(/,/g, '')))));
-
-      let controlElement;
-      let controlType = 'text';
-
-      if (isDate) {
-        controlElement = createInput('date', label, label);
-        controlType = 'date';
-      } else if (unique.length > 1 && unique.length <= 10 && !isNumber) {
-        controlElement = createSelect(label, unique);
-        controlType = 'text';
-      } else {
-        controlElement = createInput('text', label, label);
-      }
-
-      controls.push({ index, element: controlElement, type: controlType });
-      filterBar.appendChild(controlElement);
-    });
-
-    const resetButton = createResetButton();
-    filterBar.appendChild(resetButton);
+    filterBar.style.justifyContent = 'flex-end';
 
     const pageSizeSelect = createPageSizeSelect();
     filterBar.appendChild(pageSizeSelect);
@@ -315,8 +279,18 @@
       updateTableState(table, controls, paginationState);
     });
 
-    const targetWrapper = table.closest('.table-container') || table;
-    targetWrapper.parentNode.insertBefore(filterBar, targetWrapper);
+    const targetContainerSelector = table.dataset.filterContainer;
+    let targetContainer = null;
+    if (targetContainerSelector) {
+        targetContainer = document.querySelector(targetContainerSelector);
+    }
+    
+    if (targetContainer) {
+        targetContainer.appendChild(filterBar);
+    } else {
+        const targetWrapper = table.closest('.table-container') || table;
+        targetWrapper.parentNode.insertBefore(filterBar, targetWrapper);
+    }
     table.dataset.filterAttached = 'true';
 
     // Initial state update & rendering

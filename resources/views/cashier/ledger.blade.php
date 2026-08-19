@@ -3,6 +3,8 @@
 @section('content')
 @php
   $q = request('q', '');
+  $category = request('category', '');
+  $specificDate = request('specific_date', '');
   $dateRange = request('range', 'this_month');
   $startDate = request('start', '');
   $endDate = request('end', '');
@@ -11,10 +13,23 @@
   $sourceData = $activeTab === 'team' ? ($pageData['teamTransactions'] ?? []) : ($pageData['transactions'] ?? []);
   $filtered = collect($sourceData);
 
+  if ($category) {
+    $filtered = $filtered->filter(function($t) use ($category) {
+      return strtolower(str_replace(' ', '_', $t['category'] ?? '')) === $category;
+    });
+  }
+
+  if ($specificDate) {
+    $filtered = $filtered->filter(function($t) use ($specificDate) {
+      return str_starts_with($t['date'], $specificDate);
+    });
+  }
+
   if ($q) {
     $filtered = $filtered->filter(function($t) use ($q) {
       $query = strtolower($q);
-      $details = ($t['note'] ?? '') . ' ' . ($t['description'] ?? '') . ' ' . ($t['reference'] ?? '') . ' ' . ($t['category'] ?? '') . ' ' . ($t['cashier_name'] ?? '');
+      $dateStr = \Carbon\Carbon::parse($t['date'])->format('d-m-Y');
+      $details = ($t['note'] ?? '') . ' ' . ($t['description'] ?? '') . ' ' . ($t['reference'] ?? '') . ' ' . ($t['category'] ?? '') . ' ' . ($t['cashier_name'] ?? '') . ' ' . $dateStr;
       return str_contains(strtolower($details), $query) || str_contains((string)$t['amount'], $query);
     });
   }
@@ -36,9 +51,9 @@
     } elseif ($dateRange === 'last_month') {
       $start = \Carbon\Carbon::now()->subMonth()->startOfMonth();
       $end = \Carbon\Carbon::now()->subMonth()->endOfMonth();
-    } elseif ($dateRange === 'custom' && $startDate && $endDate) {
-      $start = \Carbon\Carbon::parse($startDate)->startOfDay();
-      $end = \Carbon\Carbon::parse($endDate)->endOfDay();
+    } elseif ($dateRange === 'custom') {
+      if ($startDate) $start = \Carbon\Carbon::parse($startDate)->startOfDay();
+      if ($endDate) $end = \Carbon\Carbon::parse($endDate)->endOfDay();
     }
 
     if ($start) {
@@ -73,33 +88,7 @@
   </button>
 </div>
 
-<!-- Tabs -->
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px;">
-  <div style="display:flex; gap:10px;">
-    <a href="?tab=personal&range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&q={{ $q }}" 
-       style="text-decoration:none; padding:6px 12px; border-radius:6px; {{ $activeTab === 'personal' ? 'background:var(--primary); color:#fff;' : 'color:var(--text-muted);' }}">
-      Personal Ledger
-    </a>
-    @if(!empty($pageData['allowedCashiers']) && count($pageData['allowedCashiers']) > 0)
-    <a href="?tab=team&range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&q={{ $q }}" 
-       style="text-decoration:none; padding:6px 12px; border-radius:6px; {{ $activeTab === 'team' ? 'background:var(--primary); color:#fff;' : 'color:var(--text-muted);' }}">
-      Team Ledger
-    </a>
-    @endif
-    <a href="?tab=daily&range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&q={{ $q }}" 
-       style="text-decoration:none; padding:6px 12px; border-radius:6px; {{ $activeTab === 'daily' ? 'background:var(--primary); color:#fff;' : 'color:var(--text-muted);' }}">
-      Day Wise Balance
-    </a>
-  </div>
-  @if($activeTab === 'team')
-  <div>
-    <button type="button" class="btn-icon" style="background:rgba(59,130,246,0.1); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); padding:4px 10px; border-radius:6px; display:flex; align-items:center; gap:6px; width:auto;" onclick="showVisibilityInfo()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-      <span style="font-size:0.8rem;">Visibility Info</span>
-    </button>
-  </div>
-  @endif
-</div>
+
 
 <!-- Summary Cards -->
 @if($activeTab !== 'daily')
@@ -122,9 +111,26 @@
 @endif
 
 <form method="GET" action="" style="margin-bottom:1rem; display:flex; flex-direction:column; gap:10px;">
-  <input type="hidden" name="tab" value="{{ $activeTab }}">
-  <div class="filter-bar" style="flex-wrap:wrap; gap:8px; padding: 0.5rem; background:rgba(0,0,0,0.2); border-radius:8px; display:flex;">
-    <select name="range" onchange="this.form.submit()" style="width:auto; flex:1; padding:0.4rem; border-radius:4px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+  <div class="filter-bar" style="flex-wrap:wrap; gap:8px; padding: 0.5rem; background:rgba(0,0,0,0.2); border-radius:8px; display:flex; align-items:center;">
+    
+    <select name="tab" style="width:auto; flex:1; padding:0.4rem; border-radius:4px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+      <option value="personal" {{ $activeTab==='personal'?'selected':'' }}>Personal Ledger</option>
+      @if(!empty($pageData['allowedCashiers']) && count($pageData['allowedCashiers']) > 0)
+        <option value="team" {{ $activeTab==='team'?'selected':'' }}>Team Ledger</option>
+      @endif
+      <option value="daily" {{ $activeTab==='daily'?'selected':'' }}>Day Wise Balance</option>
+    </select>
+
+    <select name="category" style="width:auto; flex:1; padding:0.4rem; border-radius:4px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+      <option value="">All Categories</option>
+      @foreach($pageData['categories'] ?? [] as $c)
+        <option value="{{ $c['value'] }}" {{ request('category') === $c['value'] ? 'selected' : '' }}>{{ $c['label'] }}</option>
+      @endforeach
+    </select>
+
+    <input type="date" name="specific_date" value="{{ request('specific_date') }}" style="width:auto; flex:1; padding:0.4rem; border-radius:4px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;" title="Search by specific date">
+
+    <select name="range" onchange="toggleCustomDates(this.value)" style="width:auto; flex:1; padding:0.4rem; border-radius:4px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
       <option value="today" {{ $dateRange==='today'?'selected':'' }}>Today</option>
       <option value="this_week" {{ $dateRange==='this_week'?'selected':'' }}>This Week</option>
       <option value="last_week" {{ $dateRange==='last_week'?'selected':'' }}>Last Week</option>
@@ -133,15 +139,36 @@
       <option value="custom" {{ $dateRange==='custom'?'selected':'' }}>Custom Range</option>
       <option value="all" {{ $dateRange==='all'?'selected':'' }}>All Time</option>
     </select>
-    @if($dateRange === 'custom')
-      <input type="date" name="start" value="{{ $startDate }}" onchange="this.form.submit()" style="width:auto; padding:0.4rem; border-radius:4px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
-      <input type="date" name="end" value="{{ $endDate }}" onchange="this.form.submit()" style="width:auto; padding:0.4rem; border-radius:4px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
-    @endif
+    
+    <div id="custom-dates-container" style="display:{{ $dateRange === 'custom' ? 'flex' : 'none' }}; gap:8px;">
+      <input type="date" name="start" value="{{ $startDate ?? '' }}" style="width:auto; padding:0.4rem; border-radius:4px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+      <input type="date" name="end" value="{{ $endDate ?? '' }}" style="width:auto; padding:0.4rem; border-radius:4px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+    </div>
+  </div>
+
+  <script>
+    function toggleCustomDates(val) {
+      document.getElementById('custom-dates-container').style.display = (val === 'custom') ? 'flex' : 'none';
+    }
+  </script>
+
+  <!-- Custom container for table-filter.js controls (Reset, Show 10) -->
+  <div id="table-filter-external-container" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+    <div style="display:flex; gap:10px;">
+      <button type="submit" style="padding:0.4rem 0.8rem; background:var(--primary); color:#fff; border:none; border-radius:0.5rem; cursor:pointer; font-weight:500; font-size:0.75rem;">Apply</button>
+      <button type="button" onclick="window.location.href='{{ url()->current() }}'" style="padding:0.4rem 0.8rem; background:#ffffff; color:#000000; border:1px solid #e5e7eb; border-radius:0.5rem; cursor:pointer; font-weight:500; font-size:0.75rem;">Reset</button>
+    </div>
   </div>
 
   @if($activeTab !== 'daily')
-  <div class="form-group">
-    <input type="text" name="q" placeholder="Search details or amount..." value="{{ $q }}" onchange="this.form.submit()" style="padding:0.6rem 0.8rem; font-size:0.85rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+  <div class="form-group" style="display:flex; gap:10px;">
+    <input type="text" name="q" placeholder="Search details or amount..." value="{{ $q }}" onchange="this.form.submit()" style="flex:1; padding:0.6rem 0.8rem; font-size:0.85rem; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+    @if($activeTab === 'team')
+      <button type="button" class="btn btn-sm" style="background:rgba(59,130,246,0.1); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); padding:0 12px; border-radius:6px; display:flex; align-items:center; gap:6px; white-space:nowrap;" onclick="showVisibilityInfo()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <span>Visibility Info</span>
+      </button>
+    @endif
   </div>
   @endif
 </form>
@@ -150,7 +177,7 @@
 <div class="card" style="padding:0; overflow:hidden;">
   <div style="overflow-x:auto;">
     @if($activeTab === 'daily')
-    <table style="font-size:0.85rem; width:100%; border-collapse:collapse;">
+    <table data-filter-container="#table-filter-external-container" style="font-size:0.85rem; width:100%; border-collapse:collapse;">
       <thead>
         <tr style="background:rgba(0,0,0,0.2);">
           <th style="padding:12px; text-align:left;">Date</th>
@@ -163,10 +190,10 @@
         @forelse($pageData['dailyData'] ?? [] as $d)
           <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
             <td style="padding:12px; font-weight:600;">{{ \Carbon\Carbon::parse($d['date'])->format('d M Y') }}</td>
-            <td style="padding:12px; text-align:right; color:var(--secondary);">₹{{ number_format($d['in'], 2) }}</td>
-            <td style="padding:12px; text-align:right; color:var(--danger);">₹{{ number_format($d['out'], 2) }}</td>
-            <td style="padding:12px; text-align:right; font-weight:bold; color:{{ $d['balance'] >= 0 ? 'var(--secondary)' : 'var(--danger)' }}">
-              ₹{{ number_format($d['balance'], 2) }}
+            <td style="padding:12px; text-align:right; color:#4ade80;">+₹{{ number_format($d['in'], 2) }}</td>
+            <td style="padding:12px; text-align:right; color:#ef4444;">-₹{{ number_format($d['out'], 2) }}</td>
+            <td style="padding:12px; text-align:right; font-weight:bold; color:{{ $d['balance'] >= 0 ? '#4ade80' : '#ef4444' }}">
+              {{ $d['balance'] >= 0 ? '+' : '' }}₹{{ number_format($d['balance'], 2) }}
             </td>
           </tr>
         @empty
@@ -177,7 +204,7 @@
       </tbody>
     </table>
     @else
-    <table style="font-size:0.85rem; width:100%; border-collapse:collapse;">
+    <table data-filter-container="#table-filter-external-container" style="font-size:0.85rem; width:100%; border-collapse:collapse;">
       <thead>
         <tr style="background:rgba(0,0,0,0.2);">
           <th style="padding:12px; text-align:left;">Date</th>
@@ -215,7 +242,7 @@
                 <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">📍 {{ $t['site'] }}</div>
               @endif
             </td>
-            <td style="padding:12px; font-weight:bold; color:{{ $t['type'] === 'IN' ? 'var(--secondary)' : 'var(--danger)' }}; text-align:right; white-space:nowrap;">
+            <td style="padding:12px; font-weight:bold; color:{{ $t['type'] === 'IN' ? '#4ade80' : '#ef4444' }}; text-align:right; white-space:nowrap;">
               {{ $t['type'] === 'IN' ? '+' : '-' }}₹{{ number_format($t['amount'], 2) }}
             </td>
             <td style="padding:12px; text-align:center; min-width:80px;">

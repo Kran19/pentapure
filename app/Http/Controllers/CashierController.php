@@ -304,6 +304,7 @@ class CashierController extends Controller
             'dailyData'    => $dailyData,
             'allowedCashiers' => $allowedCashiers,
             'disallowedCashiers' => $disallowedCashiers,
+            'categories'   => \App\Models\Category::where('is_active', true)->orderBy('name')->get()->map(fn($c) => ['label'=>$c->name,'value'=>str_replace(' ','_',strtolower($c->name))])->toArray(),
         ];
 
         return view('cashier.ledger', compact('pageData'));

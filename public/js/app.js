@@ -1490,7 +1490,8 @@ const app = {
 
   downloadCashierPdf() {
     const txs   = window.serverPageData?.transactions || [];
-    const cats  = [...new Set(txs.map(t => t.category).filter(Boolean))].sort();
+    let cats = window.serverPageData?.categories || [];
+    if (cats.length === 0) cats = [...new Set(txs.map(t => t.category).filter(Boolean))].sort().map(c => ({value: c, label: c.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase())}));
     const sites = [...new Set(txs.map(t => t.site).filter(Boolean))].sort();
 
     const today = new Date().toISOString().split('T')[0];
@@ -1516,7 +1517,7 @@ const app = {
               <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px;">Category</label>
               <select id="sp-cat" style="width:100%; padding:0.5rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
                 <option value="all">All Categories</option>
-                ${cats.map(c => `<option value="${c}">${c.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase())}</option>`).join('')}
+                ${cats.map(c => `<option value="${c.value}">${c.label}</option>`).join('')}
               </select>
             </div>
             <div>
@@ -1580,8 +1581,8 @@ const app = {
 
     const allCats = (window.serverPageData && window.serverPageData.categories) ? window.serverPageData.categories : [];
     const catOptions = allCats.map(c => {
-        const val = c.name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-        return `<option value="${val}" ${t.category === val ? 'selected' : ''}>${c.name}</option>`;
+        const val = c.value;
+        return `<option value="${val}" ${t.category === val ? 'selected' : ''}>${c.label}</option>`;
     }).join('');
 
     Swal.fire({
@@ -1640,20 +1641,31 @@ const app = {
   },
 
   deleteTransaction(id) {
-    if (!confirm('Are you sure you want to completely delete this transaction? This action is permanent and will affect the balance.')) return;
-    
-    fetch(`/action/${id}`, {
-      method: 'DELETE',
-      headers: { 'X-CSRF-TOKEN': window.csrfToken || csrfToken }
-    })
-    .then(r => r.json())
-    .then(d => {
-      if (d.success) {
-        this.toast(d.message, 'success');
-        setTimeout(() => location.reload(), 600);
-      } else {
-        this.toast(d.message || 'Delete failed', 'error');
-      }
+    Swal.fire({
+      title: 'Delete Transaction?',
+      text: 'Are you sure you want to completely delete this transaction? This action is permanent and will affect the balance.',
+      icon: 'warning',
+      background: 'var(--dark-panel)',
+      color: 'var(--text-main)',
+      showCancelButton: true,
+      confirmButtonText: 'Delete',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#30363d',
+    }).then(result => {
+      if (!result.isConfirmed) return;
+      fetch(`/action/${id}`, {
+        method: 'DELETE',
+        headers: { 'X-CSRF-TOKEN': window.csrfToken || csrfToken }
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          this.toast(d.message, 'success');
+          setTimeout(() => location.reload(), 600);
+        } else {
+          this.toast(d.message || 'Delete failed', 'error');
+        }
+      });
     });
   },
 
@@ -1672,35 +1684,35 @@ const app = {
         <div style="text-align:left;">
           ${existingBills.length > 0 ? `
             <div style="margin-bottom:1rem;">
-              <div style="font-size:0.8rem; color:#8b949e; margin-bottom:0.5rem;">Attached Bills (${existingBills.length}):</div>
+              <div style="font-size:0.8rem; color:#4b5563; margin-bottom:0.5rem;">Attached Bills (${existingBills.length}):</div>
               <div style="display:flex; flex-direction:column; gap:0.4rem;">
                 ${existingBills.map(b => `
-                  <div style="display:flex; align-items:center; justify-content:space-between; background:#161b22; border:1px solid #30363d; border-radius:6px; padding:0.5rem 0.7rem;">
-                    <span style="font-size:0.82rem;">${b.file_type==='pdf'?'📄':'🖼️'} ${b.original_name}</span>
+                  <div style="display:flex; align-items:center; justify-content:space-between; background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px; padding:0.5rem 0.7rem;">
+                    <span style="font-size:0.82rem; color:#111;">${b.file_type==='pdf'?'📄':'🖼️'} ${b.original_name}</span>
                     <div style="display:flex; gap:0.4rem;">
-                      <button onclick="window.open('/cashier/bill/${b.id}/view','_blank')" style="background:rgba(59,130,246,0.2); border:none; color:#60a5fa; border-radius:4px; padding:3px 8px; font-size:0.75rem; cursor:pointer;">View</button>
-                      <button onclick="app.deleteBill(${b.id}, ${txId})" style="background:rgba(239,68,68,0.2); border:none; color:#f87171; border-radius:4px; padding:3px 8px; font-size:0.75rem; cursor:pointer;">Delete</button>
+                      <button onclick="window.open('/cashier/bill/${b.id}/view','_blank')" style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); color:#2563eb; border-radius:4px; padding:3px 8px; font-size:0.75rem; cursor:pointer;">View</button>
+                      <button onclick="app.deleteBill(${b.id}, ${txId})" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); color:#dc2626; border-radius:4px; padding:3px 8px; font-size:0.75rem; cursor:pointer;">Delete</button>
                     </div>
                   </div>
                 `).join('')}
               </div>
             </div>
-          ` : '<p style="color:#8b949e; font-size:0.85rem; margin-bottom:0.8rem;">No bills attached yet.</p>'}
+          ` : '<p style="color:#6b7280; font-size:0.85rem; margin-bottom:0.8rem;">No bills attached yet.</p>'}
 
-          <div style="background:#0d1117; border:2px dashed #30363d; border-radius:8px; padding:1rem; text-align:center;">
-            <div style="font-size:0.85rem; color:#8b949e; margin-bottom:0.5rem;">📁 Upload New Bill</div>
-            <input type="file" id="bill-upload-input" accept="image/jpeg,image/png,application/pdf" style="display:block; margin:0 auto; font-size:0.8rem;">
-            <div style="font-size:0.72rem; color:#555; margin-top:0.4rem;">JPG, PNG or PDF · Max 10MB</div>
+          <div style="background:#f3f4f6; border:2px dashed #d1d5db; border-radius:8px; padding:1rem; text-align:center;">
+            <div style="font-size:0.85rem; color:#4b5563; margin-bottom:0.5rem;">📁 Upload New Bill</div>
+            <input type="file" id="bill-upload-input" accept="image/jpeg,image/png,application/pdf" style="display:block; margin:0 auto; font-size:0.8rem; color:#111;">
+            <div style="font-size:0.72rem; color:#6b7280; margin-top:0.4rem;">JPG, PNG or PDF · Max 10MB</div>
           </div>
         </div>
       `,
-      background: '#0d1117',
-      color: '#e6edf3',
+      background: '#ffffff',
+      color: '#111827',
       showCancelButton: true,
       confirmButtonText: 'Upload',
       cancelButtonText: 'Close',
-      confirmButtonColor: '#238636',
-      cancelButtonColor: '#30363d',
+      confirmButtonColor: '#2563eb',
+      cancelButtonColor: '#9ca3af',
       width: '480px',
       preConfirm: () => {
         const fileInput = document.getElementById('bill-upload-input');
