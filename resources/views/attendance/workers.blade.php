@@ -43,12 +43,16 @@
             <option value="DAILY">Daily (₹ / Day)</option>
             <option value="MONTHLY">Monthly (₹ / Month)</option>
             <option value="FIXED_MONTHLY">Fixed Monthly (₹ / Month)</option>
-            <option value="LABOUR_MUKADAM">Labour (Mukadam)</option>
+            <option value="LABOUR_MUKADAM">LABOUR(MUKADAM)</option>
           </select>
         </div>
         <div class="form-group">
           <label id="salary-label">Salary Amount (₹)</label>
           <input type="number" id="w-salary" required min="0" step="1">
+        </div>
+        <div class="form-group" id="per-hour-group">
+          <label>Per Hour Salary (₹)</label>
+          <input type="number" id="w-per-hour" min="0" step="1">
         </div>
         <div class="form-group">
           <label>Status</label>
@@ -125,6 +129,7 @@ function openWorkerForm() {
   document.getElementById('w-shift').value = 'DAY';
   document.getElementById('w-salary-type').value = 'DAILY';
   document.getElementById('w-salary').value = '';
+  document.getElementById('w-per-hour').value = '';
   document.getElementById('w-status').value = 'ACTIVE';
   updateSalaryLabel();
   document.getElementById('worker-form-card').style.display = 'block';
@@ -133,100 +138,32 @@ function openWorkerForm() {
 
 function updateSalaryLabel() {
   const type = document.getElementById('w-salary-type').value;
-  document.getElementById('salary-label').innerText = (type === 'DAILY') ? 'Daily Salary (₹)' : 'Monthly Salary (₹)';
+  let label = 'Daily Salary (₹)';
+  if (type === 'MONTHLY') label = 'Monthly Salary (₹)';
+  if (type === 'FIXED_MONTHLY') label = 'Fixed Monthly Salary (₹)';
+  if (type === 'LABOUR_MUKADAM') label = 'Per Labour Salary (₹)';
+  document.getElementById('salary-label').innerText = label;
+  
+  const perHourGroup = document.getElementById('per-hour-group');
+  if (perHourGroup) {
+      perHourGroup.style.display = (type === 'FIXED_MONTHLY') ? 'none' : 'block';
+  }
 }
 
 function editWorker(w) {
-  let deptsOptions = `@foreach($departments as $d)
-    <option value="{{ $d->id }}">{{ $d->name }}</option>
-  @endforeach`;
-
-  Swal.fire({
-    title: 'Edit Worker',
-    html: `
-      <div style="display:flex; flex-direction:column; gap:10px; text-align:left;">
-        <label style="font-weight:600; color:#4b5563;">Full Name</label>
-        <input type="text" id="edit-w-name" class="swal2-input" style="margin:0;" value="${String(w.name || '').replace(/[&<>"']/g, char => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'}[char]))}">
-        
-        <label style="font-weight:600; color:#4b5563;">Department</label>
-        <select id="edit-w-dept" class="swal2-select" style="margin:0; width:100%; display:block;">
-          ${deptsOptions}
-        </select>
-        
-        <label style="font-weight:600; color:#4b5563;">Role</label>
-        <input type="text" id="edit-w-role" class="swal2-input" style="margin:0;" value="${String(w.role || '').replace(/[&<>"']/g, char => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'}[char]))}">
-        
-        <label style="font-weight:600; color:#4b5563;">Shift Type</label>
-        <select id="edit-w-shift" class="swal2-select" style="margin:0; width:100%; display:block;">
-          <option value="DAY">Day Shift</option>
-          <option value="NIGHT">Night Shift</option>
-          <option value="CUSTOM">Custom</option>
-        </select>
-        
-        <label style="font-weight:600; color:#4b5563;">Salary Type</label>
-        <select id="edit-w-salary-type" class="swal2-select" style="margin:0; width:100%; display:block;" onchange="
-            const t = this.value; 
-            document.getElementById('edit-salary-label').innerText = (t === 'DAILY') ? 'Daily Salary (₹)' : 'Monthly Salary (₹)';
-        ">
-            <option value="DAILY">Daily (₹ / Day)</option>
-            <option value="MONTHLY">Monthly (₹ / Month)</option>
-            <option value="FIXED_MONTHLY">Fixed Monthly (₹ / Month)</option>
-            <option value="LABOUR_MUKADAM">Labour (Mukadam)</option>
-        </select>
-        
-        <label id="edit-salary-label" style="font-weight:600; color:#4b5563;">Salary Amount (₹)</label>
-        <input type="number" id="edit-w-salary" class="swal2-input" style="margin:0;" value="${w.salary_amount || w.daily_salary || 0}">
-        
-        <label style="font-weight:600; color:#4b5563;">Status</label>
-        <select id="edit-w-status" class="swal2-select" style="margin:0; width:100%; display:block;">
-          <option value="ACTIVE">Active</option>
-          <option value="INACTIVE">Inactive</option>
-        </select>
-      </div>
-    `,
-    didOpen: () => {
-        document.getElementById('edit-w-dept').value = w.department_id;
-        document.getElementById('edit-w-shift').value = w.shift_type;
-        document.getElementById('edit-w-salary-type').value = w.salary_type || 'DAILY';
-        document.getElementById('edit-w-status').value = w.status;
-        const t = document.getElementById('edit-w-salary-type').value;
-        document.getElementById('edit-salary-label').innerText = (t === 'DAILY') ? 'Daily Salary (₹)' : 'Monthly Salary (₹)';
-    },
-    showCancelButton: true,
-    confirmButtonText: 'Save Changes',
-    confirmButtonColor: '#f59e0b',
-    preConfirm: () => {
-      const name = document.getElementById('edit-w-name').value.trim();
-      const department_id = document.getElementById('edit-w-dept').value;
-      if (!name || !department_id) {
-        Swal.showValidationMessage('Name and Department are required');
-      }
-      return {
-        name,
-        department_id,
-        role: document.getElementById('edit-w-role').value.trim(),
-        shift_type: document.getElementById('edit-w-shift').value,
-        salary_type: document.getElementById('edit-w-salary-type').value,
-        salary_amount: document.getElementById('edit-w-salary').value,
-        status: document.getElementById('edit-w-status').value
-      };
-    }
-  }).then((res) => {
-    if (res.isConfirmed) {
-      fetch(window.location.pathname, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-        body: JSON.stringify({ worker_id: w.id, ...res.value })
-      }).then(r=>r.json()).then(resp=>{
-        if(resp.success) { 
-          Swal.fire('Success', resp.message, 'success'); 
-          setTimeout(()=>location.reload(),800); 
-        } else {
-          Swal.fire('Error', resp.message, 'error');
-        }
-      });
-    }
-  });
+  editingWorkerId = w.id;
+  document.getElementById('w-form-title').innerText = 'Edit Worker';
+  document.getElementById('w-name').value = w.name;
+  document.getElementById('w-dept').value = w.department_id;
+  document.getElementById('w-role').value = w.role || '';
+  document.getElementById('w-shift').value = w.shift_type || 'DAY';
+  document.getElementById('w-salary-type').value = w.salary_type || 'DAILY';
+  document.getElementById('w-salary').value = w.salary_amount;
+  document.getElementById('w-per-hour').value = w.per_hour_salary || '';
+  document.getElementById('w-status').value = w.status || 'ACTIVE';
+  updateSalaryLabel();
+  document.getElementById('worker-form-card').style.display = 'block';
+  document.getElementById('worker-form-card').scrollIntoView({ behavior: 'smooth' });
 }
 
 function closeWorkerForm() {
@@ -235,9 +172,9 @@ function closeWorkerForm() {
 
 document.getElementById('worker-form').onsubmit = function(e) {
   e.preventDefault();
-  fetch(window.location.pathname, {
+  fetch(window.location.href, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
     body: JSON.stringify({
       worker_id: editingWorkerId,
       name: document.getElementById('w-name').value,
@@ -246,13 +183,18 @@ document.getElementById('worker-form').onsubmit = function(e) {
       shift_type: document.getElementById('w-shift').value,
       salary_type: document.getElementById('w-salary-type').value,
       salary_amount: document.getElementById('w-salary').value,
+      per_hour_salary: document.getElementById('w-per-hour').value,
       status: document.getElementById('w-status').value
     })
   }).then(r=>r.json()).then(d=>{
     if(d.success) { Swal.fire('Success', d.message, 'success'); setTimeout(()=>location.reload(),800); }
-    else Swal.fire('Error', d.message, 'error');
+    else Swal.fire('Error', d.message || 'Validation failed', 'error');
+  }).catch(e=>{
+    Swal.fire('Error', 'An unexpected error occurred or validation failed.', 'error');
   });
 };
+
+
 
 function deleteWorker(id) {
   Swal.fire({
@@ -264,11 +206,15 @@ function deleteWorker(id) {
     confirmButtonText: 'Yes, delete'
   }).then((res) => {
     if(res.isConfirmed) {
-      fetch(`${window.location.pathname}/${id}`, {
+      const targetUrl = window.location.href.split('?')[0].replace(/\/$/, '') + '/' + id;
+      fetch(targetUrl, {
         method: 'DELETE',
-        headers: { 'X-CSRF-TOKEN': csrfToken }
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken }
       }).then(r=>r.json()).then(d=>{
         if(d.success) { Swal.fire('Deleted!', '', 'success'); setTimeout(()=>location.reload(),800); }
+        else { Swal.fire('Error', d.message || 'Deletion failed', 'error'); }
+      }).catch(e=>{
+        Swal.fire('Error', 'An unexpected error occurred during deletion.', 'error');
       });
     }
   });

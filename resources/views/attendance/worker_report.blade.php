@@ -6,138 +6,303 @@
     <h2 style="margin:0;">📅 Monthly Attendance Sheet</h2>
     <div style="display:flex; gap:10px;">
         <button class="btn btn-sm btn-secondary" onclick="window.history.back()">Back</button>
+        <button class="btn btn-sm btn-primary" onclick="document.getElementById('editAdjustmentModal').style.display='block'">✏️ Edit Monthly Adjustments</button>
+        @if(str_contains(request()->path(), 'admin'))
+            <a href="{{ url(str_replace('reports', 'reports', request()->path()) . '/pdf' . '?month=' . $month) }}" class="btn btn-sm" style="background:#e74c3c; color:white; text-decoration:none;">📄 Download PDF</a>
+        @else
+            <a href="{{ url(request()->path() . '/pdf' . '?month=' . $month) }}" class="btn btn-sm" style="background:#e74c3c; color:white; text-decoration:none;">📄 Download PDF</a>
+        @endif
         <button class="btn btn-sm" onclick="exportToExcel()" style="background:#2ecc71;">📊 Export to Excel</button>
     </div>
   </div>
 
   <div class="card" id="printable-sheet" style="padding:0.5rem; background:white; color:black; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; border:1px solid #ddd;">
-    <!-- Official Header -->
-    <div style="text-align:center; margin-bottom:1rem;">
-      <div style="font-size:0.7rem; font-weight:bold; border:1px solid #000; padding:2px 10px; display:inline-block; margin-bottom:10px;">OFFICIAL RECORD</div>
-      <h1 style="margin:0; color:#000; font-weight:900; letter-spacing:1px; font-size:1.5rem;">FOOD & SPICES PVT.LTD.</h1>
-      <div style="font-size:0.75rem; color:#444; margin-bottom:5px;">Factory & Warehouse Operations</div>
-      <div style="display:inline-block; border-top:2px solid #000; border-bottom:2px solid #000; padding:3px 15px; font-weight:bold; font-size:1rem; letter-spacing:2px; background:#f9f9f9;">ATTENDANCE SHEET</div>
-    </div>
-
-    <!-- Worker Info Grid -->
-    <div class="info-grid">
-      <div class="info-box">
-        <div style="font-size:0.6rem; font-weight:bold; color:#666;">EMPLOYEE NAME</div>
-        <div style="font-weight:bold; font-size:0.95rem;">{{ strtoupper($worker->name) }}</div>
-      </div>
-      <div class="info-box">
-        <div style="font-size:0.6rem; font-weight:bold; color:#666;">DEPARTMENT</div>
-        <div style="font-weight:bold; font-size:0.95rem;">{{ strtoupper($worker->department->name ?? 'GENERAL') }}</div>
-      </div>
-      <div class="info-box">
-        <div style="font-size:0.6rem; font-weight:bold; color:#666;">MONTH / YEAR</div>
-        <div style="font-weight:bold; font-size:0.95rem;">{{ strtoupper(\Carbon\Carbon::parse($month)->format('F Y')) }}</div>
-      </div>
-      <div class="info-box" style="background:#fff8f8;">
-        <div style="font-size:0.6rem; font-weight:bold; color:#666;">{{ $worker->salary_type === 'MONTHLY' ? 'MONTHLY SALARY' : 'DAILY RATE' }} (₹)</div>
-        <div style="font-weight:bold; font-size:0.95rem; color:#d00;">₹{{ number_format($worker->salary_amount, 0) }} / {{ $worker->salary_type === 'MONTHLY' ? 'MONTH' : 'DAY' }}</div>
+    
+    <div style="margin-bottom:1rem; border:2px solid #000; padding:10px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <h2 style="margin:0; font-weight:bold; font-size:1.2rem;">STAFF</h2>
+          <div style="font-weight:bold; font-size:1rem;">NAME: {{ strtoupper($worker->name) }}</div>
+        </div>
+        <div style="font-weight:bold; font-size:1.2rem; text-align:right;">
+          {{ strtoupper(\Carbon\Carbon::parse($month)->format('Y F')) }}
+        </div>
       </div>
     </div>
 
     <!-- Detailed Ledger Table -->
     <div class="table-scroll">
-      <table>
+      <table style="width: 100%; border-collapse: collapse;">
         <thead>
+          @if($worker->salary_type === 'LABOUR_MUKADAM')
           <tr style="background:#f0f0f0;">
-            <th style="border:1px solid #000; padding:6px; font-size:0.75rem;">DATE / DAY</th>
-            <th style="border:1px solid #000; padding:6px; font-size:0.75rem;">STATUS</th>
-            <th style="border:1px solid #000; padding:6px; font-size:0.75rem;">CLOCK IN</th>
-            <th style="border:1px solid #000; padding:6px; font-size:0.75rem;">CLOCK OUT</th>
-            <th style="border:1px solid #000; padding:6px; font-size:0.75rem;">BREAK (IN/OUT)</th>
-            <th style="border:1px solid #000; padding:6px; font-size:0.75rem;">WORKING HRS</th>
-            <th style="border:1px solid #000; padding:6px; font-size:0.75rem;">OVERTIME</th>
-            <th style="border:1px solid #000; padding:6px; font-size:0.75rem;">DAILY WAGE (₹)</th>
-            <th style="border:1px solid #000; padding:6px; font-size:0.75rem;">REMARK / SIGN</th>
+            <th colspan="2" style="border:2px solid #000; padding:4px; font-size:0.75rem; text-align:left;">MAKADAM</th>
+            <th colspan="7" style="border:2px solid #000; padding:4px; font-size:0.75rem; text-align:left;">NAME : {{ strtoupper($worker->name) }}</th>
           </tr>
+          <tr style="background:#f0f0f0;">
+            <th rowspan="2" style="border:2px solid #000; padding:4px; font-size:0.75rem; width:50px;">{{ strtoupper(\Carbon\Carbon::parse($month)->format('Y')) }}<br>{{ strtoupper(\Carbon\Carbon::parse($month)->format('F')) }}</th>
+            <th rowspan="2" style="border:2px solid #000; padding:4px; font-size:0.75rem;">PRESENT<br>LABOUR</th>
+            <th colspan="2" style="border:2px solid #000; padding:4px; font-size:0.75rem;">DAY SHIFT</th>
+            <th colspan="2" style="border:2px solid #000; padding:4px; font-size:0.75rem;">NIGHT SHIFT</th>
+            <th rowspan="2" style="border:2px solid #000; padding:4px; font-size:0.7rem; width:80px;">OVER TIME /<br>UNDER TIME</th>
+            <th colspan="2" style="border:2px solid #000; padding:4px; font-size:0.75rem;">NO. : </th>
+          </tr>
+          <tr style="background:#f0f0f0;">
+            <th style="border:2px solid #000; border-top:1px solid #000; padding:4px; font-size:0.75rem;">IN TIME</th>
+            <th style="border:2px solid #000; border-top:1px solid #000; padding:4px; font-size:0.75rem;">OUT TIME</th>
+            <th style="border:2px solid #000; border-top:1px solid #000; padding:4px; font-size:0.75rem;">IN TIME</th>
+            <th style="border:2px solid #000; border-top:1px solid #000; padding:4px; font-size:0.75rem;">OUT TIME</th>
+            <th style="border:2px solid #000; border-top:1px solid #000; padding:4px; font-size:0.75rem; width:45px;">ADVANCE</th>
+            <th style="border:2px solid #000; border-top:1px solid #000; padding:4px; font-size:0.75rem; width:45px;">REMARK</th>
+          </tr>
+          @else
+          <tr style="background:#f0f0f0;">
+            <th rowspan="2" style="border:2px solid #000; padding:4px; font-size:0.75rem;">DATE</th>
+            <th rowspan="2" style="border:2px solid #000; padding:4px; font-size:0.75rem;">STATUS</th>
+            <th colspan="2" style="border:2px solid #000; padding:4px; font-size:0.75rem;">DAY SHIFT</th>
+            <th colspan="2" style="border:2px solid #000; padding:4px; font-size:0.75rem;">NIGHT SHIFT</th>
+            <th rowspan="2" style="border:2px solid #000; padding:4px; font-size:0.7rem; width:80px;">OVER TIME /<br>UNDER TIME</th>
+            <th rowspan="2" style="border:2px solid #000; padding:4px; font-size:0.75rem;">NO.</th>
+          </tr>
+          <tr style="background:#f0f0f0;">
+            <th style="border:2px solid #000; border-top:1px solid #000; padding:4px; font-size:0.75rem;">IN TIME</th>
+            <th style="border:2px solid #000; border-top:1px solid #000; padding:4px; font-size:0.75rem;">OUT TIME</th>
+            <th style="border:2px solid #000; border-top:1px solid #000; padding:4px; font-size:0.75rem;">IN TIME</th>
+            <th style="border:2px solid #000; border-top:1px solid #000; padding:4px; font-size:0.75rem;">OUT TIME</th>
+          </tr>
+          @endif
         </thead>
         <tbody>
-          @php 
-            $startDate = \Carbon\Carbon::parse($month)->startOfMonth();
-            $endDate = \Carbon\Carbon::parse($month)->endOfMonth();
-            $totalW = 0;
-            $totalH = 0;
-            // $totalOT = 0; // Using pre-calculated $totalOT from controller
-          @endphp
-          @for($date = $startDate; $date->lte($endDate); $date->addDay())
+          @for($date = $start->copy(); $date->lte($end); $date->addDay())
             @php 
                 $dStr = $date->toDateString();
                 $att = $attendances->get($dStr);
-                $totalH += $att?->total_hours ?? 0;
-                // For daily wages in table, we show the actual wage for that day
-                $displayWage = 0;
-                if ($att) {
-                    if ($worker->salary_type === 'DAILY') {
-                        $displayWage = $att->calculated_wage;
-                    } else {
-                        // For Monthly, we show the OT portion as the extra daily earning
-                        $hourly = ($worker->daily_salary ?? 0) / 9;
-                        $displayWage = $att->overtime_hours * ($hourly * 1.5);
-                    }
-                }
                 $isSunday = $date->isSunday();
+                $isNight = $att && $att->shift_type === 'NIGHT';
+                
+                $inTime = $att?->in_time ? date('H:i', strtotime($att->in_time)) : '';
+                $outTime = $att?->out_time ? date('H:i', strtotime($att->out_time)) : '';
             @endphp
             <tr style="border-bottom:1px solid #000; {{ $isSunday ? 'background:#fff8f8;' : '' }}">
-              <td style="border:1px solid #000; padding:5px; text-align:center; font-size:0.8rem; font-weight:600;">
-                {{ $date->format('d-M') }} <span style="font-weight:normal; font-size:0.7rem;">({{ $date->format('D') }})</span>
+              @if($worker->salary_type === 'LABOUR_MUKADAM')
+              <td style="border:1px solid #000; border-left:2px solid #000; padding:3px; text-align:center; font-size:0.8rem; font-weight:600;">
+                {{ $date->format('j') }} ({{ substr($date->format('D'), 0, 3) }})
               </td>
-              <td style="border:1px solid #000; padding:5px; text-align:center; font-weight:bold; font-size:0.75rem;">
-                <span style="color: {{ $att?->status === 'PRESENT' ? '#008000' : ($att?->status === 'ABSENT' ? '#d00' : '#888') }};">
-                  {{ $att?->status ?? ($isSunday ? 'SUNDAY' : 'ABSENT') }}
-                </span>
+              <td style="border:1px solid #000; padding:3px; text-align:center; font-weight:bold; font-size:0.75rem; color:{{ $att?->status === 'ABSENT' ? '#d00' : '#000' }};">
+                {{ $att?->num_workers ?? '' }}
               </td>
-              <td style="border:1px solid #000; padding:5px; text-align:center; font-size:0.85rem;">{{ $att?->in_time ? date('H:i', strtotime($att->in_time)) : '--:--' }}</td>
-              <td style="border:1px solid #000; padding:5px; text-align:center; font-size:0.85rem;">{{ $att?->out_time ? date('H:i', strtotime($att->out_time)) : '--:--' }}</td>
-              <td style="border:1px solid #000; padding:5px; text-align:center; font-size:0.75rem; color:#666;">
-                @if($att?->break_in)
-                    {{ date('H:i', strtotime($att->break_in)) }} - {{ date('H:i', strtotime($att->break_out)) }}
-                @else
-                    --:--
+              <!-- DAY SHIFT -->
+              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.85rem;">{{ !$isNight ? $inTime : '' }}</td>
+              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.85rem;">{{ !$isNight ? $outTime : '' }}</td>
+              
+              <!-- NIGHT SHIFT -->
+              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.85rem;">{{ $isNight ? $inTime : '' }}</td>
+              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.85rem;">{{ $isNight ? $outTime : '' }}</td>
+              
+              <!-- OT / UT -->
+              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.85rem; font-weight:bold; color: {{ ($att?->overtime_hours ?? 0) < 0 ? '#d00' : 'inherit' }};">
+                @if($att && $att->overtime_hours != 0)
+                  {{ $att->overtime_hours > 0 ? '+' : '' }}{{ number_format($att->overtime_hours, 1) }}
                 @endif
               </td>
-              <td style="border:1px solid #000; padding:5px; text-align:center;">{{ $att?->total_hours > 0 ? number_format($att->total_hours, 1) : '0.0' }}</td>
-              <td style="border:1px solid #000; padding:5px; text-align:center;">{{ $att?->overtime_hours > 0 ? number_format($att->overtime_hours, 1) : '0.0' }}</td>
-              <td style="border:1px solid #000; padding:5px; text-align:center; font-weight:900; color: {{ $displayWage > 0 ? '#d00' : '#888' }}; font-size:1rem;">
-                {{ $displayWage > 0 ? number_format($displayWage, 0) : '0' }}
+              
+              <td style="border:1px solid #000; padding:3px; font-size:0.75rem; text-align:center;">
+                {{ $att?->advance ?? '' }}
               </td>
-              <td style="border:1px solid #000; padding:5px; width:100px;"></td>
+              <td style="border:1px solid #000; border-right:2px solid #000; padding:3px; font-size:0.75rem; text-align:center;">
+                {{ $att?->remark ?? '' }}
+              </td>
+              @else
+              <td style="border:1px solid #000; border-left:2px solid #000; padding:3px; text-align:center; font-size:0.8rem; font-weight:600;">
+                {{ $date->format('j') }} ({{ substr($date->format('D'), 0, 3) }})
+              </td>
+              <td style="border:1px solid #000; padding:3px; text-align:center; font-weight:bold; font-size:0.75rem; color:{{ $att?->status === 'PRESENT' ? '#000' : ($att?->status === 'ABSENT' ? '#d00' : '#000') }};">
+                {{ $att?->status ?? ($isSunday ? 'SUNDAY' : '') }}
+              </td>
+              <!-- DAY SHIFT -->
+              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.85rem;">{{ !$isNight ? $inTime : '' }}</td>
+              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.85rem;">{{ !$isNight ? $outTime : '' }}</td>
+              
+              <!-- NIGHT SHIFT -->
+              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.85rem;">{{ $isNight ? $inTime : '' }}</td>
+              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.85rem;">{{ $isNight ? $outTime : '' }}</td>
+              
+              <!-- OT / UT -->
+              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.85rem; font-weight:bold; color: {{ ($att?->overtime_hours ?? 0) < 0 ? '#d00' : 'inherit' }};">
+                @if($att && $att->overtime_hours != 0)
+                  {{ $att->overtime_hours > 0 ? '+' : '' }}{{ number_format($att->overtime_hours, 1) }}
+                @endif
+              </td>
+              
+              <!-- NO. (ADVANCE / REMARK) -->
+              <td style="border:1px solid #000; border-right:2px solid #000; padding:3px; font-size:0.75rem; text-align:center;">
+                @if($att && $att->advance > 0)
+                  Adv: {{ $att->advance }}
+                @endif
+                {{ $att?->remark ?? '' }}
+              </td>
+              @endif
             </tr>
           @endfor
         </tbody>
-        <tfoot>
-          <tr style="background:#fff2f2; font-weight:bold; border-top:2px solid #000;">
-            <td colspan="5" style="border:1px solid #000; padding:10px; text-align:right; letter-spacing:1px; font-size:1rem;">
-              @if($worker->salary_type === 'MONTHLY')
-                BASE SALARY ({{ number_format($worker->salary_amount, 0) }}) + TOTAL OT EARNINGS:
-              @else
-                TOTAL MONTHLY EARNINGS:
-              @endif
-            </td>
-            <td style="border:1px solid #000; padding:10px; text-align:center; font-size:1.1rem;">{{ number_format($totalH, 1) }}h</td>
-            <td style="border:1px solid #000; padding:10px; text-align:center; font-size:1.1rem; color:#555;">{{ number_format($totalOT, 1) }}h</td>
-            <td style="border:1px solid #000; padding:10px; text-align:center; font-size:1.5rem; color:#d00; border:2px solid #d00;">₹{{ number_format($totalWage, 2) }}</td>
-            <td style="border:1px solid #000;"></td>
-          </tr>
-        </tfoot>
       </table>
+    </div>
+
+    <!-- Salary Summary -->
+    <div style="margin-top:20px; width:100%;">
+      @if($worker->salary_type === 'FIXED_MONTHLY')
+      <table style="width:100%; border:2px solid #000; border-collapse:collapse; font-size:0.95rem; font-weight:bold;">
+        <tr>
+          <td style="border:2px solid #000; padding:8px; width:75%;">FIX MONTHLY SALARY</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right; width:25%;">{{ number_format($worker->salary_amount, 2) }}</td>
+        </tr>
+        <tr>
+          <td style="border:2px solid #000; padding:8px; color:#d00;">
+            <div style="display:flex; justify-content:space-between; width:100%;">
+                <span style="color:#000;">OTHER</span>
+                <span style="background-color:#ffff00; padding:0 10px;">PETROL / FOODS</span>
+            </div>
+          </td>
+          <td style="border:2px solid #000; padding:8px; text-align:right; background-color:#ffff00; color:#d00;">
+            {{ $adjustment->petrol_food_amount > 0 ? '+' : '' }}{{ number_format($adjustment->petrol_food_amount, 2) }}
+          </td>
+        </tr>
+        <tr>
+          <td style="border:2px solid #000; padding:8px;">TOTAL SALARY</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($totalWage, 2) }}</td>
+        </tr>
+        <tr>
+          <td style="border:2px solid #000; padding:8px;">ADVANCE</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($adjustment->advance, 2) }}</td>
+        </tr>
+        <tr>
+          <td style="border:2px solid #000; padding:8px;">PAYABLE SALARY</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($payableSalary, 2) }}</td>
+        </tr>
+      </table>
+      @elseif($worker->salary_type === 'LABOUR_MUKADAM')
+      <table style="width:100%; border:2px solid #000; border-collapse:collapse; font-size:0.95rem; font-weight:bold;">
+        <tr>
+          <td colspan="4" style="border:2px solid #000; padding:8px; text-align:center;">PER LABOUR SALARY</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right; width:25%;">{{ number_format($worker->salary_amount, 2) }}</td>
+        </tr>
+        <tr>
+          <td style="border:2px solid #000; padding:8px; text-align:center; width:25%;">TOTAL LABOUR</td>
+          <td style="border:2px solid #000; padding:8px; text-align:center; width:12.5%;">{{ number_format($presentDays, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:center; width:20%;">PER LABOUR</td>
+          <td style="border:2px solid #000; padding:8px; text-align:center; width:17.5%; color:#d00;">{{ number_format($perDaySalary, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($attendanceSalary, 2) }}</td>
+        </tr>
+        <tr>
+          <td style="border:2px solid #000; padding:8px; text-align:center;">ADD OT / DEDUCT UT</td>
+          <td style="border:2px solid #000; padding:8px; text-align:center;">{{ number_format($totalOT ?? 0, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:center;">PER HOUR</td>
+          <td style="border:2px solid #000; padding:8px; text-align:center; color:#d00;">{{ number_format($hourlyRate, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ $otUtAdjustment >= 0 ? '' : '' }}{{ number_format($otUtAdjustment, 2) }}</td>
+        </tr>
+        <tr>
+          <td style="border:2px solid #000; padding:8px; text-align:center;">OTHER</td>
+          <td colspan="3" style="border:2px solid #000; padding:8px; text-align:center; background-color:#ffff00; color:#d00;">PETROL/ FOODS</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right; background-color:#ffff00; color:#d00;">{{ $adjustment->petrol_food_amount > 0 ? '+' : '' }}{{ number_format($adjustment->petrol_food_amount, 2) }}</td>
+        </tr>
+        <tr>
+          <td colspan="4" style="border:2px solid #000; padding:8px; text-align:center;">TOTAL SALARY</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($totalWage, 2) }}</td>
+        </tr>
+        <tr>
+          <td colspan="4" style="border:2px solid #000; padding:8px; text-align:center;">ADVANCE</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($adjustment->advance, 2) }}</td>
+        </tr>
+        <tr>
+          <td colspan="4" style="border:2px solid #000; padding:8px; text-align:center;">PAYABLE SALARY</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($payableSalary, 2) }}</td>
+        </tr>
+      </table>
+      @else
+      <table style="width:100%; border:2px solid #000; border-collapse:collapse; font-size:0.95rem; font-weight:bold;">
+        <!-- Row 1 -->
+        <tr>
+          <td colspan="4" style="border:2px solid #000; padding:8px; text-align:center;">{{ $worker->salary_type === 'DAILY' ? 'PER DAY SALARY' : 'MONTHLY SALARY' }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right; width:25%;">{{ number_format($worker->salary_type === 'DAILY' ? $worker->salary_amount : ($worker->salary_type === 'MONTHLY' || $worker->salary_type === 'FIXED_MONTHLY' ? $worker->salary_amount : ($worker->daily_salary * 30)), 2) }}</td>
+        </tr>
+        <!-- Row 2 -->
+        <tr>
+          <td style="border:2px solid #000; padding:8px; text-align:center; width:25%;">TOTAL ATTENDENCE</td>
+          <td style="border:2px solid #000; padding:8px; text-align:center; width:12.5%;">{{ number_format($presentDays, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:center; width:20%;">PER DAY</td>
+          <td style="border:2px solid #000; padding:8px; text-align:center; width:17.5%; color:#d00;">{{ number_format($perDaySalary, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($attendanceSalary, 2) }}</td>
+        </tr>
+        <!-- Row 3 -->
+        <tr>
+          <td style="border:2px solid #000; padding:8px; text-align:center;">ADD OT / DEDUCT UT</td>
+          <td style="border:2px solid #000; padding:8px; text-align:center;">{{ number_format($totalOT ?? 0, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:center;">PER HOUR</td>
+          <td style="border:2px solid #000; padding:8px; text-align:center; color:#d00;">{{ number_format($hourlyRate, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ $otUtAdjustment >= 0 ? '' : '' }}{{ number_format($otUtAdjustment, 2) }}</td>
+        </tr>
+        <!-- Row 4 -->
+        <tr>
+          <td style="border:2px solid #000; padding:8px; text-align:center;">OTHER</td>
+          <td colspan="3" style="border:2px solid #000; padding:8px; text-align:center; background-color:#ffff00; color:#d00;">PETROL/ FOODS</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right; background-color:#ffff00; color:#d00;">{{ number_format($adjustment->petrol_food_amount, 2) }}</td>
+        </tr>
+        <!-- Row 5 -->
+        <tr>
+          <td colspan="4" style="border:2px solid #000; padding:8px; text-align:center;">TOTAL SALARY</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($totalWage, 2) }}</td>
+        </tr>
+        <!-- Row 6 -->
+        <tr>
+          <td colspan="4" style="border:2px solid #000; padding:8px; text-align:center;">ADVANCE</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($adjustment->advance, 2) }}</td>
+        </tr>
+        <!-- Row 7 -->
+        <tr>
+          <td colspan="4" style="border:2px solid #000; padding:8px; text-align:center;">PAYABLE SALARY</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($payableSalary, 2) }}</td>
+        </tr>
+      </table>
+      @endif
     </div>
 
     <!-- Official Authorization -->
     <div class="no-print" style="margin-top:2rem; display:grid; grid-template-columns: repeat(3, 1fr); gap:40px; text-align:center;">
-      <div style="border-top:1px solid #000; padding-top:10px; font-size:0.8rem; font-weight:bold;">FACTORY MANAGER<br><span style="font-weight:normal; font-size:0.7rem;">Verified & Checked</span></div>
-      <div style="border-top:1px solid #000; padding-top:10px; font-size:0.8rem; font-weight:bold;">FINANCE / ACCOUNTS<br><span style="font-weight:normal; font-size:0.7rem;">Audit Approved</span></div>
-      <div style="border-top:1px solid #000; padding-top:10px; font-size:0.8rem; font-weight:bold;">AUTHORIZED SIGNATORY<br><span style="font-weight:normal; font-size:0.7rem;">Food & Spices</span></div>
-    </div>
-    
-    <!-- Fine Print -->
-    <div class="no-print" style="margin-top:2rem; font-size:0.6rem; color:#888; text-align:center; border-top:1px dashed #ddd; padding-top:10px;">
-      This is a computer-generated official attendance record. Any alterations made manually without authorization will render this document invalid.
+      <div style="padding-top:30px; font-size:0.8rem; font-weight:bold;">EMPLOYEE<br><span style="font-weight:normal; font-size:0.7rem;">(NAME)</span></div>
+      <div style="padding-top:30px; font-size:0.8rem; font-weight:bold;">PREPARED BY</div>
+      <div style="padding-top:30px; font-size:0.8rem; font-weight:bold;">VERIFIED BY</div>
     </div>
   </div>
+</div>
+
+<!-- Edit Adjustment Modal -->
+<div id="editAdjustmentModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5);">
+    <div style="background-color:#fefefe; margin:10% auto; padding:20px; border:1px solid #888; width:90%; max-width:500px; border-radius:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h3 style="margin:0; color:#000;">Edit Adjustments - {{ \Carbon\Carbon::parse($month)->format('M Y') }}</h3>
+            <span onclick="document.getElementById('editAdjustmentModal').style.display='none'" style="cursor:pointer; font-size:1.5rem; color:#aaa;">&times;</span>
+        </div>
+        <form method="POST" action="{{ str_contains(request()->path(), 'admin') ? url(str_replace('reports', 'reports', request()->path()) . '/adjust') : url(request()->path() . '/adjust') }}">
+            @csrf
+            <input type="hidden" name="month" value="{{ $month }}">
+            <div class="form-group mb-3">
+                <label style="color:#000; font-weight:bold;">Petrol / Food / Other (₹)</label>
+                <input type="number" step="0.01" name="petrol_food_amount" class="form-control" value="{{ $adjustment->petrol_food_amount }}" required>
+            </div>
+            <div class="form-group mb-3">
+                <label style="color:#000; font-weight:bold;">Advance Taken (₹)</label>
+                <input type="number" step="0.01" name="advance" class="form-control" value="{{ $adjustment->advance }}" required>
+            </div>
+            <div class="form-group mb-4">
+                <label style="color:#000; font-weight:bold;">Remarks</label>
+                <input type="text" name="remark" class="form-control" value="{{ $adjustment->remark }}">
+            </div>
+            <div style="text-align:right;">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('editAdjustmentModal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <script>
@@ -158,11 +323,6 @@ function exportToExcel() {
 </script>
 
 <style>
-/* Force white background for the entire page on screen when viewing report */
-body {
-    background: #121212 !important; /* Keep app dark but report paper white */
-}
-
 #printable-sheet {
     background: white !important;
     color: black !important;
@@ -174,89 +334,15 @@ body {
     border-radius: 0;
     overflow-x: hidden;
 }
-
-/* Fix the info grid for mobile */
-.info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    border: 2px solid #000;
-    margin-bottom: 0.5rem;
-}
-
-.info-box {
-    border: 1px solid #000;
-    padding: 6px;
-}
-
-/* Horizontal scroll for the table on mobile */
 .table-scroll {
     width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    border: 2px solid #000;
 }
-
 #printable-sheet table {
-    width: 1000px; 
+    width: 100%; 
+    min-width: 800px;
     border-collapse: collapse;
-}
-
-#printable-sheet th, #printable-sheet td {
-    border: 1px solid #000 !important;
-    padding: 6px 3px !important;
-    text-align: center;
-    font-size: 0.8rem !important;
-    color: #000 !important;
-}
-
-#printable-sheet th {
-    background: #eee !important;
-    font-weight: bold;
-}
-
-@media print {
-  body, html {
-    background: #fff !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-  
-  nav, aside, footer, header, .admin-sidebar, .admin-mobile-header, .app-nav {
-    display: none !important;
-  }
-  
-  .no-print { display: none !important; }
-  
-  #printable-sheet {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    box-shadow: none !important;
-    border: none !important;
-  }
-  
-  .table-scroll {
-    overflow: visible !important;
-    border: none !important;
-  }
-  
-  #printable-sheet table {
-    width: 100% !important;
-    table-layout: fixed;
-  }
-  
-  #printable-sheet th, #printable-sheet td {
-    font-size: 8.5px !important;
-    padding: 2px !important;
-  }
-
-  @page {
-    size: A4;
-    margin: 5mm;
-  }
 }
 </style>
 @endsection

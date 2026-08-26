@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\Department;
 use App\Models\Worker;
 use App\Models\Attendance;
+use App\Models\WorkerMonthlyAdjustment;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 
 class AttendanceController extends Controller
@@ -14,8 +16,6 @@ class AttendanceController extends Controller
 
     public function team(Request $request)
     {
-        if (!$request->ajax()) return view('attendance.spa');
-        
         return response()->json([
             'success' => true,
             'workers' => Worker::with('department')->get(),
@@ -27,9 +27,6 @@ class AttendanceController extends Controller
     public function home(Request $request)
     {
         $user = $this->authUser();
-        if ($user['role'] === 'ATTENDANCE' && !$request->ajax()) {
-            return view('attendance.spa');
-        }
         
         $today = Carbon::today()->toDateString();
         $totalWorkers  = Worker::count();
@@ -46,20 +43,17 @@ class AttendanceController extends Controller
             'absentToday'  => $absentToday,
             'totalOT'      => $totalOT,
             'departments'  => $departments,
-            'layout'       => 'layouts.admin'
+            'layout'       => str_contains($request->path(), 'admin') ? 'layouts.admin' : 'layouts.app'
         ]);
     }
 
     // --- DEPARTMENTS ---
     public function departments(Request $request)
     {
-        if ($this->authUser()['role'] === 'ATTENDANCE' && !$request->ajax()) {
-            return view('attendance.spa');
-        }
         $departments = Department::withCount('workers')->get();
         return view('attendance.departments', [
             'departments' => $departments,
-            'layout'      => 'layouts.admin'
+            'layout'      => str_contains($request->path(), 'admin') ? 'layouts.admin' : 'layouts.app'
         ]);
     }
 
@@ -83,15 +77,12 @@ class AttendanceController extends Controller
     // --- WORKERS ---
     public function workers(Request $request)
     {
-        if ($this->authUser()['role'] === 'ATTENDANCE' && !$request->ajax()) {
-            return view('attendance.spa');
-        }
         $workers     = Worker::with('department')->orderBy('name')->get();
         $departments = Department::where('is_active', true)->orderBy('name')->get();
         return view('attendance.workers', [
             'workers'     => $workers,
             'departments' => $departments,
-            'layout'      => 'layouts.admin'
+            'layout'      => str_contains($request->path(), 'admin') ? 'layouts.admin' : 'layouts.app'
         ]);
     }
 
@@ -126,8 +117,9 @@ class AttendanceController extends Controller
             'department_id' => 'required|exists:departments,id',
             'role'          => 'nullable|string',
             'shift_type'    => 'required|in:DAY,NIGHT,CUSTOM',
-            'salary_type'   => 'required|in:DAILY,MONTHLY',
+            'salary_type'   => 'required|in:DAILY,MONTHLY,FIXED_MONTHLY,LABOUR_MUKADAM',
             'salary_amount' => 'required|numeric|min:0',
+            'per_hour_salary' => 'nullable|numeric|min:0',
             'status'        => 'required|in:ACTIVE,INACTIVE'
         ]);
 
@@ -157,9 +149,6 @@ class AttendanceController extends Controller
     // --- DAILY ATTENDANCE ---
     public function daily(Request $request)
     {
-        if ($this->authUser()['role'] === 'ATTENDANCE' && !$request->ajax()) {
-            return view('attendance.spa');
-        }
         $date = $request->date ?? Carbon::today()->toDateString();
         $workers = Worker::with(['department', 'attendances' => fn($q) => $q->whereDate('date', $date)])
             ->where('status', 'ACTIVE')->orderBy('name')->get();
@@ -168,10 +157,13 @@ class AttendanceController extends Controller
             return response()->json(['success' => true, 'message' => 'View ready']);
         }
 
+        $departments = \App\Models\Department::orderBy('name')->get();
+
         return view('attendance.daily', [
-            'workers' => $workers,
-            'date'    => $date,
-            'layout'  => str_contains($request->path(), 'admin') ? 'layouts.admin' : 'layouts.app'
+            'workers'     => $workers,
+            'departments' => $departments,
+            'date'        => $date,
+            'layout'      => str_contains($request->path(), 'admin') ? 'layouts.admin' : 'layouts.app'
         ]);
     }
 
@@ -198,6 +190,12 @@ class AttendanceController extends Controller
                 'total_hours'  => (float)($att?->total_hours ?? 0),
                 'overtime_hours'=> (float)($att?->overtime_hours ?? 0),
                 'calculated_wage'=> (float)($att?->calculated_wage ?? 0),
+                'shift_type'   => $att?->shift_type ?? $w->shift_type,
+                'ot_ut'        => $att?->ot_ut ?? 'NONE',
+                'ot_ut_hours'  => (float)($att?->ot_ut_hours ?? 0),
+                'advance'      => (float)($att?->advance ?? 0),
+                'remark'       => $att?->remark ?? '',
+                'is_finished'  => (bool)($att?->is_finished ?? false),
             ];
         });
         return response()->json(['success' => true, 'workers' => $data, 'date' => $date]);
@@ -209,11 +207,18 @@ class AttendanceController extends Controller
             'date'                      => 'required|date',
             'attendances'               => 'required|array',
             'attendances.*.worker_id'   => 'required|exists:workers,id',
-            'attendances.*.status'      => 'required|in:PRESENT,ABSENT,HALF_DAY',
+            'attendances.*.status'      => 'required|string',
             'attendances.*.in_time'     => 'nullable|date_format:H:i',
             'attendances.*.out_time'    => 'nullable|date_format:H:i',
             'attendances.*.break_in'    => 'nullable|date_format:H:i',
             'attendances.*.break_out'   => 'nullable|date_format:H:i',
+            'attendances.*.shift_type'  => 'nullable|string',
+            'attendances.*.ot_ut'       => 'nullable|in:NONE,OT,UT',
+            'attendances.*.ot_ut_hours' => 'nullable|numeric',
+            'attendances.*.advance'     => 'nullable|numeric',
+            'attendances.*.num_workers' => 'nullable|integer|min:0',
+            'attendances.*.remark'      => 'nullable|string',
+            'attendances.*.is_finished' => 'nullable|boolean',
         ]);
 
         $date = $request->date;
@@ -242,13 +247,34 @@ class AttendanceController extends Controller
                 $overtimeHrs = max(0, $totalHours - $std);
             }
 
+            if (($rec['ot_ut'] ?? 'NONE') === 'OT') {
+                $overtimeHrs = (float)($rec['ot_ut_hours'] ?? 0);
+            } elseif (($rec['ot_ut'] ?? 'NONE') === 'UT') {
+                $overtimeHrs = -(float)($rec['ot_ut_hours'] ?? 0);
+            }
+
             $hourly = ($worker->daily_salary ?? 500) / $std;
+            $multiplier = $this->getPresentMultiplier($rec['status']);
             
-            if ($rec['status'] === 'PRESENT') {
-                $normalHrs = min($totalHours, $std);
-                $wage = ($normalHrs * $hourly) + ($overtimeHrs * ($hourly * 1.5));
-            } elseif ($rec['status'] === 'HALF_DAY') {
-                $wage = ($worker->daily_salary ?? 500) / 2;
+            if ($rec['status'] === 'ABSENT') {
+                $wage = 0;
+            } else {
+                if ($worker->salary_type === 'LABOUR_MUKADAM') {
+                    $numWorkers = isset($rec['num_workers']) && $rec['num_workers'] !== '' ? (int)$rec['num_workers'] : 0;
+                    $wage = ($worker->daily_salary ?? 0) * $numWorkers;
+                } else {
+                    if ($totalHours > 0) {
+                        $normalHrs = min($totalHours, $std);
+                        // For hourly tracked, if they are PRESENT but worked less, they get fraction.
+                        // We apply the multiplier to the base day value if it's more than 1, otherwise fraction.
+                        $wage = ($normalHrs * $hourly) * ($multiplier >= 1 ? $multiplier : 1) + ($overtimeHrs * ($hourly * 1.5));
+                        if ($multiplier == 0.5) {
+                            $wage = (($worker->daily_salary ?? 500) / 2) + ($overtimeHrs * ($hourly * 1.5));
+                        }
+                    } else {
+                        $wage = (($worker->daily_salary ?? 500) * $multiplier) + ($overtimeHrs * ($hourly * 1.5));
+                    }
+                }
             }
 
             Attendance::updateOrCreate(
@@ -262,6 +288,13 @@ class AttendanceController extends Controller
                     'overtime_hours'  => (float)$overtimeHrs,
                     'status'          => $rec['status'],
                     'calculated_wage' => (float)max(0, $wage),
+                    'shift_type'      => $rec['shift_type'] ?? null,
+                    'ot_ut'           => $rec['ot_ut'] ?? 'NONE',
+                    'ot_ut_hours'     => (float)($rec['ot_ut_hours'] ?? 0),
+                    'advance'         => (float)($rec['advance'] ?? 0),
+                    'num_workers'     => isset($rec['num_workers']) && $rec['num_workers'] !== '' ? (int)$rec['num_workers'] : null,
+                    'remark'          => $rec['remark'] ?? null,
+                    'is_finished'     => !empty($rec['is_finished']),
                 ]
             );
         }
@@ -272,9 +305,6 @@ class AttendanceController extends Controller
     // --- REPORTS ---
     public function reports(Request $request)
     {
-        if ($this->authUser()['role'] === 'ATTENDANCE' && !$request->ajax()) {
-            return view('attendance.spa');
-        }
         $month     = $request->month ?? Carbon::today()->format('Y-m');
         $startDate = Carbon::parse($month)->startOfMonth()->toDateString();
         $endDate   = Carbon::parse($month)->endOfMonth()->toDateString();
@@ -290,12 +320,14 @@ class AttendanceController extends Controller
             $totalOT = 0; $totalWage = 0;
 
             foreach ($w->attendances as $att) {
-                if ($att->status == 'PRESENT')       $present++;
-                elseif ($att->status == 'ABSENT')    $absent++;
-                elseif ($att->status == 'HALF_DAY')  $half++;
+                if ($att->status == 'ABSENT') {
+                    $absent++;
+                } else {
+                    $present += $this->getPresentMultiplier($att->status);
+                }
                 $totalOT += $att->overtime_hours;
 
-                if ($w->salary_type === 'DAILY') {
+                if ($w->salary_type === 'DAILY' || $w->salary_type === 'LABOUR_MUKADAM') {
                     $totalWage += $att->calculated_wage;
                 } else {
                     // For Monthly, we only sum the OT portion here. 
@@ -323,50 +355,155 @@ class AttendanceController extends Controller
         return view('attendance.reports', [
             'reportData' => $reportData,
             'month'      => $month,
-            'layout'     => 'layouts.admin'
+            'layout'     => str_contains($request->path(), 'admin') ? 'layouts.admin' : 'layouts.app'
         ]);
     }
 
     public function workerReport(Request $request, $id)
     {
+        $data = $this->prepareWorkerReportData($request, $id);
+        $data['layout'] = str_contains($request->path(), 'admin') ? 'layouts.admin' : 'layouts.app';
+        return view('attendance.worker_report', $data);
+    }
+
+    public function updateMonthlyAdjustment(Request $request, $id)
+    {
+        $request->validate([
+            'month' => 'required|date_format:Y-m',
+            'petrol_food_amount' => 'nullable|numeric',
+            'advance' => 'nullable|numeric',
+            'remark' => 'nullable|string'
+        ]);
+
+        $adj = WorkerMonthlyAdjustment::updateOrCreate(
+            ['worker_id' => $id, 'month' => $request->month],
+            [
+                'petrol_food_amount' => $request->petrol_food_amount ?? 0,
+                'advance' => $request->advance ?? 0,
+                'remark' => $request->remark
+            ]
+        );
+
+        return redirect()->back()->with('success', 'Monthly adjustments saved successfully');
+    }
+
+    public function workerMonthlySalaryPdf(Request $request, $id)
+    {
+        $data = $this->prepareWorkerReportData($request, $id);
+        
+        $pdf = Pdf::loadView('pdf.monthly-salary-sheet', $data)->setPaper('A4', 'portrait');
+        
+        $filename = strtoupper(str_replace(' ', '_', $data['worker']->name)) . '_SALARY_' . str_replace('-', '', $data['month']) . '.pdf';
+        
+        return $pdf->download($filename);
+    }
+
+    private function prepareWorkerReportData(Request $request, $id)
+    {
         $worker = Worker::with('department')->findOrFail($id);
-        $month  = $request->month ?? Carbon::today()->format('Y-m');
-        $start  = Carbon::parse($month)->startOfMonth()->toDateString();
-        $end    = Carbon::parse($month)->endOfMonth()->toDateString();
+        
+        $month = $request->query('month', date('Y-m'));
+        $start = Carbon::parse($month)->startOfMonth();
+        $end   = Carbon::parse($month)->endOfMonth();
+        $daysInMonth = $start->daysInMonth;
 
         $attendances = Attendance::where('worker_id', $id)
-            ->whereBetween('date', [$start, $end])
+            ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
             ->get()
             ->keyBy('date');
 
-        // Calculate totals for the report
+        $adjustment = WorkerMonthlyAdjustment::firstOrCreate(
+            ['worker_id' => $id, 'month' => $month],
+            ['petrol_food_amount' => 0, 'advance' => 0, 'remark' => null]
+        );
+
         $totalOT = 0;
         $totalWage = 0;
         $presentDays = 0;
+        $otUtAdjustment = 0;
+        $hourlyRate = 0;
+        $perDaySalary = 0;
+        $attendanceSalary = 0;
 
         foreach ($attendances as $att) {
             $totalOT += $att->overtime_hours;
-            if ($worker->salary_type === 'DAILY') {
-                $totalWage += $att->calculated_wage;
+            if ($worker->salary_type === 'LABOUR_MUKADAM') {
+                $presentDays += $att->num_workers ?? 0;
             } else {
-                // For Monthly, we only sum the OT part for the "totalW" variable used in loop
-                $hourly = ($worker->daily_salary ?? 0) / 9;
-                $totalWage += ($att->overtime_hours * ($hourly * 1.5));
+                if ($att->status !== 'ABSENT') {
+                    $presentDays += $this->getPresentMultiplier($att->status);
+                }
             }
-            if ($att->status === 'PRESENT') $presentDays++;
         }
 
-        if ($worker->salary_type === 'MONTHLY') {
-            $totalWage += $worker->salary_amount;
+        if ($worker->salary_type === 'FIXED_MONTHLY') {
+            $totalWage = $worker->salary_amount + $adjustment->petrol_food_amount;
+        } elseif ($worker->salary_type === 'LABOUR_MUKADAM') {
+            $perDaySalary = $worker->salary_amount ?? 0;
+            $attendanceSalary = $presentDays * $perDaySalary;
+            
+            $hourlyRate = $worker->per_hour_salary ?? 0;
+            $otUtAdjustment = $totalOT * $hourlyRate;
+            
+            $totalWage = $attendanceSalary + $otUtAdjustment + $adjustment->petrol_food_amount;
+        } elseif ($worker->salary_type === 'MONTHLY') {
+            $perDaySalary = $worker->salary_amount / $daysInMonth;
+            $attendanceSalary = $presentDays * $perDaySalary;
+            
+            $hourlyRate = $worker->per_hour_salary > 0 ? $worker->per_hour_salary : (($worker->daily_salary ?? ($worker->salary_amount / 30)) / 9);
+            $otUtAdjustment = $totalOT * $hourlyRate;
+            
+            $totalWage = $attendanceSalary + $otUtAdjustment + $adjustment->petrol_food_amount;
+        } elseif ($worker->salary_type === 'DAILY') {
+            $perDaySalary = $worker->salary_amount ?? 0;
+            $attendanceSalary = $presentDays * $perDaySalary;
+            
+            $hourlyRate = $worker->per_hour_salary ?? 0;
+            $otUtAdjustment = $totalOT * $hourlyRate;
+            
+            $totalWage = $attendanceSalary + $otUtAdjustment + $adjustment->petrol_food_amount;
+        } else {
+            foreach ($attendances as $att) {
+                $attendanceSalary += $att->calculated_wage;
+            }
+            $hourlyRate = $worker->per_hour_salary > 0 ? $worker->per_hour_salary : (($worker->daily_salary ?? 0) / 9);
+            $otUtAdjustment = $totalOT * $hourlyRate;
+            // Assuming calculated_wage already handles OT for daily workers normally, we'll keep existing logic or just use attendanceSalary
+            $totalWage = $attendanceSalary + $adjustment->petrol_food_amount;
+            $perDaySalary = $worker->daily_salary ?? 0;
         }
 
-        return view('attendance.worker_report', [
-            'worker'      => $worker,
-            'attendances' => $attendances,
-            'month'       => $month,
-            'totalWage'   => $totalWage,
-            'totalOT'     => $totalOT,
-            'layout'      => $this->authUser()['role'] === 'ADMIN' ? 'layouts.admin' : 'layouts.app'
-        ]);
+        $payableSalary = $totalWage - $adjustment->advance;
+
+        return compact(
+            'worker', 'attendances', 'month', 'start', 'end', 'daysInMonth',
+            'adjustment', 'presentDays', 'perDaySalary', 'attendanceSalary',
+            'totalOT', 'hourlyRate', 'otUtAdjustment', 'totalWage', 'payableSalary'
+        );
+    }
+
+    public function profile(Request $request)
+    {
+        $authUser = $this->authUser();
+        $layout = str_contains($request->path(), 'admin') ? 'layouts.admin' : 'layouts.app';
+        return view('attendance.profile', compact('authUser', 'layout'));
+    }
+
+    private function getPresentMultiplier($status) {
+        $map = [
+            'PRESENT' => 1,
+            'ABSENT' => 0,
+            'HALF' => 0.5,
+            'PRESENT + HALF' => 1.5,
+            'DOUBLE' => 2,
+            'SUNDAY' => 1,
+            'HALF (OFF)' => 1.5,
+            'PRESENT (OFF)' => 2,
+            'PR. + HALF (OFF)' => 2.5,
+            'DOUBLE (OFF)' => 3,
+            'HOLIDAY' => 1,
+            'PAID LEAVE' => 1,
+        ];
+        return $map[$status] ?? 0;
     }
 }

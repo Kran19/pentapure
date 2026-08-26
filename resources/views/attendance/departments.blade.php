@@ -95,18 +95,21 @@ function editDept(d) {
     }
   }).then((res) => {
     if (res.isConfirmed) {
-      fetch(window.location.pathname, {
+      fetch('{{ url()->current() }}', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') },
         body: JSON.stringify({ department_id: d.id, name: res.value })
-      }).then(r=>r.json()).then(resp=>{
+      }).then(async r => {
+        if (!r.ok) throw new Error('Server returned ' + r.status);
+        return r.json();
+      }).then(resp => {
         if(resp.success) { 
           Swal.fire('Success', resp.message, 'success'); 
           setTimeout(()=>location.reload(),800); 
         } else {
           Swal.fire('Error', resp.message, 'error');
         }
-      });
+      }).catch(err => Swal.fire('Error', 'Failed to update department', 'error'));
     }
   });
 }
@@ -117,17 +120,24 @@ function closeDeptForm() {
 
 document.getElementById('dept-form').onsubmit = function(e) {
   e.preventDefault();
-  fetch(window.location.pathname, {
+  fetch('{{ url()->current() }}', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') },
     body: JSON.stringify({
       department_id: editingDeptId,
       name: document.getElementById('dept-name').value
     })
-  }).then(r=>r.json()).then(d=>{
-    if(d.success) { Swal.fire('Success', d.message, 'success'); setTimeout(()=>location.reload(),800); }
-    else Swal.fire('Error', d.message, 'error');
-  });
+  }).then(async r => {
+    if (!r.ok) throw new Error('Server returned ' + r.status);
+    return r.json();
+  }).then(d => {
+    if(d.success) { 
+      Swal.fire('Success', d.message, 'success'); 
+      setTimeout(()=>location.reload(),800); 
+    } else {
+      Swal.fire('Error', d.message, 'error');
+    }
+  }).catch(err => Swal.fire('Error', 'Failed to save department', 'error'));
 };
 
 function deleteDept(id) {
@@ -138,12 +148,18 @@ function deleteDept(id) {
     confirmButtonText: 'Delete'
   }).then((res) => {
     if(res.isConfirmed) {
-      fetch(`${window.location.pathname}/${id}`, {
+      fetch('{{ url()->current() }}/' + id, {
         method: 'DELETE',
-        headers: { 'X-CSRF-TOKEN': csrfToken }
-      }).then(r=>r.json()).then(d=>{
-        if(d.success) { Swal.fire('Deleted!', '', 'success'); setTimeout(()=>location.reload(),800); }
-      });
+        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') }
+      }).then(async r => {
+        if (!r.ok) throw new Error('Server returned ' + r.status);
+        return r.json();
+      }).then(d => {
+        if(d.success) { 
+          Swal.fire('Deleted!', '', 'success'); 
+          setTimeout(()=>location.reload(),800); 
+        }
+      }).catch(err => Swal.fire('Error', 'Failed to delete department', 'error'));
     }
   });
 }

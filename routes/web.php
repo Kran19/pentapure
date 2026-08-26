@@ -298,6 +298,8 @@ foreach ($adminSlugs as $slug) {
     Route::post('/attendance/daily',      [AttendanceController::class, 'storeDailyAttendance']);
     Route::get('/attendance/reports',     [AttendanceController::class, 'reports'])->name($slug.'.attendance.reports');
     Route::get('/attendance/reports/worker/{id}', [AttendanceController::class, 'workerReport']);
+    Route::post('/attendance/reports/worker/{id}/adjust', [AttendanceController::class, 'updateMonthlyAdjustment']);
+    Route::get('/attendance/reports/worker/{id}/pdf', [AttendanceController::class, 'workerMonthlySalaryPdf']);
     });
 
     // Admin can also generate any cashier's PDF
@@ -341,11 +343,13 @@ foreach ($roleSlugs['ATTENDANCE'] ?? [] as $slug) {
 
     Route::get('/history',            'reports')->name($slug.'.history');
     Route::get('/history/worker/{id}','workerReport');
+    Route::post('/history/worker/{id}/adjust','updateMonthlyAdjustment');
+    Route::get('/history/worker/{id}/pdf','workerMonthlySalaryPdf');
 
     // Standard mobile nav aliases
     Route::get('/action',             'daily')->name($slug.'.action');
     Route::get('/history',            'reports')->name($slug.'.history');
-    Route::get('/profile',            'home')->name($slug.'.profile');
+    Route::get('/profile',            'profile')->name($slug.'.profile');
     });
 }
 

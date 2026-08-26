@@ -20,7 +20,7 @@ const app = {
 
   translations: {
     'en': {
-      'Home': 'Home', 'Action': 'Action', 'History': 'History', 'Profile': 'Profile', 'Team': 'Team',
+      'Home': 'Home', 'Action': 'Action', 'History': 'History', 'Profile': 'Profile', 'Team': 'Team', 'Workers': 'Workers', 'Reports': 'Reports',
       'Select Role to Login': 'Select Role to Login',
       'Raw Material Overview': 'Raw Material Overview',
       'Semi-Finished Stock': 'Semi-Finished Stock',
@@ -31,7 +31,7 @@ const app = {
       'Purchase Orders': 'Purchase Orders', 'Pending': 'Pending', 'Completed': 'Completed'
     },
     'hi': {
-      'Home': 'होम', 'Action': 'कार्य', 'History': 'इतिहास', 'Profile': 'प्रोफ़ाइल', 'Team': 'टीम',
+      'Home': 'होम', 'Action': 'कार्य', 'History': 'इतिहास', 'Profile': 'प्रोफ़ाइल', 'Team': 'टीम', 'Workers': 'कर्मचारी', 'Reports': 'रिपोर्ट',
       'Select Role to Login': 'लॉगिन करने के लिए भूमिका चुनें',
       'Raw Material Overview': 'कच्चा माल अवलोकन',
       'Semi-Finished Stock': 'अर्ध-निर्मित स्टॉक',
@@ -42,7 +42,7 @@ const app = {
       'Purchase Orders': 'खरीद आदेश', 'Pending': 'लंबित', 'Completed': 'पूरा हुआ'
     },
     'gu': {
-      'Home': 'હોમ', 'Action': 'ક્રિયા', 'History': 'ઇતિહાસ', 'Profile': 'પ્રોફાઇલ', 'Team': 'ટીમ',
+      'Home': 'હોમ', 'Action': 'ક્રિયા', 'History': 'ઇતિહાસ', 'Profile': 'પ્રોફાઇલ', 'Team': 'ટીમ', 'Workers': 'કામદારો', 'Reports': 'અહેવાલો',
       'Select Role to Login': 'લૉગિન કરવા માટે ભૂમિકા પસંદ કરો',
       'Raw Material Overview': 'કાચો માલ વિહંગાવલોકન',
       'Semi-Finished Stock': 'અર્ધ-તૈયાર સ્ટોક',
@@ -93,10 +93,16 @@ const app = {
     if(els.length >= 4) {
       els[0].innerText = this.t('Home');
       els[1].innerText = this.t('Action');
-      els[2].innerText = this.t('History');
+      els[2].innerText = this.t('History'); // Or Reports
       
       if (els.length === 5) {
-        els[3].innerText = this.t('Team');
+        if (this.currentUser && this.currentUser.role === 'attendance') {
+          els[3].innerText = this.t('Workers');
+        } else if (this.currentUser && this.currentUser.role === 'cashier') {
+          els[3].innerText = this.t('Ledger');
+        } else {
+          els[3].innerText = this.t('Team');
+        }
         els[4].innerText = this.t('Profile');
       } else {
         els[3].innerText = this.t('Profile');
@@ -2329,6 +2335,7 @@ document.addEventListener('click', (e) => {
 });
 
 document.addEventListener('submit', (e) => {
+  if (e.defaultPrevented) return;
   const form = e.target;
   const action = (form?.getAttribute('action') || '').toLowerCase();
   if (action.includes('pdf') || action.includes('download') || action.includes('export')) return;

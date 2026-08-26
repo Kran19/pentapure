@@ -39,7 +39,7 @@
         <tbody>
           @php 
             $grandTotal = 0; 
-            $prefix = request()->is('admin/*') ? '/admin/attendance' : '/attendance';
+            $isAttendanceApp = request()->segment(1) === 'attendance';
             $grouped = [];
             foreach($reportData as $d) {
                 $dept = $d['worker']->department->name ?? 'Other';
@@ -61,7 +61,12 @@
                     <div style="font-size:0.65rem; opacity:0.7;">{{ $data['worker']->salary_type }}</div>
                 </td>
                 <td class="no-print">
-                  <a href="{{ $prefix }}/reports/worker/{{ $data['worker']->id }}?month={{ $month }}" class="btn btn-sm" style="width:auto; padding:0.2rem 0.6rem; font-size:0.7rem; text-transform:uppercase;">View Sheet</a>
+                  @php
+                    $reportUrl = $isAttendanceApp 
+                        ? url('attendance/history/worker/' . $data['worker']->id)
+                        : url(request()->segment(1) . '/attendance/reports/worker/' . $data['worker']->id);
+                  @endphp
+                  <a href="{{ $reportUrl }}?month={{ $month }}" class="btn btn-sm" style="width:auto; padding:0.2rem 0.6rem; font-size:0.7rem; text-transform:uppercase;">View Sheet</a>
                 </td>
                 <td style="color:var(--secondary); font-weight:bold;">{{ $data['present'] }}</td>
                 <td style="color:var(--info);">{{ $data['half'] }}</td>

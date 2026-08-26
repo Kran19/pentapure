@@ -84,9 +84,9 @@
         </a>
         @endif
         @if($role === 'attendance')
-        <a href="{{ url($prefix . '/team') }}" class="nav-item {{ $currentRoute == 'team' ? 'active' : '' }}" style="text-decoration:none;">
+        <a href="{{ url($prefix . '/workers') }}" class="nav-item {{ $currentRoute == 'workers' ? 'active' : '' }}" style="text-decoration:none;">
           <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-          <span>Team</span>
+          <span>Workers</span>
         </a>
         @endif
         <a href="{{ url($prefix . '/profile') }}" class="nav-item {{ $currentRoute == 'profile' ? 'active' : '' }}" style="text-decoration:none;">
@@ -176,9 +176,9 @@
 
     // ── Set auth user ─────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
-      const role    = "{{ $authUser['role'] ?? '' }}";
-      const userId  = {{ $authUser['id'] ?? 'null' }};
-      const name    = "{{ $authUser['name'] ?? '' }}";
+      const role    = "{{ $sessUser['role'] ?? '' }}";
+      const userId  = {{ $sessUser['id'] ?? 'null' }};
+      const name    = "{{ $sessUser['name'] ?? '' }}";
       app.currentUser = {
         id: userId, name: name, role: role
       };
