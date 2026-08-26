@@ -9,7 +9,8 @@ class Attendance extends Model
     protected $fillable = [
         'worker_id', 'date', 'in_time', 'out_time', 'break_in', 'break_out',
         'total_hours', 'overtime_hours', 'status', 'calculated_wage',
-        'shift_type', 'ot_ut', 'ot_ut_hours', 'advance', 'is_finished'
+        'shift_type', 'ot_ut', 'ot_ut_hours', 'advance', 'is_finished',
+        'num_workers', 'remark'
     ];
 
     public function worker()

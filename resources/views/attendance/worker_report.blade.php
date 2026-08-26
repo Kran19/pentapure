@@ -62,7 +62,8 @@
             <th colspan="2" style="border:2px solid #000; padding:4px; font-size:0.75rem;">DAY SHIFT</th>
             <th colspan="2" style="border:2px solid #000; padding:4px; font-size:0.75rem;">NIGHT SHIFT</th>
             <th rowspan="2" style="border:2px solid #000; padding:4px; font-size:0.7rem; width:80px;">OVER TIME /<br>UNDER TIME</th>
-            <th rowspan="2" style="border:2px solid #000; padding:4px; font-size:0.75rem;">NO.</th>
+            <th rowspan="2" style="border:2px solid #000; padding:4px; font-size:0.75rem;">ADVANCE</th>
+            <th rowspan="2" style="border:2px solid #000; padding:4px; font-size:0.75rem;">REMARK</th>
           </tr>
           <tr style="background:#f0f0f0;">
             <th style="border:2px solid #000; border-top:1px solid #000; padding:4px; font-size:0.75rem;">IN TIME</th>
@@ -80,8 +81,8 @@
                 $isSunday = $date->isSunday();
                 $isNight = $att && $att->shift_type === 'NIGHT';
                 
-                $inTime = $att?->in_time ? date('H:i', strtotime($att->in_time)) : '';
-                $outTime = $att?->out_time ? date('H:i', strtotime($att->out_time)) : '';
+                $inTime = $att?->in_time ? date('h:i A', strtotime($att->in_time)) : '';
+                $outTime = $att?->out_time ? date('h:i A', strtotime($att->out_time)) : '';
             @endphp
             <tr style="border-bottom:1px solid #000; {{ $isSunday ? 'background:#fff8f8;' : '' }}">
               @if($worker->salary_type === 'LABOUR_MUKADAM')
@@ -105,10 +106,11 @@
                   {{ $att->overtime_hours > 0 ? '+' : '' }}{{ number_format($att->overtime_hours, 1) }}
                 @endif
               </td>
-              
+              <!-- ADVANCE -->
               <td style="border:1px solid #000; padding:3px; font-size:0.75rem; text-align:center;">
                 {{ $att?->advance ?? '' }}
               </td>
+              <!-- REMARK -->
               <td style="border:1px solid #000; border-right:2px solid #000; padding:3px; font-size:0.75rem; text-align:center;">
                 {{ $att?->remark ?? '' }}
               </td>
@@ -134,11 +136,12 @@
                 @endif
               </td>
               
-              <!-- NO. (ADVANCE / REMARK) -->
+              <!-- ADVANCE -->
+              <td style="border:1px solid #000; padding:3px; font-size:0.75rem; text-align:center;">
+                {{ $att?->advance > 0 ? $att->advance : '' }}
+              </td>
+              <!-- REMARK -->
               <td style="border:1px solid #000; border-right:2px solid #000; padding:3px; font-size:0.75rem; text-align:center;">
-                @if($att && $att->advance > 0)
-                  Adv: {{ $att->advance }}
-                @endif
                 {{ $att?->remark ?? '' }}
               </td>
               @endif

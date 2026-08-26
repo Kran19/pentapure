@@ -83,12 +83,12 @@ class AdminController extends Controller
         return view('admin.dashboard', compact('pageData'));
     }
 
-    // ── USERS ──────────────────────────────────────────────────────────────
     public function users()
     {
         $users = User::with('parent')->orderBy('role')->paginate(15);
         $allCashiers = User::where('role', 'CASHIER')->get(['id', 'name']);
-        return view('admin.users', ['pageData' => ['users' => $users, 'cashiers' => $allCashiers]]);
+        $departments = \App\Models\Department::orderBy('name')->get();
+        return view('admin.users', ['pageData' => ['users' => $users, 'cashiers' => $allCashiers, 'departments' => $departments]]);
     }
 
     public function storeUser(Request $request)
@@ -114,7 +114,7 @@ class AdminController extends Controller
         $request->validate($rules);
         
         $permissions = is_string($request->permissions) ? json_decode($request->permissions, true) : ($request->permissions ?? []);
-        if (!in_array($request->role, ['SUB_ADMIN', 'STOCK_MANAGER'])) {
+        if (!in_array($request->role, ['SUB_ADMIN', 'STOCK_MANAGER', 'ATTENDANCE'])) {
             $permissions = [];
         }
         

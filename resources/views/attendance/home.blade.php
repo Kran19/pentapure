@@ -39,6 +39,69 @@
     </div>
   </div>
 
+  <!-- Recent Attendance Status -->
+  <div class="card" style="margin-top:1.5rem; padding:1.5rem;">
+    <h3 style="margin-top:0; margin-bottom:1rem;">📅 Recent Attendance Status</h3>
+    @if(isset($recentSubmissions) && $recentSubmissions->count() > 0)
+    <div style="overflow-x:auto;">
+      <table style="width:100%; border-collapse:collapse; text-align:left;">
+        <thead>
+          <tr style="border-bottom:2px solid #eee;">
+            <th style="padding:0.75rem;">Date</th>
+            <th style="padding:0.75rem;">Day</th>
+            <th style="padding:0.75rem;">Status</th>
+            <th style="padding:0.75rem;">Done By</th>
+            <th style="padding:0.75rem;">Submitted By</th>
+            <th style="padding:0.75rem; text-align:center;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach($recentSubmissions as $sub)
+          <tr style="border-bottom:1px solid #eee;">
+            <td style="padding:0.75rem; font-weight:bold;">{{ $sub->attendance_date->format('d M Y') }}</td>
+            <td style="padding:0.75rem;">{{ $sub->attendance_date->format('l') }}</td>
+            <td style="padding:0.75rem;">
+              @if($sub->status === 'SUBMITTED')
+                <span style="background:#e74c3c; color:white; padding:4px 8px; border-radius:4px; font-size:0.8rem; font-weight:bold;">🔒 SUBMITTED</span>
+              @elseif($sub->status === 'PARTIAL_SAVED')
+                <span style="background:#f39c12; color:white; padding:4px 8px; border-radius:4px; font-size:0.8rem; font-weight:bold;">⏳ PARTIAL SAVED</span>
+              @else
+                <span style="background:#3498db; color:white; padding:4px 8px; border-radius:4px; font-size:0.8rem; font-weight:bold;">🕒 PENDING</span>
+              @endif
+            </td>
+            <td style="padding:0.75rem;">{{ $sub->createdBy->name ?? '—' }}</td>
+            <td style="padding:0.75rem;">
+              @if($sub->submittedBy)
+                {{ $sub->submittedBy->name }} <br><small style="color:#7f8c8d;">{{ $sub->submitted_at->format('d M, H:i') }}</small>
+              @else
+                —
+              @endif
+            </td>
+            <td style="padding:0.75rem;">
+              <div style="display:flex; gap:5px; justify-content:center; align-items:center;">
+                <a href="{{ $dailyUrl }}?date={{ $sub->attendance_date->format('Y-m-d') }}" class="btn {{ $sub->status === 'SUBMITTED' ? 'btn-secondary' : '' }}" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; font-size: 0.85rem;">
+                  {{ $sub->status === 'SUBMITTED' && $prefix !== 'admin' ? 'View' : 'Open' }}
+                </a>
+                @if($sub->status === 'SUBMITTED')
+                  @php
+                      $pdfRoute = (isset($prefix) && $prefix === 'admin') ? 'admin.attendance.daily.pdf' : 'attendance.daily.pdf';
+                  @endphp
+                  <a href="{{ route($pdfRoute, ['date' => $sub->attendance_date->format('Y-m-d')]) }}" class="btn" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; background: #c0392b; color: white; font-size: 0.85rem;" target="_blank">
+                    PDF ↓
+                  </a>
+                @endif
+              </div>
+            </td>
+          </tr>
+          @endforeach
+        </tbody>
+      </table>
+    </div>
+    @else
+    <p style="color:var(--text-muted);">No recent attendance records found.</p>
+    @endif
+  </div>
+
 </div>
 
 <!-- Add Worker Modal -->

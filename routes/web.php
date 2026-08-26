@@ -296,7 +296,9 @@ foreach ($adminSlugs as $slug) {
     Route::delete('/attendance/workers/{id}', [AttendanceController::class, 'destroyWorker']);
     Route::get('/attendance/daily',       [AttendanceController::class, 'daily'])->name($slug.'.attendance.daily');
     Route::post('/attendance/daily',      [AttendanceController::class, 'storeDailyAttendance']);
+    Route::get('/attendance/daily/pdf',   [AttendanceController::class, 'downloadDailyPdf'])->name($slug.'.attendance.daily.pdf');
     Route::get('/attendance/reports',     [AttendanceController::class, 'reports'])->name($slug.'.attendance.reports');
+    Route::get('/attendance/reports/all/pdf', [AttendanceController::class, 'allWorkerMonthlySalaryPdf']);
     Route::get('/attendance/reports/worker/{id}', [AttendanceController::class, 'workerReport']);
     Route::post('/attendance/reports/worker/{id}/adjust', [AttendanceController::class, 'updateMonthlyAdjustment']);
     Route::get('/attendance/reports/worker/{id}/pdf', [AttendanceController::class, 'workerMonthlySalaryPdf']);
@@ -334,6 +336,7 @@ foreach ($roleSlugs['ATTENDANCE'] ?? [] as $slug) {
 
     Route::get('/daily',              'daily')->name($slug.'.daily');
     Route::post('/daily',             'storeDailyAttendance');
+    Route::get('/daily/pdf',          'downloadDailyPdf')->name($slug.'.daily.pdf');
     Route::get('/team',               'team')->name($slug.'.team');
 
     // JSON APIs for SPA views
@@ -342,13 +345,14 @@ foreach ($roleSlugs['ATTENDANCE'] ?? [] as $slug) {
     Route::get('/api/daily',          'dailyJson');
 
     Route::get('/history',            'reports')->name($slug.'.history');
+    Route::get('/history/all/pdf',    'allWorkerMonthlySalaryPdf');
     Route::get('/history/worker/{id}','workerReport');
     Route::post('/history/worker/{id}/adjust','updateMonthlyAdjustment');
     Route::get('/history/worker/{id}/pdf','workerMonthlySalaryPdf');
 
     // Standard mobile nav aliases
     Route::get('/action',             'daily')->name($slug.'.action');
-    Route::get('/history',            'reports')->name($slug.'.history');
+    Route::post('/action',            'storeDailyAttendance');
     Route::get('/profile',            'profile')->name($slug.'.profile');
     });
 }

@@ -53,6 +53,21 @@
       </div>
     </div>
     
+    <div id="attendance-permissions-container" style="display:none; margin-top:1rem; border:1px solid var(--glass-border); padding:1.2rem; border-radius:8px; background:var(--glass-bg);">
+      <h4 style="margin-top:0; margin-bottom:1rem; color:var(--primary); font-size:1.1rem; text-transform:none;">Assigned Departments (Attendance Only)</h4>
+      <div style="margin-bottom:1rem; font-size:0.9rem; color:var(--text-muted);">
+        Select which departments this user is allowed to manage attendance for.
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:1rem;">
+        @foreach($pageData['departments'] as $d)
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" class="attendance-dept-cb" value="{{ $d->id }}" style="width:16px;height:16px;margin:0;">
+            <span style="font-size:0.9rem; text-transform:none;">{{ $d->name }}</span>
+          </div>
+        @endforeach
+      </div>
+    </div>
+    
     <div id="permissions-container" style="display:none; margin-top:1rem; border:1px solid var(--glass-border); padding:1.2rem; border-radius:8px; background:var(--glass-bg);">
       <h4 style="margin-top:0; margin-bottom:1rem; color:var(--primary); font-size:1.1rem; text-transform:none;">Sub-Admin / Stock Manager Permissions</h4>
       <div style="margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px solid var(--glass-border);">
@@ -183,6 +198,7 @@ function resetUserForm() {
       cb.checked = false;
       cb.parentElement.style.display = 'flex';
   });
+  document.querySelectorAll('.attendance-dept-cb').forEach(cb => cb.checked = false);
   
   toggleRoleFields('');
   document.getElementById('user-form-card').style.display = 'block';
@@ -193,6 +209,7 @@ function toggleRoleFields(role) {
   const branchContainer = document.getElementById('branch-field-container');
   const permContainer = document.getElementById('permissions-container');
   const visibilityContainer = document.getElementById('visible-cashiers-container');
+  const attPermContainer = document.getElementById('attendance-permissions-container');
   
   if (role === 'CASHIER') {
     branchContainer.style.display = 'block';
@@ -211,6 +228,15 @@ function toggleRoleFields(role) {
   } else {
     permContainer.style.display = 'none';
   }
+
+  if (role === 'ATTENDANCE') {
+    if(attPermContainer) attPermContainer.style.display = 'block';
+  } else {
+    if(attPermContainer) {
+        attPermContainer.style.display = 'none';
+        document.querySelectorAll('.attendance-dept-cb').forEach(cb => cb.checked = false);
+    }
+  }
 }
 
 function adminEditUser(user) {
@@ -224,11 +250,15 @@ function adminEditUser(user) {
   document.getElementById('u-branch').value = user.branch || '';
   toggleRoleFields(user.role);
   
-  // Set permissions if it's a SUB_ADMIN or STOCK_MANAGER
+  // Set permissions if it's a SUB_ADMIN or STOCK_MANAGER or ATTENDANCE
   const perms = user.permissions || [];
   document.getElementById('perm-can_manage').checked = perms.includes('can_manage');
   document.querySelectorAll('.sub-perm').forEach(cb => {
       cb.checked = perms.includes(cb.value);
+  });
+  
+  document.querySelectorAll('.attendance-dept-cb').forEach(cb => {
+      cb.checked = perms.includes(parseInt(cb.value)) || perms.includes(cb.value.toString());
   });
 
   // Set visible cashiers if it's a CASHIER
@@ -251,6 +281,7 @@ function adminSaveUser() {
   const perms = [];
   if (document.getElementById('perm-can_manage').checked) perms.push('can_manage');
   document.querySelectorAll('.sub-perm:checked').forEach(cb => perms.push(cb.value));
+  document.querySelectorAll('.attendance-dept-cb:checked').forEach(cb => perms.push(parseInt(cb.value)));
 
   const payload = {
     user_id: editingUserId,

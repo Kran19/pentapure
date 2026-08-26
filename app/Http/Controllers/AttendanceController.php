@@ -34,16 +34,22 @@ class AttendanceController extends Controller
         $presentToday  = Attendance::where('date', $today)->whereIn('status', ['PRESENT', 'HALF_DAY'])->count();
         $absentToday   = Attendance::where('date', $today)->where('status', 'ABSENT')->count();
         $totalOT       = Attendance::where('date', $today)->sum('overtime_hours');
-        $departments   = Department::withCount('workers')->orderBy('name')->get();
+        $recentSubmissions = \App\Models\AttendanceSubmission::with(['createdBy', 'submittedBy'])
+            ->orderBy('attendance_date', 'desc')
+            ->limit(7)
+            ->get();
+            
+        $departments = Department::withCount('workers')->orderBy('name')->get();
 
         return view('attendance.home', [
-            'totalWorkers' => $totalWorkers,
-            'activeWorkers' => $activeWorkers,
-            'presentToday' => $presentToday,
-            'absentToday'  => $absentToday,
-            'totalOT'      => $totalOT,
-            'departments'  => $departments,
-            'layout'       => str_contains($request->path(), 'admin') ? 'layouts.admin' : 'layouts.app'
+            'totalWorkers'      => $totalWorkers,
+            'activeWorkers'     => $activeWorkers,
+            'presentToday'      => $presentToday,
+            'absentToday'       => $absentToday,
+            'totalOT'           => $totalOT,
+            'departments'       => $departments,
+            'recentSubmissions' => $recentSubmissions,
+            'layout'            => str_contains($request->path(), 'admin') ? 'layouts.admin' : 'layouts.app'
         ]);
     }
 
@@ -150,20 +156,41 @@ class AttendanceController extends Controller
     public function daily(Request $request)
     {
         $date = $request->date ?? Carbon::today()->toDateString();
-        $workers = Worker::with(['department', 'attendances' => fn($q) => $q->whereDate('date', $date)])
-            ->where('status', 'ACTIVE')->orderBy('name')->get();
+        
+        $workersQuery = Worker::with(['department', 'attendances' => fn($q) => $q->whereDate('date', $date)])
+            ->where('status', 'ACTIVE')->orderBy('name');
+            
+        $departmentsQuery = \App\Models\Department::orderBy('name');
+
+        $authUser = $this->authUser();
+        if ($authUser && $authUser['role'] === 'ATTENDANCE') {
+            $allowedDeptIds = $authUser['permissions'] ?? [];
+            if (!empty($allowedDeptIds)) {
+                $workersQuery->whereIn('department_id', $allowedDeptIds);
+                $departmentsQuery->whereIn('id', $allowedDeptIds);
+            } else {
+                // If no departments assigned, they see nothing
+                $workersQuery->where('id', '<', 0);
+                $departmentsQuery->where('id', '<', 0);
+            }
+        }
+
+        $workers = $workersQuery->get();
+        $departments = $departmentsQuery->get();
 
         if ($request->ajax()) {
             return response()->json(['success' => true, 'message' => 'View ready']);
         }
 
-        $departments = \App\Models\Department::orderBy('name')->get();
+        $submission = \App\Models\AttendanceSubmission::where('attendance_date', $date)->first();
 
         return view('attendance.daily', [
             'workers'     => $workers,
             'departments' => $departments,
             'date'        => $date,
-            'layout'      => str_contains($request->path(), 'admin') ? 'layouts.admin' : 'layouts.app'
+            'submission'  => $submission,
+            'layout'      => str_contains($request->path(), 'admin') ? 'layouts.admin' : 'layouts.app',
+            'authUser'    => $this->authUser()
         ]);
     }
 
@@ -171,8 +198,20 @@ class AttendanceController extends Controller
     public function dailyJson(Request $request)
     {
         $date = $request->date ?? Carbon::today()->toDateString();
-        $workers = Worker::with(['department', 'attendances' => fn($q) => $q->where('date', $date)])
-            ->where('status', 'ACTIVE')->orderBy('name')->get();
+        $workersQuery = Worker::with(['department', 'attendances' => fn($q) => $q->where('date', $date)])
+            ->where('status', 'ACTIVE')->orderBy('name');
+            
+        $authUser = $this->authUser();
+        if ($authUser && $authUser['role'] === 'ATTENDANCE') {
+            $allowedDeptIds = $authUser['permissions'] ?? [];
+            if (!empty($allowedDeptIds)) {
+                $workersQuery->whereIn('department_id', $allowedDeptIds);
+            } else {
+                $workersQuery->where('id', '<', 0);
+            }
+        }
+        
+        $workers = $workersQuery->get();
 
         $data = $workers->map(function($w) {
             $att = $w->attendances->first();
@@ -203,15 +242,25 @@ class AttendanceController extends Controller
 
     public function storeDailyAttendance(Request $request)
     {
+        $date = $request->input('date');
+        $attendances = $request->input('attendances', []);
+        
+        file_put_contents(storage_path('logs/attendance_payload.json'), json_encode($attendances));
+
+        if (empty($date)) {
+            return response()->json(['success' => false, 'message' => 'Date is required.']);
+        }
+        
         $request->validate([
             'date'                      => 'required|date',
+            'save_mode'                 => 'required|in:partial,final',
             'attendances'               => 'required|array',
             'attendances.*.worker_id'   => 'required|exists:workers,id',
             'attendances.*.status'      => 'required|string',
-            'attendances.*.in_time'     => 'nullable|date_format:H:i',
-            'attendances.*.out_time'    => 'nullable|date_format:H:i',
-            'attendances.*.break_in'    => 'nullable|date_format:H:i',
-            'attendances.*.break_out'   => 'nullable|date_format:H:i',
+            'attendances.*.in_time'     => 'nullable|string',
+            'attendances.*.out_time'    => 'nullable|string',
+            'attendances.*.break_in'    => 'nullable|string',
+            'attendances.*.break_out'   => 'nullable|string',
             'attendances.*.shift_type'  => 'nullable|string',
             'attendances.*.ot_ut'       => 'nullable|in:NONE,OT,UT',
             'attendances.*.ot_ut_hours' => 'nullable|numeric',
@@ -222,7 +271,28 @@ class AttendanceController extends Controller
         ]);
 
         $date = $request->date;
+        $saveMode = $request->save_mode;
         $std  = 9; // Standard shift hours
+
+        $submission = \App\Models\AttendanceSubmission::firstOrCreate(
+            ['attendance_date' => $date],
+            ['status' => 'PENDING', 'created_by' => $this->authUser()['id'] ?? null]
+        );
+
+        $isAdmin = ($this->authUser()['role'] ?? '') === 'ADMIN';
+
+        if ($submission->status === 'SUBMITTED' && !$isAdmin) {
+            return response()->json(['success' => false, 'message' => 'Attendance is locked and can only be modified by Admin.'], 403);
+        }
+
+        if ($saveMode === 'final' && !$isAdmin) {
+            // Validate required fields for final submission (e.g. IN/OUT times for PRESENT workers)
+            foreach ($request->attendances as $rec) {
+                if ($rec['status'] !== 'ABSENT' && (empty($rec['in_time']) || empty($rec['out_time']))) {
+                    return response()->json(['success' => false, 'message' => 'All PRESENT workers must have IN and OUT times for Final Save.'], 422);
+                }
+            }
+        }
 
         foreach ($request->attendances as $rec) {
             $worker      = Worker::find($rec['worker_id']);
@@ -280,10 +350,10 @@ class AttendanceController extends Controller
             Attendance::updateOrCreate(
                 ['worker_id' => $worker->id, 'date' => $date],
                 [
-                    'in_time'         => !empty($rec['in_time']) ? $rec['in_time'] : null,
-                    'out_time'        => !empty($rec['out_time']) ? $rec['out_time'] : null,
-                    'break_in'        => !empty($rec['break_in']) ? $rec['break_in'] : null,
-                    'break_out'       => !empty($rec['break_out']) ? $rec['break_out'] : null,
+                    'in_time'         => !empty($rec['in_time']) ? Carbon::parse($rec['in_time'])->format('H:i:s') : null,
+                    'out_time'        => !empty($rec['out_time']) ? Carbon::parse($rec['out_time'])->format('H:i:s') : null,
+                    'break_in'        => !empty($rec['break_in']) ? Carbon::parse($rec['break_in'])->format('H:i:s') : null,
+                    'break_out'       => !empty($rec['break_out']) ? Carbon::parse($rec['break_out'])->format('H:i:s') : null,
                     'total_hours'     => (float)$totalHours,
                     'overtime_hours'  => (float)$overtimeHrs,
                     'status'          => $rec['status'],
@@ -299,7 +369,77 @@ class AttendanceController extends Controller
             );
         }
 
+        if ($saveMode === 'final') {
+            $submission->status = 'SUBMITTED';
+            $submission->submitted_by = auth()->id();
+            $submission->submitted_at = now();
+        } else {
+            if ($submission->status !== 'SUBMITTED') {
+                $submission->status = 'PARTIAL_SAVED';
+            }
+        }
+
+        if ($isAdmin) {
+            $submission->last_modified_by = auth()->id();
+            $submission->last_modified_at = now();
+        }
+
+        $submission->save();
+
         return response()->json(['success' => true, 'message' => 'Attendance saved successfully']);
+    }
+
+    public function downloadDailyPdf(Request $request)
+    {
+        $date = $request->date ?? Carbon::today()->toDateString();
+        
+        $submission = \App\Models\AttendanceSubmission::where('attendance_date', $date)->first();
+        $status = $submission ? $submission->status : 'PENDING';
+        
+        $attendances = Attendance::with(['worker.department'])
+            ->where('date', $date)
+            ->whereHas('worker', function($q) {
+                $q->where('status', 'ACTIVE');
+            })
+            ->get();
+
+        // If nothing saved yet, we still want to show all active workers with blank data
+        if ($attendances->isEmpty()) {
+            $workers = Worker::with('department')->where('status', 'ACTIVE')->get();
+            $attendances = $workers->map(function($w) use ($date) {
+                return new Attendance([
+                    'worker_id' => $w->id,
+                    'date' => $date,
+                    'status' => 'ABSENT'
+                ]);
+            });
+            // Manual binding of worker relationship
+            $attendances->each(function($att) use ($workers) {
+                $att->setRelation('worker', $workers->firstWhere('id', $att->worker_id));
+            });
+        }
+        
+        // Group by department name
+        $grouped = $attendances->groupBy(function($item) {
+            return $item->worker->department->name ?? 'GENERAL';
+        });
+
+        // Sort by department name to have consistent ordering
+        $grouped = $grouped->sortKeys();
+
+        $companyName = config('app.name', 'PENTAPURE FOODS & SPICES PVT.LTD.');
+        
+        $pdf = Pdf::loadView('pdf.attendance_sheet', [
+            'date' => $date,
+            'status' => $status,
+            'grouped' => $grouped,
+            'companyName' => $companyName,
+        ]);
+        
+        $suffix = $status === 'SUBMITTED' ? 'Submitted' : 'Partial';
+        $filename = "Attendance_" . Carbon::parse($date)->format('d-m-Y') . "_{$suffix}.pdf";
+        
+        return $pdf->download($filename);
     }
 
     // --- REPORTS ---
@@ -394,6 +534,27 @@ class AttendanceController extends Controller
         $pdf = Pdf::loadView('pdf.monthly-salary-sheet', $data)->setPaper('A4', 'portrait');
         
         $filename = strtoupper(str_replace(' ', '_', $data['worker']->name)) . '_SALARY_' . str_replace('-', '', $data['month']) . '.pdf';
+        
+        return $pdf->download($filename);
+    }
+
+    public function allWorkerMonthlySalaryPdf(Request $request)
+    {
+        $month = $request->query('month', date('Y-m'));
+        $startDate = Carbon::parse($month)->startOfMonth()->toDateString();
+        $endDate   = Carbon::parse($month)->endOfMonth()->toDateString();
+
+        $workers = Worker::where('status', 'ACTIVE')->orderBy('name')->get();
+
+        $allData = [];
+        foreach($workers as $worker) {
+            $allData[] = $this->prepareWorkerReportData($request, $worker->id);
+        }
+
+        $pdf = Pdf::loadView('pdf.all-monthly-salary-sheets', ['allData' => $allData, 'month' => $month])
+                  ->setPaper('A4', 'portrait');
+
+        $filename = 'ALL_WORKERS_SALARY_' . str_replace('-', '', $month) . '.pdf';
         
         return $pdf->download($filename);
     }
