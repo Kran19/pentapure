@@ -19,7 +19,9 @@ return new class extends Migration
             $table->boolean('is_finished')->default(false);
         });
 
-        \Illuminate\Support\Facades\DB::statement("ALTER TABLE attendances MODIFY COLUMN status VARCHAR(255) DEFAULT 'ABSENT'");
+        if (\Illuminate\Support\Facades\DB::getDriverName() !== 'sqlite') {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE attendances MODIFY COLUMN status VARCHAR(255) DEFAULT 'ABSENT'");
+        }
     }
 
     /**

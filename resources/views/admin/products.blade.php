@@ -237,6 +237,7 @@
 
 
 <script>
+const csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
 function filterTable(input, tbodyId) {
     const filter = input.value.toUpperCase();
     const tbody = document.getElementById(tbodyId);

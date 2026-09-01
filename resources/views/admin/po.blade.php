@@ -79,6 +79,7 @@
 </div>
 
 <script>
+const csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
 function adminDeletePO(id) {
   Swal.fire({
     title: 'Are you sure?',

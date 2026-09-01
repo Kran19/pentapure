@@ -68,7 +68,9 @@
 <div class="page">
     <div class="top">
         <div class="brand">
+            @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
             <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 82px; height: 82px; vertical-align: middle; margin-right: 12px; object-fit: contain;">
+            @endif
             <div class="brand-text">
                 <div class="brand-title">PentaPure</div>
                 <div class="tagline">FOOD &amp; SPICES PVT.LTD.</div>
@@ -327,7 +329,7 @@
                             {{ $row['description'] ?? '-' }}
                             @if(isset($row['lr_copy']) && $row['lr_copy'])
                                 <div style="margin-top: 8px;">
-                                @if(file_exists(public_path($row['lr_copy'])))
+                                @if(extension_loaded('gd') && file_exists(public_path($row['lr_copy'])))
                                     <img src="data:image/jpeg;base64,{{ base64_encode(file_get_contents(public_path($row['lr_copy']))) }}" style="max-width: 140px; max-height: 100px; border: 1px solid #d0d5dd; border-radius: 4px; object-fit: contain;">
                                 @endif                                </div>
                             @endif

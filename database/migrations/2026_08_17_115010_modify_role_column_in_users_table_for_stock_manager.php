@@ -10,7 +10,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('ADMIN','RAW','SEMI','FINISHED','CASHIER','SALES','DISPATCH','ATTENDANCE','SUB_ADMIN','STOCK_MANAGER') NOT NULL");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('ADMIN','RAW','SEMI','FINISHED','CASHIER','SALES','DISPATCH','ATTENDANCE','SUB_ADMIN','STOCK_MANAGER') NOT NULL");
+        }
     }
 
     /**

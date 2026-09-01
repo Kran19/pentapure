@@ -36,7 +36,7 @@
         <thead>
           @if($worker->salary_type === 'LABOUR_MUKADAM')
           <tr style="background:#f0f0f0;">
-            <th colspan="2" style="border:2px solid #000; padding:4px; font-size:0.75rem; text-align:left;">MAKADAM</th>
+            <th colspan="2" style="border:2px solid #000; padding:4px; font-size:0.75rem; text-align:left;">{{ strtoupper($worker->department->name ?? 'MAKADAM') }}</th>
             <th colspan="7" style="border:2px solid #000; padding:4px; font-size:0.75rem; text-align:left;">NAME : {{ strtoupper($worker->name) }}</th>
           </tr>
           <tr style="background:#f0f0f0;">
@@ -81,8 +81,8 @@
                 $isSunday = $date->isSunday();
                 $isNight = $att && $att->shift_type === 'NIGHT';
                 
-                $inTime = $att?->in_time ? date('h:i A', strtotime($att->in_time)) : '';
-                $outTime = $att?->out_time ? date('h:i A', strtotime($att->out_time)) : '';
+                $inTime = $att?->in_time ? date('H:i', strtotime($att->in_time)) : '';
+                $outTime = $att?->out_time ? date('H:i', strtotime($att->out_time)) : '';
             @endphp
             <tr style="border-bottom:1px solid #000; {{ $isSunday ? 'background:#fff8f8;' : '' }}">
               @if($worker->salary_type === 'LABOUR_MUKADAM')
@@ -160,13 +160,13 @@
           <td style="border:2px solid #000; padding:8px; text-align:right; width:25%;">{{ number_format($worker->salary_amount, 2) }}</td>
         </tr>
         <tr>
-          <td style="border:2px solid #000; padding:8px; color:#d00;">
+          <td style="border:2px solid #000; padding:8px;">
             <div style="display:flex; justify-content:space-between; width:100%;">
                 <span style="color:#000;">OTHER</span>
-                <span style="background-color:#ffff00; padding:0 10px;">PETROL / FOODS</span>
+                <span>PETROL / FOODS</span>
             </div>
           </td>
-          <td style="border:2px solid #000; padding:8px; text-align:right; background-color:#ffff00; color:#d00;">
+          <td style="border:2px solid #000; padding:8px; text-align:right;">
             {{ $adjustment->petrol_food_amount > 0 ? '+' : '' }}{{ number_format($adjustment->petrol_food_amount, 2) }}
           </td>
         </tr>
@@ -205,8 +205,8 @@
         </tr>
         <tr>
           <td style="border:2px solid #000; padding:8px; text-align:center;">OTHER</td>
-          <td colspan="3" style="border:2px solid #000; padding:8px; text-align:center; background-color:#ffff00; color:#d00;">PETROL/ FOODS</td>
-          <td style="border:2px solid #000; padding:8px; text-align:right; background-color:#ffff00; color:#d00;">{{ $adjustment->petrol_food_amount > 0 ? '+' : '' }}{{ number_format($adjustment->petrol_food_amount, 2) }}</td>
+          <td colspan="3" style="border:2px solid #000; padding:8px; text-align:center;">PETROL/ FOODS</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ $adjustment->petrol_food_amount > 0 ? '+' : '' }}{{ number_format($adjustment->petrol_food_amount, 2) }}</td>
         </tr>
         <tr>
           <td colspan="4" style="border:2px solid #000; padding:8px; text-align:center;">TOTAL SALARY</td>
@@ -247,8 +247,8 @@
         <!-- Row 4 -->
         <tr>
           <td style="border:2px solid #000; padding:8px; text-align:center;">OTHER</td>
-          <td colspan="3" style="border:2px solid #000; padding:8px; text-align:center; background-color:#ffff00; color:#d00;">PETROL/ FOODS</td>
-          <td style="border:2px solid #000; padding:8px; text-align:right; background-color:#ffff00; color:#d00;">{{ number_format($adjustment->petrol_food_amount, 2) }}</td>
+          <td colspan="3" style="border:2px solid #000; padding:8px; text-align:center;">PETROL/ FOODS</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($adjustment->petrol_food_amount, 2) }}</td>
         </tr>
         <!-- Row 5 -->
         <tr>

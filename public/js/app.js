@@ -20,7 +20,7 @@ const app = {
 
   translations: {
     'en': {
-      'Home': 'Home', 'Action': 'Action', 'History': 'History', 'Profile': 'Profile', 'Team': 'Team', 'Workers': 'Workers', 'Reports': 'Reports',
+      'Home': 'Home', 'Action': 'Action', 'History': 'History', 'Profile': 'Profile', 'Team': 'Team', 'Workers': 'Workers', 'Reports': 'Reports', 'Report': 'Report',
       'Select Role to Login': 'Select Role to Login',
       'Raw Material Overview': 'Raw Material Overview',
       'Semi-Finished Stock': 'Semi-Finished Stock',
@@ -31,7 +31,7 @@ const app = {
       'Purchase Orders': 'Purchase Orders', 'Pending': 'Pending', 'Completed': 'Completed'
     },
     'hi': {
-      'Home': 'होम', 'Action': 'कार्य', 'History': 'इतिहास', 'Profile': 'प्रोफ़ाइल', 'Team': 'टीम', 'Workers': 'कर्मचारी', 'Reports': 'रिपोर्ट',
+      'Home': 'होम', 'Action': 'कार्य', 'History': 'इतिहास', 'Profile': 'प्रोफ़ाइल', 'Team': 'टीम', 'Workers': 'कर्मचारी', 'Reports': 'रिपोर्ट', 'Report': 'रिपोर्ट',
       'Select Role to Login': 'लॉगिन करने के लिए भूमिका चुनें',
       'Raw Material Overview': 'कच्चा माल अवलोकन',
       'Semi-Finished Stock': 'अर्ध-निर्मित स्टॉक',
@@ -42,7 +42,7 @@ const app = {
       'Purchase Orders': 'खरीद आदेश', 'Pending': 'लंबित', 'Completed': 'पूरा हुआ'
     },
     'gu': {
-      'Home': 'હોમ', 'Action': 'ક્રિયા', 'History': 'ઇતિહાસ', 'Profile': 'પ્રોફાઇલ', 'Team': 'ટીમ', 'Workers': 'કામદારો', 'Reports': 'અહેવાલો',
+      'Home': 'હોમ', 'Action': 'ક્રિયા', 'History': 'ઇતિહાસ', 'Profile': 'પ્રોફાઇલ', 'Team': 'ટીમ', 'Workers': 'કામદારો', 'Reports': 'અહેવાલો', 'Report': 'રિપોર્ટ',
       'Select Role to Login': 'લૉગિન કરવા માટે ભૂમિકા પસંદ કરો',
       'Raw Material Overview': 'કાચો માલ વિહંગાવલોકન',
       'Semi-Finished Stock': 'અર્ધ-તૈયાર સ્ટોક',
@@ -96,10 +96,10 @@ const app = {
       els[2].innerText = this.t('History'); // Or Reports
       
       if (els.length === 5) {
-        if (this.currentUser && this.currentUser.role === 'attendance') {
+        if (this.currentUser && this.currentUser.role.toLowerCase() === 'attendance') {
           els[3].innerText = this.t('Workers');
-        } else if (this.currentUser && this.currentUser.role === 'cashier') {
-          els[3].innerText = this.t('Ledger');
+        } else if (this.currentUser && this.currentUser.role.toLowerCase() === 'cashier') {
+          els[3].innerText = this.t('Report');
         } else {
           els[3].innerText = this.t('Team');
         }
@@ -1507,7 +1507,20 @@ const app = {
       title: '📄 Generate Account Statement',
       html: `
         <div style="text-align:left; font-size:0.9rem;">
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; margin-bottom:0.8rem;">
+          <div style="margin-bottom:0.8rem;">
+            <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px;">Date Filter Mode</label>
+            <select id="sp-date-type" onchange="const isAsOn = this.value === 'as_on_date'; document.getElementById('sp-custom-date-grid').style.display = isAsOn ? 'none' : 'grid'; document.getElementById('sp-as-on-date-container').style.display = isAsOn ? 'block' : 'none';" style="width:100%; padding:0.5rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+              <option value="custom" selected>Custom</option>
+              <option value="as_on_date">As on date</option>
+            </select>
+          </div>
+
+          <div id="sp-as-on-date-container" style="display:none; margin-bottom:0.8rem;">
+            <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px;">Date</label>
+            <input id="sp-as-on" type="date" value="${today}" style="width:100%; padding:0.5rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+          </div>
+
+          <div id="sp-custom-date-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; margin-bottom:0.8rem;">
             <div>
               <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px;">From Date</label>
               <input id="sp-from" type="date" value="${oneMonthAgo}" style="width:100%; padding:0.5rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
@@ -1557,10 +1570,19 @@ const app = {
       cancelButtonColor: '#30363d',
       width: '500px',
       preConfirm: () => {
-        const from = document.getElementById('sp-from').value;
-        const to   = document.getElementById('sp-to').value;
-        if (!from || !to) { Swal.showValidationMessage('Please select both dates'); return false; }
-        if (from > to)    { Swal.showValidationMessage('From date must be before To date'); return false; }
+        const dateType = document.getElementById('sp-date-type').value;
+        let from, to;
+        if (dateType === 'as_on_date') {
+          const asOn = document.getElementById('sp-as-on').value;
+          if (!asOn) { Swal.showValidationMessage('Please select a date'); return false; }
+          from = asOn;
+          to   = asOn;
+        } else {
+          from = document.getElementById('sp-from').value;
+          to   = document.getElementById('sp-to').value;
+          if (!from || !to) { Swal.showValidationMessage('Please select both dates'); return false; }
+          if (from > to)    { Swal.showValidationMessage('From date must be before To date'); return false; }
+        }
         return {
           from, to,
           category: document.getElementById('sp-cat').value,

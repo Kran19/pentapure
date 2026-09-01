@@ -168,10 +168,6 @@ class AttendanceController extends Controller
             if (!empty($allowedDeptIds)) {
                 $workersQuery->whereIn('department_id', $allowedDeptIds);
                 $departmentsQuery->whereIn('id', $allowedDeptIds);
-            } else {
-                // If no departments assigned, they see nothing
-                $workersQuery->where('id', '<', 0);
-                $departmentsQuery->where('id', '<', 0);
             }
         }
 
@@ -206,8 +202,6 @@ class AttendanceController extends Controller
             $allowedDeptIds = $authUser['permissions'] ?? [];
             if (!empty($allowedDeptIds)) {
                 $workersQuery->whereIn('department_id', $allowedDeptIds);
-            } else {
-                $workersQuery->where('id', '<', 0);
             }
         }
         

@@ -115,9 +115,7 @@
     
     <select name="tab" style="width:auto; flex:1; padding:0.4rem; border-radius:4px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
       <option value="personal" {{ $activeTab==='personal'?'selected':'' }}>Personal Ledger</option>
-      @if(!empty($pageData['allowedCashiers']) && count($pageData['allowedCashiers']) > 0)
-        <option value="team" {{ $activeTab==='team'?'selected':'' }}>Team Ledger</option>
-      @endif
+      <option value="team" {{ $activeTab==='team'?'selected':'' }}>Team Ledger</option>
       <option value="daily" {{ $activeTab==='daily'?'selected':'' }}>Day Wise Balance</option>
     </select>
 

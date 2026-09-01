@@ -90,10 +90,10 @@
             $att = $w->attendances->first();
             $status = $att ? $att->status : 'ABSENT';
             $shift = $att ? ($att->shift_type ?? $w->shift_type) : $w->shift_type;
-            $in = $att?->in_time ? date('h:i A', strtotime($att->in_time)) : ($shift === 'NIGHT' ? '09:00 PM' : '09:00 AM');
-            $out = $att?->out_time ? date('h:i A', strtotime($att->out_time)) : ($shift === 'NIGHT' ? '06:00 AM' : '06:00 PM');
-            $bin = $att?->break_in ? date('h:i A', strtotime($att->break_in)) : '09:00 PM';
-            $bout = $att?->break_out ? date('h:i A', strtotime($att->break_out)) : '06:00 AM';
+            $in = $att?->in_time ? date('h:i', strtotime($att->in_time)) : '';
+            $out = $att?->out_time ? date('h:i', strtotime($att->out_time)) : '';
+            $bin = $att?->break_in ? date('h:i', strtotime($att->break_in)) : '';
+            $bout = $att?->break_out ? date('h:i', strtotime($att->break_out)) : '';
             
             $otUt = $att ? ($att->ot_ut ?? 'NONE') : 'NONE';
             $otUtHours = $att ? ($att->ot_ut_hours ?? 0) : 0;
@@ -158,11 +158,17 @@
           <div class="extra-field-flex" style="display:{{ $status === 'ABSENT' ? 'none' : 'flex' }}; gap:10px; margin-bottom:0.75rem;">
             <div style="flex:1;">
               <label class="label-in" style="font-size:0.8rem; color:var(--text-muted); display:block;">In Time</label>
-              <input type="text" name="attendances[{{$index}}][in_time]" value="{{ $in }}" class="time-in" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
+              <div style="position:relative; display:flex; align-items:center;">
+                <input type="text" name="attendances[{{$index}}][in_time]" value="{{ $in }}" placeholder="--:--" class="time-in" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px; padding-right:2.2rem;">
+                <span class="am-pm-in-badge" style="position:absolute; right:8px; font-size:0.75rem; font-weight:bold; color:var(--primary); pointer-events:none; background:#f0f0f0; padding:2px 4px; border-radius:3px;">AM</span>
+              </div>
             </div>
             <div style="flex:1;">
               <label class="label-out" style="font-size:0.8rem; color:var(--text-muted); display:block;">Out Time</label>
-              <input type="text" name="attendances[{{$index}}][out_time]" value="{{ $out }}" class="time-out" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
+              <div style="position:relative; display:flex; align-items:center;">
+                <input type="text" name="attendances[{{$index}}][out_time]" value="{{ $out }}" placeholder="--:--" class="time-out" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px; padding-right:2.2rem;">
+                <span class="am-pm-out-badge" style="position:absolute; right:8px; font-size:0.75rem; font-weight:bold; color:var(--primary); pointer-events:none; background:#f0f0f0; padding:2px 4px; border-radius:3px;">PM</span>
+              </div>
             </div>
           </div>
 
@@ -170,11 +176,17 @@
           <div class="row-3 extra-field-flex" style="display:{{ ($status !== 'ABSENT' && $shift === 'CUSTOM') ? 'flex' : 'none' }}; gap:10px; margin-bottom:0.75rem;">
             <div style="flex:1;">
               <label class="label-bin" style="font-size:0.8rem; color:var(--text-muted); display:block;">Night In Time</label>
-              <input type="text" name="attendances[{{$index}}][break_in]" value="{{ $bin }}" class="time-bin" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
+              <div style="position:relative; display:flex; align-items:center;">
+                <input type="text" name="attendances[{{$index}}][break_in]" value="{{ $bin }}" placeholder="--:--" class="time-bin" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px; padding-right:2.2rem;">
+                <span class="am-pm-bin-badge" style="position:absolute; right:8px; font-size:0.75rem; font-weight:bold; color:var(--primary); pointer-events:none; background:#f0f0f0; padding:2px 4px; border-radius:3px;">PM</span>
+              </div>
             </div>
             <div style="flex:1;">
               <label class="label-bout" style="font-size:0.8rem; color:var(--text-muted); display:block;">Night Out Time</label>
-              <input type="text" name="attendances[{{$index}}][break_out]" value="{{ $bout }}" class="time-bout" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
+              <div style="position:relative; display:flex; align-items:center;">
+                <input type="text" name="attendances[{{$index}}][break_out]" value="{{ $bout }}" placeholder="--:--" class="time-bout" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px; padding-right:2.2rem;">
+                <span class="am-pm-bout-badge" style="position:absolute; right:8px; font-size:0.75rem; font-weight:bold; color:var(--primary); pointer-events:none; background:#f0f0f0; padding:2px 4px; border-radius:3px;">AM</span>
+              </div>
             </div>
           </div>
 
@@ -226,6 +238,7 @@
 </div>
 
 <script>
+const csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
 // Filter by name or department
 function filterWorkers() {
     const term = document.getElementById('workerSearch').value.toLowerCase();
@@ -257,7 +270,7 @@ function filterWorkers() {
 // Handle Status Change
 function handleStatusChange(selectEl) {
     const card = selectEl.closest('.worker-card');
-    const inputs = card.querySelectorAll('input[type="time"]');
+    const inputs = card.querySelectorAll('.time-in, .time-out, .time-bin, .time-bout');
     const badge = card.querySelector('.status-badge');
     const val = selectEl.value;
 
@@ -307,27 +320,29 @@ function handleShiftChange(selectEl) {
         labelIn.innerText = 'In Time';
         labelOut.innerText = 'Out Time';
         row3.style.display = 'none';
-        inTime.value = '09:00 AM';
-        outTime.value = '06:00 PM';
+        inTime.value = '';
+        outTime.value = '';
     } else if (val === 'NIGHT') {
         badge.innerText = '🌙 Night 9-6';
         labelIn.innerText = 'In Time';
         labelOut.innerText = 'Out Time';
         row3.style.display = 'none';
-        inTime.value = '09:00 PM';
-        outTime.value = '06:00 AM';
+        inTime.value = '';
+        outTime.value = '';
     } else {
         badge.innerText = '⚙ Custom';
         labelIn.innerText = 'Day In Time';
         labelOut.innerText = 'Day Out Time';
         row3.style.display = 'flex';
-        if (!inTime.value) inTime.value = '09:00 AM';
-        if (!outTime.value) outTime.value = '06:00 PM';
+        if (!inTime.value) inTime.value = '';
+        if (!outTime.value) outTime.value = '';
         const binTime = card.querySelector('.time-bin');
         const boutTime = card.querySelector('.time-bout');
-        if (binTime && !binTime.value) binTime.value = '09:00 PM';
-        if (boutTime && !boutTime.value) boutTime.value = '06:00 AM';
+        if (binTime && !binTime.value) binTime.value = '';
+        if (boutTime && !boutTime.value) boutTime.value = '';
     }
+    
+    updateShiftBadges(card, val);
 }
 
 // Handle OT/UT Change
@@ -348,9 +363,31 @@ function handleOTUTChange(selectEl) {
     }
 }
 
+// Helper to update AM/PM badges dynamically based on selected shift
+function updateShiftBadges(card, val) {
+    const binBadge = card.querySelector('.am-pm-bin-badge');
+    const boutBadge = card.querySelector('.am-pm-bout-badge');
+    const inBadge = card.querySelector('.am-pm-in-badge');
+    const outBadge = card.querySelector('.am-pm-out-badge');
+    
+    if (val === 'DAY') {
+        if (inBadge) inBadge.innerText = 'AM';
+        if (outBadge) outBadge.innerText = 'PM';
+    } else if (val === 'NIGHT') {
+        if (inBadge) inBadge.innerText = 'PM';
+        if (outBadge) outBadge.innerText = 'AM';
+    } else { // CUSTOM
+        if (inBadge) inBadge.innerText = 'AM';
+        if (outBadge) outBadge.innerText = 'PM';
+        if (binBadge) binBadge.innerText = 'PM';
+        if (boutBadge) boutBadge.innerText = 'AM';
+    }
+}
+
 // Initialize states
 document.querySelectorAll('.status-select').forEach(sel => handleStatusChange(sel));
 document.querySelectorAll('.ot-select').forEach(sel => handleOTUTChange(sel));
+document.querySelectorAll('.shift-select').forEach(sel => updateShiftBadges(sel.closest('.worker-card'), sel.value));
 
 // Mark All Present
 function markAllPresent() {
@@ -374,14 +411,46 @@ function saveAllAttendance(mode = 'partial') {
     const data = { date: '{{ $date }}', save_mode: mode, attendances: [] };
     
     document.querySelectorAll('.worker-card').forEach((card, i) => {
+        const shiftVal = formData.get(`attendances[${i}][shift_type]`);
+        
+        let inTime = formData.get(`attendances[${i}][in_time]`);
+        let outTime = formData.get(`attendances[${i}][out_time]`);
+        let breakIn = formData.get(`attendances[${i}][break_in]`);
+        let breakOut = formData.get(`attendances[${i}][break_out]`);
+        
+        if (inTime) {
+            let suffix = (shiftVal === 'NIGHT') ? ' PM' : ' AM';
+            if (!inTime.toUpperCase().includes('AM') && !inTime.toUpperCase().includes('PM')) {
+                inTime = inTime + suffix;
+            }
+        }
+        if (outTime) {
+            let suffix = (shiftVal === 'NIGHT') ? ' AM' : ' PM';
+            if (!outTime.toUpperCase().includes('AM') && !outTime.toUpperCase().includes('PM')) {
+                outTime = outTime + suffix;
+            }
+        }
+        if (breakIn) {
+            let suffix = ' PM';
+            if (!breakIn.toUpperCase().includes('AM') && !breakIn.toUpperCase().includes('PM')) {
+                breakIn = breakIn + suffix;
+            }
+        }
+        if (breakOut) {
+            let suffix = ' AM';
+            if (!breakOut.toUpperCase().includes('AM') && !breakOut.toUpperCase().includes('PM')) {
+                breakOut = breakOut + suffix;
+            }
+        }
+
         data.attendances.push({
             worker_id: formData.get(`attendances[${i}][worker_id]`),
             status: formData.get(`attendances[${i}][status]`),
-            shift_type: formData.get(`attendances[${i}][shift_type]`),
-            in_time: formData.get(`attendances[${i}][in_time]`),
-            out_time: formData.get(`attendances[${i}][out_time]`),
-            break_in: formData.get(`attendances[${i}][break_in]`),
-            break_out: formData.get(`attendances[${i}][break_out]`),
+            shift_type: shiftVal,
+            in_time: inTime,
+            out_time: outTime,
+            break_in: breakIn,
+            break_out: breakOut,
             ot_ut: formData.get(`attendances[${i}][ot_ut]`),
             ot_ut_hours: formData.get(`attendances[${i}][ot_ut_hours]`),
             advance: formData.get(`attendances[${i}][advance]`),
@@ -412,5 +481,92 @@ function saveAllAttendance(mode = 'partial') {
         Swal.fire('Error', 'An unexpected error occurred.', 'error');
     });
 }
+
+// Automatically format time inputs to HH:MM format as typed
+document.addEventListener('input', function(e) {
+    const target = e.target;
+    if (target.classList.contains('time-in') || 
+        target.classList.contains('time-out') || 
+        target.classList.contains('time-bin') || 
+        target.classList.contains('time-bout')) {
+        
+        let val = target.value.replace(/[^0-9:]/g, ''); // Keep only numbers and colons
+        
+        // Auto-insert colon after 2 digits if they type numbers (e.g. 1030 -> 10:30)
+        if (val.length === 4 && !val.includes(':')) {
+            val = val.substring(0, 2) + ':' + val.substring(2);
+        }
+        
+        if (val.length > 5) {
+            val = val.substring(0, 5);
+        }
+        
+        target.value = val;
+    }
+});
+
+document.addEventListener('blur', function(e) {
+    const target = e.target;
+    if (target.classList.contains('time-in') || 
+        target.classList.contains('time-out') || 
+        target.classList.contains('time-bin') || 
+        target.classList.contains('time-bout')) {
+        
+        let val = target.value.trim();
+        if (!val) return;
+        
+        let clean = val.replace(/[^0-9]/g, '');
+        
+        if (val.includes(':')) {
+            let parts = val.split(':');
+            let hr = parts[0].padStart(2, '0');
+            let min = (parts[1] || '').padEnd(2, '0').substring(0, 2);
+            
+            let hrInt = parseInt(hr, 10);
+            let minInt = parseInt(min, 10);
+            if (hrInt >= 0 && hrInt < 24 && minInt >= 0 && minInt < 60) {
+                target.value = `${hr}:${min}`;
+            } else {
+                target.value = '';
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Invalid Time Format',
+                    text: 'Please enter a valid time between 00:00 and 23:59.',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }
+        } else if (clean.length > 0) {
+            let hr = '00';
+            let min = '00';
+            if (clean.length === 1 || clean.length === 2) {
+                hr = clean.padStart(2, '0');
+            } else if (clean.length === 3) {
+                hr = ('0' + clean.substring(0, 1));
+                min = clean.substring(1);
+            } else if (clean.length >= 4) {
+                hr = clean.substring(0, 2);
+                min = clean.substring(2, 4);
+            }
+            
+            let hrInt = parseInt(hr, 10);
+            let minInt = parseInt(min, 10);
+            if (hrInt >= 0 && hrInt < 24 && minInt >= 0 && minInt < 60) {
+                target.value = `${hr}:${min}`;
+            } else {
+                target.value = '';
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Invalid Time Format',
+                    text: 'Please enter a valid time between 00:00 and 23:59.',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }
+        } else {
+            target.value = '';
+        }
+    }
+}, true);
 </script>
 @endsection

@@ -12,7 +12,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE attendances MODIFY COLUMN status VARCHAR(100) DEFAULT 'ABSENT'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE attendances MODIFY COLUMN status VARCHAR(100) DEFAULT 'ABSENT'");
+        }
     }
 
     /**
@@ -20,6 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE attendances MODIFY COLUMN status ENUM('PRESENT', 'ABSENT', 'HALF_DAY') DEFAULT 'ABSENT'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE attendances MODIFY COLUMN status ENUM('PRESENT', 'ABSENT', 'HALF_DAY') DEFAULT 'ABSENT'");
+        }
     }
 };

@@ -169,6 +169,7 @@
 </div>
 
 <script>
+const csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
 function openAddWorkerModal() {
     document.getElementById('addWorkerModal').style.display = 'flex';
 }

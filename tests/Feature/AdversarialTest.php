@@ -77,7 +77,7 @@ class AdversarialTest extends TestCase
 
         $sessionA = ['auth_user' => ['id' => $cashierA->id, 'name' => $cashierA->name, 'role' => 'CASHIER']];
 
-        $response = $this->withSession($sessionA)->get("/cashier/bill/{$billC->id}/view");
+        $response = $this->withSession($sessionA)->get("/admin/cashier/bill/{$billC->id}/view");
         $response->assertStatus(403);
     }
 

@@ -1069,7 +1069,15 @@ class AdminController extends Controller
         
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.dispatch_activity_pdf', compact('orders'))
             ->setPaper('A4', 'landscape');
-        return $pdf->download('dispatch-activity-' . now()->format('Y-m-d') . '.pdf');
+        $fromDate = $request->date_from ? \Carbon\Carbon::parse($request->date_from)->format('d-m-Y') : now()->format('d-m-Y');
+        $toDate   = $request->date_to ? \Carbon\Carbon::parse($request->date_to)->format('d-m-Y') : now()->format('d-m-Y');
+        $randomSerial = rand(1000, 9999);
+        if ($request->date_from && $request->date_to && $request->date_from !== $request->date_to) {
+            $filename = 'pentapure_dispatch_activity_' . $fromDate . 'to' . $toDate . '_' . $randomSerial . '.pdf';
+        } else {
+            $filename = 'pentapure_dispatch_activity_' . $fromDate . '_' . $randomSerial . '.pdf';
+        }
+        return $pdf->download($filename);
     }
 
     public function cashierOverview()
@@ -1132,7 +1140,8 @@ class AdminController extends Controller
         ];
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.cashier_overview_pdf', compact('pageData'));
-        return $pdf->download('cashier-overview-' . now()->format('Y-m-d') . '.pdf');
+        $filename = 'pentapure_cashier_overview_' . now()->format('d-m-Y') . '_' . rand(1000, 9999) . '.pdf';
+        return $pdf->download($filename);
     }
 
     // ── NOTIFICATION HISTORY ───────────────────────────────────────────────

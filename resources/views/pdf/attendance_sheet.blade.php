@@ -80,7 +80,7 @@
         <div class="category-title">{{ $departmentName }}</div>
         
         @php
-            $isMakadam = strtoupper($departmentName) === 'MAKADAM';
+            $isMakadam = strtoupper($departmentName) === 'MAKADAM' || strtoupper($departmentName) === 'MUKADAM(LABOUR)' || strtoupper($departmentName) === 'MUKADAM (LABOUR)' || str_contains(strtoupper($departmentName), 'MUKADAM');
         @endphp
 
         <table>
@@ -90,7 +90,6 @@
                         <th style="width: 40px;">S.R.NO</th>
                         <th class="text-left">{{ $departmentName }}</th>
                         <th style="width: 60px;">LABOUR</th>
-                        <th style="width: 80px;">BOILER O.T.</th>
                         <th style="width: 80px;">IN TIME</th>
                         <th style="width: 80px;">OUT TIME</th>
                         <th style="width: 80px;">TOTAL O.T.</th>
@@ -115,9 +114,8 @@
                             <td>{{ $index + 1 }}</td>
                             <td class="text-left">{{ $att->worker->name }}</td>
                             <td>{{ $att->num_workers ?: '' }}</td>
-                            <td>{{ $att->overtime_hours > 0 ? '+' . (float)$att->overtime_hours : '' }}</td>
-                            <td>{{ $att->in_time ? \Carbon\Carbon::parse($att->in_time)->format('h:i A') : '' }}</td>
-                            <td>{{ $att->out_time ? \Carbon\Carbon::parse($att->out_time)->format('h:i A') : '' }}</td>
+                            <td>{{ $att->in_time ? \Carbon\Carbon::parse($att->in_time)->format('H:i') : '' }}</td>
+                            <td>{{ $att->out_time ? \Carbon\Carbon::parse($att->out_time)->format('H:i') : '' }}</td>
                             <td>{{ $att->ot_ut_hours > 0 ? '+' . (float)$att->ot_ut_hours : '' }}</td>
                         </tr>
                     @else
@@ -128,13 +126,13 @@
                             $nightOut = '';
                             
                             if ($att->shift_type === 'NIGHT') {
-                                $nightIn = $att->in_time ? \Carbon\Carbon::parse($att->in_time)->format('h:i A') : '';
-                                $nightOut = $att->out_time ? \Carbon\Carbon::parse($att->out_time)->format('h:i A') : '';
+                                $nightIn = $att->in_time ? \Carbon\Carbon::parse($att->in_time)->format('H:i') : '';
+                                $nightOut = $att->out_time ? \Carbon\Carbon::parse($att->out_time)->format('H:i') : '';
                             } else {
-                                $dayIn = $att->in_time ? \Carbon\Carbon::parse($att->in_time)->format('h:i A') : '';
-                                $dayOut = $att->out_time ? \Carbon\Carbon::parse($att->out_time)->format('h:i A') : '';
-                                $nightIn = $att->break_in ? \Carbon\Carbon::parse($att->break_in)->format('h:i A') : '';
-                                $nightOut = $att->break_out ? \Carbon\Carbon::parse($att->break_out)->format('h:i A') : '';
+                                $dayIn = $att->in_time ? \Carbon\Carbon::parse($att->in_time)->format('H:i') : '';
+                                $dayOut = $att->out_time ? \Carbon\Carbon::parse($att->out_time)->format('H:i') : '';
+                                $nightIn = $att->break_in ? \Carbon\Carbon::parse($att->break_in)->format('H:i') : '';
+                                $nightOut = $att->break_out ? \Carbon\Carbon::parse($att->break_out)->format('H:i') : '';
                             }
                         @endphp
                         <tr>

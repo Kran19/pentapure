@@ -34,7 +34,17 @@ class HistoryPdfController extends Controller
             $pdf = Pdf::loadView('pdf.history-report', $data)->setPaper('A4', 'portrait');
         }
 
-        return $pdf->download('PentaPure_' . ucfirst(strtolower($panel)) . '_History_' . now()->format('Ymd_His') . '.pdf')
+        [$from, $to] = $this->dateRange($request);
+        $formattedFromDate = $from ? $from->format('d-m-Y') : now()->format('d-m-Y');
+        $formattedToDate   = $to   ? $to->format('d-m-Y')   : now()->format('d-m-Y');
+        $randomSerial = rand(1000, 9999);
+        if ($from && $to && $from->format('Y-m-d') !== $to->format('Y-m-d')) {
+            $filename = 'pentapure_' . strtolower($panel) . '_' . $formattedFromDate . 'to' . $formattedToDate . '_' . $randomSerial . '.pdf';
+        } else {
+            $filename = 'pentapure_' . strtolower($panel) . '_' . $formattedFromDate . '_' . $randomSerial . '.pdf';
+        }
+
+        return $pdf->download($filename)
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0')
             ->header('Pragma', 'no-cache')
             ->header('Expires', '0');

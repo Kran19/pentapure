@@ -413,14 +413,22 @@ class CashierController extends Controller
             'billPages'      => [], // no embedded blade bills, using FPDI
         ];
 
+        $formattedFromDate = $from ? $from->format('d-m-Y') : ($txs->first()?->created_at?->format('d-m-Y') ?? now()->format('d-m-Y'));
+        $formattedToDate   = $to   ? $to->format('d-m-Y')   : now()->format('d-m-Y');
+        $randomSerial = rand(1000, 9999);
+        if ($from && $to && $from->format('Y-m-d') !== $to->format('Y-m-d')) {
+            $filename = 'pentapure_' . $formattedFromDate . 'to' . $formattedToDate . '_' . $randomSerial . '.pdf';
+        } else {
+            $filename = 'pentapure_' . $formattedFromDate . '_' . $randomSerial . '.pdf';
+        }
+
         // 1. Generate the main statement HTML via DomPDF
         $mainPdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.cashier-statement', $data);
-        $mainPdf->setPaper('A4', 'portrait');
+        $mainPdf->setPaper('A4', 'landscape');
         $mainPdfContent = $mainPdf->output();
 
         // If no bills to include, return immediately
         if (!$includeBills) {
-            $filename = 'PentaPure_Statement_' . now()->format('Ymd_His') . '.pdf';
             return response($mainPdfContent, 200, [
                 'Content-Type'        => 'application/pdf',
                 'Content-Disposition' => 'attachment; filename="' . $filename . '"',
@@ -442,7 +450,6 @@ class CashierController extends Controller
         }
 
         if (empty($billPages)) {
-            $filename = 'PentaPure_Statement_' . now()->format('Ymd_His') . '.pdf';
             return response($mainPdfContent, 200, [
                 'Content-Type'        => 'application/pdf',
                 'Content-Disposition' => 'attachment; filename="' . $filename . '"',
@@ -452,7 +459,6 @@ class CashierController extends Controller
         // 3. Merge using FPDI
         $merged = $this->mergePdfWithBills($mainPdfContent, $billPages);
 
-        $filename = 'PentaPure_Statement_' . now()->format('Ymd_His') . '.pdf';
         return response($merged, 200, [
             'Content-Type'        => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',

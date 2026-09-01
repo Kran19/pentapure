@@ -93,7 +93,7 @@
             <thead>
                 @if($worker->salary_type === 'LABOUR_MUKADAM')
                 <tr style="background-color: #f0f0f0;">
-                    <th colspan="2" style="border:2px solid #000; text-align:left; font-size:14px; padding:6px;">MAKADAM</th>
+                    <th colspan="2" style="border:2px solid #000; text-align:left; font-size:14px; padding:6px;">{{ strtoupper($worker->department->name ?? 'MAKADAM') }}</th>
                     <th colspan="7" style="border:2px solid #000; text-align:left; font-size:14px; padding:6px;">NAME : {{ strtoupper($worker->name) }}</th>
                 </tr>
                 <tr style="background-color: #f0f0f0;">
@@ -184,11 +184,11 @@
               <td style="border:2px solid #000; padding:6px; text-align:right; width:25%;">{{ number_format($worker->salary_amount, 2) }}</td>
             </tr>
             <tr>
-              <td style="border:2px solid #000; padding:6px; color:#d00;">
+              <td style="border:2px solid #000; padding:6px;">
                 <div style="display:inline-block; width:45%; color:#000;">OTHER</div>
-                <div style="display:inline-block; width:50%; background-color:#ffff00; text-align:center;">PETROL / FOODS</div>
+                <div style="display:inline-block; width:50%; text-align:center;">PETROL / FOODS</div>
               </td>
-              <td style="border:2px solid #000; padding:6px; text-align:right; background-color:#ffff00; color:#d00;">
+              <td style="border:2px solid #000; padding:6px; text-align:right;">
                 {{ $adjustment->petrol_food_amount > 0 ? '+' : '' }}{{ number_format($adjustment->petrol_food_amount, 2) }}
               </td>
             </tr>
@@ -227,8 +227,8 @@
             </tr>
             <tr>
               <td style="border:2px solid #000; padding:6px; text-align:center;">OTHER</td>
-              <td colspan="3" style="border:2px solid #000; padding:6px; text-align:center; background-color:#ffff00; color:#d00;">PETROL/ FOODS</td>
-              <td style="border:2px solid #000; padding:6px; text-align:right; background-color:#ffff00; color:#d00;">{{ $adjustment->petrol_food_amount > 0 ? '+' : '' }}{{ number_format($adjustment->petrol_food_amount, 2) }}</td>
+              <td colspan="3" style="border:2px solid #000; padding:6px; text-align:center;">PETROL/ FOODS</td>
+              <td style="border:2px solid #000; padding:6px; text-align:right;">{{ $adjustment->petrol_food_amount > 0 ? '+' : '' }}{{ number_format($adjustment->petrol_food_amount, 2) }}</td>
             </tr>
             <tr>
               <td colspan="4" style="border:2px solid #000; padding:6px; text-align:center;">TOTAL SALARY</td>
@@ -269,8 +269,8 @@
             <!-- Row 4 -->
             <tr>
               <td style="border:2px solid #000; padding:6px; text-align:center;">OTHER</td>
-              <td colspan="3" style="border:2px solid #000; padding:6px; text-align:center; background-color:#ffff00; color:#d00;">PETROL/ FOODS</td>
-              <td style="border:2px solid #000; padding:6px; text-align:right; background-color:#ffff00; color:#d00;">{{ number_format($adjustment->petrol_food_amount, 2) }}</td>
+              <td colspan="3" style="border:2px solid #000; padding:6px; text-align:center;">PETROL/ FOODS</td>
+              <td style="border:2px solid #000; padding:6px; text-align:right;">{{ number_format($adjustment->petrol_food_amount, 2) }}</td>
             </tr>
             <!-- Row 5 -->
             <tr>

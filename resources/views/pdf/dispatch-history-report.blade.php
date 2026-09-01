@@ -98,7 +98,7 @@
                 <table style="width: 100%; border-collapse: collapse;">
                     <tr>
                         <td style="width: 40px; vertical-align: middle; padding: 0;">
-                            @if(file_exists(public_path('logo.png')))
+                            @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
                                 <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 35px; height: 35px; object-fit: contain;">
                             @endif
                         </td>
@@ -349,7 +349,7 @@
         <div class="section-header" style="text-align: center; font-size: 12px; padding: 6px 12px;">📦 ATTACHED LORRY RECEIPTS (LR COPIES)</div>
         <div style="margin-top: 15px;">
             @foreach($lrCopies as $lr)
-                @if(file_exists(public_path($lr['path'])))
+                @if(extension_loaded('gd') && file_exists(public_path($lr['path'])))
                     <div class="page-break-avoid" style="margin-bottom: 25px; text-align: center; border: 1px solid #d0d5dd; border-radius: 6px; padding: 10px; background: #f9fafb;">
                         <div style="font-size: 10px; font-weight: bold; color: #101828; margin-bottom: 8px; border-bottom: 1px solid #e4e7ec; padding-bottom: 4px;">
                             Dispatch: {{ $lr['dispatch_id'] }} | Order: {{ $lr['order_id'] }} | Customer: {{ $lr['customer'] }}

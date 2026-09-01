@@ -73,6 +73,7 @@
 <!-- Modal removed, now using inline form -->
 
 <script>
+  const csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
   let editingCategoryId = null;
 
   function openCategoryForm() {

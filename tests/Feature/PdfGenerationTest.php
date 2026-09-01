@@ -83,7 +83,7 @@ class PdfGenerationTest extends TestCase
             'id' => $this->rawUser->id,
             'name' => $this->rawUser->name,
             'role' => 'RAW',
-        ]])->get('/history/RAW/pdf');
+        ]])->get('/raw/history/RAW/pdf');
 
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'application/pdf');

@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <title>PentaPure - Account Statement</title>
 <style>
+@page {
+    margin: 0;
+}
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
     font-family: DejaVu Sans, sans-serif;
@@ -123,7 +126,7 @@ body {
             <table style="width: 100%; border-collapse: collapse;">
                 <tr>
                     <td style="width: 60px; padding: 0; vertical-align: middle; border: none; background: transparent;">
-                        @if(file_exists(public_path('logo.png')))
+                        @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
                             <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 50px; height: 50px; object-fit: contain;">
                         @endif
                     </td>
@@ -144,60 +147,32 @@ body {
 
 <table class="meta-table">
     <tr>
-        <td colspan="2" style="border-bottom: 1px solid #aaa; background: #f0f0f0;">
-            <span class="meta-title">Report</span><br>
-            <span class="meta-sub">As on {{ $generatedOn }}</span>
+        <td colspan="2" style="border-bottom: 1px solid #aaa; background: #f0f0f0; padding: 10px;">
+            <span class="meta-title" style="font-size: 15px; font-weight: bold;">
+                DURATION: {{ \Carbon\Carbon::parse($fromDate)->format('d-M-Y') }} - {{ \Carbon\Carbon::parse($toDate)->format('d-M-Y') }}
+            </span>
         </td>
     </tr>
     <tr>
-        <td style="width: 50%;">Duration: {{ $fromDate }} - {{ $toDate }}</td>
-        <td style="width: 50%;">Site: {{ $site }}</td>
+        <td style="width: 50%;">CATEGORY: {{ $category }}</td>
+        <td style="width: 50%;">SITE: {{ $site }}</td>
     </tr>
     <tr>
-        <td>Category: {{ $category }}</td>
-        <td>Opening Balance: {{ number_format($openingBalance, 2) }}</td>
-    </tr>
-    <tr>
-        <td style="color: {{ $closingBalance >= 0 ? '#15803d' : '#b91c1c' }}; font-weight: bold;">
-            Closing Balance: {{ number_format(abs($closingBalance), 2) }}
-        </td>
-        <td></td>
+        <td style="color: #15803d; font-weight: bold;">OPENING BALANCE: {{ number_format($openingBalance, 2) }}</td>
+        <td style="color: #b91c1c; font-weight: bold;">CLOSING BALANCE: {{ number_format($closingBalance, 2) }}</td>
     </tr>
 </table>
 
 <div class="content">
 
-    <table class="summary-table">
-        <tr>
-            <td>
-                <div class="summary-val">{{ $totalRecords }}</div>
-                <div class="summary-lbl">Transactions</div>
-            </td>
-            <td>
-                <div class="summary-val">{{ number_format($openingBalance, 2) }}</div>
-                <div class="summary-lbl">Opening Balance</div>
-            </td>
-            <td>
-                <div class="summary-val color-green">+{{ number_format($sumIn, 2) }}</div>
-                <div class="summary-lbl">Total Income</div>
-            </td>
-            <td>
-                <div class="summary-val color-red">−{{ number_format($sumOut, 2) }}</div>
-                <div class="summary-lbl">Total Expense</div>
-            </td>
-        </tr>
-    </table>
-
     <table class="data-table">
         <thead>
             <tr>
-                <th>Date</th>
+                <th style="width: 90px;">Date</th>
                 <th>Description</th>
-                <th>Category</th>
-                <th style="text-align: right;">Amt</th>
-                <th style="text-align: right;">Balance</th>
-                <th>Added By</th>
-                <th>Site</th>
+                <th style="width: 90px;">Category</th>
+                <th style="width: 90px; text-align: right;">Amt</th>
+                <th style="width: 100px; text-align: right;">Balance</th>
             </tr>
         </thead>
         <tbody>
@@ -217,12 +192,10 @@ body {
                 <td style="text-align: right;">
                     <strong>{{ number_format($row['closing_bal'], 2) }}</strong>
                 </td>
-                <td>{{ $cashierName }}</td>
-                <td>{{ $row['site'] ?: 'Pentapure' }}</td>
             </tr>
             @empty
             <tr>
-                <td colspan="7" style="padding:20px; text-align:center; color:#888;">
+                <td colspan="5" style="padding:20px; text-align:center; color:#888;">
                     No transactions found for this period.
                 </td>
             </tr>
