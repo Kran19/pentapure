@@ -47,8 +47,8 @@
       </div>
     </div>
     <div class="form-group">
-      <label>LR Number</label>
-      <input type="text" id="dispatch-lr-no" placeholder="Optional" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+      <label>Driver Number</label>
+      <input type="text" id="dispatch-driver-no" placeholder="Optional" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
     </div>
 
     <div class="form-group">
@@ -68,7 +68,7 @@
   </div>
   
   <button class="btn mt-2" onclick="app.submitDispatch()">Dispatch Items</button>
-<a href="{{ url(request()->segment(1) . '/po') }}" class="btn mt-2" style="margin-left:0.5rem;">Purchase Requests</a>
+
 </div>
 
 <script>

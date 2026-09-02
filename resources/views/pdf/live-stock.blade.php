@@ -55,7 +55,7 @@
 <div class="page">
     <div class="top">
         <div class="brand">
-            @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
+            @if(file_exists(public_path('logo.png')))
             <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 82px; height: 82px; vertical-align: middle; margin-right: 12px; object-fit: contain;">
             @endif
             <div class="brand-text">

@@ -1396,19 +1396,20 @@ const app = {
 
       splitInputs.forEach(sInp => {
         const sQty = Number(sInp.value);
-        if (sQty > 0) {
-          const sMax = Number(sInp.dataset.max);
-          if (sQty > sMax) {
-            this.toast(`Location qty (${sQty} kg) exceeds available stock (${sMax} kg) in ${sInp.dataset.loc}`, 'error');
+        const locName = sInp.dataset.loc || sInp.closest('.loc-row')?.querySelector('.loc-split-select')?.value;
+        if (sQty > 0 && locName) {
+          const sMax = Number(sInp.dataset.max || sInp.max || 0);
+          if (sMax > 0 && sQty > sMax) {
+            this.toast(`Location qty (${sQty} kg) exceeds available stock (${sMax} kg) in ${locName}`, 'error');
             hasError = true;
           }
           splitSum += sQty;
-          splits.push({ location_key: sInp.dataset.loc, dispatch_location_qty: sQty });
+          splits.push({ location_key: locName, dispatch_location_qty: sQty });
 
           const orderItem = (window.currentDispatchOrderItems || []).find(x => x.id == itemId);
           if (orderItem) {
             const locKey = `${orderItem.productId}_${orderItem.grade || 'NONE'}_${orderItem.productType || 'FINISHED'}`;
-            locationUpdates.push({ locKey, location: sInp.dataset.loc, deduct: sQty });
+            locationUpdates.push({ locKey, location: locName, deduct: sQty });
           }
         }
       });
@@ -1435,34 +1436,66 @@ const app = {
       return this.toast('Driver Contact must be 10-digit Indian mobile (+91), 079 landline, or international number (+...)', 'error');
     }
 
+    const transportId = document.getElementById('dispatch-transporter')?.value || document.getElementById('dispatch-transport')?.value || null;
+    const vehicleNo = document.getElementById('dispatch-vehicle')?.value || null;
+    const extraDriverNo = document.getElementById('dispatch-driver-no')?.value || '';
+    const lrNo = document.getElementById('dispatch-lr-no')?.value || '';
+    const notes = document.getElementById('dispatch-notes') ? document.getElementById('dispatch-notes').value : '';
+
+    const finalDriverNo = extraDriverNo || driverNo || null;
+
+    const payload = {
+      order_id: orderId,
+      transporter_id: transportId,
+      driver_number: finalDriverNo,
+      driver_no: finalDriverNo,
+      vehicle_number: vehicleNo,
+      lr_number: lrNo,
+      notes: notes || null,
+      items: items
+    };
+
     fetch('/action', {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json', 
+      headers: {
+        'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'X-CSRF-TOKEN': window.csrfToken || csrfToken 
+        'X-CSRF-TOKEN': window.csrfToken || ''
       },
-      body: JSON.stringify({ 
-        order_id: orderId, 
-        items: items, 
-        lr_image: window.currentLRImage,
-        driver_no: driverNo,
-        lr_no: document.getElementById('dispatch-lr-no')?.value || '',
-        notes: document.getElementById('dispatch-notes')?.value || '',
-        transporter_id: document.getElementById('dispatch-transporter')?.value || null
-      })
+      body: JSON.stringify(payload)
     })
     .then(r => r.json())
-    .then(d => {
-      if (d.success) {
-        window.currentLRImage = null;
-        this.toast(d.message || 'Dispatch recorded!');
-        setTimeout(() => this.navigate('home'), 600);
+    .then(res => {
+      if (res.success) {
+        this.toast(res.message || 'Dispatch recorded successfully!');
+        setTimeout(() => { window.location.href = '/dispatch/history'; }, 700);
       } else {
-        this.toast(d.message || 'Dispatch failed', 'error');
+        this.toast(res.message || 'Error recording dispatch', 'error');
       }
     })
-    .catch(() => this.toast('Network error.', 'error'));
+    .catch(() => this.toast('Network error while recording dispatch.', 'error'));
+  },
+
+  previewLR(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      this.toast('Only JPG, JPEG, PNG, and WEBP images are allowed.', 'error');
+      event.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(){
+      const img = document.getElementById('lr-preview');
+      if (img) {
+        img.src = reader.result;
+        img.style.display = 'block';
+      }
+    };
+    reader.readAsDataURL(file);
   },
 
   onDispatchOrderSelect(id) {
@@ -1475,10 +1508,15 @@ const app = {
       div.classList.add('animation-fadeIn');
       const detailsDiv = document.getElementById('dispatch-details');
       if(detailsDiv) detailsDiv.style.display = 'block';
-      const itemRows = (o.items || []).map((i, idx) => {
+      
+      const validItems = (o.items || []).filter(i => {
+        const remaining = i.remainingQty ?? (i.quantity - (i.dispatchedQty || 0));
+        return remaining > 0;
+      });
+
+      const itemRows = validItems.map((i, idx) => {
         const remaining = i.remainingQty ?? (i.quantity - (i.dispatchedQty || 0));
         const alreadyDispatched = i.dispatchedQty || 0;
-        if (remaining <= 0) return ''; // skip fully dispatched items
 
         const baseName = (i.rawProductName || i.productName || 'Unknown')
           .replace(/\s+(PURE|PREMIUM|COMMERCIAL|NONE|\b[A-Za-z0-9_-]+\b)\s*\((fg|raw|semi)\)$/i, '')
@@ -1487,15 +1525,20 @@ const app = {
         const displayGrade = (i.grade && i.grade !== 'NONE' && i.grade !== 'N/A') ? i.grade : '';
         const displayType = (i.productType === 'FINISHED') ? 'FG' : (i.productType ? i.productType.toUpperCase() : 'N/A');
 
+        const isLast = idx === validItems.length - 1;
+        const hrDivider = (!isLast && validItems.length > 1) 
+          ? `<div style="height:2px; background:linear-gradient(90deg, rgba(216,138,0,0.15) 0%, rgba(216,138,0,0.7) 50%, rgba(216,138,0,0.15) 100%); margin:18px 0;"></div>` 
+          : '';
+
         return `
-        <div style="display:flex; flex-direction:column; gap:6px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+        <div style="display:flex; flex-direction:column; gap:6px; padding:10px 0;">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
             <span style="font-weight:600; font-size:0.95rem;">
               ${baseName} ${displayGrade ? `<strong style="font-weight:800; color:var(--primary-light, #F4B400);">${displayGrade}</strong> ` : ''}(${displayType})
             </span>
             <span style="color:var(--text-muted); font-size:0.8rem;">
               Total: ${i.quantity} kg
-              ${alreadyDispatched > 0 ? ` · Already sent: ${alreadyDispatched} kg` : ''}
+              ${alreadyDispatched > 0 ? ` • Already sent: ${alreadyDispatched} kg` : ''}
             </span>
           </div>
           <div style="display:flex; align-items:center; gap:10px; margin-bottom: 8px;">
@@ -1508,7 +1551,8 @@ const app = {
             <div style="font-size:0.75rem; color:var(--text-muted);">⏳ Loading stock locations...</div>
           </div>
         </div>
-      `}).join('');
+        ${hrDivider}
+      `;}).join('');
       
       div.innerHTML = `
         <div style="background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:20px; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
@@ -1572,23 +1616,29 @@ const app = {
             if (!container) return;
             
             if (data.success && data.breakdown && data.breakdown.length > 0) {
+              window[`locData_${i.id}`] = data.breakdown;
+              const hasAnyStock = data.breakdown.some(loc => loc.quantity > 0);
+              
               container.innerHTML = `
-                <div style="margin-top:8px; padding:8px; background:rgba(0,0,0,0.1); border-radius:6px; font-size:0.8rem;">
-                  <div style="color:var(--text-muted); margin-bottom:4px;">Select Locations & Quantities:</div>
-                  ${data.breakdown.map(loc => `
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                      <span>${loc.name} <span style="color:var(--secondary); font-size:0.75rem;">(Avail: ${loc.quantity} kg)</span></span>
-                      <input type="number" class="loc-split-qty" data-item-id="${i.id}" data-loc="${loc.name}" 
-                             data-max="${loc.quantity}" max="${loc.quantity}" min="0" step="0.01" placeholder="Qty" 
-                             style="width:80px; padding:0.4rem; border-radius:4px; background:var(--glass-bg); color:#fff; border:1px solid var(--glass-border);">
+                <div style="margin-top:8px; padding:10px; background:rgba(0,0,0,0.15); border-radius:8px; border:1px solid var(--border-soft, #DDCFAF);">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Select Locations & Quantities:</span>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="app.addDispatchLocationRow(${i.id}, ${remaining})" style="padding:0.2rem 0.5rem; font-size:0.72rem; width:auto;">+ Add Location</button>
+                  </div>
+                  <div id="loc-rows-${i.id}" style="display:flex; flex-direction:column; gap:8px;">
+                  </div>
+                  ${!hasAnyStock ? `
+                    <div style="margin-top:6px; padding:6px; background:rgba(239,68,68,0.1); color:#f87171; border-radius:6px; font-size:0.75rem; text-align:center;">
+                      ⚠️ No stock currently available in any location for this product & grade!
                     </div>
-                  `).join('')}
+                  ` : ''}
                 </div>
               `;
+              this.addDispatchLocationRow(i.id, remaining);
             } else {
               container.innerHTML = `
                 <div style="margin-top:8px; padding:8px; background:rgba(239,68,68,0.1); color:#f87171; border-radius:6px; font-size:0.8rem; text-align:center;">
-                  ⚠ No stock found in any location for this product & grade!
+                  ⚠️ No stock found in any location for this product & grade!
                 </div>
               `;
             }
@@ -1598,7 +1648,7 @@ const app = {
             if (container) {
               container.innerHTML = `
                 <div style="margin-top:8px; padding:8px; background:rgba(239,68,68,0.1); color:#f87171; border-radius:6px; font-size:0.8rem; text-align:center;">
-                  ❌ Failed to load stock locations.
+                  ⚠️ Failed to load stock locations.
                 </div>
               `;
             }
@@ -1609,6 +1659,101 @@ const app = {
     }
   },
 
+  addDispatchLocationRow(itemId, maxRemaining) {
+    const rowsContainer = document.getElementById(`loc-rows-${itemId}`);
+    if (!rowsContainer) return;
+    const locData = window[`locData_${itemId}`] || [];
+
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'loc-row';
+    rowDiv.style.cssText = 'display:flex; gap:8px; align-items:flex-end; width:100%;';
+
+    let optionsHtml = `<option value="" disabled selected>-- SELECT STORAGE LOCATION --</option>`;
+    let autoSelectLoc = '';
+    let autoSelectAvail = 0;
+
+    locData.forEach((loc, idx) => {
+      const isFirstWithStock = !autoSelectLoc && loc.quantity > 0;
+      if (isFirstWithStock) {
+        autoSelectLoc = loc.name;
+        autoSelectAvail = loc.quantity;
+      }
+      optionsHtml += `<option value="${loc.name}" data-avail="${loc.quantity}">${loc.name.toUpperCase()} (Avail: ${loc.quantity} KG)</option>`;
+    });
+
+    rowDiv.innerHTML = `
+      <div style="flex:2.2; min-width:140px;">
+        <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:2px; display:block;">STORAGE LOCATION *</label>
+        <select class="loc-split-select" onchange="app.onDispatchLocationChange(this, ${itemId})" style="width:100%; padding:0.6rem 0.7rem; border-radius:6px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.85rem; font-weight:600;">
+          ${optionsHtml}
+        </select>
+      </div>
+      <div style="flex:1; min-width:80px;">
+        <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:2px; display:block;">QTY</label>
+        <input type="number" class="loc-split-qty" placeholder="QTY" step="any" min="0.001" oninput="app.onDispatchLocQtyInput(this, ${itemId})" style="width:100%; padding:0.6rem 0.7rem; border-radius:6px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.85rem; font-weight:600;">
+      </div>
+      <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.loc-row').remove(); app.syncDispatchItemTotal(${itemId})" title="Remove Location" style="flex:0 0 34px; width:34px; height:34px; margin-bottom:2px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:6px; border:none; background:#ef4444; color:#fff; cursor:pointer;">
+        ✕
+      </button>
+    `;
+
+    rowsContainer.appendChild(rowDiv);
+    if (autoSelectLoc) {
+      const sel = rowDiv.querySelector('.loc-split-select');
+      if (sel) {
+        sel.value = autoSelectLoc;
+        const qtyInp = rowDiv.querySelector('.loc-split-qty');
+        if (qtyInp) {
+          qtyInp.dataset.loc = autoSelectLoc;
+          qtyInp.dataset.max = autoSelectAvail;
+          qtyInp.max = autoSelectAvail;
+        }
+      }
+    }
+  },
+
+  onDispatchLocationChange(selectEl, itemId) {
+    const row = selectEl.closest('.loc-row');
+    if (!row) return;
+    const qtyInp = row.querySelector('.loc-split-qty');
+    const selectedOption = selectEl.options[selectEl.selectedIndex];
+    const avail = Number(selectedOption.getAttribute('data-avail') || 0);
+    const locName = selectEl.value;
+
+    if (qtyInp) {
+      qtyInp.dataset.loc = locName;
+      qtyInp.dataset.max = avail;
+      qtyInp.max = avail;
+      if (Number(qtyInp.value) > avail) {
+        qtyInp.value = avail;
+      }
+    }
+    this.syncDispatchItemTotal(itemId);
+  },
+
+  onDispatchLocQtyInput(inputEl, itemId) {
+    const max = Number(inputEl.dataset.max || 0);
+    const val = Number(inputEl.value || 0);
+    if (max > 0 && val > max) {
+      this.toast(`Entered qty exceeds available stock (${max} kg) in ${inputEl.dataset.loc}`, 'error');
+    }
+    this.syncDispatchItemTotal(itemId);
+  },
+
+  syncDispatchItemTotal(itemId) {
+    const container = document.getElementById(`loc-splits-${itemId}`);
+    if (!container) return;
+    const qtyInputs = container.querySelectorAll('.loc-split-qty');
+    let total = 0;
+    qtyInputs.forEach(inp => {
+      total += Number(inp.value || 0);
+    });
+    total = Math.round(total * 1000) / 1000;
+    const directInput = document.querySelector(`.dispatch-item-qty[data-item-id="${itemId}"]`);
+    if (directInput && total > 0) {
+      directInput.value = total;
+    }
+  },
   previewLateLR(event, logId, idx) {
     const file = event.target.files[0];
     if (!file) return;

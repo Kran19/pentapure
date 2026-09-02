@@ -21,7 +21,7 @@
         <table style="width: 100%; border-collapse: collapse; margin-top: 0; margin-bottom: 10px; border: none;">
             <tr>
                 <td style="width: 20%; text-align: left; vertical-align: middle; border: none; background: transparent;">
-                    @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
+                    @if(file_exists(public_path('logo.png')))
                         <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 50px; height: 50px; object-fit: contain;">
                     @endif
                 </td>
@@ -30,7 +30,7 @@
                     <div class="tagline">FOOD &amp; SPICES PVT.LTD.</div>
                 </td>
                 <td style="width: 20%; text-align: right; vertical-align: middle; border: none; background: transparent;">
-                    @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
+                    @if(file_exists(public_path('logo.png')))
                         <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 50px; height: 50px; object-fit: contain;">
                     @endif
                 </td>

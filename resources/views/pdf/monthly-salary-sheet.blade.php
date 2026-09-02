@@ -60,10 +60,22 @@
 <body>
 
     <div style="text-align:center; margin-bottom:15px;">
-        <div style="font-size:9px; font-weight:bold; border:1px solid #000; padding:2px 10px; display:inline-block; margin-bottom:5px;">OFFICIAL RECORD</div>
-        <h1 style="margin:0; font-size:18px; font-weight:bold;">FOOD & SPICES PVT.LTD.</h1>
-        <div style="font-size:10px; margin-bottom:5px;">Factory & Warehouse Operations</div>
-        <div style="border-top:2px solid #000; border-bottom:2px solid #000; padding:2px 10px; font-weight:bold; font-size:12px; display:inline-block;">ATTENDANCE SHEET</div>
+        <table style="width:100%; border:none; margin-bottom:5px;">
+            <tr>
+                <td style="border:none; width:45px; text-align:left; vertical-align:middle; padding:0;">
+                    @if(file_exists(public_path('logo.png')))
+                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 42px; height: 42px; object-fit: contain;">
+                    @endif
+                </td>
+                <td style="border:none; text-align:center; vertical-align:middle; padding:0;">
+                    <div style="font-size:9px; font-weight:bold; border:1px solid #000; padding:2px 10px; display:inline-block; margin-bottom:3px;">OFFICIAL RECORD</div>
+                    <div style="font-size:16px; font-weight:800; letter-spacing:1px; color:#101828;">PENTAPURE FOOD &amp; SPICES PVT.LTD.</div>
+                    <div style="font-size:10px; margin-bottom:3px;">Factory &amp; Warehouse Operations</div>
+                    <div style="border-top:2px solid #000; border-bottom:2px solid #000; padding:2px 10px; font-weight:bold; font-size:11px; display:inline-block;">MONTHLY SALARY SHEET</div>
+                </td>
+                <td style="border:none; width:45px; padding:0;"></td>
+            </tr>
+        </table>
     </div>
 
     @if($worker->salary_type !== 'LABOUR_MUKADAM')

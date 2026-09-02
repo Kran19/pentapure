@@ -483,11 +483,14 @@ class DispatchController extends Controller
             ->map(fn($d) => [
                 'id'            => $d->id,
                 'orderId'       => $d->order_id,
+                'companyId'     => $d->order?->company_id,
                 'companyName'   => $d->order?->company?->name,
                 'transportName' => $d->transporter?->name ?? $d->order?->transporter?->name,
                 'dispatchedBy'  => $d->user?->name,
                 'lrImage'       => $d->lr_image_path ? asset($d->lr_image_path) : null,
                 'orderTotal'    => $d->order?->total,
+                'status'        => $d->order?->status,
+                'dispatchStatus'=> $d->order?->dispatch_status,
                 'date'          => $d->created_at->toISOString(),
                 'notes'         => $d->notes ?: $d->order?->notes,
                 'dispatchNotes' => $d->notes,
@@ -500,7 +503,15 @@ class DispatchController extends Controller
                 ]),
             ]);
 
-        $pageData = ['dispatchLogs' => $logs];
+        $companies = Company::orderBy('name')->get()->map(fn($c) => [
+            'id' => $c->id,
+            'name' => strtoupper($c->name ?? '')
+        ]);
+
+        $pageData = [
+            'dispatchLogs' => $logs,
+            'companies'    => $companies,
+        ];
         return view('dispatch.history', compact('pageData'));
     }
 

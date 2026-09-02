@@ -222,12 +222,34 @@ class HistoryPdfController extends Controller
     private function dispatchRows(Carbon $from, Carbon $to): array
     {
         $q = request('q');
+        $companyId = request('company_id');
+        $status = request('status');
+
         $query = DispatchLog::with(['order.company', 'dispatchItems'])->whereBetween('created_at', [$from, $to]);
         if ($q) {
             $query->where(function($sub) use ($q) {
                 $sub->whereHas('order.company', function($qc) use ($q) {
                     $qc->where('name', 'like', "%{$q}%");
                 })->orWhere('order_id', 'like', "%{$q}%");
+            });
+        }
+        if ($companyId) {
+            $query->whereHas('order', function($qo) use ($companyId) {
+                $qo->where('company_id', $companyId);
+            });
+        }
+        if ($status) {
+            $target = strtoupper(trim(str_replace('_', ' ', $status)));
+            $query->whereHas('order', function($qo) use ($target) {
+                if ($target === 'FULLY DISPATCHED' || $target === 'DONE') {
+                    $qo->whereIn('dispatch_status', ['DONE', 'FULLY_DISPATCHED']);
+                } elseif ($target === 'PARTIAL DISPATCH' || $target === 'PARTIAL') {
+                    $qo->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_PENDING']);
+                } elseif ($target === 'PENDING') {
+                    $qo->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED']);
+                } else {
+                    $qo->where('dispatch_status', 'like', "%{$target}%");
+                }
             });
         }
         return $query->latest()->get()
@@ -372,12 +394,13 @@ class HistoryPdfController extends Controller
             'dispatchHistory' => $dispatchHistory,
             'dispatchNo' => 'DSP-' . str_pad($log->id, 4, '0', STR_PAD_LEFT),
             'orderNo' => 'ORD-' . str_pad($log->order_id, 4, '0', STR_PAD_LEFT),
+            'orderDate' => $order->created_at->format('d-M-Y'),
             'dispatchDate' => $log->created_at->format('d-M-Y'),
             'generatedOn' => $log->created_at->format('d-M-Y h:i A'),
             'generatedBy' => $log->user?->name ?? 'System',
             'orderGeneratedBy' => $order->creator?->name ?? 'N/A',
             'status' => 'DISPATCHED',
-            'remarks' => $order->notes ?? "Material dispatched in good condition.\nAll items checked and verified before dispatch.",
+            'remarks' => $log->notes ?: ($order->notes ?? ''),
             'totalOrderedQty' => $totalOrderedQty,
             'totalPrevDispatchedQty' => $totalPrevDispatchedQty,
             'totalDispatchedQty' => $totalDispatchedQty,
@@ -401,6 +424,7 @@ class HistoryPdfController extends Controller
             'order.company',
             'order.transporter',
             'order.creator',
+            'order.items',
             'user',
             'dispatchItems.orderItem.product',
             'dispatchItems.locationAllocations.location'
@@ -417,6 +441,30 @@ class HistoryPdfController extends Controller
                   });
             });
         }
+        $companyId = $request->company_id;
+        if ($companyId) {
+            $query->whereHas('order', function($qo) use ($companyId) {
+                $qo->where('company_id', $companyId);
+            });
+        }
+        $statusFilter = $request->status;
+        if ($statusFilter) {
+            $target = strtoupper(trim(str_replace('_', ' ', $statusFilter)));
+            $query->whereHas('order', function($qo) use ($target) {
+                if ($target === 'FULLY DISPATCHED' || $target === 'DONE') {
+                    $qo->whereIn('dispatch_status', ['DONE', 'FULLY_DISPATCHED']);
+                } elseif ($target === 'PARTIAL PENDING') {
+                    $qo->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_PENDING']);
+                } elseif ($target === 'PARTIAL DISPATCH' || $target === 'PARTIAL') {
+                    $qo->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_PENDING']);
+                } elseif ($target === 'PENDING') {
+                    $qo->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED']);
+                } else {
+                    $qo->where('dispatch_status', 'like', "%{$target}%");
+                }
+            });
+        }
+
         $logs = $query->latest()->get();
         
         $rows = [];
@@ -424,8 +472,11 @@ class HistoryPdfController extends Controller
         $totalOrderedQty = 0;
         $totalPendingQty = 0;
         $totalAmount = 0;
-        $completedCount = 0;
+        $fullyDispatchedCount = 0;
+        $partialDispatchCount = 0;
+        $partialPendingCount = 0;
         $pendingCount = 0;
+        $cancelledCount = 0;
         
         $uniqueOrders = [];
 
@@ -435,7 +486,32 @@ class HistoryPdfController extends Controller
                 $uniqueOrders[$order->id] = $order;
             }
             
-            $status = ($order && $order->dispatch_status === 'DONE') ? 'COMPLETED' : 'PENDING';
+            // Determine normalized order status among the 4 requested statuses
+            $orderStatus = 'PENDING';
+            if ($order) {
+                $st = strtoupper(trim(str_replace('_', ' ', (string)($order->dispatch_status ?? 'PENDING'))));
+                if ($order->status === 'CANCELLED') {
+                    $orderStatus = 'CANCELLED';
+                } elseif ($st === 'DONE' || $st === 'FULLY DISPATCHED') {
+                    $orderStatus = 'FULLY DISPATCHED';
+                } elseif ($st === 'PARTIAL PENDING') {
+                    $orderStatus = 'PARTIAL PENDING';
+                } elseif ($st === 'PARTIAL' || $st === 'PARTIAL DISPATCH') {
+                    $totalDispatched = (float) $order->items->sum('dispatched_qty');
+                    $totalOrdered = (float) $order->items->sum('quantity');
+                    if ($totalDispatched >= $totalOrdered && $totalOrdered > 0) {
+                        $orderStatus = 'FULLY DISPATCHED';
+                    } elseif ($totalDispatched > 0) {
+                        $orderStatus = 'PARTIAL DISPATCH';
+                    } else {
+                        $orderStatus = 'PARTIAL PENDING';
+                    }
+                } elseif (in_array($st, ['PENDING', 'OPEN', 'UNASSIGNED'])) {
+                    $orderStatus = 'PENDING';
+                } else {
+                    $orderStatus = $st ?: 'PENDING';
+                }
+            }
             
             $formatQty = fn($q, $u) => number_format($q, floor($q) == $q ? 0 : 2) . ' ' . $u;
 
@@ -480,7 +556,7 @@ class HistoryPdfController extends Controller
                         'amount' => $amount,
                         'rate' => $rate,
                         'unit' => $unit,
-                        'status' => $status,
+                        'status' => $orderStatus,
                         'lr_copy' => $log->lr_image_path,
                     ];
                 }
@@ -489,8 +565,23 @@ class HistoryPdfController extends Controller
 
         // Count statuses based on order state
         foreach ($uniqueOrders as $order) {
-            if ($order->dispatch_status === 'DONE') {
-                $completedCount++;
+            $st = strtoupper(trim(str_replace('_', ' ', (string)($order->dispatch_status ?? 'PENDING'))));
+            if ($order->status === 'CANCELLED') {
+                $cancelledCount++;
+            } elseif ($st === 'DONE' || $st === 'FULLY DISPATCHED') {
+                $fullyDispatchedCount++;
+            } elseif ($st === 'PARTIAL PENDING') {
+                $partialPendingCount++;
+            } elseif ($st === 'PARTIAL' || $st === 'PARTIAL DISPATCH') {
+                $totalDispatched = (float) $order->items->sum('dispatched_qty');
+                $totalOrdered = (float) $order->items->sum('quantity');
+                if ($totalDispatched >= $totalOrdered && $totalOrdered > 0) {
+                    $fullyDispatchedCount++;
+                } elseif ($totalDispatched > 0) {
+                    $partialDispatchCount++;
+                } else {
+                    $partialPendingCount++;
+                }
             } else {
                 $pendingCount++;
             }
@@ -525,21 +616,23 @@ class HistoryPdfController extends Controller
             ])->toArray();
 
         return [
-            'reportId' => 'HIS-' . now()->format('His'),
-            'generatedOn' => now()->format('d M Y h:i A'),
-            'fromDate' => $from->format('d M Y'),
-            'toDate' => $to->format('d M Y'),
-            'userName' => $user['name'] ?? 'User',
-            'userRole' => $user['role'] ?? 'DISPATCH',
-            'rows' => $rows,
-            'totalRecords' => $logs->count(),
-            'completedCount' => $completedCount,
+            'reportId' => 'RPT-DISP-' . now()->format('Ymd') . '-' . rand(100, 999),
+            'userName' => $user['name'] ?? 'Authorized User',
+            'generatedOn' => now()->format('d M Y, h:i A'),
+            'fromDate' => $from ? $from->format('d M Y') : 'All Time',
+            'toDate' => $to ? $to->format('d M Y') : now()->format('d M Y'),
+            'totalRecords' => count($logs),
+            'completedCount' => $fullyDispatchedCount,
+            'fullyDispatchedCount' => $fullyDispatchedCount,
+            'partialDispatchCount' => $partialDispatchCount,
+            'partialPendingCount' => $partialPendingCount,
             'pendingCount' => $pendingCount,
-            'cancelledCount' => 0, // No cancelled status in DB schema currently
+            'cancelledCount' => $cancelledCount,
             'totalValue' => $totalAmount,
             'totalQuantity' => $totalQty,
             'totalOrderedQty' => $totalOrderedQty,
             'totalPendingQty' => $totalPendingQty,
+            'rows' => $rows,
             'customerSummary' => $customerSummary,
             'productSummary' => $productSummary,
             'lrCopies' => $lrCopies,

@@ -1,31 +1,40 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>PentaPure - Dispatch Note {{ $dispatchNo }}</title>
+    <meta charset="UTF-8">
+    <title>{{ $dispatchNo }} - Dispatch Note</title>
     <style>
-        @page { margin: 15px; }
+        @page {
+            size: A4 portrait;
+            margin: 10mm 12mm 10mm 12mm;
+        }
         * { box-sizing: border-box; }
-        body { font-family: DejaVu Sans, sans-serif; color: #101828; font-size: 10px; line-height: 1.35; text-transform: uppercase; }
-        .page { border: 1px solid #1f2937; padding: 15px 20px; position: relative; }
+        body {
+            font-family: 'DejaVu Sans', sans-serif;
+            font-size: 10px;
+            color: #101828;
+            margin: 0;
+            padding: 0;
+            line-height: 1.35;
+        }
+        .page { width: 100%; position: relative; }
         
-        /* Header styling */
-        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; border-bottom: 2px solid #e4e7ec; padding-bottom: 5px; }
+        /* Header & Logo */
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; border-bottom: 2px solid #f8c300; padding-bottom: 6px; }
         .header-logo-cell { width: 60%; vertical-align: middle; }
         .header-contact-cell { width: 40%; text-align: right; vertical-align: middle; font-size: 9px; color: #475467; }
-        .brand-title { font-size: 22px; font-weight: 800; color: #101828; line-height: 1.1; }
-        .brand-tagline { font-size: 10px; color: #f8c300; font-weight: bold; margin-top: 1px; }
+        .brand-title { font-size: 20px; font-weight: 800; color: #101828; letter-spacing: 0.5px; }
+        .brand-tagline { font-size: 9px; color: #d88a00; font-weight: 700; letter-spacing: 1px; }
         
-        .title { text-align: center; margin: 8px 0; font-size: 18px; font-weight: 800; letter-spacing: 2px; color: #101828; }
+        .title { text-align: center; font-size: 15px; font-weight: 800; letter-spacing: 1px; color: #101828; margin: 4px 0 10px 0; }
         
         /* Top Metadata Grid */
-        .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; border: 1px solid #d0d5dd; }
-        .meta-table td { padding: 6px 10px; border: 1px solid #e4e7ec; width: 33.33%; vertical-align: middle; }
-        .meta-label { font-weight: bold; color: #344054; display: inline-block; width: 105px; }
+        .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; background-color: #fcfcfd; border: 1px solid #eaecf0; border-radius: 4px; }
+        .meta-table td { padding: 6px 10px; vertical-align: middle; font-size: 9.5px; }
+        .meta-label { font-weight: bold; color: #475467; display: inline-block; width: 85px; }
         .meta-value { color: #101828; }
         
-        /* Badges */
-        .badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-weight: bold; font-size: 9px; text-transform: uppercase; }
+        .badge { display: inline-block; padding: 2px 6px; font-size: 9px; font-weight: 700; border-radius: 4px; text-transform: uppercase; }
         .badge-dispatched { background: #ecfdf3; color: #027a48; border: 1px solid #abefc6; }
         .badge-pending { background: #fffaeb; color: #b54708; border: 1px solid #fedf89; }
         
@@ -34,36 +43,24 @@
         .details-cell { width: 49%; vertical-align: top; }
         .details-spacer { width: 2%; }
         
-        .section-header { background: #f8c300; color: #101828; padding: 4px 8px; font-weight: bold; font-size: 11px; border-radius: 4px 4px 0 0; text-transform: uppercase; }
-        .section-box { border: 1px solid #d0d5dd; border-top: none; border-radius: 0 0 4px 4px; padding: 6px 8px; min-height: 90px; }
+        .section-header { background: #f8c300; color: #101828; padding: 5px 8px; font-weight: bold; font-size: 10.5px; border-radius: 4px 4px 0 0; text-transform: uppercase; letter-spacing: 0.5px; }
+        .section-box { border: 1px solid #d0d5dd; border-top: none; border-radius: 0 0 4px 4px; padding: 6px 8px; min-height: 85px; }
         .section-box table { width: 100%; border-collapse: collapse; }
         .section-box td { padding: 3px 0; vertical-align: top; }
-        .section-box td.lbl { width: 100px; font-weight: bold; color: #475467; }
+        .section-box td.lbl { width: 110px; font-weight: bold; color: #475467; }
         .section-box td.val { color: #101828; }
         
         /* Items Table */
         .items-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-        .items-table th { background: #f8c300; color: #101828; padding: 6px 8px; font-weight: bold; text-align: left; font-size: 10px; border: 1px solid #344054; }
-        .items-table td { padding: 6px 8px; border: 1px solid #d0d5dd; font-size: 10px; }
+        .items-table th { background: #f8c300; color: #101828; padding: 6px 8px; font-weight: bold; text-align: left; font-size: 9.5px; border: 1px solid #344054; }
+        .items-table td { padding: 6px 8px; border: 1px solid #d0d5dd; font-size: 9.5px; }
         .items-table tr.total-row td { font-weight: bold; background: #f9fafb; border-top: 2px solid #f8c300; }
         
-        /* Summary & LR Block */
-        .summary-lr-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-        .summary-cell { width: 49%; vertical-align: top; }
-        
-        .lr-box { border: 1px solid #d0d5dd; border-top: none; border-radius: 0 0 4px 4px; padding: 6px; text-align: center; min-height: 110px; background: #f9fafb; }
-        .lr-img { max-height: 95px; max-width: 100%; object-fit: contain; border: 1px solid #eaecf0; border-radius: 4px; }
-        .lr-empty { padding-top: 30px; color: #667085; font-style: italic; }
-        
-        /* Remarks Section */
-        .remarks-header { background: #f8c300; color: #101828; padding: 4px 8px; font-weight: bold; font-size: 10px; border-radius: 4px 4px 0 0; text-transform: uppercase; }
-        .remarks-box { border: 1px solid #d0d5dd; border-top: none; border-radius: 0 0 4px 4px; padding: 8px 10px; min-height: 45px; color: #344054; font-size: 10px; background: #fff; line-height: 1.4; }
-        
         /* Footer signatures */
-        .footer-table { width: 100%; border-collapse: collapse; margin-top: 20px; border-top: 1px solid #eaecf0; padding-top: 10px; }
+        .footer-table { width: 100%; border-collapse: collapse; margin-top: 15px; border-top: 1px solid #eaecf0; padding-top: 10px; }
         .footer-left { width: 50%; font-size: 8px; color: #667085; vertical-align: bottom; }
         .footer-right { width: 50%; text-align: right; font-size: 10px; vertical-align: bottom; }
-        .signature-line { border-top: 1px solid #475467; width: 160px; margin-left: auto; margin-top: 30px; margin-bottom: 4px; }
+        .signature-line { border-top: 1px solid #475467; width: 160px; margin-left: auto; margin-top: 25px; margin-bottom: 4px; }
         
         .text-green { color: #027a48; font-weight: bold; }
         .text-red { color: #b54708; font-weight: bold; }
@@ -83,7 +80,7 @@
                 <table style="width: 100%; border-collapse: collapse;">
                     <tr>
                         <td style="width: 50px; vertical-align: middle; padding: 0;">
-                            @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
+                            @if(file_exists(public_path('logo.png')))
                                 <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 45px; height: 45px; object-fit: contain;">
                             @endif
                         </td>
@@ -95,30 +92,29 @@
                 </table>
             </td>
             <td class="header-contact-cell">
-                <div style="margin-bottom: 1px;">📞 +91 98765 43210</div>
-                <div style="margin-bottom: 1px;">✉️ info@pentapure.com</div>
-                <div>🌐 www.pentapure.com</div>
+                <div style="margin-bottom: 1px;">Phone: +91 98765 43210</div>
+                <div style="margin-bottom: 1px;">Email: info@pentapure.com</div>
+                <div>Web: www.pentapure.com</div>
             </td>
         </tr>
     </table>
 
     <div class="title">DISPATCH NOTE</div>
 
-    <!-- Top Metadata Grid -->
+    <!-- Top Metadata Grid: Order Date, Order No, Dispatch Date, Dispatch No, Dispatch By, Order By -->
     <table class="meta-table">
         <tr>
-            <td>
-                <div style="margin-bottom: 4px;"><span class="meta-label">Dispatch No.</span><span class="meta-value">: <strong>{{ $dispatchNo }}</strong></span></div>
-                <div><span class="meta-label">Order No.</span><span class="meta-value">: {{ $orderNo }}</span></div>
+            <td style="width: 33.33%;">
+                <div style="margin-bottom: 4px;"><span class="meta-label">Order Date</span><span class="meta-value">: {{ $orderDate }}</span></div>
+                <div><span class="meta-label">Order No.</span><span class="meta-value">: <strong>{{ $orderNo }}</strong></span></div>
             </td>
-            <td>
+            <td style="width: 33.33%;">
                 <div style="margin-bottom: 4px;"><span class="meta-label">Dispatch Date</span><span class="meta-value">: {{ $dispatchDate }}</span></div>
-                <div><span class="meta-label">Generated On</span><span class="meta-value">: {{ $generatedOn }}</span></div>
+                <div><span class="meta-label">Dispatch No.</span><span class="meta-value">: <strong>{{ $dispatchNo }}</strong></span></div>
             </td>
-            <td>
-                <div style="margin-bottom: 4px;"><span class="meta-label">Status</span><span class="meta-value">: <span class="badge badge-dispatched">{{ $status }}</span></span></div>
-                <div style="margin-bottom: 4px;"><span class="meta-label">Generated By</span><span class="meta-value">: {{ $generatedBy }}</span></div>
-                <div><span class="meta-label">Order By</span><span class="meta-value">: {{ $orderGeneratedBy }}</span></div>
+            <td style="width: 33.33%;">
+                <div style="margin-bottom: 4px;"><span class="meta-label">Dispatch By</span><span class="meta-value">: <strong>{{ $generatedBy }}</strong></span></div>
+                <div><span class="meta-label">Order By</span><span class="meta-value">: <strong>{{ $orderGeneratedBy }}</strong></span></div>
             </td>
         </tr>
     </table>
@@ -128,20 +124,23 @@
         <tr>
             <!-- Customer Box -->
             <td class="details-cell">
-                <div class="section-header">👤 Customer Details</div>
+                <div class="section-header">CUSTOMER DETAILS</div>
                 <div class="section-box">
                     <table>
                         <tr><td class="lbl">Customer Name</td><td class="val">: <strong>{{ $company->name }}</strong></td></tr>
-                        <tr><td class="lbl">Mobile Number</td><td class="val">: {{ $company->contact ?? 'N/A' }}</td></tr>
                         <tr><td class="lbl">Address</td><td class="val">: {{ $company->address ?? 'N/A' }}</td></tr>
+                        <tr><td class="lbl">Pincode</td><td class="val">: {{ $company->pincode ?? 'N/A' }}</td></tr>
                         <tr><td class="lbl">GST Number</td><td class="val">: {{ $company->gst ?? 'N/A' }}</td></tr>
+                        <tr><td class="lbl">Customer Number</td><td class="val">: {{ $company->contact ?? 'N/A' }}</td></tr>
                     </table>
                 </div>
-                <div style="margin-top: 10px; padding: 6px 8px; border: 1px solid #d0d5dd; border-radius: 4px; background: #fff;">
+                
+                <!-- Dispatch Type Box -->
+                <div style="margin-top: 8px; padding: 6px 8px; border: 1px solid #d0d5dd; border-radius: 4px; background: #fff;">
                     <table style="width: 100%; border-collapse: collapse;">
                         <tr>
-                            <td style="width: 100px; font-weight: bold; color: #475467; font-size: 10px;">Dispatch Type</td>
-                            <td style="font-size: 10px; color: #101828;">: <span class="badge {{ $totalPendingQty <= 0 ? 'badge-dispatched' : 'badge-pending' }}">{{ $dispatchType }}</span></td>
+                            <td style="width: 95px; font-weight: bold; color: #475467; font-size: 9.5px; vertical-align: middle;">Dispatch Type</td>
+                            <td style="font-size: 9.5px; color: #101828;">: <span class="badge {{ $totalPendingQty <= 0 ? 'badge-dispatched' : 'badge-pending' }}">{{ $dispatchType }}</span></td>
                         </tr>
                     </table>
                 </div>
@@ -149,15 +148,14 @@
             
             <td class="details-spacer"></td>
             
-            <!-- Transport Box -->
+            <!-- Transport Box (Without LR Number) -->
             <td class="details-cell">
-                <div class="section-header">🚚 Transport Details</div>
+                <div class="section-header">TRANSPORT DETAILS</div>
                 <div class="section-box">
                     <table>
-                        <tr><td class="lbl">Transporter Name</td><td class="val">: <strong>{{ $transporter->name }}</strong></td></tr>
+                        <tr><td class="lbl">Transporter</td><td class="val">: <strong>{{ $transporter->name ?? 'N/A' }}</strong></td></tr>
                         <tr><td class="lbl">Contact Number</td><td class="val">: {{ $transporter->contact ?? 'N/A' }}</td></tr>
                         <tr><td class="lbl">Vehicle Number</td><td class="val">: {{ $transporter->vehicles ?? 'N/A' }}</td></tr>
-                        <tr><td class="lbl">LR Number</td><td class="val">: LR-{{ $log->created_at->format('Y') }}-{{ str_pad($log->id, 4, '0', STR_PAD_LEFT) }}</td></tr>
                         <tr><td class="lbl">Dispatch Date</td><td class="val">: {{ $dispatchDate }}</td></tr>
                     </table>
                 </div>
@@ -165,8 +163,18 @@
         </tr>
     </table>
 
+    <!-- Full-Width Remarks / Special Instructions Box with Yellow Header Bar -->
+    @if(!empty($remarks))
+    <div style="margin-bottom: 10px;">
+        <div class="section-header" style="border-radius: 4px 4px 0 0; margin-bottom: 0;">REMARKS / SPECIAL INSTRUCTIONS</div>
+        <div class="section-box" style="border: 1px solid #d0d5dd; border-top: none; border-radius: 0 0 4px 4px; padding: 8px 10px; min-height: auto; font-size: 9.5px; color: #101828; line-height: 1.4; background: #fff;">
+            {!! nl2br(e($remarks)) !!}
+        </div>
+    </div>
+    @endif
+
     <!-- Item Details -->
-    <div class="section-header" style="border-radius: 4px 4px 0 0; margin-bottom: 0;">📦 Item Details</div>
+    <div class="section-header" style="border-radius: 4px 4px 0 0; margin-bottom: 0;">ITEM DETAILS</div>
     <table class="items-table">
         <thead>
             <tr>
@@ -175,8 +183,8 @@
                 <th style="width: 11%;" class="text-right">Ordered Qty</th>
                 <th style="width: 12%;" class="text-right">Prev. Dispatched Qty.</th>
                 <th style="width: 12%;" class="text-right">Current Dispatch Qty.</th>
-                <th style="width: 11%;" class="text-right">Rate (₹)</th>
-                <th style="width: 12%;" class="text-right">Amount (₹)</th>
+                <th style="width: 11%;" class="text-right">Rate (&#8377;)</th>
+                <th style="width: 12%;" class="text-right">Amount (&#8377;)</th>
                 <th style="width: 12%;" class="text-right">Pending Qty</th>
             </tr>
         </thead>
@@ -197,16 +205,16 @@
                     <td class="text-right"><strong>{{ number_format($di->quantity) }} KG</strong></td>
                     <td class="text-right">
                         @if($orderItem->price > 0)
-                            ₹{{ number_format($orderItem->price, 2) }}
+                            &#8377;{{ number_format($orderItem->price, 2) }}
                         @else
-                            <span class="text-red">₹0.00</span>
+                            <span class="text-red">&#8377;0.00</span>
                         @endif
                     </td>
                     <td class="text-right">
                         @if($orderItem->price > 0)
-                            ₹{{ number_format($orderItem->price * $di->quantity, 2) }}
+                            &#8377;{{ number_format($orderItem->price * $di->quantity, 2) }}
                         @else
-                            <span class="text-red">₹0.00</span>
+                            <span class="text-red">&#8377;0.00</span>
                         @endif
                     </td>
                     <td class="text-right text-red">{{ number_format($pendingQty) }} KG</td>
@@ -218,7 +226,7 @@
                 <td class="text-right">{{ number_format($totalPrevDispatchedQty) }} KG</td>
                 <td class="text-right"><strong>{{ number_format($totalDispatchedQty) }} KG</strong></td>
                 <td class="text-right"></td>
-                <td class="text-right">₹{{ number_format($totalAmount, 2) }}</td>
+                <td class="text-right">&#8377;{{ number_format($totalAmount, 2) }}</td>
                 <td class="text-right text-red">{{ number_format($totalPendingQty) }} KG</td>
             </tr>
         </tbody>
@@ -229,7 +237,7 @@
         
         <!-- Dispatch Timeline for Order -->
         @if(count($dispatchHistory) > 1)
-        <div class="section-header" style="border-radius: 4px 4px 0 0; margin-bottom: 0; margin-top: 10px;">⏱️ Dispatch Timeline for this Order</div>
+        <div class="section-header" style="border-radius: 4px 4px 0 0; margin-bottom: 0; margin-top: 10px;">DISPATCH TIMELINE FOR THIS ORDER</div>
         <table class="items-table" style="margin-bottom: 10px;">
             <thead>
                 <tr>
@@ -263,14 +271,6 @@
             </tbody>
         </table>
         @endif
-
-
-
-        <!-- Remarks -->
-        <div class="remarks-header">💬 Remarks / Special Instructions</div>
-        <div class="remarks-box">
-            {!! nl2br(e($remarks)) !!}
-        </div>
 
         <!-- Signatures and footer -->
         <table class="footer-table">

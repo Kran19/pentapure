@@ -1240,20 +1240,38 @@ class AdminController extends Controller
             'grade' => 'required|string',
         ]);
 
-        // Query net stock grouped by location
-        $breakdown = DB::table('stocks')
-            ->join('locations', 'stocks.location_id', '=', 'locations.id')
+        $locations = Location::orderBy('name')->get();
+
+        $stockCounts = DB::table('stocks')
             ->where('stocks.product_id', $request->product_id)
             ->where('stocks.stage', $request->stage)
             ->where('stocks.grade', $request->grade)
-            ->groupBy('stocks.location_id', 'locations.name')
-            ->selectRaw("
-                stocks.location_id as location_id,
-                locations.name as name,
-                SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity
-            ")
-            ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
-            ->get();
+            ->whereNotNull('stocks.location_id')
+            ->groupBy('stocks.location_id')
+            ->selectRaw("stocks.location_id, SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity")
+            ->pluck('quantity', 'location_id')
+            ->toArray();
+
+        // Also check unassigned stock (null location_id) and map to Main Warehouse
+        $unassignedStock = (float) DB::table('stocks')
+            ->where('stocks.product_id', $request->product_id)
+            ->where('stocks.stage', $request->stage)
+            ->where('stocks.grade', $request->grade)
+            ->whereNull('stocks.location_id')
+            ->selectRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity")
+            ->value('quantity');
+
+        $breakdown = $locations->map(function($loc) use ($stockCounts, $unassignedStock) {
+            $qty = (float) ($stockCounts[$loc->id] ?? 0);
+            if (strtoupper($loc->name) === 'MAIN WAREHOUSE' && $unassignedStock > 0) {
+                $qty += $unassignedStock;
+            }
+            return [
+                'location_id' => $loc->id,
+                'name' => $loc->name,
+                'quantity' => max(0, $qty),
+            ];
+        })->sortByDesc('quantity')->values();
 
         return response()->json(['success' => true, 'breakdown' => $breakdown]);
     }

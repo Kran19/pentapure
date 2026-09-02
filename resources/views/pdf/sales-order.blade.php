@@ -83,7 +83,7 @@
                 <table style="width: 100%; border-collapse: collapse;">
                     <tr>
                         <td style="width: 50px; vertical-align: middle; padding: 0;">
-                            @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
+                            @if(file_exists(public_path('logo.png')))
                                 <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 45px; height: 45px; object-fit: contain;">
                             @endif
                         </td>
@@ -125,13 +125,14 @@
         <tr>
             <!-- Customer Box -->
             <td class="details-cell">
-                <div class="section-header">👤 Customer Details</div>
+                <div class="section-header">CUSTOMER DETAILS</div>
                 <div class="section-box">
                     <table>
                         <tr><td class="lbl">Customer Name</td><td class="val">: <strong>{{ $company->name }}</strong></td></tr>
-                        <tr><td class="lbl">Mobile Number</td><td class="val">: {{ $company->contact ?? 'N/A' }}</td></tr>
-                        <tr><td class="lbl">Address</td><td class="val">: {{ $company->address ?? 'N/A' }}{{ !empty($company->pincode) ? ' - ' . $company->pincode : '' }}</td></tr>
+                        <tr><td class="lbl">Address</td><td class="val">: {{ $company->address ?? 'N/A' }}</td></tr>
+                        <tr><td class="lbl">Pincode</td><td class="val">: {{ $company->pincode ?? 'N/A' }}</td></tr>
                         <tr><td class="lbl">GST Number</td><td class="val">: {{ $company->gst ?? 'N/A' }}</td></tr>
+                        <tr><td class="lbl">Customer Number</td><td class="val">: {{ $company->contact ?? 'N/A' }}</td></tr>
                     </table>
                 </div>
             </td>
@@ -140,10 +141,10 @@
             
             <!-- Transport Box -->
             <td class="details-cell">
-                <div class="section-header">🚚 Transport Details</div>
+                <div class="section-header">TRANSPORT DETAILS</div>
                 <div class="section-box">
                     <table>
-                        <tr><td class="lbl">Transporter Name</td><td class="val">: <strong>{{ $transporter->name ?? 'N/A' }}</strong></td></tr>
+                        <tr><td class="lbl">Transporter</td><td class="val">: <strong>{{ $transporter->name ?? 'N/A' }}</strong></td></tr>
                         <tr><td class="lbl">Contact Number</td><td class="val">: {{ $transporter->contact ?? 'N/A' }}</td></tr>
                         <tr><td class="lbl">Vehicle Number</td><td class="val">: {{ $transporter->vehicles ?? 'N/A' }}</td></tr>
                     </table>
@@ -153,7 +154,7 @@
     </table>
 
     <!-- Item Details -->
-    <div class="section-header" style="border-radius: 4px 4px 0 0; margin-bottom: 0;">📦 Item Details</div>
+    <div class="section-header" style="border-radius: 4px 4px 0 0; margin-bottom: 0;">ITEM DETAILS</div>
     <table class="items-table">
         <thead>
             <tr>

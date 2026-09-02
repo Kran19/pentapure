@@ -126,7 +126,7 @@ body {
             <table style="width: 100%; border-collapse: collapse;">
                 <tr>
                     <td style="width: 60px; padding: 0; vertical-align: middle; border: none; background: transparent;">
-                        @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
+                        @if(file_exists(public_path('logo.png')))
                             <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 50px; height: 50px; object-fit: contain;">
                         @endif
                     </td>

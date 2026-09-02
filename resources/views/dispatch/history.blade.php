@@ -1,14 +1,47 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('content')
 @php
   $q = request('q', '');
-  $dateRange = request('range', 'this_month');
+  $dateRange = request('range', 'all');
   $startDate = request('start', '');
   $endDate = request('end', '');
+  $companyId = request('company_id', '');
+  $statusFilter = request('status', '');
 
   $filtered = collect($pageData['dispatchLogs'] ?? []);
 
+  // 1. Company Filter
+  if ($companyId) {
+    $filtered = $filtered->filter(function($d) use ($companyId) {
+      return (string)($d['companyId'] ?? '') === (string)$companyId;
+    });
+  }
+
+  // 2. Status Filter
+  if ($statusFilter) {
+    $filtered = $filtered->filter(function($d) use ($statusFilter) {
+      $st = strtoupper(trim((string)($d['dispatchStatus'] ?? $d['status'] ?? '')));
+      $st = str_replace('_', ' ', $st);
+      $target = strtoupper(trim(str_replace('_', ' ', $statusFilter)));
+      
+      if ($target === 'FULLY DISPATCHED' || $target === 'DONE') {
+        return in_array($st, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED']);
+      }
+      if ($target === 'PARTIAL PENDING') {
+        return in_array($st, ['PARTIAL PENDING', 'PARTIAL']);
+      }
+      if ($target === 'PARTIAL DISPATCH' || $target === 'PARTIAL') {
+        return in_array($st, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIAL PENDING']);
+      }
+      if ($target === 'PENDING') {
+        return in_array($st, ['PENDING', 'OPEN', 'UNASSIGNED']);
+      }
+      return str_contains($st, $target);
+    });
+  }
+
+  // 3. Search Query Filter
   if ($q) {
     $filtered = $filtered->filter(function($d) use ($q) {
       $query = strtolower($q);
@@ -18,6 +51,7 @@
     });
   }
 
+  // 4. Date Range Filter
   if ($dateRange && $dateRange !== 'all') {
     $now = \Carbon\Carbon::now();
     $start = null;
@@ -25,6 +59,9 @@
 
     if ($dateRange === 'today') {
       $start = \Carbon\Carbon::today();
+    } elseif ($dateRange === 'yesterday') {
+      $start = \Carbon\Carbon::yesterday()->startOfDay();
+      $end = \Carbon\Carbon::yesterday()->endOfDay();
     } elseif ($dateRange === 'this_week') {
       $start = \Carbon\Carbon::now()->startOfWeek();
     } elseif ($dateRange === 'last_week') {
@@ -48,7 +85,23 @@
     }
   }
 
-  $filtered = $filtered->sortByDesc('date');
+  // 5. Step-by-Step Priority Sorting: PENDING (1) -> PARTIAL PENDING (2) -> PARTIAL DISPATCH (3) -> FULLY DISPATCHED (4)
+  $filtered = $filtered->sortBy(function($d) {
+    $st = strtoupper(trim(str_replace('_', ' ', (string)($d['dispatchStatus'] ?? $d['status'] ?? ''))));
+    $priority = 99;
+    if (in_array($st, ['PENDING', 'OPEN', 'UNASSIGNED'])) {
+      $priority = 1;
+    } elseif ($st === 'PARTIAL PENDING') {
+      $priority = 2;
+    } elseif (in_array($st, ['PARTIAL', 'PARTIAL DISPATCH'])) {
+      $priority = 3;
+    } elseif (in_array($st, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED'])) {
+      $priority = 4;
+    } elseif ($st === 'CANCELLED') {
+      $priority = 5;
+    }
+    return sprintf('%02d_%012d', $priority, 999999999999 - strtotime($d['date']));
+  });
 
   $page = request('page', 1);
   $perPage = 15;
@@ -58,34 +111,61 @@
   $paginatedArray = $paginated->values()->toArray();
 @endphp
 
-@php $pdfUrl = route('history.pdf', ['panel' => 'dispatch']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&q=' . $q; @endphp
+@php $pdfUrl = route('history.pdf', ['panel' => 'dispatch']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&company_id=' . $companyId . '&status=' . $statusFilter . '&q=' . $q; @endphp
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
   <h2 style="margin:0;">📦 Dispatch Logs History</h2>
   <button id="export-pdf-btn" class="btn btn-sm btn-secondary" style="width:auto; padding:0.5rem 1rem;"
     onclick="app.exportHistoryPdf(this, '{{ $pdfUrl }}')">📄 Export PDF</button>
 </div>
 
-<form method="GET" action="" style="margin-bottom:1rem; display:flex; flex-direction:column; gap:10px;">
-  <div class="filter-bar" style="flex-wrap:wrap; gap:8px; padding: 0.5rem; background:rgba(0,0,0,0.2); border-radius:8px; display:flex;">
-    <select name="range" onchange="this.form.submit()" style="width:auto; flex:1; padding:0.4rem; border-radius:4px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
-      <option value="today" {{ $dateRange==='today'?'selected':'' }}>Today</option>
-      <option value="this_week" {{ $dateRange==='this_week'?'selected':'' }}>This Week</option>
-      <option value="last_week" {{ $dateRange==='last_week'?'selected':'' }}>Last Week</option>
-      <option value="this_month" {{ $dateRange==='this_month'?'selected':'' }}>This Month</option>
-      <option value="last_month" {{ $dateRange==='last_month'?'selected':'' }}>Last Month</option>
-      <option value="custom" {{ $dateRange==='custom'?'selected':'' }}>Custom Range</option>
-      <option value="all" {{ $dateRange==='all'?'selected':'' }}>All Time</option>
-    </select>
-    @if($dateRange === 'custom')
-      <input type="date" name="start" value="{{ $startDate }}" onchange="this.form.submit()"
-        style="width:auto; padding:0.4rem 0.6rem; border-radius:4px; border:1px solid rgba(255,255,255,0.2); background:#1f2937; color:#fff; color-scheme:dark;">
-      <input type="date" name="end" value="{{ $endDate }}" onchange="this.form.submit()"
-        style="width:auto; padding:0.4rem 0.6rem; border-radius:4px; border:1px solid rgba(255,255,255,0.2); background:#1f2937; color:#fff; color-scheme:dark;">
-    @endif
+<form method="GET" action="" style="margin-bottom:1.2rem; display:flex; flex-direction:column; gap:10px;">
+  <!-- 3 Filter Boxes in 1 Line -->
+  <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; align-items:center;">
+    
+    <!-- 1st: Date Range Filter -->
+    <div>
+      <select name="range" onchange="this.form.submit()" style="width:100%; padding:0.65rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600;">
+        <option value="all" {{ $dateRange==='all'?'selected':'' }}>ALL TIME</option>
+        <option value="custom" {{ $dateRange==='custom'?'selected':'' }}>CUSTOM RANGE</option>
+      </select>
+    </div>
+
+    <!-- 2nd: Company Name Filter -->
+    <div>
+      <select name="company_id" onchange="this.form.submit()" style="width:100%; padding:0.65rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600;">
+        <option value="">ALL COMPANIES</option>
+        @foreach($pageData['companies'] ?? [] as $comp)
+          <option value="{{ $comp['id'] }}" {{ (string)$companyId === (string)$comp['id'] ? 'selected' : '' }}>
+            {{ strtoupper($comp['name']) }}
+          </option>
+        @endforeach
+      </select>
+    </div>
+
+    <!-- 3rd: Status Filter -->
+    <div>
+      <select name="status" onchange="this.form.submit()" style="width:100%; padding:0.65rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600;">
+        <option value="">ALL STATUS</option>
+        <option value="PENDING" {{ $statusFilter === 'PENDING' ? 'selected' : '' }}>PENDING</option>
+        <option value="PARTIAL_PENDING" {{ $statusFilter === 'PARTIAL_PENDING' ? 'selected' : '' }}>PARTIAL PENDING</option>
+        <option value="PARTIAL" {{ $statusFilter === 'PARTIAL' ? 'selected' : '' }}>PARTIAL DISPATCH</option>
+        <option value="DONE" {{ $statusFilter === 'DONE' ? 'selected' : '' }}>FULLY DISPATCHED</option>
+      </select>
+    </div>
   </div>
 
-  <div class="form-group">
-    <input type="text" name="q" placeholder="Search customer, transporter or order ID..." value="{{ $q }}" onchange="this.form.submit()" style="padding:0.6rem 0.8rem; font-size:0.85rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+  @if($dateRange === 'custom')
+    <div style="display:flex; gap:10px; align-items:center;">
+      <input type="date" name="start" value="{{ $startDate }}" onchange="this.form.submit()"
+        style="flex:1; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+      <input type="date" name="end" value="{{ $endDate }}" onchange="this.form.submit()"
+        style="flex:1; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+    </div>
+  @endif
+
+  <!-- Search Input Bar -->
+  <div class="form-group" style="margin-bottom:0;">
+    <input type="text" name="q" placeholder="SEARCH CUSTOMER, TRANSPORTER OR ORDER ID..." value="{{ $q }}" onchange="this.form.submit()" style="padding:0.65rem 0.9rem; font-size:0.9rem; width:100%; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
   </div>
 </form>
 
@@ -100,7 +180,7 @@
       <div onclick="toggleHistoryAccordion('disp-acc-{{ $d['id'] }}', this)" style="cursor:pointer; padding:1.1rem; display:flex; justify-content:space-between; align-items:center; user-select:none;">
         <div style="flex:1; padding-right:15px;">
           <div style="font-weight:600; font-size:1rem; color:var(--text-main); line-height:1.3;">
-            Order #{{ strtoupper((string)$d['orderId']) }} — {{ $d['companyName'] ?? 'N/A' }}
+            Order #{{ strtoupper((string)$d['orderId']) }} - {{ $d['companyName'] ?? 'N/A' }}
           </div>
           <div style="margin-top:6px; font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
             {!! $lrStatus !!}
@@ -110,8 +190,13 @@
             <span>{{ \Carbon\Carbon::parse($d['date'])->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}</span>
           </div>
         </div>
-        <div style="display:flex; align-items:center; gap:10px; text-align:right;">
-          <button type="button" class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); app.revertDispatch({{ $d['id'] }})" style="width:auto; padding:0.35rem 0.8rem; font-size:0.75rem; border-color:#ef4444 !important; color:#ef4444 !important;">↩️ Revert Dispatch</button>
+        <div style="display:flex; align-items:center; gap:8px; text-align:right; flex-wrap:nowrap;">
+          <a href="{{ url(request()->segment(1) . '/pdf/' . $d['id']) }}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm" style="width:auto; padding:0.35rem 0.75rem; font-size:0.76rem; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:600; background:var(--primary, #D88A00); color:#000; white-space:nowrap;">
+            📄 Download PDF
+          </a>
+          <button type="button" class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); app.revertDispatch({{ $d['id'] }})" style="width:auto; padding:0.35rem 0.75rem; font-size:0.76rem; border-color:#ef4444 !important; color:#ef4444 !important; display:inline-flex; align-items:center; gap:4px; white-space:nowrap;">
+            ↩ Revert Dispatch
+          </button>
           <div class="acc-chevron" style="transition:transform 0.25s ease; color:var(--text-muted); display:flex; align-items:center;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="6 9 12 15 18 9"></polyline>
@@ -156,7 +241,7 @@
         @if(!empty($d['items']) && count($d['items']) > 0)
           <div style="margin-bottom:1rem; background:rgba(0,0,0,0.15); border-radius:8px; padding:12px; border-left:3px solid var(--primary, #D88A00);">
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">Items Dispatched in this Round</div>
-                        @foreach($d['items'] as $item)
+            @foreach($d['items'] as $item)
               @php
                 $pName = preg_replace('/\s+(PURE|PREMIUM|COMMERCIAL|NONE|\b[A-Za-z0-9_-]+\b)\s*\((fg|raw|semi)\)$/i', '', $item['productName'] ?? 'Unknown');
                 $pName = preg_replace('/\s*\((fg|raw|semi)\)$/i', '', $pName);
@@ -186,15 +271,6 @@
           </div>
         @endif
         <input type="file" id="late-lr-input-{{ $d['id'] }}" accept=".jpg,.jpeg,.png,.webp" style="display:none;" onchange="app.handleLateLRUpload(event, {{ $d['id'] }}, {{ $idx }})">
-
-        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:0.8rem;">
-          <a href="{{ url(request()->segment(1) . '/pdf/' . $d['id']) }}" target="_blank" class="btn btn-sm" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
-            📄 Download Dispatch PDF
-          </a>
-          <button class="btn btn-sm" onclick="app.revertDispatch({{ $d['id'] }})" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#ef4444; display:inline-flex; align-items:center; gap:5px;">
-            ↩️ Revert Dispatch
-          </button>
-        </div>
       </div>
     </div>
   @empty
@@ -207,25 +283,25 @@
 @if($totalPages > 1)
   <div style="display:flex; justify-content:center; gap:8px; margin-top:1.5rem;">
     @if($page > 1)
-      <a class="btn btn-sm btn-secondary" href="?range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&q={{ $q }}&page={{ $page - 1 }}" style="width:auto; text-decoration:none;">&laquo; Prev</a>
+      <a class="btn btn-sm btn-secondary" href="?range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&company_id={{ $companyId }}&status={{ $statusFilter }}&q={{ $q }}&page={{ $page - 1 }}" style="width:auto; text-decoration:none;">&laquo; Prev</a>
     @endif
     <span style="align-self:center; color:var(--text-muted);">Page {{ $page }} of {{ $totalPages }}</span>
     @if($page < $totalPages)
-      <a class="btn btn-sm btn-secondary" href="?range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&q={{ $q }}&page={{ $page + 1 }}" style="width:auto; text-decoration:none;">Next &raquo;</a>
+      <a class="btn btn-sm btn-secondary" href="?range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&company_id={{ $companyId }}&status={{ $statusFilter }}&q={{ $q }}&page={{ $page + 1 }}" style="width:auto; text-decoration:none;">Next &raquo;</a>
     @endif
   </div>
 @endif
 
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    window._historyLogs = @json($paginatedArray);
+    // Keep filter state
   });
 
-  function toggleHistoryAccordion(id, headerEl) {
-    const content = document.getElementById(id);
+  function toggleHistoryAccordion(contentId, headerEl) {
+    const content = document.getElementById(contentId);
     if (!content) return;
     const chevron = headerEl.querySelector('.acc-chevron');
-    const isHidden = content.style.display === 'none' || !content.style.display;
+    const isHidden = content.style.display === 'none' || content.style.display === '';
     
     if (isHidden) {
       content.style.display = 'block';

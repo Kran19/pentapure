@@ -1,60 +1,71 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>PentaPure - Dispatch History Report</title>
+    <meta charset="UTF-8">
+    <title>Dispatch History Report - PentaPure</title>
     <style>
-        @page { margin: 15px; }
+        @page {
+            size: A4 portrait;
+            margin: 10mm 10mm 10mm 10mm;
+        }
+        body { font-family: 'DejaVu Sans', sans-serif; color: #101828; font-size: 8.5px; line-height: 1.35; text-transform: uppercase; }
         * { box-sizing: border-box; }
-        body { font-family: DejaVu Sans, sans-serif; color: #101828; font-size: 9px; line-height: 1.35; text-transform: uppercase; }
-        .page { border: 1px solid #1f2937; padding: 15px 20px; }
+        .page { width: 100%; position: relative; }
         
-        /* Header styling */
-        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; border-bottom: 2px solid #e4e7ec; padding-bottom: 4px; }
+        /* Branding header */
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; border-bottom: 2px solid #f8c300; padding-bottom: 4px; }
         .header-logo-cell { width: 60%; vertical-align: middle; }
-        .header-contact-cell { width: 40%; text-align: right; vertical-align: middle; font-size: 8.5px; color: #475467; }
-        .brand-title { font-size: 20px; font-weight: 800; color: #101828; line-height: 1.1; }
-        .brand-tagline { font-size: 9px; color: #f8c300; font-weight: bold; margin-top: 1px; }
+        .header-contact-cell { width: 40%; text-align: right; vertical-align: middle; font-size: 8px; color: #475467; }
+        .brand-title { font-size: 17px; font-weight: 800; color: #101828; letter-spacing: 0.5px; }
+        .brand-tagline { font-size: 8px; color: #d88a00; font-weight: bold; letter-spacing: 1px; }
         
-        .title-container { text-align: center; margin: 10px 0; }
-        .title-line { display: inline-block; width: 60px; border-top: 2px solid #f8c300; vertical-align: middle; margin: 0 10px; }
-        .title { display: inline-block; font-size: 16px; font-weight: 800; letter-spacing: 1.5px; color: #101828; vertical-align: middle; }
+        /* Title */
+        .title-container { text-align: center; margin: 4px 0 8px 0; }
+        .title { display: inline-block; font-size: 13px; font-weight: 800; letter-spacing: 1px; color: #101828; padding: 0 10px; }
+        .title-line { height: 1px; background: #eaecf0; margin-top: 2px; }
         
-        /* Top Metadata Grid */
-        .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; border: 1px solid #d0d5dd; }
-        .meta-table td { padding: 5px 8px; border: 1px solid #e4e7ec; vertical-align: middle; font-size: 8.5px; }
-        .meta-label { font-weight: bold; color: #344054; display: inline-block; width: 95px; }
+        /* Metadata block */
+        .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; background-color: #fcfcfd; border: 1px solid #eaecf0; border-radius: 3px; }
+        .meta-table td { padding: 4px 8px; font-size: 8px; vertical-align: middle; }
+        .meta-label { font-weight: bold; color: #475467; display: inline-block; width: 75px; }
         .meta-value { color: #101828; }
         
-        /* Stats cards row */
-        .stats-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-        .stats-card-cell { width: 16.66%; padding: 0 4px; }
-        .stats-card-cell:first-child { padding-left: 0; }
-        .stats-card-cell:last-child { padding-right: 0; }
-        .stats-card { border-radius: 4px; padding: 6px; text-align: center; border: 1px solid #d0d5dd; }
+        /* Stats cards */
+        .stats-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+        .stats-card-cell { width: 16.66%; padding: 0 2px; }
+        .stats-card { border: 1px solid #d0d5dd; border-radius: 3px; padding: 4px 2px; text-align: center; }
+        .stats-label { font-size: 6.5px; font-weight: bold; text-transform: uppercase; color: #475467; margin-bottom: 1px; }
+        .stats-value { font-size: 10px; font-weight: 800; }
         
-        /* Color variations for stats */
-        .stats-yellow { border-color: #fdec98; background: #fffdf5; color: #b37400; }
-        .stats-green { border-color: #abefc6; background: #f6fef9; color: #027a48; }
-        .stats-orange { border-color: #fedf89; background: #fffdf5; color: #b54708; }
-        .stats-red { border-color: #fecdca; background: #fffbfa; color: #b42318; }
-        .stats-purple { border-color: #d6bbfb; background: #fcfaff; color: #5f259f; }
-        .stats-teal { border-color: #99ffd6; background: #f2fff9; color: #007a4b; }
+        .stats-yellow { background-color: #fffbeb; border-color: #fef08a; }
+        .stats-yellow .stats-value { color: #b45309; }
+        .stats-green { background-color: #ecfdf3; border-color: #abefc6; }
+        .stats-green .stats-value { color: #027a48; }
+        .stats-blue { background-color: #eff8ff; border-color: #b2ddff; }
+        .stats-blue .stats-value { color: #175cd3; }
+        .stats-orange { background-color: #fffaeb; border-color: #fedf89; }
+        .stats-orange .stats-value { color: #b54708; }
+        .stats-red { background-color: #fef3f2; border-color: #fecdca; }
+        .stats-red .stats-value { color: #b42318; }
+        .stats-purple { background-color: #f9f5ff; border-color: #e9d7fe; }
+        .stats-purple .stats-value { color: #6941c6; }
+        .stats-teal { background-color: #f0fdf9; border-color: #99f6e4; }
+        .stats-teal .stats-value { color: #0f766e; }
         
-        .stats-label { font-size: 7px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px; }
-        .stats-value { font-size: 11px; font-weight: 800; }
+        /* Section headers */
+        .section-header { background: #f8c300; color: #101828; padding: 4px 6px; font-weight: bold; font-size: 9px; border-radius: 3px 3px 0 0; text-transform: uppercase; margin-top: 6px; }
         
-        .section-header { background: #f8c300; color: #101828; padding: 4px 8px; font-weight: bold; font-size: 10px; border-radius: 3px 3px 0 0; text-transform: uppercase; margin-top: 8px; }
-        
-        /* Main table styling */
-        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-        .data-table th { background: #f8c300; color: #101828; padding: 5px 6px; font-weight: bold; text-align: left; font-size: 8.5px; border: 1px solid #344054; }
-        .data-table td { padding: 5px 6px; border: 1px solid #d0d5dd; font-size: 8px; vertical-align: middle; }
+        /* Data table */
+        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+        .data-table th { background: #f8c300; color: #101828; padding: 5px 6px; font-weight: bold; text-align: left; font-size: 8px; border: 1px solid #344054; }
+        .data-table td { padding: 4px 6px; border: 1px solid #d0d5dd; font-size: 7.8px; vertical-align: middle; }
         .data-table tr.total-row td { font-weight: bold; background: #f9fafb; border-top: 1.5px solid #111c31; }
         
         /* Badges */
-        .badge { display: inline-block; padding: 1px 4px; border-radius: 2px; font-weight: bold; font-size: 7.5px; text-transform: uppercase; }
-        .badge-completed { background: #ecfdf3; color: #027a48; border: 1px solid #abefc6; }
+        .badge { display: inline-block; padding: 2px 5px; border-radius: 3px; font-weight: bold; font-size: 7px; text-transform: uppercase; white-space: nowrap; }
+        .badge-fully-dispatched, .badge-completed { background: #ecfdf3; color: #027a48; border: 1px solid #abefc6; }
+        .badge-partial-dispatch, .badge-partial { background: #eff8ff; color: #175cd3; border: 1px solid #b2ddff; }
+        .badge-partial-pending { background: #fff8eb; color: #b45309; border: 1px solid #fef08a; }
         .badge-pending { background: #fffaeb; color: #b54708; border: 1px solid #fedf89; }
         .badge-cancelled { background: #fef3f2; color: #b42318; border: 1px solid #fecdca; }
         
@@ -64,19 +75,14 @@
         .summary-spacer { width: 2%; }
         
         .summary-subtable { width: 100%; border-collapse: collapse; border: 1px solid #d0d5dd; }
-        .summary-subtable th { background: #f4f5f7; color: #344054; padding: 4px 6px; font-weight: bold; font-size: 8px; border: 1px solid #d0d5dd; text-align: left; }
-        .summary-subtable td { padding: 4px 6px; border: 1px solid #e4e7ec; font-size: 8px; }
+        .summary-subtable th { background: #f4f5f7; color: #344054; padding: 4px 6px; font-weight: bold; font-size: 7.5px; border: 1px solid #d0d5dd; text-align: left; }
+        .summary-subtable td { padding: 4px 6px; border: 1px solid #e4e7ec; font-size: 7.5px; }
         .summary-subtable tr.total-row td { font-weight: bold; background: #f9fafb; border-top: 1.5px solid #344054; }
         
-        /* Note block */
-        .note-box { border: 1px solid #d0d5dd; border-radius: 4px; padding: 8px; background: #f9fafb; margin-top: 10px; line-height: 1.4; color: #344054; }
-        .note-title { font-weight: bold; color: #101828; margin-bottom: 3px; }
-        .note-list { margin: 0; padding-left: 12px; }
-        
         /* Footer signature */
-        .footer-table { width: 100%; border-collapse: collapse; margin-top: 20px; border-top: 1px solid #eaecf0; padding-top: 8px; }
-        .footer-left { width: 50%; font-size: 8px; color: #667085; vertical-align: bottom; }
-        .footer-right { width: 50%; text-align: right; font-size: 9px; vertical-align: bottom; }
+        .footer-table { width: 100%; border-collapse: collapse; margin-top: 15px; border-top: 1px solid #eaecf0; padding-top: 8px; }
+        .footer-left { width: 50%; font-size: 7.5px; color: #667085; vertical-align: bottom; }
+        .footer-right { width: 50%; text-align: right; font-size: 8.5px; vertical-align: bottom; }
         .signature-line { border-top: 1px solid #475467; width: 140px; margin-left: auto; margin-top: 25px; margin-bottom: 3px; }
         
         .text-green { color: #027a48; font-weight: bold; }
@@ -98,7 +104,7 @@
                 <table style="width: 100%; border-collapse: collapse;">
                     <tr>
                         <td style="width: 40px; vertical-align: middle; padding: 0;">
-                            @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
+                            @if(file_exists(public_path('logo.png')))
                                 <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 35px; height: 35px; object-fit: contain;">
                             @endif
                         </td>
@@ -110,9 +116,9 @@
                 </table>
             </td>
             <td class="header-contact-cell">
-                <div style="margin-bottom: 1px;">✉️ info@pentapure.com</div>
-                <div style="margin-bottom: 1px;">📞 +91 98765 43210</div>
-                <div>🌐 www.pentapure.com</div>
+                <div style="margin-bottom: 1px;">Email: info@pentapure.com</div>
+                <div style="margin-bottom: 1px;">Phone: +91 98765 43210</div>
+                <div>Web: www.pentapure.com</div>
             </td>
         </tr>
     </table>
@@ -150,20 +156,20 @@
             </td>
             <td class="stats-card-cell">
                 <div class="stats-card stats-green">
-                    <div class="stats-label">Completed</div>
-                    <div class="stats-value">{{ $completedCount }}</div>
+                    <div class="stats-label">Fully Dispatched</div>
+                    <div class="stats-value">{{ $fullyDispatchedCount ?? 0 }}</div>
+                </div>
+            </td>
+            <td class="stats-card-cell">
+                <div class="stats-card stats-blue">
+                    <div class="stats-label">Partial Dispatch</div>
+                    <div class="stats-value">{{ $partialDispatchCount ?? 0 }}</div>
                 </div>
             </td>
             <td class="stats-card-cell">
                 <div class="stats-card stats-orange">
                     <div class="stats-label">Pending</div>
-                    <div class="stats-value">{{ $pendingCount }}</div>
-                </div>
-            </td>
-            <td class="stats-card-cell">
-                <div class="stats-card stats-red">
-                    <div class="stats-label">Cancelled</div>
-                    <div class="stats-value">{{ $cancelledCount }}</div>
+                    <div class="stats-value">{{ $pendingCount ?? 0 }}</div>
                 </div>
             </td>
             <td class="stats-card-cell">
@@ -182,7 +188,7 @@
     </table>
 
     <!-- Dispatch History Table -->
-    <div class="section-header" style="border-radius: 3px 3px 0 0; margin-bottom: 0;">📋 Dispatch History</div>
+    <div class="section-header" style="border-radius: 3px 3px 0 0; margin-bottom: 0;">DISPATCH HISTORY</div>
     <table class="data-table">
         <thead>
             <tr>
@@ -190,16 +196,26 @@
                 <th style="width: 8%;">Order ID</th>
                 <th style="width: 9%;">Date</th>
                 <th style="width: 12%;">Customer</th>
-                <th style="width: 22%;">Product Details</th>
+                <th style="width: 20%;">Product Details</th>
                 <th style="width: 8%; color: #027a48;" class="text-right">Ord. Qty</th>
                 <th style="width: 8%; color: #b37400;" class="text-right">Disp. Qty</th>
                 <th style="width: 8%; color: #b42318;" class="text-right">Pend. Qty</th>
                 <th style="width: 9%;" class="text-right">Revenue</th>
-                <th style="width: 8%;" class="text-center">Status</th>
+                <th style="width: 10%;" class="text-center">Status</th>
             </tr>
         </thead>
         <tbody>
             @forelse($rows as $idx => $row)
+                @php
+                    $rawStatus = strtoupper(trim(str_replace('_', ' ', $row['status'] ?? 'PENDING')));
+                    $badgeClass = match($rawStatus) {
+                        'FULLY DISPATCHED', 'COMPLETED', 'DONE' => 'badge-fully-dispatched',
+                        'PARTIAL DISPATCH', 'PARTIAL' => 'badge-partial-dispatch',
+                        'PARTIAL PENDING' => 'badge-partial-pending',
+                        'CANCELLED' => 'badge-cancelled',
+                        default => 'badge-pending',
+                    };
+                @endphp
                 <tr>
                     <td>{{ $row['dispatch_id'] }}</td>
                     <td>{{ $row['order_id'] }}</td>
@@ -217,14 +233,14 @@
                     <td class="text-right" style="color: {{ ($row['pending_qty'] ?? 0) > 0 ? '#b42318' : 'inherit' }};"><strong>{{ $row['pending_qty_formatted'] ?? number_format($row['pending_qty'] ?? 0) . ' KG' }}</strong></td>
                     <td class="text-right"><strong>Rs. {{ number_format($row['amount'], 2) }}</strong></td>
                     <td class="text-center">
-                        <span class="badge {{ $row['status'] === 'COMPLETED' ? 'badge-completed' : ($row['status'] === 'CANCELLED' ? 'badge-cancelled' : 'badge-pending') }}">
-                            {{ $row['status'] }}
+                        <span class="badge {{ $badgeClass }}">
+                            {{ $rawStatus }}
                         </span>
                     </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="9" class="text-center" style="padding: 15px; color: #667085;">No dispatch history found for the selected filters.</td>
+                    <td colspan="10" class="text-center" style="padding: 15px; color: #667085;">No dispatch history found for the selected filters.</td>
                 </tr>
             @endforelse
             @if(count($rows) > 0)
@@ -246,7 +262,7 @@
             <tr>
                 <!-- Customer Summary -->
                 <td class="summary-cell">
-                    <div class="section-header" style="margin-top: 0;">👥 Customer-Wise Summary</div>
+                    <div class="section-header" style="margin-top: 0;">CUSTOMER-WISE SUMMARY</div>
                     <table class="summary-subtable">
                         <thead>
                             <tr>
@@ -262,16 +278,16 @@
                                 <tr>
                                     <td><strong>{{ $cs['customer'] }}</strong></td>
                                     <td class="text-center">{{ $cs['count'] }}</td>
-                                    <td class="text-right text-green">{{ number_format($cs['qty']) }} KG</td>
+                                    <td class="text-right"><strong>{{ number_format($cs['qty']) }} KG</strong></td>
                                 </tr>
                             @empty
-                                <tr><td colspan="3" class="text-center">No data available</td></tr>
+                                <tr><td colspan="3" class="text-center" style="color: #667085;">No summary data</td></tr>
                             @endforelse
                             @if(count($customerSummary) > 0)
                                 <tr class="total-row">
                                     <td>TOTAL</td>
                                     <td class="text-center">{{ $cTotalCount }}</td>
-                                    <td class="text-right text-green">{{ number_format($cTotalQty) }} KG</td>
+                                    <td class="text-right">{{ number_format($cTotalQty) }} KG</td>
                                 </tr>
                             @endif
                         </tbody>
@@ -282,13 +298,13 @@
                 
                 <!-- Product Summary -->
                 <td class="summary-cell">
-                    <div class="section-header" style="margin-top: 0;">📦 Product-Wise Summary</div>
+                    <div class="section-header" style="margin-top: 0;">PRODUCT-WISE SUMMARY</div>
                     <table class="summary-subtable">
                         <thead>
                             <tr>
                                 <th>Product</th>
                                 <th style="width: 30%;" class="text-center">Dispatch Count</th>
-                                <th style="width: 35%;" class="text-right">Total Quantity</th>
+                                <th style="width: 35%;" class="text-right">Quantity</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -298,16 +314,16 @@
                                 <tr>
                                     <td><strong>{{ $ps['product'] }}</strong></td>
                                     <td class="text-center">{{ $ps['count'] }}</td>
-                                    <td class="text-right text-green">{{ number_format($ps['qty']) }} KG</td>
+                                    <td class="text-right"><strong>{{ number_format($ps['qty']) }} KG</strong></td>
                                 </tr>
                             @empty
-                                <tr><td colspan="3" class="text-center">No data available</td></tr>
+                                <tr><td colspan="3" class="text-center" style="color: #667085;">No summary data</td></tr>
                             @endforelse
                             @if(count($productSummary) > 0)
                                 <tr class="total-row">
                                     <td>TOTAL</td>
                                     <td class="text-center">{{ $pTotalCount }}</td>
-                                    <td class="text-right text-green">{{ number_format($pTotalQty) }} KG</td>
+                                    <td class="text-right">{{ number_format($pTotalQty) }} KG</td>
                                 </tr>
                             @endif
                         </tbody>
@@ -316,17 +332,7 @@
             </tr>
         </table>
 
-        <!-- Note block -->
-        <div class="note-box">
-            <div class="note-title">NOTE:</div>
-            <ul class="note-list">
-                <li>Quantity includes both full and partial dispatches.</li>
-                <li>Cancelled dispatches/orders are excluded from total quantity and total value.</li>
-                <li>Amount is calculated based on dispatched quantity and sales rate.</li>
-            </ul>
-        </div>
-
-        <!-- Footer Signatures -->
+        <!-- Signatures and footer -->
         <table class="footer-table">
             <tr>
                 <td class="footer-left">
@@ -342,24 +348,6 @@
             </tr>
         </table>
     </div>
-
-    <!-- LR Copy Section: Placed at the very end of the document, below, if available -->
-    @if(count($lrCopies) > 0)
-        <div class="page-break"></div>
-        <div class="section-header" style="text-align: center; font-size: 12px; padding: 6px 12px;">📦 ATTACHED LORRY RECEIPTS (LR COPIES)</div>
-        <div style="margin-top: 15px;">
-            @foreach($lrCopies as $lr)
-                @if(extension_loaded('gd') && file_exists(public_path($lr['path'])))
-                    <div class="page-break-avoid" style="margin-bottom: 25px; text-align: center; border: 1px solid #d0d5dd; border-radius: 6px; padding: 10px; background: #f9fafb;">
-                        <div style="font-size: 10px; font-weight: bold; color: #101828; margin-bottom: 8px; border-bottom: 1px solid #e4e7ec; padding-bottom: 4px;">
-                            Dispatch: {{ $lr['dispatch_id'] }} | Order: {{ $lr['order_id'] }} | Customer: {{ $lr['customer'] }}
-                        </div>
-                        <img src="data:image/jpeg;base64,{{ base64_encode(file_get_contents(public_path($lr['path']))) }}" style="max-height: 400px; max-width: 100%; border: 1px solid #eaecf0; border-radius: 4px; padding: 4px; object-fit: contain;">
-                    </div>
-                @endif
-            @endforeach
-        </div>
-    @endif
 
 </div>
 </body>

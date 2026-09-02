@@ -278,7 +278,7 @@
     <!-- HEADER -->
     <div class="header-bar">
         <div class="header-left">
-            @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
+            @if(file_exists(public_path('logo.png')))
             <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 40px; height: 40px; vertical-align: middle; margin-right: 12px; object-fit: contain;">
             @endif
             <span style="display:inline-block; vertical-align:middle;">

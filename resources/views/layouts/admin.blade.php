@@ -70,7 +70,7 @@
         <!-- Sidebar -->
         <div id="admin-sidebar" class="admin-sidebar">
           <div style="text-align:center;padding:1rem 1rem 0.5rem;">
-            <img src="https://pentapurefoods.com/wp-content/uploads/2025/11/logo.png" alt="Logo"
+            <img src="{{ asset('logo.png') }}" alt="Logo"
               style="width:80px;object-fit:contain;margin-bottom:0.5rem;">
           </div>
           <div style="padding:0 1rem 1rem;font-size:1.3rem;font-weight:bold;color:var(--dark-brand);

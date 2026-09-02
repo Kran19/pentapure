@@ -61,7 +61,7 @@
         @endphp
 
         <div class="nav-logo desktop-only">
-          <img src="https://pentapurefoods.com/wp-content/uploads/2025/11/logo.png" alt="Logo">
+          <img src="{{ asset('logo.png') }}" alt="Logo">
           <span>Penta<span class="text-primary">Pure</span></span>
         </div>
 

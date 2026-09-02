@@ -9,7 +9,7 @@
 </style>
 <div id="login-screen">
   <div class="login-card">
-    <img src="https://pentapurefoods.com/wp-content/uploads/2025/11/logo.png" alt="Logo" style="width:120px; margin-bottom:1rem; object-fit:contain;">
+    <img src="{{ asset('logo.png') }}" alt="Logo" style="width:120px; margin-bottom:1rem; object-fit:contain;">
     <h1 style="margin-bottom: 0.3rem; color: var(--text-main);"><span style="color: var(--primary-light);">Pentapure</span></h1>
     <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size:0.9rem;">Select your role to login</p>
 
