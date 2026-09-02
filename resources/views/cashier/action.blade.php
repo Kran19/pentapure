@@ -1,27 +1,94 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="card">
-  <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
-    <h2 style="margin:0;">💰 New Transactions</h2>
-    <button class="btn btn-sm" onclick="addCategoryPrompt()" style="padding:0.4rem 0.8rem;">+ Add Category</button>
+<style>
+/* Remove number input spinner arrows */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button,
+.no-spinners::-webkit-outer-spin-button,
+.no-spinners::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+
+input[type="number"],
+.no-spinners {
+  -moz-appearance: textfield !important;
+}
+
+#transaction-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1.2rem;
+  margin-bottom: 2rem;
+}
+
+.cashier-tx-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+}
+
+.cashier-tx-row .form-group {
+  margin-bottom: 0 !important;
+}
+
+.cashier-tx-row label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.cashier-tx-row select,
+.cashier-tx-row input[type="text"],
+.cashier-tx-row input[type="number"] {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-soft, #DDCFAF);
+  background: var(--input-bg, transparent);
+  color: var(--text-main, #333);
+  font-size: 0.95rem;
+  box-sizing: border-box;
+}
+
+.cashier-tx-row input[type="file"] {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  border: 1px dashed var(--border-soft, #DDCFAF);
+  background: var(--input-bg, transparent);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  box-sizing: border-box;
+}
+</style>
+
+<div class="card" style="padding:2rem;">
+  <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:1.5rem;">
+    <h2 style="margin:0; font-size:1.4rem;">💰 New Transactions</h2>
+    <button class="btn btn-sm" onclick="addCategoryPrompt()" style="padding:0.5rem 1.2rem; font-weight:600;">+ Add Category</button>
   </div>
   
-  <div id="transaction-rows" style="display:flex; flex-direction:column; gap:15px; margin-bottom:1.5rem;">
+  <div id="transaction-rows">
     <!-- Rows injected here -->
   </div>
 
-  <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:1rem;">
-    <button class="btn btn-secondary" onclick="addTransactionRow()" style="flex:1; padding:0.8rem;">+ Add Row</button>
-    <button class="btn" onclick="saveTransactions(this)" style="flex:2; padding:0.8rem;">Save Transactions</button>
+  <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:2.2rem;">
+    <button class="btn btn-secondary" onclick="addTransactionRow()" style="flex:1; padding:0.9rem; font-weight:600; font-size:1rem;">+ Add Row</button>
+    <button class="btn" onclick="saveTransactions(this)" style="flex:2; padding:0.9rem; font-weight:700; font-size:1rem; letter-spacing:0.5px;">Save Transactions</button>
   </div>
 </div>
 
 <script>
   // Global category list populated from PHP
   window.expenseCategories = @json($pageData['categories'] ?? []);
-
-  // Event listener to dynamically update all category selects when a new one is added
 
   function addCategoryPrompt() {
     Swal.fire({
@@ -55,22 +122,19 @@
         .then(data => {
           if (data.success) {
             Swal.fire({ icon: 'success', title: 'Added', text: data.message, timer: 1000, showConfirmButton: false });
-            // Add to global array and update selects
             const slugVal = result.value.toLowerCase().replace(/ /g, '_');
             window.expenseCategories.push({ value: slugVal, label: result.value.toUpperCase() });
             
-            // Sort categories
             window.expenseCategories.sort((a, b) => {
               if (a.label === 'NONE' || a.label === 'N/A') return -1;
               if (b.label === 'NONE' || b.label === 'N/A') return 1;
               return a.label.localeCompare(b.label);
             });
             
-            // Update all existing dropdowns
             document.querySelectorAll('.tx-category').forEach(select => {
               const currentVal = select.value;
               select.innerHTML = window.expenseCategories.map(c => `<option value="${c.value}">${c.label}</option>`).join('');
-              select.value = currentVal; // preserve selected
+              select.value = currentVal;
             });
           } else {
             Swal.fire('Error', data.message || 'Failed to add category', 'error');
@@ -90,81 +154,65 @@
 
     if (container.children.length > 0) {
       const hr = document.createElement('hr');
-      hr.style.border = '0';
-      hr.style.borderTop = '1px dotted #000';
-      hr.style.margin = '20px 0';
-      hr.style.opacity = '1';
+      hr.style.cssText = 'border:0; border-top:1px dotted var(--glass-border, rgba(0,0,0,0.25)); margin:2.2rem 0; opacity:0.6;';
       wrapper.appendChild(hr);
     }
 
     const div = document.createElement('div');
-    div.className = 'dynamic-row';
-    div.style.display = 'flex';
-    div.style.flexDirection = 'column';
-    div.style.gap = '12px';
-    div.style.alignItems = 'stretch';
-    div.style.position = 'relative';
-    div.style.background = 'rgba(255,255,255,0.03)';
-    div.style.padding = '1rem';
-    div.style.borderRadius = '12px';
-    div.style.border = '1px solid rgba(255,255,255,0.06)';
+    div.className = 'cashier-tx-row';
     
     div.innerHTML = `
-      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
-        <!-- Type -->
-        <div class="form-group" style="flex:1 1 120px; margin-bottom:0;">
-          <label style="font-size:0.75rem; margin-bottom:4px;">Type</label>
-          <select class="tx-type" style="padding:0.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff; width:100%;">
-            <option value="EXPENSE">EXPENSE (OUT)</option>
-            <option value="INCOME">INCOME (IN)</option>
+      <!-- Line 1: Type, Category, Amount, and Delete button -->
+      <div style="display:flex; gap:16px; align-items:flex-end;">
+        <div class="form-group" style="flex:1 1 120px;">
+          <label>Type</label>
+          <select class="tx-type">
+            <option value="OUT">EXPENSE (OUT)</option>
+            <option value="IN">INCOME (IN)</option>
           </select>
         </div>
         
-        <!-- Category -->
-        <div class="form-group" style="flex:2 1 200px; margin-bottom:0;">
-          <label style="font-size:0.75rem; margin-bottom:4px;">Category</label>
-          <select class="tx-category" style="padding:0.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff; width:100%;">
+        <div class="form-group" style="flex:2.5 1 220px;">
+          <label>Category</label>
+          <select class="tx-category">
             ${categories.map(c => `<option value="${c.value}">${c.label}</option>`).join('')}
           </select>
         </div>
 
-        <!-- Amount -->
-        <div class="form-group" style="flex:1 1 120px; margin-bottom:0;">
-          <label style="font-size:0.75rem; margin-bottom:4px;">Amount (₹)</label>
-          <input type="number" class="tx-amount" placeholder="0.00" step="0.01" min="0.01" required style="padding:0.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff; width:100%;">
+        <div class="form-group" style="flex:1.2 1 140px;">
+          <label>Amount (₹)</label>
+          <input type="number" class="tx-amount no-spinners" placeholder="0.00" step="0.01" min="0.01" required>
         </div>
+
+        <button type="button" class="btn btn-danger" style="flex:0 0 42px; width:42px; height:42px; padding:0; border-radius:8px; display:flex; align-items:center; justify-content:center; background:#e11d48; color:#fff; border:none; cursor:pointer;" onclick="this.closest('.row-wrapper').remove()" title="Remove Row">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
       </div>
 
-      <div style="display:flex; gap:10px; flex-wrap:wrap;">
-        <!-- Note -->
-        <div class="form-group" style="flex:2 1 250px; margin-bottom:0;">
-          <label style="font-size:0.75rem; margin-bottom:4px;">Particulars / Note</label>
-          <input type="text" class="tx-note" placeholder="Description of transaction" style="padding:0.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff; width:100%;">
+      <!-- Line 2: Note, Reference, Bill file -->
+      <div style="display:flex; gap:16px; align-items:flex-end;">
+        <div class="form-group" style="flex:2 1 250px;">
+          <label>Particulars / Note</label>
+          <input type="text" class="tx-note" placeholder="Description of transaction">
         </div>
 
-        <!-- Reference -->
-        <div class="form-group" style="flex:1 1 150px; margin-bottom:0;">
-          <label style="font-size:0.75rem; margin-bottom:4px;">Reference / Bill No. (optional)</label>
-          <input type="text" class="tx-ref" placeholder="e.g. INV-001" style="padding:0.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff; width:100%;">
+        <div class="form-group" style="flex:1 1 160px;">
+          <label>Reference / Bill No. (optional)</label>
+          <input type="text" class="tx-ref" placeholder="e.g. INV-001">
         </div>
 
-        <!-- Bill file -->
-        <div class="form-group" style="flex:1 1 150px; margin-bottom:0;">
-          <label style="font-size:0.75rem; margin-bottom:4px;">Attach Bill (optional)</label>
-          <input type="file" class="tx-bill" accept="image/jpeg,image/png,application/pdf" style="font-size:0.85rem; padding:0.4rem; background:#0d1117; border:1px dashed #30363d; border-radius:6px; width:100%; color:#8b949e;">
+        <div class="form-group" style="flex:1 1 180px;">
+          <label>Attach Bill (optional)</label>
+          <input type="file" class="tx-bill" accept="image/jpeg,image/png,application/pdf">
         </div>
       </div>
-
-      <button class="btn btn-danger btn-sm" style="position:absolute; top:8px; right:8px; width:28px; height:28px; padding:0; border-radius:50%; display:flex; align-items:center; justify-content:center;" onclick="this.closest('.row-wrapper').remove()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-      </button>
     `;
     wrapper.appendChild(div);
     container.appendChild(wrapper);
   }
 
   function saveTransactions(btn) {
-    const rows = document.querySelectorAll('#transaction-rows .dynamic-row');
+    const rows = document.querySelectorAll('#transaction-rows .cashier-tx-row');
     if (rows.length === 0) {
       app.toast('Add at least one transaction row', 'error');
       return;
@@ -230,11 +278,9 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    // Populate categories globally
     window.serverPageData = window.serverPageData || {};
     window.serverPageData.categories = window.expenseCategories;
     
-    // Add one default row
     addTransactionRow();
   });
 </script>

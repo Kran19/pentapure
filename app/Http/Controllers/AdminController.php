@@ -118,9 +118,10 @@ class AdminController extends Controller
             $permissions = [];
         }
         
-        $visibleCashiers = $request->role === 'CASHIER' ? ($request->visible_cashiers ?? []) : [];
-        // Make sure values are integers or strings
-        $visibleCashiers = array_map('intval', $visibleCashiers);
+        $visibleCashiers = $request->role === 'CASHIER' ? ($request->visible_cashiers ?? null) : null;
+        if (is_array($visibleCashiers)) {
+            $visibleCashiers = !empty($visibleCashiers) ? array_map('intval', $visibleCashiers) : null;
+        }
 
         if ($request->user_id) {
             $user = User::findOrFail($request->user_id);

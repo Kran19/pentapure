@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DispatchLog extends Model
 {
-    protected $fillable = ['user_id', 'order_id', 'transporter_id', 'lr_image_path', 'driver_no', 'lr_no'];
+    protected $fillable = ['user_id', 'order_id', 'transporter_id', 'lr_image_path', 'driver_no', 'lr_no', 'notes'];
 
     public function dispatchItems(): HasMany
     {

@@ -65,6 +65,16 @@ Route::get('/notifications/test', function() {
 });
 
 // ── Shared Routes (Under {user_slug} prefix) ──────────────────────────────
+
+// ─── Global Direct Fallback PDF Routes ─────────────────────────────
+Route::middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE')->group(function() {
+    Route::get('/dispatch/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'dispatchNotePdf']);
+    Route::get('/dispatch/dispatch/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'dispatchNotePdf']);
+    Route::get('/order/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'salesOrderPdf']);
+    Route::get('/order/{id}/pdf', [\App\Http\Controllers\HistoryPdfController::class, 'salesOrderPdf']);
+    Route::get('/sales/order/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'salesOrderPdf']);
+    Route::get('/sales/sales/order/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'salesOrderPdf']);
+});
 Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE')->group(function() {
     Route::get('/api/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
     Route::post('/api/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
@@ -85,6 +95,10 @@ Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALE
         ->name('history.pdf');
     Route::get('/dispatch/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'dispatchNotePdf'])
         ->name('dispatch.note.pdf');
+    Route::get('/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'dispatchNotePdf']);
+    Route::get('/order/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'salesOrderPdf'])
+        ->name('order.pdf');
+    Route::get('/order/{id}/pdf', [\App\Http\Controllers\HistoryPdfController::class, 'salesOrderPdf']);
 
     Route::get('/debug-notifications', function() {
         return view('admin.debug_notifications');
@@ -180,14 +194,20 @@ foreach ($roleSlugs['SALES'] ?? [] as $slug) {
     Route::get('/home',          'home')->name($slug.'.home');
     Route::get('/action',        'action')->name($slug.'.action');
     Route::post('/order',        'storeOrder');
+    Route::post('/sales/order',  'storeOrder');
     Route::post('/order/{id}',   'updateOrder');
     Route::post('/order/{id}/cancel', 'cancelOrder');
     Route::post('/company',      'storeCompany');
+    Route::post('/sales/company', 'storeCompany');
     Route::post('/company/{id}', 'updateCompany');
+    Route::post('/sales/company/{id}', 'updateCompany');
     Route::post('/transport',    'storeTransporter');
+    Route::post('/sales/transport', 'storeTransporter');
     Route::get('/history',       'history')->name($slug.'.history');
     Route::get('/profile',       'profile')->name($slug.'.profile');
     Route::get('/order/pdf/{id}', [HistoryPdfController::class, 'salesOrderPdf'])->name($slug.'.order.pdf');
+    Route::get('/pdf/{id}', [HistoryPdfController::class, 'salesOrderPdf']);
+    Route::get('/dispatch/pdf/{id}', [HistoryPdfController::class, 'dispatchNotePdf']);
     });
 }
 
@@ -208,6 +228,9 @@ foreach ($roleSlugs['DISPATCH'] ?? [] as $slug) {
     Route::post('/revert/{id}', 'revertDispatch');
     Route::get('/history',  'history')->name($slug.'.history');
     Route::get('/profile',  'profile')->name($slug.'.profile');
+    Route::get('/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'dispatchNotePdf'])->name($slug.'.pdf');
+    Route::get('/dispatch/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'dispatchNotePdf']);
+    Route::get('/order/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'salesOrderPdf']);
     });
 }
 

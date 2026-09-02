@@ -126,6 +126,10 @@
         </tbody>
       </table>
     </div>
+    <div id="raw-pagination" style="display:flex; justify-content:space-between; align-items:center; margin-top:1.2rem; flex-wrap:wrap; gap:10px; padding-top:0.8rem; border-top:1px solid rgba(255,255,255,0.05);">
+      <div class="pagination-info" style="font-size:0.85rem; color:var(--text-muted);"></div>
+      <div class="pagination-controls" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;"></div>
+    </div>
   </div>
 
   <!-- SEMI Products -->
@@ -177,6 +181,10 @@
           @endforeach
         </tbody>
       </table>
+    </div>
+    <div id="semi-pagination" style="display:flex; justify-content:space-between; align-items:center; margin-top:1.2rem; flex-wrap:wrap; gap:10px; padding-top:0.8rem; border-top:1px solid rgba(255,255,255,0.05);">
+      <div class="pagination-info" style="font-size:0.85rem; color:var(--text-muted);"></div>
+      <div class="pagination-controls" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;"></div>
     </div>
   </div>
 
@@ -230,6 +238,10 @@
         </tbody>
       </table>
     </div>
+    <div id="finished-pagination" style="display:flex; justify-content:space-between; align-items:center; margin-top:1.2rem; flex-wrap:wrap; gap:10px; padding-top:0.8rem; border-top:1px solid rgba(255,255,255,0.05);">
+      <div class="pagination-info" style="font-size:0.85rem; color:var(--text-muted);"></div>
+      <div class="pagination-controls" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;"></div>
+    </div>
   </div>
 
 
@@ -238,22 +250,132 @@
 
 <script>
 const csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
-function filterTable(input, tbodyId) {
-    const filter = input.value.toUpperCase();
-    const tbody = document.getElementById(tbodyId);
-    const trs = tbody.getElementsByTagName('tr');
-    
-    for (let i = 0; i < trs.length; i++) {
-        const td = trs[i].querySelector('.prod-name');
-        if (td) {
-            const txtValue = td.textContent || td.innerText;
-            if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                trs[i].style.display = "";
-            } else {
-                trs[i].style.display = "none";
-            }
-        }
+const paginationInstances = {};
+
+function initTablePagination(tbodyId, paginationId, pageSize = 10) {
+  const tbody = document.getElementById(tbodyId);
+  const paginationContainer = document.getElementById(paginationId);
+  if (!tbody || !paginationContainer) return;
+
+  const allRows = Array.from(tbody.querySelectorAll('tr'));
+  let activeRows = allRows;
+  let currentPage = 1;
+
+  function refresh(page = 1) {
+    const totalRows = activeRows.length;
+    const totalPages = Math.ceil(totalRows / pageSize) || 1;
+    currentPage = Math.max(1, Math.min(page, totalPages));
+    const startIdx = (currentPage - 1) * pageSize;
+    const endIdx = startIdx + pageSize;
+
+    allRows.forEach(r => r.style.display = 'none');
+
+    activeRows.forEach((row, idx) => {
+      if (idx >= startIdx && idx < endIdx) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+
+    const infoEl = paginationContainer.querySelector('.pagination-info');
+    if (infoEl) {
+      const shownStart = totalRows === 0 ? 0 : startIdx + 1;
+      const shownEnd = Math.min(endIdx, totalRows);
+      infoEl.textContent = `Showing ${shownStart} to ${shownEnd} of ${totalRows} entries`;
     }
+
+    const controlsEl = paginationContainer.querySelector('.pagination-controls');
+    if (controlsEl) {
+      controlsEl.innerHTML = '';
+      if (totalPages <= 1) return;
+
+      const prevBtn = document.createElement('button');
+      prevBtn.className = 'btn btn-sm btn-secondary';
+      prevBtn.style.cssText = 'width:auto; padding:0.35rem 0.75rem; font-size:0.8rem; cursor:pointer;';
+      prevBtn.innerHTML = '&laquo; Prev';
+      prevBtn.disabled = currentPage === 1;
+      if (currentPage === 1) prevBtn.style.opacity = '0.5';
+      prevBtn.onclick = () => refresh(currentPage - 1);
+      controlsEl.appendChild(prevBtn);
+
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = Math.min(totalPages, currentPage + 2);
+
+      if (startPage > 1) {
+        const firstBtn = document.createElement('button');
+        firstBtn.className = 'btn btn-sm btn-secondary';
+        firstBtn.style.cssText = 'width:auto; padding:0.35rem 0.75rem; font-size:0.8rem; cursor:pointer;';
+        firstBtn.textContent = '1';
+        firstBtn.onclick = () => refresh(1);
+        controlsEl.appendChild(firstBtn);
+
+        if (startPage > 2) {
+          const dots = document.createElement('span');
+          dots.style.cssText = 'color:var(--text-muted); padding:0 4px;';
+          dots.textContent = '...';
+          controlsEl.appendChild(dots);
+        }
+      }
+
+      for (let p = startPage; p <= endPage; p++) {
+        const pageBtn = document.createElement('button');
+        const isActive = p === currentPage;
+        pageBtn.className = isActive ? 'btn btn-sm' : 'btn btn-sm btn-secondary';
+        pageBtn.style.cssText = `width:auto; padding:0.35rem 0.75rem; font-size:0.8rem; cursor:pointer; ${isActive ? 'background:var(--primary, #D88A00); color:#fff; font-weight:bold;' : ''}`;
+        pageBtn.textContent = p;
+        pageBtn.onclick = () => refresh(p);
+        controlsEl.appendChild(pageBtn);
+      }
+
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+          const dots = document.createElement('span');
+          dots.style.cssText = 'color:var(--text-muted); padding:0 4px;';
+          dots.textContent = '...';
+          controlsEl.appendChild(dots);
+        }
+
+        const lastBtn = document.createElement('button');
+        lastBtn.className = 'btn btn-sm btn-secondary';
+        lastBtn.style.cssText = 'width:auto; padding:0.35rem 0.75rem; font-size:0.8rem; cursor:pointer;';
+        lastBtn.textContent = totalPages;
+        lastBtn.onclick = () => refresh(totalPages);
+        controlsEl.appendChild(lastBtn);
+      }
+
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'btn btn-sm btn-secondary';
+      nextBtn.style.cssText = 'width:auto; padding:0.35rem 0.75rem; font-size:0.8rem; cursor:pointer;';
+      nextBtn.innerHTML = 'Next &raquo;';
+      nextBtn.disabled = currentPage === totalPages;
+      if (currentPage === totalPages) nextBtn.style.opacity = '0.5';
+      nextBtn.onclick = () => refresh(currentPage + 1);
+      controlsEl.appendChild(nextBtn);
+    }
+  }
+
+  function filter(query) {
+    const q = (query || '').trim().toUpperCase();
+    if (!q) {
+      activeRows = allRows;
+    } else {
+      activeRows = allRows.filter(tr => {
+        const td = tr.querySelector('.prod-name');
+        return td && (td.textContent || td.innerText).toUpperCase().indexOf(q) > -1;
+      });
+    }
+    refresh(1);
+  }
+
+  paginationInstances[tbodyId] = { refresh, filter };
+  refresh(1);
+}
+
+function filterTable(input, tbodyId) {
+  if (paginationInstances[tbodyId]) {
+    paginationInstances[tbodyId].filter(input.value);
+  }
 }
 
 function toggleGradeDisplay() {
@@ -522,6 +644,10 @@ function adminDeleteProduct(id) {
 toggleGradeDisplay();
 
 document.addEventListener('DOMContentLoaded', function() {
+  initTablePagination('raw-tbody', 'raw-pagination', 10);
+  initTablePagination('semi-tbody', 'semi-pagination', 10);
+  initTablePagination('fin-tbody', 'finished-pagination', 10);
+
   if (sessionStorage.getItem('keepProdFormOpen') === 'true') {
     document.getElementById('prod-form').style.display = 'block';
     sessionStorage.removeItem('keepProdFormOpen');

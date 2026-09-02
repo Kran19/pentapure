@@ -62,7 +62,9 @@ class DispatchController extends Controller
                 'items'        => $o->items->map(fn($i) => [
                     'id'            => $i->id,
                     'productId'     => $i->product_id,
-                    'productName'   => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
+                    'rawProductName'=> $i->product?->name ?? 'Unknown',
+                    'productName'   => $i->product?->name ?? 'Unknown',
+                    'formattedName' => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
                     'productType'   => $i->product?->type,
                     'quantity'      => (float) $i->quantity,
                     'dispatchedQty' => (float) $i->dispatched_qty,
@@ -110,7 +112,9 @@ class DispatchController extends Controller
                 ],
                 'items'       => $o->items->map(fn($i)=>[
                     'id'            => $i->id,
-                    'productName'   => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
+                    'rawProductName'=> $i->product?->name ?? 'Unknown',
+                    'productName'   => $i->product?->name ?? 'Unknown',
+                    'formattedName' => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
                     'productId'     => $i->product_id,
                     'productType'   => $i->product?->type,
                     'quantity'      => (float) $i->quantity,
@@ -136,6 +140,7 @@ class DispatchController extends Controller
             'lr_image'                    => 'nullable|string',
             'driver_no'                   => 'nullable|string',
             'lr_no'                       => 'nullable|string',
+            'notes'                       => 'nullable|string',
             'transporter_id'              => 'nullable|exists:transporters,id',
         ]);
 
@@ -239,6 +244,7 @@ class DispatchController extends Controller
                 'lr_image_path'  => $lrPath,
                 'driver_no'      => $request->driver_no,
                 'lr_no'          => $request->lr_no,
+                'notes'          => $request->notes,
             ]);
 
             // Process each item
@@ -483,7 +489,9 @@ class DispatchController extends Controller
                 'lrImage'       => $d->lr_image_path ? asset($d->lr_image_path) : null,
                 'orderTotal'    => $d->order?->total,
                 'date'          => $d->created_at->toISOString(),
-                'notes'         => $d->order?->notes,
+                'notes'         => $d->notes ?: $d->order?->notes,
+                'dispatchNotes' => $d->notes,
+                'orderNotes'    => $d->order?->notes,
                 'items'         => $d->dispatchItems->map(fn($di) => [
                     'productName' => $di->orderItem?->product ? $di->orderItem->product->formatName($di->orderItem->grade) : 'Unknown',
                     'grade'       => $di->orderItem?->grade,

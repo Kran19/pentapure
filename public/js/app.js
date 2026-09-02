@@ -6,6 +6,12 @@ window.fetch = function(url, options) {
         if (metaBase && metaBase.content) {
             let base = metaBase.content;
             if (base.endsWith('/')) base = base.slice(0, -1);
+            try {
+                const basePath = new URL(base).pathname.replace(/\/+$/, '');
+                if (basePath && (url === basePath || url.startsWith(basePath + '/'))) {
+                    url = url.slice(basePath.length) || '/';
+                }
+            } catch (e) {}
             url = base + url;
         }
     }
@@ -855,15 +861,129 @@ const app = {
       div.style.display = 'block';
       div.classList.add('animation-fadeIn');
       div.innerHTML = `
-        <div style="display:grid; grid-template-columns:1fr; gap:4px;">
-          <div><span style="color:var(--primary-light); font-weight:600;">GST:</span> ${comp.gst||'N/A'}</div>
-          <div><span style="color:var(--primary-light); font-weight:600;">Contact:</span> ${comp.contact||'N/A'}</div>
-          <div><span style="color:var(--primary-light); font-weight:600;">Address:</span> ${comp.address||'N/A'}</div>
+        <div style="display:grid; grid-template-columns:1fr; gap:3px;">
+          <div><span class="info-label">GST:</span> ${comp.gst||'N/A'}</div>
+          <div><span class="info-label">CONTACT:</span> ${comp.contact||'N/A'}</div>
+          <div><span class="info-label">ADDRESS:</span> ${comp.address||'N/A'}${comp.pincode ? ' - ' + comp.pincode : ''}</div>
         </div>
       `;
     } else if (div) {
       div.style.display = 'none';
     }
+  },
+
+  openAddTransportModal() {
+    Swal.fire({
+      title: '<span style="font-size:1.25rem; font-weight:700;">+ Add New Transporter</span>',
+      html: `
+        <div style="text-align:left; font-size:0.9rem;">
+          <div style="margin-bottom:12px;">
+            <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.8rem; text-transform:uppercase;">Transporter Name *</label>
+            <input id="swal-trans-name" class="swal2-input" placeholder="e.g. Maruti Freight or NA" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;" value="NA">
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.8rem; text-transform:uppercase;">GST Number (Optional)</label>
+            <input id="swal-trans-gst" class="swal2-input" placeholder="15-digit GSTIN or N/A" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;" value="N/A">
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.8rem; text-transform:uppercase;">Contact Number (Optional)</label>
+            <div style="display:flex; gap:8px;">
+              <select id="swal-trans-code" style="width:72px; padding:0.6rem 0.2rem; border-radius:6px; border:1px solid #d1d5db; font-weight:600; text-align:center;">
+                <option value="+91" selected>+91</option>
+                <option value="+1">+1</option>
+                <option value="+44">+44</option>
+                <option value="+971">+971</option>
+                <option value="other">+...</option>
+              </select>
+              <input id="swal-trans-phone" class="swal2-input" placeholder="10-digit mobile number" style="flex:1; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;">
+            </div>
+          </div>
+          <div style="margin-bottom:8px;">
+            <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.8rem; text-transform:uppercase;">Vehicle Numbers (Optional)</label>
+            <input id="swal-trans-vehicles" class="swal2-input" placeholder="e.g. GJ01AB1234, GJ01CD5678" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;">
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Save Transporter',
+      confirmButtonColor: '#f59e0b',
+      cancelButtonText: 'Cancel',
+      focusConfirm: false,
+      preConfirm: () => {
+        const name = (document.getElementById('swal-trans-name').value || '').trim();
+        const gst = (document.getElementById('swal-trans-gst').value || '').trim().toUpperCase();
+        const rawPhone = (document.getElementById('swal-trans-phone').value || '').trim();
+        const code = document.getElementById('swal-trans-code').value;
+        const vehicles = (document.getElementById('swal-trans-vehicles').value || '').trim();
+
+        if (!name) {
+          Swal.showValidationMessage('Transporter Name is required');
+          return false;
+        }
+
+        if (gst && gst !== 'N/A' && !/^[A-Za-z0-9]{15}$/.test(gst)) {
+          Swal.showValidationMessage('GST must be exactly 15 alphanumeric characters or N/A');
+          return false;
+        }
+
+        let formattedContact = '';
+        if (rawPhone) {
+          if (code === '+91' && !rawPhone.startsWith('+')) {
+            const digits = rawPhone.replace(/\D/g, '');
+            const isLandline = /^0?79[\s\-]?[0-9]{6,8}$/.test(rawPhone);
+            if (!isLandline && digits.length !== 10) {
+              Swal.showValidationMessage('Contact must be a 10-digit Indian mobile (+91) or 079 landline');
+              return false;
+            }
+            formattedContact = '+91 ' + rawPhone;
+          } else {
+            formattedContact = (code !== 'other' && !rawPhone.startsWith('+')) ? (code + ' ' + rawPhone) : rawPhone;
+          }
+        }
+
+        return { name, gst: gst || 'N/A', contact: formattedContact, vehicles };
+      }
+    }).then(result => {
+      if (result.isConfirmed && result.value) {
+        const payload = result.value;
+        fetch('/transport', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': window.csrfToken || csrfToken
+          },
+          body: JSON.stringify(payload)
+        })
+        .then(r => r.json())
+        .then(d => {
+          if (d.success) {
+            this.toast(d.message || 'Transporter saved!');
+            
+            // Add new transporter to the select dropdown and select it
+            const selectEl = document.getElementById('order-transport');
+            if (selectEl && d.transporter) {
+              const opt = document.createElement('option');
+              opt.value = d.transporter.id;
+              opt.textContent = d.transporter.name;
+              opt.selected = true;
+              selectEl.appendChild(opt);
+
+              // Update window.serverPageData if present
+              if (window.serverPageData) {
+                if (!window.serverPageData.transportCompanies) window.serverPageData.transportCompanies = [];
+                window.serverPageData.transportCompanies.push(d.transporter);
+              }
+
+              this.onSalesTransportSelect(d.transporter.id);
+            }
+          } else {
+            this.toast(d.message || 'Failed to save transporter', 'error');
+          }
+        })
+        .catch(() => this.toast('Network error saving transporter', 'error'));
+      }
+    });
   },
 
   onSalesTransportSelect(id) {
@@ -873,10 +993,10 @@ const app = {
       div.style.display = 'block';
       div.classList.add('animation-fadeIn');
       div.innerHTML = `
-        <div style="display:grid; grid-template-columns:1fr; gap:4px;">
-          <div><span style="color:var(--primary-light); font-weight:600;">GST:</span> ${trans.gst||'N/A'}</div>
-          <div><span style="color:var(--primary-light); font-weight:600;">Contact:</span> ${trans.contact||'N/A'}</div>
-          <div><span style="color:var(--primary-light); font-weight:600;">Vehicles:</span> ${trans.vehicles||'N/A'}</div>
+        <div style="display:grid; grid-template-columns:1fr; gap:3px;">
+          <div><span class="info-label">GST:</span> ${trans.gst||'N/A'}</div>
+          <div><span class="info-label">CONTACT:</span> ${trans.contact||'N/A'}</div>
+          <div><span class="info-label">VEHICLES:</span> ${trans.vehicles||'N/A'}</div>
         </div>
       `;
     } else if (div) {
@@ -885,103 +1005,259 @@ const app = {
   },
 
   onOrderTypeSelect(type) {
-    window.currentOrderType = type;
-    const allProds = (window.serverPageData && window.serverPageData.products) || [];
-    if (type === 'ALL') {
-      window.currentFinProds = allProds;
-    } else if (type === 'SEMI' || type === 'FINISHED') {
-      window.currentFinProds = allProds.filter(p => p.type === 'SEMI' || p.type === 'FINISHED');
+    // Kept for backward compatibility
+  },
+
+  onRowTypeChange(typeSelect) {
+    const row = typeSelect.closest('.dynamic-row');
+    if (!row) return;
+    const prodSelect = row.querySelector('.o-prod-id');
+    if (!prodSelect) return;
+    const currentVal = prodSelect.value;
+    const rowType = typeSelect.value || 'ALL';
+    this.populateProductSelect(prodSelect, currentVal, rowType);
+    this.onOrderProductChange(prodSelect);
+  },
+
+  populateProductSelect(selectEl, selectedProdId = '', rowType = 'ALL') {
+    const prods = (window.serverPageData && window.serverPageData.products) || [];
+
+    let html = `<option value="" disabled ${!selectedProdId ? 'selected' : ''}>-- SELECT PRODUCT --</option>`;
+    
+    if (rowType === 'ALL') {
+      const fgList = prods.filter(p => p.type === 'FINISHED');
+      const semiList = prods.filter(p => p.type === 'SEMI');
+      const rawList = prods.filter(p => p.type === 'RAW');
+
+      const addGroup = (list, label) => {
+        if (!list || list.length === 0) return;
+        html += `<optgroup label="${label}">`;
+        list.forEach(p => {
+          const isSel = (p.id == selectedProdId) ? 'selected' : '';
+          html += `<option value="${p.id}" ${isSel}>${p.name} (${p.type === 'FINISHED' ? 'FG' : p.type.toLowerCase()})</option>`;
+        });
+        html += `</optgroup>`;
+      };
+
+      addGroup(fgList, '📦 FINISHED PRODUCTS (FG)');
+      addGroup(semiList, '⚙️ SEMI-FINISHED');
+      addGroup(rawList, '🌿 RAW MATERIALS');
     } else {
-      window.currentFinProds = allProds.filter(p => p.type === type);
+      const filtered = prods.filter(p => p.type === rowType);
+      filtered.forEach(p => {
+        const displayType = p.type === 'FINISHED' ? 'FG' : (p.type ? p.type.toLowerCase() : '');
+        const isSel = (p.id == selectedProdId) ? 'selected' : '';
+        html += `<option value="${p.id}" ${isSel}>${p.name} (${displayType})</option>`;
+      });
     }
-    
-    const section = document.getElementById('order-products-section');
-    if (section) {
-      section.style.display = 'block';
-      section.classList.add('animation-fadeIn');
+
+    selectEl.innerHTML = html;
+  },
+
+  onOrderProductChange(selectEl, selectedGrade = '') {
+    const row = selectEl.closest('.dynamic-row');
+    if (!row) return;
+    const gradeSelect = row.querySelector('.o-prod-grade');
+    if (!gradeSelect) return;
+
+    const prodId = selectEl.value;
+    const allProds = (window.serverPageData && window.serverPageData.products) || [];
+    const prod = allProds.find(p => p.id == prodId);
+
+    // Extract individual product grades from Product Master
+    let allowedGrades = (prod && Array.isArray(prod.grades) && prod.grades.length > 0) 
+      ? prod.grades 
+      : ['NONE'];
+
+    let html = '';
+    allowedGrades.forEach(g => {
+      const gName = (g || 'NONE').toUpperCase();
+      const isSel = (gName === (selectedGrade || '').toUpperCase() || (!selectedGrade && allowedGrades.length === 1)) ? 'selected' : '';
+      html += `<option value="${gName}" ${isSel}>${gName}</option>`;
+    });
+
+    if (allowedGrades.length === 0) {
+      html = `<option value="NONE" selected>NONE</option>`;
     }
-    
-    const prodList = document.getElementById('order-products');
-    if(prodList) {
-      prodList.innerHTML = '';
-      this.addOrderProductRow();
-    }
+
+    gradeSelect.innerHTML = html;
   },
 
   addOrderProductRow(prefillData = null) {
-    const finProds = window.currentFinProds || [];
     const div = document.createElement('div');
-    div.className = 'dynamic-row';
+    div.className = 'dynamic-row order-product-row';
+    div.style.cssText = 'background:rgba(0,0,0,0.02); border:1px solid var(--border-soft, #DDCFAF); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:10px; margin-bottom:12px;';
 
-    const toBold = (str) => {
-        if (!str) return '';
-        return str.split('').map(c => {
-            if (c >= 'A' && c <= 'Z') return String.fromCodePoint(c.codePointAt(0) - 65 + 0x1D5D4);
-            if (c >= 'a' && c <= 'z') return String.fromCodePoint(c.codePointAt(0) - 97 + 0x1D5EE);
-            if (c >= '0' && c <= '9') return String.fromCodePoint(c.codePointAt(0) - 48 + 0x1D7EC);
-            return c;
-        }).join('');
-    };
-    
     const selectedProdId = prefillData ? prefillData.product_id : '';
-    const selectedGrade = prefillData ? prefillData.grade : '';
+    const selectedGrade = prefillData ? (prefillData.grade || 'NONE') : '';
     const qty = prefillData ? prefillData.quantity : '';
     const price = prefillData ? prefillData.price : '';
     const itemId = prefillData ? prefillData.id : '';
-    
+
+    let rowType = 'ALL';
+    if (selectedProdId) {
+      const allProds = (window.serverPageData && window.serverPageData.products) || [];
+      const matchedProd = allProds.find(p => p.id == selectedProdId);
+      if (matchedProd && matchedProd.type) {
+        rowType = matchedProd.type;
+      }
+    }
+
     div.innerHTML = `
       ${itemId ? `<input type="hidden" class="o-item-id" value="${itemId}">` : ''}
-      <div class="form-group" style="flex:1 1 100%;">
-        <select class="o-prod-id" style="width:100%;">
-          <option value="" disabled ${!selectedProdId ? 'selected' : ''}>Product</option>
-          ${finProds.map(p => {
-            const displayType = p.type === 'FINISHED' ? 'FG' : (p.type ? p.type.toLowerCase() : '');
-            let grades = (p.grades && p.grades.length > 0) ? p.grades : ['N/A'];
-            return grades.map(g => {
-              let text = p.name;
-              let suffix = '';
-              if (g && g !== 'N/A') suffix += `${g} `;
-              suffix += `(${displayType})`;
-              text += ` ` + toBold(suffix.trim());
-              let val = `${p.id}|${g}`;
-              let isSelected = (p.id == selectedProdId && g == selectedGrade) ? 'selected' : '';
-              return `<option value="${val}" ${isSelected}>${text}</option>`;
-            }).join('');
-          }).join('')}
-        </select>
+      <div style="display:flex; gap:10px; width:100%; flex-wrap:wrap;">
+        <div style="flex:1; min-width:160px; max-width:220px;">
+          <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">ORDER TYPE</label>
+          <select class="o-prod-type" onchange="app.onRowTypeChange(this)" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.85rem; font-weight:600;">
+            <option value="ALL" ${rowType === 'ALL' ? 'selected' : ''}>ALL PRODUCTS</option>
+            <option value="RAW" ${rowType === 'RAW' ? 'selected' : ''}>RAW MATIRALS</option>
+            <option value="SEMI" ${rowType === 'SEMI' ? 'selected' : ''}>SEMI-FINISH SALES</option>
+            <option value="FINISHED" ${rowType === 'FINISHED' ? 'selected' : ''}>FG SALES</option>
+          </select>
+        </div>
+        <div style="flex:2; min-width:200px;">
+          <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">SELECT PRODUCT</label>
+          <select class="o-prod-id" onchange="app.onOrderProductChange(this)" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem; font-weight:500;">
+          </select>
+        </div>
       </div>
-      <div class="form-group" style="flex:1 1 25%;">
-        <input type="number" class="o-prod-qty" placeholder="Qty" value="${qty}">
+      <div class="order-product-inputs" style="display:flex; gap:10px; width:100%; align-items:flex-end;">
+        <div style="flex:1.2; min-width:110px;">
+          <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">GRADE</label>
+          <select class="o-prod-grade" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem;">
+            <option value="NONE" selected>NONE</option>
+          </select>
+        </div>
+        <div style="flex:1; min-width:80px;">
+          <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">QTY</label>
+          <input type="number" class="o-prod-qty no-spinners" placeholder="QTY" value="${qty}" step="any" min="0.001" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem;">
+        </div>
+        <div style="flex:1; min-width:80px;">
+          <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">₹/UNIT</label>
+          <input type="number" class="o-prod-price no-spinners" placeholder="₹/UNIT" value="${price}" step="any" min="0" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem;">
+        </div>
+        <button type="button" class="btn btn-danger btn-remove-prod" onclick="this.closest('.order-product-row').remove()" title="Remove Product" style="flex:0 0 42px; width:42px; height:42px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:8px; background:#e11d48; color:#fff; border:none; cursor:pointer;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
       </div>
-      <div class="form-group" style="flex:1 1 25%;">
-        <input type="number" class="o-prod-price" placeholder="₹/Unit" value="${price}">
-      </div>
-      <button class="btn btn-danger" style="flex:0 0 36px; height:36px; padding:0; display:flex; align-items:center; justify-content:center;" onclick="this.parentElement.remove()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-      </button>
     `;
+
     const container = document.getElementById('order-products');
-    if (container) container.appendChild(div);
+    if (container) {
+      container.appendChild(div);
+      const selEl = div.querySelector('.o-prod-id');
+      this.populateProductSelect(selEl, selectedProdId, rowType);
+      if (selectedProdId) {
+        this.onOrderProductChange(selEl, selectedGrade);
+      } else {
+        const gradeSelect = div.querySelector('.o-prod-grade');
+        if (gradeSelect) gradeSelect.innerHTML = '<option value="NONE" selected>NONE</option>';
+      }
+    }
+  },
+  onCompanyTypeChange(type) {
+    const gstGroup = document.getElementById('comp-gst-group');
+    const gstInput = document.getElementById('comp-gst');
+    if (!gstGroup) return;
+    if (type === 'unregistered') {
+      gstGroup.style.display = 'none';
+      if (gstInput) gstInput.value = '';
+    } else {
+      gstGroup.style.display = 'block';
+    }
+  },
+
+  onCountryCodeChange(prefix) {
+    const codeEl = document.getElementById(prefix + '-country-code');
+    const inputEl = document.getElementById(prefix + '-contact');
+    if (!codeEl || !inputEl) return;
+    
+    if (codeEl.value === 'other') {
+      inputEl.placeholder = 'e.g. +44 123456789 or 079 landline';
+    } else if (codeEl.value === '+91') {
+      inputEl.placeholder = '10-digit mobile or 079 landline';
+    } else {
+      inputEl.placeholder = 'Phone number without ' + codeEl.value;
+    }
+  },
+
+  getFormattedContact(prefix) {
+    const codeEl = document.getElementById(prefix + '-country-code');
+    const inputEl = document.getElementById(prefix + '-contact');
+    if (!inputEl) return '';
+    
+    let raw = (inputEl.value || '').trim();
+    if (!raw) return '';
+    
+    const code = codeEl ? codeEl.value : '+91';
+    
+    if (raw.startsWith('+')) {
+      return raw;
+    }
+    
+    if (/^0?79[\s\-]?[0-9]{6,8}$/.test(raw)) {
+      return raw;
+    }
+    
+    if (code !== 'other') {
+      return code + ' ' + raw;
+    }
+    
+    return raw;
+  },
+
+  validateContactNumber(contact) {
+    const clean = (contact || '').trim();
+    if (!clean) return false;
+    
+    // International number (starts with + and non-91 country code, e.g. +1, +44, +971)
+    if (/^\+(?!91\b)[0-9\s\-()]{6,20}$/.test(clean)) {
+      return true;
+    }
+    
+    // 079 Landline
+    if (/^(\+91[\s\-]?)?0?79[\s\-]?[0-9]{6,8}$/.test(clean)) {
+      return true;
+    }
+    
+    // Indian 10-digit mobile
+    const digitsOnly = clean.replace(/^\+91[\s\-]*/, '').replace(/[\s\-()]/g, '');
+    if (/^[0-9]{10}$/.test(digitsOnly)) {
+      return true;
+    }
+    
+    return false;
   },
 
   submitCompany() {
-    const name    = document.getElementById('comp-name').value;
-    const gst     = document.getElementById('comp-gst').value;
-    const address = document.getElementById('comp-address').value;
-    const contact = document.getElementById('comp-contact').value;
+    const name     = (document.getElementById('comp-name').value || '').trim();
+    const compType = document.getElementById('comp-type') ? document.getElementById('comp-type').value : 'registered';
+    const gstInput = document.getElementById('comp-gst');
+    let gst        = gstInput ? gstInput.value.trim().toUpperCase() : '';
+    const address  = (document.getElementById('comp-address').value || '').trim();
+    const pincode  = (document.getElementById('comp-pincode')?.value || '').trim();
+    const contact  = this.getFormattedContact('comp');
     
-    if (!name || !address || !contact) return this.toast('Name, Address and Contact are required', 'error');
-
-    if(gst && gst.toUpperCase() !== 'N/A' && !/^[A-Za-z0-9]{15}$/.test(gst)) return this.toast('GST must be 15 alphanumeric characters or N/A', 'error');
-    if(!/^(\+91\s*)?[0-9]{10}$/.test(contact)) return this.toast('Mobile number must be 10 digits', 'error');
+    if (!name) return this.toast('Company Name is required', 'error');
+    if (compType === 'unregistered') {
+      gst = 'N/A';
+    } else {
+      if (!gst) return this.toast('GST Number is mandatory for Registered Company', 'error');
+      if (!/^[A-Za-z0-9]{15}$/.test(gst)) return this.toast('GST must be exactly 15 alphanumeric characters', 'error');
+    }
+    if (!address) return this.toast('Address is required', 'error');
+    if (!pincode) return this.toast('Pincode is required (6 digits)', 'error');
+    if (!/^[0-9]{6}$/.test(pincode)) return this.toast('Pincode must be exactly 6 digits', 'error');
+    if (!contact) return this.toast('Contact / Mobile number is required', 'error');
+    if (!this.validateContactNumber(contact)) return this.toast('Contact must be 10-digit Indian mobile (+91), 079 landline, or international number (+...)', 'error');
 
     const editIdEl = document.getElementById('edit-comp-id');
     const isEdit = editIdEl && editIdEl.value;
 
-    const exists = ((window.serverPageData && window.serverPageData.companies) || []).find(c => c.id != (isEdit || 0) && (c.name.toLowerCase() === name.toLowerCase() || (gst && gst.toUpperCase() !== 'N/A' && c.gst === gst)));
-    if(exists) return this.toast('Company with this name or GST already exists', 'error');
+    const exists = ((window.serverPageData && window.serverPageData.companies) || []).find(c => c.id != (isEdit || 0) && (c.name.toLowerCase() === name.toLowerCase() || (gst && gst !== 'N/A' && c.gst === gst)));
+    if (exists) return this.toast('Company with this name or GST already exists', 'error');
 
-    const url = isEdit ? '/sales/company/' + isEdit : '/sales/company';
+    const url = isEdit ? '/company/' + isEdit : '/company';
     fetch(url, {
       method: 'POST',
       headers: { 
@@ -989,10 +1265,11 @@ const app = {
         'Accept': 'application/json',
         'X-CSRF-TOKEN': window.csrfToken || csrfToken 
       },
-      body: JSON.stringify({ name, gst, address, contact })
+      body: JSON.stringify({ name, gst, address, pincode, contact })
     }).then(r => r.json()).then(d => {
       if (d.success) { 
-        this.toast(d.message); 
+        this.toast(d.message);
+        sessionStorage.setItem('activeSalesTab', 'company');
         setTimeout(() => location.reload(), 600); 
       }
       else this.toast(d.message, 'error');
@@ -1000,14 +1277,14 @@ const app = {
   },
 
   submitTransport() {
-    const name     = document.getElementById('trans-name').value;
-    const gst      = document.getElementById('trans-gst').value;
-    const contact  = document.getElementById('trans-contact').value;
-    const vehicles = document.getElementById('trans-vehicles').value;
+    const name     = (document.getElementById('trans-name').value || '').trim() || 'NA';
+    const gst      = (document.getElementById('trans-gst').value || '').trim().toUpperCase();
+    const contact  = this.getFormattedContact('trans');
+    const vehicles = (document.getElementById('trans-vehicles').value || '').trim();
     
-    if (!name || !contact) return this.toast('Name and Contact are required', 'error');
-    if(gst && gst.toUpperCase() !== 'N/A' && !/^[A-Za-z0-9]{15}$/.test(gst)) return this.toast('GST must be 15 alphanumeric characters or N/A', 'error');
-    if(!/^(\+91\s*)?[0-9]{10}$/.test(contact)) return this.toast('Mobile number must be 10 digits', 'error');
+    if (!name) return this.toast('Transporter Name is required', 'error');
+    if (gst && gst !== 'N/A' && !/^[A-Za-z0-9]{15}$/.test(gst)) return this.toast('GST must be exactly 15 alphanumeric characters', 'error');
+    if (contact && !this.validateContactNumber(contact)) return this.toast('Contact must be 10-digit Indian mobile (+91), 079 landline, or international number (+...)', 'error');
 
     fetch('/transport', {
       method: 'POST',
@@ -1016,10 +1293,11 @@ const app = {
         'Accept': 'application/json',
         'X-CSRF-TOKEN': window.csrfToken || csrfToken 
       },
-      body: JSON.stringify({ name, gst, contact, vehicles })
+      body: JSON.stringify({ name, gst: gst || 'N/A', contact: contact || '', vehicles: vehicles || '' })
     }).then(r => r.json()).then(d => {
       if (d.success) { 
-        this.toast(d.message); 
+        this.toast(d.message);
+        sessionStorage.setItem('activeSalesTab', 'transport');
         setTimeout(() => location.reload(), 600);
       }
       else this.toast(d.message, 'error');
@@ -1035,15 +1313,15 @@ const app = {
 
     const items = [];
     document.querySelectorAll('#order-products .dynamic-row').forEach(row => {
-      const prodVal  = row.querySelector('.o-prod-id').value;
-      const [id, grade] = prodVal ? prodVal.split('|') : [null, null];
-      const qty      = Number(row.querySelector('.o-prod-qty').value);
-      const price    = Number(row.querySelector('.o-prod-price').value);
+      const prodId   = row.querySelector('.o-prod-id')?.value;
+      const grade    = row.querySelector('.o-prod-grade')?.value || 'NONE';
+      const qty      = Number(row.querySelector('.o-prod-qty')?.value);
+      const price    = Number(row.querySelector('.o-prod-price')?.value);
       const itemIdEl = row.querySelector('.o-item-id');
       const itemId   = itemIdEl ? itemIdEl.value : null;
 
-      if (id && grade && qty > 0 && price > 0) {
-        const itemObj = { product_id: id, grade, quantity: qty, price };
+      if (prodId && grade && qty > 0 && price >= 0) {
+        const itemObj = { product_id: prodId, grade, quantity: qty, price };
         if (itemId) itemObj.id = itemId;
         items.push(itemObj);
       }
@@ -1101,60 +1379,61 @@ const app = {
     const orderId = document.getElementById('dispatch-order').value;
     if (!orderId) return this.toast('Select an order', 'error');
 
-    const itemInputs = document.querySelectorAll('.dispatch-item-qty');
-    if (itemInputs.length === 0) return this.toast('No items to dispatch', 'error');
+    const itemContainers = document.querySelectorAll('[id^="loc-splits-"]');
+    if (itemContainers.length === 0) return this.toast('No items to dispatch', 'error');
 
     const items = [];
     let hasError = false;
     let locationUpdates = [];
-    itemInputs.forEach(input => {
-      const qty = Number(input.value);
-      const max = Number(input.dataset.max);
-      const itemId = input.dataset.itemId;
+
+    itemContainers.forEach(container => {
+      const itemId = Number(container.dataset.itemId || container.id.replace('loc-splits-', ''));
+      const max = Number(container.dataset.max || document.querySelector(`.dispatch-item-qty[data-item-id="${itemId}"]`)?.dataset.max || 0);
+      const splitInputs = container.querySelectorAll('.loc-split-qty');
       
-      if (qty > 0) {
-        if (qty > max) {
-          this.toast(`Quantity exceeds remaining (max: ${max} kg)`, 'error');
+      let splitSum = 0;
+      const splits = [];
+
+      splitInputs.forEach(sInp => {
+        const sQty = Number(sInp.value);
+        if (sQty > 0) {
+          const sMax = Number(sInp.dataset.max);
+          if (sQty > sMax) {
+            this.toast(`Location qty (${sQty} kg) exceeds available stock (${sMax} kg) in ${sInp.dataset.loc}`, 'error');
+            hasError = true;
+          }
+          splitSum += sQty;
+          splits.push({ location_key: sInp.dataset.loc, dispatch_location_qty: sQty });
+
+          const orderItem = (window.currentDispatchOrderItems || []).find(x => x.id == itemId);
+          if (orderItem) {
+            const locKey = `${orderItem.productId}_${orderItem.grade || 'NONE'}_${orderItem.productType || 'FINISHED'}`;
+            locationUpdates.push({ locKey, location: sInp.dataset.loc, deduct: sQty });
+          }
+        }
+      });
+
+      splitSum = Math.round(splitSum * 1000) / 1000;
+      const directInput = document.querySelector(`.dispatch-item-qty[data-item-id="${itemId}"]`);
+      const directQty = directInput ? Number(directInput.value) : 0;
+      const finalQty = (splitSum > 0) ? splitSum : directQty;
+
+      if (finalQty > 0) {
+        if (finalQty > max) {
+          this.toast(`Dispatch qty (${finalQty} kg) exceeds remaining order qty (${max} kg)`, 'error');
           hasError = true;
         }
-
-        const splits = [];
-        const splitInputs = document.querySelectorAll(`.loc-split-qty[data-item-id="${itemId}"]`);
-        let splitSum = 0;
-        
-        splitInputs.forEach(sInp => {
-          const sQty = Number(sInp.value);
-          if (sQty > 0) {
-             const sMax = Number(sInp.dataset.max);
-             if (sQty > sMax) {
-               this.toast(`Location qty exceeds available in ${sInp.dataset.loc}`, 'error');
-               hasError = true;
-             }
-             splitSum += sQty;
-             splits.push({ location_key: sInp.dataset.loc, dispatch_location_qty: sQty });
-             
-             const orderItem = (window.currentDispatchOrderItems || []).find(x => x.id == itemId);
-             if (orderItem) {
-                const locKey = `${orderItem.productId}_${orderItem.grade || 'NONE'}_${orderItem.productType || 'FINISHED'}`;
-                locationUpdates.push({ locKey, location: sInp.dataset.loc, deduct: sQty });
-             }
-          }
-        });
-
-        splitSum = Math.round(splitSum * 1000) / 1000;
-        const roundedQty = Math.round(qty * 1000) / 1000;
-
-        if (splitInputs.length > 0 && splitSum !== roundedQty) {
-           this.toast(`You must allocate the full Dispatch Qty (${roundedQty} kg) across locations. Currently allocated: ${splitSum} kg.`, 'error');
-           hasError = true;
-        }
-
-        items.push({ order_item_id: itemId, quantity: qty, location_splits: splits });
+        items.push({ order_item_id: itemId, quantity: finalQty, location_splits: splits });
       }
     });
 
     if (hasError) return;
-    if (items.length === 0) return this.toast('Enter at least one item quantity to dispatch', 'error');
+    if (items.length === 0) return this.toast('Enter location dispatch quantity for at least one item', 'error');
+
+    const driverNo = this.getFormattedContact('dispatch');
+    if (driverNo && !this.validateContactNumber(driverNo)) {
+      return this.toast('Driver Contact must be 10-digit Indian mobile (+91), 079 landline, or international number (+...)', 'error');
+    }
 
     fetch('/action', {
       method: 'POST',
@@ -1167,8 +1446,9 @@ const app = {
         order_id: orderId, 
         items: items, 
         lr_image: window.currentLRImage,
-        driver_no: document.getElementById('dispatch-driver')?.value || '',
+        driver_no: driverNo,
         lr_no: document.getElementById('dispatch-lr-no')?.value || '',
+        notes: document.getElementById('dispatch-notes')?.value || '',
         transporter_id: document.getElementById('dispatch-transporter')?.value || null
       })
     })
@@ -1199,22 +1479,32 @@ const app = {
         const remaining = i.remainingQty ?? (i.quantity - (i.dispatchedQty || 0));
         const alreadyDispatched = i.dispatchedQty || 0;
         if (remaining <= 0) return ''; // skip fully dispatched items
+
+        const baseName = (i.rawProductName || i.productName || 'Unknown')
+          .replace(/\s+(PURE|PREMIUM|COMMERCIAL|NONE|\b[A-Za-z0-9_-]+\b)\s*\((fg|raw|semi)\)$/i, '')
+          .replace(/\s*\((fg|raw|semi)\)$/i, '')
+          .trim();
+        const displayGrade = (i.grade && i.grade !== 'NONE' && i.grade !== 'N/A') ? i.grade : '';
+        const displayType = (i.productType === 'FINISHED') ? 'FG' : (i.productType ? i.productType.toUpperCase() : 'N/A');
+
         return `
         <div style="display:flex; flex-direction:column; gap:6px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-weight:500;">${i.productName} - (grade- ${i.grade || 'N/A'}) (type - ${i.productType === 'FINISHED' ? 'FG' : (i.productType ? i.productType.toLowerCase() : 'N/A')})</span>
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <span style="font-weight:600; font-size:0.95rem;">
+              ${baseName} ${displayGrade ? `<strong style="font-weight:800; color:var(--primary-light, #F4B400);">${displayGrade}</strong> ` : ''}(${displayType})
+            </span>
             <span style="color:var(--text-muted); font-size:0.8rem;">
               Total: ${i.quantity} kg
               ${alreadyDispatched > 0 ? ` · Already sent: ${alreadyDispatched} kg` : ''}
             </span>
           </div>
           <div style="display:flex; align-items:center; gap:10px; margin-bottom: 8px;">
-            <label style="font-size:0.75rem; color:var(--secondary); white-space:nowrap; margin:0;">Dispatch Qty (max ${remaining} kg):</label>
+            <label style="font-size:0.75rem; color:var(--secondary); white-space:nowrap; margin:0;">Dispatch Qty:</label>
             <input type="number" class="dispatch-item-qty" data-item-id="${i.id}" data-max="${remaining}" 
                    value="" placeholder="Enter quantity..." max="${remaining}" min="0.001" step="0.001"
                    style="flex:1; padding:0.6rem; font-size:1rem; font-weight:bold; color:var(--secondary); background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); border-radius:8px;">
           </div>
-          <div id="loc-splits-${i.id}" style="margin-top:4px;">
+          <div id="loc-splits-${i.id}" data-item-id="${i.id}" data-max="${remaining}" style="margin-top:4px;">
             <div style="font-size:0.75rem; color:var(--text-muted);">⏳ Loading stock locations...</div>
           </div>
         </div>
@@ -1256,7 +1546,7 @@ const app = {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
               Notes & Special Instructions (Sales)
             </div>
-            <div style="font-size:0.95rem; color:#fff; line-height:1.5; font-style:italic;">"${o.notes}"</div>
+            <div style="font-size:0.95rem; color:#fff; line-height:1.5; font-style:italic; word-break:break-word; overflow-wrap:anywhere; white-space:pre-wrap;">"${o.notes}"</div>
           </div>
           ` : ''}
 
@@ -1495,7 +1785,12 @@ const app = {
   },
 
   downloadCashierPdf() {
-    const txs   = window.serverPageData?.transactions || [];
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeTab = urlParams.get('tab') || 'personal';
+    const selectedMember = document.getElementById('team-member-select')?.value || urlParams.get('team_member') || 'all';
+    const teamMembers = window.serverPageData?.teamMembers || [];
+
+    const txs = (activeTab === 'team' ? (window.serverPageData?.teamTransactions || []) : (window.serverPageData?.transactions || []));
     let cats = window.serverPageData?.categories || [];
     if (cats.length === 0) cats = [...new Set(txs.map(t => t.category).filter(Boolean))].sort().map(c => ({value: c, label: c.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase())}));
     const sites = [...new Set(txs.map(t => t.site).filter(Boolean))].sort();
@@ -1503,45 +1798,57 @@ const app = {
     const today = new Date().toISOString().split('T')[0];
     const oneMonthAgo = new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
 
+    const isTeam = (activeTab === 'team');
+
     Swal.fire({
       title: '📄 Generate Account Statement',
       html: `
         <div style="text-align:left; font-size:0.9rem;">
+          ${isTeam ? `
           <div style="margin-bottom:0.8rem;">
-            <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px;">Date Filter Mode</label>
-            <select id="sp-date-type" onchange="const isAsOn = this.value === 'as_on_date'; document.getElementById('sp-custom-date-grid').style.display = isAsOn ? 'none' : 'grid'; document.getElementById('sp-as-on-date-container').style.display = isAsOn ? 'block' : 'none';" style="width:100%; padding:0.5rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+            <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Team Member</label>
+            <select id="sp-member" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+              <option value="all" ${selectedMember === 'all' ? 'selected' : ''}>ALL TEAM MEMBERS</option>
+              ${teamMembers.map(m => `<option value="${m.id}" ${(String(selectedMember) === String(m.id) || selectedMember.toLowerCase() === m.name.toLowerCase()) ? 'selected' : ''}>${m.name}</option>`).join('')}
+            </select>
+          </div>
+          ` : ''}
+
+          <div style="margin-bottom:0.8rem;">
+            <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Date Filter Mode</label>
+            <select id="sp-date-type" onchange="const isAsOn = this.value === 'as_on_date'; document.getElementById('sp-custom-date-grid').style.display = isAsOn ? 'none' : 'grid'; document.getElementById('sp-as-on-date-container').style.display = isAsOn ? 'block' : 'none';" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
               <option value="custom" selected>Custom</option>
               <option value="as_on_date">As on date</option>
             </select>
           </div>
 
           <div id="sp-as-on-date-container" style="display:none; margin-bottom:0.8rem;">
-            <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px;">Date</label>
-            <input id="sp-as-on" type="date" value="${today}" style="width:100%; padding:0.5rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+            <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Date</label>
+            <input id="sp-as-on" type="date" value="${today}" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
           </div>
 
           <div id="sp-custom-date-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; margin-bottom:0.8rem;">
             <div>
-              <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px;">From Date</label>
-              <input id="sp-from" type="date" value="${oneMonthAgo}" style="width:100%; padding:0.5rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+              <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">From Date</label>
+              <input id="sp-from" type="date" value="${oneMonthAgo}" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
             </div>
             <div>
-              <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px;">To Date</label>
-              <input id="sp-to" type="date" value="${today}" style="width:100%; padding:0.5rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+              <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">To Date</label>
+              <input id="sp-to" type="date" value="${today}" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
             </div>
           </div>
 
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; margin-bottom:0.8rem;">
             <div>
-              <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px;">Category</label>
-              <select id="sp-cat" style="width:100%; padding:0.5rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+              <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Category</label>
+              <select id="sp-cat" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
                 <option value="all">All Categories</option>
                 ${cats.map(c => `<option value="${c.value}">${c.label}</option>`).join('')}
               </select>
             </div>
             <div>
-              <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px;">Site / Branch</label>
-              <select id="sp-site" style="width:100%; padding:0.5rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+              <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Site / Branch</label>
+              <select id="sp-site" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
                 <option value="all">All Sites</option>
                 ${sites.map(s => `<option value="${s}">${s}</option>`).join('')}
               </select>
@@ -1549,8 +1856,8 @@ const app = {
           </div>
 
           <div style="margin-bottom:0.8rem;">
-            <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px;">Opening Balance (₹)</label>
-            <input id="sp-opening" type="number" step="0.01" placeholder="Leave blank to auto-calculate" style="width:100%; padding:0.5rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+            <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Opening Balance (₹)</label>
+            <input id="sp-opening" type="number" step="0.01" placeholder="Leave blank to auto-calculate" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
           </div>
 
           <div style="background:rgba(35,134,54,0.1); border:1px solid #238636; border-radius:8px; padding:0.7rem; display:flex; align-items:center; gap:0.6rem;">
@@ -1583,12 +1890,15 @@ const app = {
           if (!from || !to) { Swal.showValidationMessage('Please select both dates'); return false; }
           if (from > to)    { Swal.showValidationMessage('From date must be before To date'); return false; }
         }
+        const memberEl = document.getElementById('sp-member');
         return {
           from, to,
           category: document.getElementById('sp-cat').value,
           site: document.getElementById('sp-site').value,
           include_bills: document.getElementById('sp-bills').checked ? 'yes' : 'no',
           opening_balance: document.getElementById('sp-opening').value || '',
+          cashier_id: memberEl ? memberEl.value : (isTeam ? selectedMember : ''),
+          tab: activeTab
         };
       }
     }).then(result => {
@@ -1596,6 +1906,8 @@ const app = {
       const p = result.value;
       let url = `/cashier/history/pdf?from=${p.from}&to=${p.to}&include_bills=${p.include_bills}&category=${p.category}&site=${p.site}`;
       if (p.opening_balance) url += `&opening_balance=${p.opening_balance}`;
+      if (p.tab) url += `&tab=${p.tab}`;
+      if (p.cashier_id) url += `&cashier_id=${p.cashier_id}`;
       this.toast('Generating PDF... this may take a moment ⏳', 'info');
       window.open(url, '_blank');
     });
@@ -1803,7 +2115,7 @@ const app = {
   openCashierDrawer(idx) {
     const t = window._historyLogs[idx];
     if(!t) return;
-    const color = t.type==='IN' ? 'var(--secondary)' : 'var(--danger)';
+    const color = t.type==='IN' ? '#16a34a' : '#ef4444';
     
     // Add edit form hidden by default
     const allCats = (window.serverPageData && window.serverPageData.categories) ? window.serverPageData.categories : [];
@@ -1931,7 +2243,7 @@ const app = {
       <h3 style="margin-bottom:1rem;">Order #${String(o.id).toUpperCase()}</h3>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; margin-bottom:1rem;">
         <div><div style="color:var(--text-muted); font-size:0.8rem;">Company</div><div style="font-weight:600;">${comp.name||'N/A'}</div></div>
-        <div><div style="color:var(--text-muted); font-size:0.8rem;">Status</div><div><span class="badge ${o.status==='OPEN'?'badge-open':(o.status==='CANCELLED'?'badge-danger':'badge-closed')}">${o.status}</span></div></div>
+        
         <div><div style="color:var(--text-muted); font-size:0.8rem;">Transport</div><div>${trans.name||'N/A'}</div></div>
         <div><div style="color:var(--text-muted); font-size:0.8rem;">Dispatch</div><div><span class="badge ${o.dispatchStatus==='PENDING'?'badge-pending':'badge-done'}">${o.dispatchStatus||'PENDING'}</span></div></div>
         <div><div style="color:var(--text-muted); font-size:0.8rem;">Date</div><div>${new Date(o.date).toLocaleString()}</div></div>

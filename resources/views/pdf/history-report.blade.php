@@ -230,10 +230,10 @@
                     <th class="center" style="width:6%;">#</th>
                     <th style="width:14%;">Order ID</th>
                     <th style="width:14%;">Date</th>
-                    <th style="width:20%;">Customer</th>
-                    <th style="width:14%;">Status</th>
-                    <th style="width:17%;">Order Items (Qty)</th>
-                    <th style="width:15%;">Order Amount</th>
+                    <th style="width:24%;">Customer</th>
+                    <th style="width:14%;">Dispatch Status</th>
+                    <th style="width:14%;">Order Items (Qty)</th>
+                    <th style="width:14%;">Order Amount</th>
                 </tr>
             </thead>
             <tbody>
@@ -244,10 +244,7 @@
                         <td>{{ $row['date'] }}</td>
                         <td><strong>{{ $row['company_name'] ?? '-' }}</strong></td>
                         <td>
-                            <div style="margin-bottom: 4px;">
-                                <span class="badge {{ in_array($row['status'] ?? '', ['PENDING', 'OPEN']) ? 'badge-warn' : 'badge-ok' }}">{{ $row['status'] ?? '-' }}</span>
-                            </div>
-                            <div style="font-size: 10px; color: #475467;">Dispatch: {{ $row['dispatch_status'] ?? '-' }}</div>
+                            <span class="badge {{ ($row['dispatch_status'] ?? '') === 'DONE' ? 'badge-ok' : 'badge-warn' }}">{{ $row['dispatch_status'] ?? 'PENDING' }}</span>
                         </td>
                         <td class="center">
                             <strong>{{ $row['total_items'] ?? 0 }}</strong> Items<br>

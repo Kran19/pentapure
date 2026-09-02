@@ -43,10 +43,10 @@ class SalesController extends Controller
                     'price'       => $i->price,
                 ]),
             ]),
-            'companies'          => Company::orderBy('name')->get()->map(fn($c)=>[
-                'id'=>$c->id,'name'=>strtoupper($c->name ?? ''),'gst'=>$c->gst,'address'=>$c->address,'contact'=>$c->contact,'date'=>$c->created_at->toISOString()
+            'companies'          => Company::orderByDesc('id')->get()->map(fn($c)=>[
+                'id'=>$c->id,'name'=>strtoupper($c->name ?? ''),'gst'=>$c->gst,'address'=>$c->address,'pincode'=>$c->pincode,'contact'=>$c->contact,'date'=>$c->created_at->toISOString()
             ]),
-            'transportCompanies' => Transporter::orderBy('name')->get()->map(fn($t)=>[
+            'transportCompanies' => Transporter::orderByDesc('id')->get()->map(fn($t)=>[
                 'id'=>$t->id,'name'=>strtoupper($t->name ?? ''),'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
             ]),
             'products'           => Product::target()->active()->visibleTo($this->authUser()['role'])->get(['id', 'name', 'unit', 'type'])->map(fn($p) => [
@@ -59,13 +59,13 @@ class SalesController extends Controller
 
     public function action(Request $request)
     {
-        $companies = Company::orderBy('name')->get()->map(fn($c)=>[
-            'id'=>$c->id,'name'=>strtoupper($c->name ?? ''),'gst'=>$c->gst,'address'=>$c->address,'contact'=>$c->contact,'date'=>$c->created_at->toISOString()
+        $companies = Company::orderByDesc('id')->get()->map(fn($c)=>[
+            'id'=>$c->id,'name'=>strtoupper($c->name ?? ''),'gst'=>$c->gst,'address'=>$c->address,'pincode'=>$c->pincode,'contact'=>$c->contact,'date'=>$c->created_at->toISOString()
         ]);
-        $transportCompanies = Transporter::orderBy('name')->get()->map(fn($t)=>[
+        $transportCompanies = Transporter::orderByDesc('id')->get()->map(fn($t)=>[
             'id'=>$t->id,'name'=>strtoupper($t->name ?? ''),'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
         ]);
-        $products = Product::active()->with('grades')->get(['id', 'name', 'unit', 'type'])->map(fn($p) => [
+        $products = Product::active()->with('grades')->orderBy('name')->get(['id', 'name', 'unit', 'type'])->map(fn($p) => [
             'id' => $p->id, 'name' => strtoupper($p->name ?? ''), 'unit' => $p->unit, 'type' => $p->type,
             'grades' => $p->grades->pluck('name')->map('strtoupper')->toArray()
         ]);
@@ -88,12 +88,12 @@ class SalesController extends Controller
     public function storeOrder(Request $request)
     {
         // Convert grade to uppercase for consistency and case-insensitive validation/storage
-        $items = $request->input('items', []);
-        foreach ($items as &$item) {
+        $items = collect($request->input('items', []))->map(function ($item) {
             if (isset($item['grade'])) {
                 $item['grade'] = strtoupper($item['grade']);
             }
-        }
+            return $item;
+        })->toArray();
         $request->merge(['items' => $items]);
 
         // Prevent duplicate orders: route to the update logic if an order ID is provided
@@ -115,7 +115,7 @@ class SalesController extends Controller
         $user  = $this->authUser();
 
         // Security check: Ensure products are visible to this user role and grade belongs to product
-        $visibleProductIds = Product::visibleTo($user['role'])->pluck('id')->toArray();
+        $visibleProductIds = Product::active()->pluck('id')->toArray();
         foreach ($request->items as $item) {
             if (!in_array($item['product_id'], $visibleProductIds)) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized product access.'], 403);
@@ -158,6 +158,30 @@ class SalesController extends Controller
         return response()->json(['success' => true, 'message' => 'Order generated successfully!']);
     }
 
+    private function validateAndFormatContact(string $contact): ?string
+    {
+        $clean = trim($contact);
+
+        // International number (starts with '+' followed by non-91 country code, e.g. +1, +44, +971)
+        if (preg_match('/^\+(?!91\b)[0-9\s\-()]{6,20}$/', $clean)) {
+            return $clean;
+        }
+
+        // 079 Landline (e.g. 079-12345678, 07912345678, +91 79 12345678)
+        if (preg_match('/^(\+91[\s\-]?)?0?79[\s\-]?[0-9]{6,8}$/', $clean)) {
+            return $clean;
+        }
+
+        // Standard Indian 10-digit mobile
+        $digitsOnly = preg_replace('/^\+91[\s\-]*/', '', $clean);
+        $digitsOnly = preg_replace('/[\s\-()]/', '', $digitsOnly);
+        if (preg_match('/^[0-9]{10}$/', $digitsOnly)) {
+            return '+91 ' . $digitsOnly;
+        }
+
+        return null;
+    }
+
     public function storeCompany(Request $request)
     {
         $request->merge(['name' => strtoupper($request->name)]);
@@ -167,22 +191,32 @@ class SalesController extends Controller
             $gstRule[] = 'unique:companies,gst';
         }
 
+        $formattedContact = null;
+        if (!empty($request->contact)) {
+            $formattedContact = $this->validateAndFormatContact($request->contact);
+            if (!$formattedContact) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Contact must be a 10-digit Indian mobile (+91), a 079 landline number, or an international number (+...).'
+                ], 422);
+            }
+        }
+
         $request->validate([
             'name'    => 'required|string|max:255|unique:companies,name',
             'gst'     => $gstRule,
-            'contact' => ['required', 'string', 'regex:/^(\+91\s*)?[0-9]{10}$/'],
-            'address' => 'required|string|max:500',
+            'address' => 'nullable|string|max:500',
+            'pincode' => 'nullable|string|regex:/^[0-9]{6}$/',
         ], [
             'gst.regex'     => 'GST number must be 15 alphanumeric characters or N/A',
-            'contact.regex' => 'Mobile number must be 10 digits (with or without +91)',
             'name.unique'   => 'Company name already exists',
-            'gst.unique'    => 'GST number already registered'
+            'gst.unique'    => 'GST number already registered',
+            'pincode.regex' => 'Pincode must be 6 digits',
         ]);
 
-        $contact = preg_replace('/^\+91\s*/', '', $request->contact);
-        $request->merge(['contact' => '+91 ' . $contact]);
+        $request->merge(['contact' => $formattedContact]);
 
-        Company::create($request->only('name', 'gst', 'address', 'contact'));
+        Company::create($request->only('name', 'gst', 'address', 'pincode', 'contact'));
         return response()->json(['success' => true, 'message' => 'Company saved!']);
     }
 
@@ -196,22 +230,32 @@ class SalesController extends Controller
             $gstRule[] = 'unique:companies,gst,' . $company->id;
         }
 
+        $formattedContact = null;
+        if (!empty($request->contact)) {
+            $formattedContact = $this->validateAndFormatContact($request->contact);
+            if (!$formattedContact) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Contact must be a 10-digit Indian mobile (+91), a 079 landline number, or an international number (+...).'
+                ], 422);
+            }
+        }
+
         $request->validate([
             'name'    => 'required|string|max:255|unique:companies,name,' . $company->id,
             'gst'     => $gstRule,
-            'contact' => ['required', 'string', 'regex:/^(\+91\s*)?[0-9]{10}$/'],
-            'address' => 'required|string|max:500',
+            'address' => 'nullable|string|max:500',
+            'pincode' => 'nullable|string|regex:/^[0-9]{6}$/',
         ], [
             'gst.regex'     => 'GST number must be 15 alphanumeric characters or N/A',
-            'contact.regex' => 'Mobile number must be 10 digits (with or without +91)',
             'name.unique'   => 'Company name already exists',
-            'gst.unique'    => 'GST number already registered'
+            'gst.unique'    => 'GST number already registered',
+            'pincode.regex' => 'Pincode must be 6 digits',
         ]);
 
-        $contact = preg_replace('/^\+91\s*/', '', $request->contact);
-        $request->merge(['contact' => '+91 ' . $contact]);
+        $request->merge(['contact' => $formattedContact]);
 
-        $company->update($request->only('name', 'gst', 'address', 'contact'));
+        $company->update($request->only('name', 'gst', 'address', 'pincode', 'contact'));
         return response()->json(['success' => true, 'message' => 'Company updated!']);
     }
 
@@ -224,23 +268,41 @@ class SalesController extends Controller
             $gstRule[] = 'unique:transporters,gst';
         }
 
+        $formattedContact = null;
+        if (!empty($request->contact)) {
+            $formattedContact = $this->validateAndFormatContact($request->contact);
+            if (!$formattedContact) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Contact must be a 10-digit Indian mobile (+91), a 079 landline number, or an international number (+...).'
+                ], 422);
+            }
+        }
+
         $request->validate([
-            'name'    => 'required|string|max:255|unique:transporters,name',
-            'gst'     => $gstRule,
-            'contact' => ['required', 'string', 'regex:/^(\+91\s*)?[0-9]{10}$/'],
+            'name'     => 'required|string|max:255|unique:transporters,name',
+            'gst'      => $gstRule,
             'vehicles' => 'nullable|string',
         ], [
-            'gst.regex'     => 'GST number must be 15 alphanumeric characters or N/A',
-            'contact.regex' => 'Mobile number must be 10 digits (with or without +91)',
-            'name.unique'   => 'Transporter already exists',
-            'gst.unique'    => 'GST number already registered'
+            'gst.regex'   => 'GST number must be 15 alphanumeric characters or N/A',
+            'name.unique' => 'Transporter already exists',
+            'gst.unique'  => 'GST number already registered'
         ]);
 
-        $contact = preg_replace('/^\+91\s*/', '', $request->contact);
-        $request->merge(['contact' => '+91 ' . $contact]);
+        $request->merge(['contact' => $formattedContact]);
 
-        Transporter::create($request->only('name', 'gst', 'contact', 'vehicles'));
-        return response()->json(['success' => true, 'message' => 'Transporter saved!']);
+        $transporter = Transporter::create($request->only('name', 'gst', 'contact', 'vehicles'));
+        return response()->json([
+            'success' => true, 
+            'message' => 'Transporter saved!',
+            'transporter' => [
+                'id' => $transporter->id,
+                'name' => $transporter->name,
+                'gst' => $transporter->gst,
+                'contact' => $transporter->contact,
+                'vehicles' => $transporter->vehicles,
+            ]
+        ]);
     }
 
     public function history()
@@ -282,12 +344,12 @@ class SalesController extends Controller
     public function updateOrder(Request $request, $id)
     {
         // Convert grade to uppercase for consistency and case-insensitive validation/storage
-        $items = $request->input('items', []);
-        foreach ($items as &$item) {
+        $items = collect($request->input('items', []))->map(function ($item) {
             if (isset($item['grade'])) {
                 $item['grade'] = strtoupper($item['grade']);
             }
-        }
+            return $item;
+        })->toArray();
         $request->merge(['items' => $items]);
 
         $order = Order::findOrFail($id);
@@ -309,7 +371,7 @@ class SalesController extends Controller
         ]);
 
         $user = $this->authUser();
-        $visibleProductIds = Product::visibleTo($user['role'])->pluck('id')->toArray();
+        $visibleProductIds = Product::active()->pluck('id')->toArray();
         foreach ($request->items as $item) {
             if (!in_array($item['product_id'], $visibleProductIds)) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized product access.'], 403);

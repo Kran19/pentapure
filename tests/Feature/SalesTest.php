@@ -37,7 +37,7 @@ class SalesTest extends TestCase
 
         $this->company = Company::create([
             'name' => 'ACME CORP',
-            'gst' => '22AAAAA0000A1Z5',
+            'gst' => '00AAAAA0000A1Z0',
             'contact' => '+91 9876543210',
             'address' => '123 Main St',
         ]);
@@ -76,10 +76,11 @@ class SalesTest extends TestCase
             'gst' => 'N/A',
             'contact' => '9998887776',
             'address' => 'Industrial Area',
+            'pincode' => '380001',
         ]);
 
         $compResponse->assertJson(['success' => true]);
-        $this->assertDatabaseHas('companies', ['name' => 'BETA LTD']);
+        $this->assertDatabaseHas('companies', ['name' => 'BETA LTD', 'pincode' => '380001']);
 
         $transResponse = $this->withSession($session)->postJson('/sales/transport', [
             'name' => 'FAST FREIGHT',
@@ -89,6 +90,22 @@ class SalesTest extends TestCase
 
         $transResponse->assertJson(['success' => true]);
         $this->assertDatabaseHas('transporters', ['name' => 'FAST FREIGHT']);
+
+        // Test creating company with minimal fields (address and contact omitted)
+        $minimalComp = $this->withSession($session)->postJson('/sales/company', [
+            'name' => 'MINIMAL CO',
+            'gst' => '22AAAAA0000A1Z2',
+        ]);
+        $minimalComp->assertJson(['success' => true]);
+        $this->assertDatabaseHas('companies', ['name' => 'MINIMAL CO', 'gst' => '22AAAAA0000A1Z2']);
+
+        // Test creating transporter with minimal fields (contact and vehicles omitted)
+        $minimalTrans = $this->withSession($session)->postJson('/sales/transport', [
+            'name' => 'MINIMAL TRANS',
+            'gst' => '33BBBBB0000B1Z3',
+        ]);
+        $minimalTrans->assertJson(['success' => true]);
+        $this->assertDatabaseHas('transporters', ['name' => 'MINIMAL TRANS', 'gst' => '33BBBBB0000B1Z3']);
     }
 
     public function test_sales_user_can_create_order_with_valid_product_and_grade(): void

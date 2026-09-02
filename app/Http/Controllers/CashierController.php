@@ -49,7 +49,7 @@ class CashierController extends Controller
     {
         $request->validate([
             'transactions' => 'required|array|min:1',
-            'transactions.*.type' => 'required|in:IN,OUT',
+            'transactions.*.type' => 'required|in:IN,OUT,EXPENSE,INCOME,expense,income,out,in',
             'transactions.*.amount' => 'required|numeric|min:0.01',
             'transactions.*.category' => 'nullable|string',
             'transactions.*.note' => 'nullable|string',
@@ -61,9 +61,12 @@ class CashierController extends Controller
 
         \DB::transaction(function() use ($request, $userArray, $userModel) {
             foreach ($request->transactions as $idx => $tData) {
+                $rawType = strtoupper($tData['type'] ?? 'OUT');
+                $normalizedType = ($rawType === 'EXPENSE' || $rawType === 'OUT') ? 'OUT' : 'IN';
+
                 $tx = Transaction::create([
                     'user_id'     => $userArray['id'],
-                    'type'        => $tData['type'],
+                    'type'        => $normalizedType,
                     'amount'      => $tData['amount'],
                     'category'    => $tData['category'] ?? 'general',
                     'note'        => $tData['note'] ?? null,
@@ -232,7 +235,7 @@ class CashierController extends Controller
     }
 
     // ── LEDGER ─────────────────────────────────────────────────────────────
-    public function ledger()
+    public function ledger(Request $request = null)
     {
         $user = $this->authUser();
         $txs = Transaction::with('bills')->where('user_id', $user['id'])->orderByDesc('created_at')->get();
@@ -244,33 +247,42 @@ class CashierController extends Controller
         ];
 
         $userModel = User::find($user['id']);
-        $visibleIds = $userModel->visible_cashiers ?? [];
+        $visibleIds = $userModel->visible_cashiers ?? null;
         if (is_string($visibleIds)) {
-            $visibleIds = json_decode($visibleIds, true) ?? [];
+            $visibleIds = json_decode($visibleIds, true) ?? null;
         }
-        $visibleIds = array_map('intval', $visibleIds);
+        if ($visibleIds !== null) {
+            $visibleIds = array_map('intval', $visibleIds);
+        }
 
-        // Fetch allowed and disallowed cashiers for the info modal
-        $allOtherCashiers = User::where('role', 'CASHIER')->where('id', '!=', $user['id'])->get();
+        // Fetch all active cashiers in the company
+        $allCashiers = User::where('role', 'CASHIER')->where('status', 'ACTIVE')->orderBy('name')->get();
         $allowedCashiers = [];
         $disallowedCashiers = [];
-        foreach ($allOtherCashiers as $c) {
-            if (in_array($c->id, $visibleIds)) {
+        $teamMembers = [];
+
+        foreach ($allCashiers as $c) {
+            if ($visibleIds === null || in_array($c->id, $visibleIds)) {
                 $allowedCashiers[] = $c->name;
+                $teamMembers[] = [
+                    'id'   => $c->id,
+                    'name' => strtoupper($c->name),
+                ];
             } else {
                 $disallowedCashiers[] = $c->name;
             }
         }
 
-        // Team Ledger (Only visible cashiers)
-        if (empty($visibleIds)) {
-            // User requested that empty array means they see nobody
+        $allowedIds = collect($teamMembers)->pluck('id')->toArray();
+
+        // Team Ledger (Includes all allowed active team cashiers' transactions)
+        if (empty($allowedIds)) {
             $teamTxs = collect([]);
         } else {
             $teamTxs = Transaction::with(['bills', 'user'])
-                ->whereIn('user_id', $visibleIds)
+                ->whereIn('user_id', $allowedIds)
                 ->whereHas('user', function($q) {
-                    $q->where('role', 'CASHIER');
+                    $q->where('status', 'ACTIVE');
                 })
                 ->orderByDesc('created_at')
                 ->get();
@@ -297,36 +309,69 @@ class CashierController extends Controller
         })->values()->sortByDesc('date')->toArray();
 
         $pageData = [
-            'transactions' => $txs->map(fn($t) => $this->txToArray($t)),
+            'transactions' => $txs->map(fn($t) => $this->txToArray($t))->values()->toArray(),
             'summary'      => $summary,
-            'teamTransactions' => $teamTxs->map(fn($t) => array_merge($this->txToArray($t), ['cashier_name' => $t->user?->name ?? 'Unknown'])),
+            'teamTransactions' => $teamTxs->map(fn($t) => array_merge($this->txToArray($t), ['cashier_name' => strtoupper($t->user?->name ?? 'Unknown')]))->values()->toArray(),
             'teamSummary'  => $teamSummary,
+            'teamMembers'  => $teamMembers,
             'dailyData'    => $dailyData,
             'allowedCashiers' => $allowedCashiers,
             'disallowedCashiers' => $disallowedCashiers,
             'categories'   => \App\Models\Category::where('is_active', true)->orderBy('name')->get()->map(fn($c) => ['label'=>$c->name,'value'=>str_replace(' ','_',strtolower($c->name))])->toArray(),
         ];
 
+        $req = $request ?: request();
+        if ($req->wantsJson() || $req->has('sync')) {
+            return response()->json([
+                'success' => true,
+                'pageData' => $pageData,
+            ]);
+        }
+
         return view('cashier.ledger', compact('pageData'));
     }
 
-    // ── DOWNLOAD PDF (Enhanced) ────────────────────────────────────────────
+    // ─── DOWNLOAD PDF (Enhanced) ──────────────────────────────────────────────
     public function downloadPdf(Request $request)
     {
         $user = $this->authUser();
+        $cashierId = $request->cashier_id;
+        
+        if ($cashierId && $cashierId !== 'all') {
+            $targetUser = User::find($cashierId);
+            $targetName = $targetUser ? strtoupper($targetUser->name) : $user['name'];
+            return $this->generateCashierPdf($request, (int)$cashierId, $targetName);
+        }
+
+        if ($request->tab === 'team' || $request->team === 'all' || $cashierId === 'all') {
+            $userModel = User::find($user['id']);
+            $visibleIds = $userModel->visible_cashiers ?? null;
+            if (is_string($visibleIds)) $visibleIds = json_decode($visibleIds, true) ?? null;
+            if ($visibleIds !== null) $visibleIds = array_map('intval', $visibleIds);
+            
+            $allOther = User::where('role', 'CASHIER')->where('status', 'ACTIVE')->get();
+            $allowedIds = [];
+            foreach ($allOther as $c) {
+                if ($visibleIds === null || in_array($c->id, $visibleIds)) {
+                    $allowedIds[] = $c->id;
+                }
+            }
+            return $this->generateCashierPdf($request, 0, 'TEAM LEDGER', $allowedIds);
+        }
+
         return $this->generateCashierPdf($request, $user['id'], $user['name']);
     }
 
-    // ── PROFILE ────────────────────────────────────────────────────────────
+    // ─── PROFILE ────────────────────────────────────────────────────────────
     public function profile()
     {
         return view('cashier.profile');
     }
 
-    // ══════════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════════════
     // SHARED PDF GENERATION (used by cashier & admin)
-    // ══════════════════════════════════════════════════════════════════════
-    public function generateCashierPdf(Request $request, int $userId, string $cashierName)
+    // ══════════════════════════════════════════════════════════════════════════
+    public function generateCashierPdf(Request $request, int $userId, string $cashierName, $teamUserIds = null)
     {
         $from = $request->from ? Carbon::parse($request->from)->startOfDay() : null;
         $to   = $request->to   ? Carbon::parse($request->to)->endOfDay()     : null;

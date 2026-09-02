@@ -27,12 +27,33 @@
       </select>
     </div>
     <div class="form-group">
-      <label>Driver Mobile No.</label>
-      <input type="text" id="dispatch-driver" placeholder="Optional" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+      <label>Driver Contact / Mobile No.</label>
+      <div style="display:flex; gap:8px;">
+        <select id="dispatch-country-code" onchange="app.onCountryCodeChange('dispatch')" style="width:68px; padding:0.7rem 0.2rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600; flex-shrink:0; text-align:center; cursor:pointer;">
+          <option value="+91" selected>+91</option>
+          <option value="+1">+1</option>
+          <option value="+44">+44</option>
+          <option value="+971">+971</option>
+          <option value="+966">+966</option>
+          <option value="+61">+61</option>
+          <option value="+65">+65</option>
+          <option value="+49">+49</option>
+          <option value="+33">+33</option>
+          <option value="+86">+86</option>
+          <option value="+81">+81</option>
+          <option value="other">+...</option>
+        </select>
+        <input type="text" id="dispatch-contact" placeholder="10-digit mobile or 079 landline" style="flex:1; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+      </div>
     </div>
     <div class="form-group">
       <label>LR Number</label>
-      <input type="text" id="dispatch-lr-no" placeholder="Optional" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+      <input type="text" id="dispatch-lr-no" placeholder="Optional" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+    </div>
+
+    <div class="form-group">
+      <label>Note / Special Instructions (Optional)</label>
+      <textarea id="dispatch-notes" rows="2" placeholder="e.g. Dispatched via truck driver, fragile packaging, etc." style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); resize:vertical;"></textarea>
     </div>
     
     <div class="form-group mt-1">

@@ -1,6 +1,50 @@
 @extends('layouts.admin')
 
 @section('content')
+<style>
+.user-status-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  margin: 0;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.user-status-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.user-status-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #cbd5e1;
+  transition: 0.3s;
+  border-radius: 24px;
+  border: 1px solid #94a3b8;
+}
+.user-status-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+  transition: 0.3s;
+  border-radius: 50%;
+}
+.user-status-switch input:checked + .user-status-slider {
+  background-color: #f59e0b;
+  border-color: #d97706;
+}
+.user-status-switch input:checked + .user-status-slider:before {
+  transform: translateX(20px);
+}
+</style>
 <div style="padding:1.5rem;">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
     <h2 style="margin:0;">👥 Users & Hierarchy</h2>
@@ -21,7 +65,23 @@
       </div>
       <div class="form-group">
         <label>Phone Number *</label>
-        <input type="text" id="u-phone" placeholder="Phone number">
+        <div style="display:flex; gap:8px;">
+          <select id="u-country-code" onchange="onAdminPhoneCodeChange()" style="width:72px; padding:0.6rem 0.2rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600; flex-shrink:0; text-align:center; cursor:pointer;">
+            <option value="+91" selected>+91</option>
+            <option value="+1">+1</option>
+            <option value="+44">+44</option>
+            <option value="+971">+971</option>
+            <option value="+966">+966</option>
+            <option value="+61">+61</option>
+            <option value="+65">+65</option>
+            <option value="+49">+49</option>
+            <option value="+33">+33</option>
+            <option value="+86">+86</option>
+            <option value="+81">+81</option>
+            <option value="other">+...</option>
+          </select>
+          <input type="text" id="u-phone" placeholder="10-digit mobile or 079 landline" style="flex:1; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+        </div>
       </div>
       <div class="form-group">
         <label>Role *</label>
@@ -141,12 +201,12 @@
             <td><span class="badge badge-info">{{ $user['role'] }}</span></td>
             <td>
               @if($user['id'] == auth()->id())
-                <span class="badge badge-done">You</span>
+                <span class="badge" style="background:var(--primary, #f59e0b); color:#fff; padding:4px 10px; font-weight:700; border-radius:12px; font-size:0.75rem;">YOU</span>
               @else
-                <label class="switch">
-                  <input type="checkbox" {{ $user['status'] === 'ACTIVE' ? 'checked' : '' }} 
+                <label class="user-status-switch" title="Toggle Active / Blocked">
+                  <input type="checkbox" id="status-toggle-{{ $user['id'] }}" {{ $user['status'] === 'ACTIVE' ? 'checked' : '' }} 
                     onchange="adminToggleUser({{ $user['id'] }})">
-                  <span class="slider"></span>
+                  <span class="user-status-slider"></span>
                 </label>
               @endif
             </td>
@@ -186,7 +246,7 @@ function resetUserForm() {
   document.querySelector('#user-form-card .card-title').innerText = 'Create New User';
   document.getElementById('u-name').value = '';
   document.getElementById('u-email').value = '';
-  document.getElementById('u-phone').value = '';
+  document.getElementById('u-phone').value = ''; if(document.getElementById('u-country-code')) document.getElementById('u-country-code').value = '+91';
   document.getElementById('u-role').value = '';
   document.getElementById('u-branch').value = '';
   document.getElementById('u-password').value = '';
@@ -239,13 +299,43 @@ function toggleRoleFields(role) {
   }
 }
 
+function onAdminPhoneCodeChange() {
+  const codeEl = document.getElementById('u-country-code');
+  const inputEl = document.getElementById('u-phone');
+  if (!codeEl || !inputEl) return;
+  if (codeEl.value === 'other') {
+    inputEl.placeholder = 'e.g. +44 123456789 or 079 landline';
+  } else if (codeEl.value === '+91') {
+    inputEl.placeholder = '10-digit mobile or 079 landline';
+  } else {
+    inputEl.placeholder = 'Phone number without ' + codeEl.value;
+  }
+}
+
 function adminEditUser(user) {
   editingUserId = user.id;
   document.getElementById('user-form-card').style.display = 'block';
   document.querySelector('#user-form-card .card-title').innerText = 'Edit User';
   document.getElementById('u-name').value = user.name;
   document.getElementById('u-email').value = user.email || '';
-  document.getElementById('u-phone').value = user.phone || '';
+  
+  const userPhone = (user.phone || '').trim();
+  const match = userPhone.match(/^(\+\d{1,4})\s*(.*)$/);
+  const codeEl = document.getElementById('u-country-code');
+  if (match && codeEl) {
+    const hasOption = Array.from(codeEl.options).some(op => op.value === match[1]);
+    if (hasOption) {
+      codeEl.value = match[1];
+      document.getElementById('u-phone').value = match[2];
+    } else {
+      codeEl.value = 'other';
+      document.getElementById('u-phone').value = userPhone;
+    }
+  } else {
+    if (codeEl) codeEl.value = '+91';
+    document.getElementById('u-phone').value = userPhone;
+  }
+  
   document.getElementById('u-role').value = user.role;
   document.getElementById('u-branch').value = user.branch || '';
   toggleRoleFields(user.role);
@@ -283,11 +373,27 @@ function adminSaveUser() {
   document.querySelectorAll('.sub-perm:checked').forEach(cb => perms.push(cb.value));
   document.querySelectorAll('.attendance-dept-cb:checked').forEach(cb => perms.push(parseInt(cb.value)));
 
+  const rawPhone = (document.getElementById('u-phone').value || '').trim();
+  const code = document.getElementById('u-country-code').value;
+  let formattedPhone = rawPhone;
+  if (rawPhone && !rawPhone.startsWith('+') && !/^0?79[\s\-]?[0-9]{6,8}$/.test(rawPhone)) {
+    if (code !== 'other') formattedPhone = code + ' ' + rawPhone;
+  }
+
+  if (code === '+91' || formattedPhone.startsWith('+91')) {
+    const cleanDigits = rawPhone.replace(/\D/g, '');
+    const isLandline = /^0?79[\s\-]?[0-9]{6,8}$/.test(rawPhone);
+    if (!isLandline && cleanDigits.length !== 10) {
+      Swal.fire('Invalid Phone', 'Phone number must be exactly 10 digits for India (+91) or 079 landline', 'warning');
+      return;
+    }
+  }
+
   const payload = {
     user_id: editingUserId,
     name: document.getElementById('u-name').value,
     email: document.getElementById('u-email').value,
-    phone: document.getElementById('u-phone').value,
+    phone: formattedPhone,
     role: document.getElementById('u-role').value,
     branch: document.getElementById('u-branch').value,
     password: document.getElementById('u-password').value,
@@ -331,13 +437,22 @@ function adminSaveUser() {
 }
 
 function adminToggleUser(id) {
+  const toggleEl = document.getElementById('status-toggle-' + id);
+
   fetch(window.baseUrl + '/' + window.userSlug + '/users/toggle', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
     body: JSON.stringify({ user_id: id })
   }).then(r => r.json()).then(d => {
-    if (d.success) app.toast(d.message);
-    else { app.toast(d.message || 'Error', 'error'); location.reload(); }
+    if (d.success) {
+      app.toast(d.message);
+    } else {
+      app.toast(d.message || 'Error', 'error');
+      location.reload();
+    }
+  }).catch(err => {
+    app.toast('Network error', 'error');
+    if (toggleEl) toggleEl.checked = !toggleEl.checked;
   });
 }
 
