@@ -260,22 +260,37 @@ class CashierController extends Controller
         $allowedCashiers = [];
         $disallowedCashiers = [];
         $teamMembers = [];
+        $addedUserIds = [];
+
+        // Always include current logged-in user in team members & allowed IDs
+        if ($userModel) {
+            $allowedCashiers[] = $userModel->name;
+            $teamMembers[] = [
+                'id'   => $userModel->id,
+                'name' => strtoupper($userModel->name),
+            ];
+            $addedUserIds[] = $userModel->id;
+        }
 
         foreach ($allCashiers as $c) {
+            if (in_array($c->id, $addedUserIds)) {
+                continue;
+            }
             if ($visibleIds === null || in_array($c->id, $visibleIds)) {
                 $allowedCashiers[] = $c->name;
                 $teamMembers[] = [
                     'id'   => $c->id,
                     'name' => strtoupper($c->name),
                 ];
+                $addedUserIds[] = $c->id;
             } else {
                 $disallowedCashiers[] = $c->name;
             }
         }
 
-        $allowedIds = collect($teamMembers)->pluck('id')->toArray();
+        $allowedIds = $addedUserIds;
 
-        // Team Ledger (Includes all allowed active team cashiers' transactions)
+        // Team Ledger (Includes all allowed active team cashiers + logged in user transactions)
         if (empty($allowedIds)) {
             $teamTxs = collect([]);
         } else {
@@ -308,6 +323,21 @@ class CashierController extends Controller
             ];
         })->values()->sortByDesc('date')->toArray();
 
+        // Build unique categories list from DB Category model and existing transactions
+        $dbCats = \App\Models\Category::where('is_active', true)->orderBy('name')->pluck('name')->toArray();
+        $txCats = Transaction::distinct()->pluck('category')->filter()->toArray();
+        $allCatNames = collect(array_merge($dbCats, $txCats))
+            ->map(fn($c) => trim($c))
+            ->unique(fn($c) => preg_replace('/[^a-z0-9]/', '', strtolower($c)))
+            ->filter()
+            ->sort()
+            ->values();
+
+        $categories = $allCatNames->map(fn($c) => [
+            'label' => strtoupper($c),
+            'value' => str_replace(' ', '_', strtolower($c)),
+        ])->values()->toArray();
+
         $pageData = [
             'transactions' => $txs->map(fn($t) => $this->txToArray($t))->values()->toArray(),
             'summary'      => $summary,
@@ -317,7 +347,7 @@ class CashierController extends Controller
             'dailyData'    => $dailyData,
             'allowedCashiers' => $allowedCashiers,
             'disallowedCashiers' => $disallowedCashiers,
-            'categories'   => \App\Models\Category::where('is_active', true)->orderBy('name')->get()->map(fn($c) => ['label'=>$c->name,'value'=>str_replace(' ','_',strtolower($c->name))])->toArray(),
+            'categories'   => $categories,
         ];
 
         $req = $request ?: request();
@@ -350,10 +380,12 @@ class CashierController extends Controller
             if ($visibleIds !== null) $visibleIds = array_map('intval', $visibleIds);
             
             $allOther = User::where('role', 'CASHIER')->where('status', 'ACTIVE')->get();
-            $allowedIds = [];
+            $allowedIds = [$user['id']];
             foreach ($allOther as $c) {
                 if ($visibleIds === null || in_array($c->id, $visibleIds)) {
-                    $allowedIds[] = $c->id;
+                    if (!in_array($c->id, $allowedIds)) {
+                        $allowedIds[] = $c->id;
+                    }
                 }
             }
             return $this->generateCashierPdf($request, 0, 'TEAM LEDGER', $allowedIds);
@@ -376,7 +408,11 @@ class CashierController extends Controller
         $from = $request->from ? Carbon::parse($request->from)->startOfDay() : null;
         $to   = $request->to   ? Carbon::parse($request->to)->endOfDay()     : null;
 
-        $query = Transaction::with('bills')->where('user_id', $userId)->orderBy('created_at');
+        if ($teamUserIds !== null && is_array($teamUserIds)) {
+            $query = Transaction::with('bills')->whereIn('user_id', $teamUserIds)->orderBy('created_at');
+        } else {
+            $query = Transaction::with('bills')->where('user_id', $userId)->orderBy('created_at');
+        }
 
         if ($from) $query->where('created_at', '>=', $from);
         if ($to)   $query->where('created_at', '<=', $to);

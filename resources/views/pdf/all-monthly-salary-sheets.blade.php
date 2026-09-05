@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>All Workers Monthly Salary Sheets</title>
+    <title>All Monthly Salary Sheets</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -61,16 +61,31 @@
     </style>
 </head>
 <body>
+    @php
+        $logoBase64 = file_exists(public_path('logo.png')) ? 'data:image/png;base64,' . base64_encode(file_get_contents(public_path('logo.png'))) : null;
+    @endphp
     @foreach($allData as $data)
         @php
             extract($data);
         @endphp
-        
+
         <div style="text-align:center; margin-bottom:15px;">
-            <div style="font-size:9px; font-weight:bold; border:1px solid #000; padding:2px 10px; display:inline-block; margin-bottom:5px;">OFFICIAL RECORD</div>
-            <h1 style="margin:0; font-size:18px; font-weight:bold;">FOOD & SPICES PVT.LTD.</h1>
-            <div style="font-size:10px; margin-bottom:5px;">Factory & Warehouse Operations</div>
-            <div style="border-top:2px solid #000; border-bottom:2px solid #000; padding:2px 10px; font-weight:bold; font-size:12px; display:inline-block;">ATTENDANCE SHEET</div>
+            <table style="width:100%; border:none; margin-bottom:5px;">
+                <tr>
+                    <td style="border:none; width:45px; text-align:left; vertical-align:middle; padding:0;">
+                        @if($logoBase64)
+                            <img src="{{ $logoBase64 }}" style="width: 42px; height: 42px; object-fit: contain;">
+                        @endif
+                    </td>
+                    <td style="border:none; text-align:center; vertical-align:middle; padding:0;">
+                        <div style="font-size:9px; font-weight:bold; border:1px solid #000; padding:2px 10px; display:inline-block; margin-bottom:3px;">OFFICIAL RECORD</div>
+                        <div style="font-size:16px; font-weight:800; letter-spacing:1px; color:#101828;">PENTAPURE FOOD &amp; SPICES PVT.LTD.</div>
+                        <div style="font-size:10px; margin-bottom:3px;">Factory &amp; Warehouse Operations</div>
+                        <div style="border-top:2px solid #000; border-bottom:2px solid #000; padding:2px 10px; font-weight:bold; font-size:11px; display:inline-block;">MONTHLY SALARY SHEET</div>
+                    </td>
+                    <td style="border:none; width:45px; padding:0;"></td>
+                </tr>
+            </table>
         </div>
 
         @if($worker->salary_type !== 'LABOUR_MUKADAM')
@@ -137,8 +152,8 @@
                         $isSunday = $date->isSunday();
                         $isNight = $att && $att->shift_type === 'NIGHT';
                         
-                        $inTime = $att?->in_time ? date('H:i', strtotime($att->in_time)) : '';
-                        $outTime = $att?->out_time ? date('H:i', strtotime($att->out_time)) : '';
+                        $inTime = $att?->in_time ? date('h:i A', strtotime($att->in_time)) : '';
+                        $outTime = $att?->out_time ? date('h:i A', strtotime($att->out_time)) : '';
                     @endphp
                     <tr style="{{ $isSunday ? 'background-color:#fff8f8;' : '' }}">
                         <td style="border-left:2px solid #000; font-weight:bold;">
@@ -198,7 +213,7 @@
             </tr>
             <tr>
               <td style="border:2px solid #000; padding:6px;">ADVANCE</td>
-              <td style="border:2px solid #000; padding:6px; text-align:right;">{{ number_format($adjustment->advance, 2) }}</td>
+              <td style="border:2px solid #000; padding:6px; text-align:right;">{{ number_format($totalAdvance, 2) }}</td>
             </tr>
             <tr>
               <td style="border:2px solid #000; padding:6px;">PAYABLE SALARY</td>
@@ -236,7 +251,7 @@
             </tr>
             <tr>
               <td colspan="4" style="border:2px solid #000; padding:6px; text-align:center;">ADVANCE</td>
-              <td style="border:2px solid #000; padding:6px; text-align:right;">{{ number_format($adjustment->advance, 2) }}</td>
+              <td style="border:2px solid #000; padding:6px; text-align:right;">{{ number_format($totalAdvance, 2) }}</td>
             </tr>
             <tr>
               <td colspan="4" style="border:2px solid #000; padding:6px; text-align:center;">PAYABLE SALARY</td>
@@ -280,7 +295,7 @@
             <!-- Row 6 -->
             <tr>
               <td colspan="4" style="border:2px solid #000; padding:6px; text-align:center;">ADVANCE</td>
-              <td style="border:2px solid #000; padding:6px; text-align:right;">{{ number_format($adjustment->advance, 2) }}</td>
+              <td style="border:2px solid #000; padding:6px; text-align:right;">{{ number_format($totalAdvance, 2) }}</td>
             </tr>
             <!-- Row 7 -->
             <tr>

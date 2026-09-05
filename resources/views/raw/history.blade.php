@@ -52,7 +52,7 @@
   $paginated = $filtered->slice(($page - 1) * $perPage, $perPage);
 @endphp
 
-@php $pdfUrl = route('history.pdf', ['panel' => 'raw']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&q=' . $q; @endphp
+@php $pdfUrl = route('history.pdf', ['user_slug' => request()->segment(1) ?: 'raw', 'panel' => 'raw']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&q=' . $q; @endphp
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
   <h2 style="margin:0;">🌿 Inward Logs History</h2>
   <button id="export-pdf-btn" class="btn btn-sm btn-secondary" style="width:auto; padding:0.5rem 1rem;"

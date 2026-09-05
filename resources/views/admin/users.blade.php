@@ -80,7 +80,7 @@
             <option value="+81">+81</option>
             <option value="other">+...</option>
           </select>
-          <input type="text" id="u-phone" placeholder="10-digit mobile or 079 landline" style="flex:1; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+          <input type="text" id="u-phone" oninput="onAdminPhoneInput(this)" maxlength="10" placeholder="10-digit mobile or 079 landline" style="flex:1; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
         </div>
       </div>
       <div class="form-group">
@@ -261,6 +261,7 @@ function resetUserForm() {
   document.querySelectorAll('.attendance-dept-cb').forEach(cb => cb.checked = false);
   
   toggleRoleFields('');
+  onAdminPhoneCodeChange();
   document.getElementById('user-form-card').style.display = 'block';
   document.getElementById('user-form-card').scrollIntoView({ behavior: 'smooth' });
 }
@@ -299,16 +300,27 @@ function toggleRoleFields(role) {
   }
 }
 
+function onAdminPhoneInput(inputEl) {
+  const codeEl = document.getElementById('u-country-code');
+  if (codeEl && codeEl.value === '+91') {
+    inputEl.value = inputEl.value.replace(/\D/g, '').slice(0, 10);
+  }
+}
+
 function onAdminPhoneCodeChange() {
   const codeEl = document.getElementById('u-country-code');
   const inputEl = document.getElementById('u-phone');
   if (!codeEl || !inputEl) return;
-  if (codeEl.value === 'other') {
-    inputEl.placeholder = 'e.g. +44 123456789 or 079 landline';
-  } else if (codeEl.value === '+91') {
+  if (codeEl.value === '+91') {
     inputEl.placeholder = '10-digit mobile or 079 landline';
+    inputEl.setAttribute('maxlength', '10');
+    onAdminPhoneInput(inputEl);
+  } else if (codeEl.value === 'other') {
+    inputEl.placeholder = 'e.g. +44 123456789 or 079 landline';
+    inputEl.removeAttribute('maxlength');
   } else {
     inputEl.placeholder = 'Phone number without ' + codeEl.value;
+    inputEl.removeAttribute('maxlength');
   }
 }
 
@@ -335,6 +347,7 @@ function adminEditUser(user) {
     if (codeEl) codeEl.value = '+91';
     document.getElementById('u-phone').value = userPhone;
   }
+  onAdminPhoneCodeChange();
   
   document.getElementById('u-role').value = user.role;
   document.getElementById('u-branch').value = user.branch || '';
@@ -381,7 +394,11 @@ function adminSaveUser() {
   }
 
   if (code === '+91' || formattedPhone.startsWith('+91')) {
-    const cleanDigits = rawPhone.replace(/\D/g, '');
+    let phoneDigits = rawPhone;
+    if (phoneDigits.startsWith('+91')) {
+      phoneDigits = phoneDigits.substring(3);
+    }
+    const cleanDigits = phoneDigits.replace(/\D/g, '');
     const isLandline = /^0?79[\s\-]?[0-9]{6,8}$/.test(rawPhone);
     if (!isLandline && cleanDigits.length !== 10) {
       Swal.fire('Invalid Phone', 'Phone number must be exactly 10 digits for India (+91) or 079 landline', 'warning');

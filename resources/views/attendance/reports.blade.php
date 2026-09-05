@@ -1,5 +1,11 @@
 @extends($layout)
 
+@php
+    $allSheetsPdfUrl = request()->segment(1) === 'attendance'
+        ? url('attendance/history/all-sheets/pdf?month=' . $month)
+        : url(request()->segment(1) . '/attendance/reports/all-sheets/pdf?month=' . $month);
+@endphp
+
 @section('content')
 <div style="padding:1.5rem;">
   <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px;">
@@ -11,8 +17,8 @@
         <input type="month" name="month" value="{{ $month }}" onchange="this.form.submit()" style="padding:0.4rem; border-radius:4px; border:1px solid #ccc;">
       </form>
       <button class="btn btn-sm" onclick="exportToExcel()" style="width:auto; padding:0.4rem 1rem; background:#27ae60; color:white;">📗 Export to Excel</button>
-      <button class="btn btn-sm" onclick="downloadAllIndividualSheets()" style="width:auto; padding:0.4rem 1rem; background:#3498db; color:white; border:none; cursor:pointer;">📄 Download All Sheets</button>
-      <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/history/attendance/pdf?month=' . $month) }}" target="_blank" style="width:auto; padding:0.4rem 1rem; background:var(--secondary); text-decoration:none;">Download PDF</a>
+      <a class="btn btn-sm" href="{{ $allSheetsPdfUrl }}" target="_blank" style="width:auto; padding:0.4rem 1rem; background:#3498db; color:white; border:none; text-decoration:none; display:inline-flex; align-items:center; font-weight:600;">📄 Download All Sheets</a>
+      <button class="btn btn-sm" onclick="window.print()" style="width:auto; padding:0.4rem 1rem; background:var(--secondary); color:white; border:none; cursor:pointer;">Print Summary</button>
     </div>
   </div>
 
@@ -104,19 +110,15 @@ function exportToExcel() {
         let row = [];
         let cols = rows[i].querySelectorAll("td, th");
         
-        // Skip rows that are meant to be hidden or are internal action rows
         if (rows[i].classList.contains('no-print')) continue;
 
         for (let j = 0; j < cols.length; j++) {
-            // Skip action column
             if (cols[j].classList.contains('no-print')) continue;
             
-            // Get text, clean up extra whitespace and newlines
             let data = cols[j].innerText.trim()
                 .replace(/\n/g, " ")
                 .replace(/\s\s+/g, " ");
             
-            // Escape double quotes
             data = data.replace(/"/g, '""');
             row.push('"' + data + '"');
         }
@@ -130,7 +132,7 @@ function exportToExcel() {
     const downloadLink = document.createElement("a");
     const fileName = "Monthly_Payroll_Report_{{ $month }}.csv";
     
-    if (navigator.msSaveBlob) { // IE 10+
+    if (navigator.msSaveBlob) {
         navigator.msSaveBlob(csvFile, fileName);
     } else {
         downloadLink.download = fileName;
@@ -143,38 +145,7 @@ function exportToExcel() {
 }
 
 function downloadAllIndividualSheets() {
-    const urls = [];
-    @foreach($reportData as $d)
-        @php
-            $pdfUrl = request()->segment(1) === 'attendance'
-                ? url('attendance/history/worker/' . $d['worker']->id . '/pdf')
-                : url(request()->segment(1) . '/attendance/reports/worker/' . $d['worker']->id . '/pdf');
-        @endphp
-        urls.push("{{ $pdfUrl }}?month={{ $month }}");
-    @endforeach
-
-    if (urls.length === 0) {
-        alert("No sheets to download.");
-        return;
-    }
-
-    if (!confirm(`Are you sure you want to download ${urls.length} individual PDF files? Your browser may ask for permission to download multiple files.`)) {
-        return;
-    }
-
-    let delay = 0;
-    urls.forEach((url, index) => {
-        setTimeout(() => {
-            const link = document.createElement('a');
-            link.href = url;
-            link.target = '_blank'; // Opening in new tab can sometimes bypass strict blockers, but might open 18 tabs
-            link.download = '';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }, delay);
-        delay += 800; // 800ms delay between each download
-    });
+    window.open("{{ $allSheetsPdfUrl }}", '_blank');
 }
 </script>
 

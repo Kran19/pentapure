@@ -23,7 +23,9 @@
 
   if ($category) {
     $filtered = $filtered->filter(function($t) use ($category) {
-      return strtolower(str_replace(' ', '_', $t['category'] ?? '')) === $category;
+      $tCat = preg_replace('/[^a-z0-9]/', '', strtolower($t['category'] ?? ''));
+      $filterCat = preg_replace('/[^a-z0-9]/', '', strtolower($category));
+      return $tCat === $filterCat;
     });
   }
 
@@ -361,9 +363,10 @@
 
     // 2. Category filter
     if (catVal) {
+      const targetCat = catVal.toLowerCase().replace(/[^a-z0-9]/g, '');
       filtered = filtered.filter(t => {
-        const c = (t.category || '').toLowerCase().replace(/ /g, '_');
-        return c === catVal;
+        const c = (t.category || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        return c === targetCat;
       });
     }
 
@@ -592,9 +595,31 @@
             let html = `<option value="all" ${currentVal === 'all' ? 'selected' : ''}>ALL TEAM MEMBERS</option>`;
             newMembers.forEach(tm => {
               const isSelected = (String(currentVal) === String(tm.id) || currentVal.toLowerCase() === tm.name.toLowerCase());
-              html += `<option value="${tm.id}" ${isSelected ? 'selected' : ''}>${tm.name}</option>`;
+              html += `<option value="${tm.id}" ${isSelected ? 'selected' : ''}>${tm.name.toUpperCase()}</option>`;
             });
             memberSelect.innerHTML = html;
+          }
+        }
+
+        // Check and update category options in select dropdown
+        const catSelect = document.getElementById('ledger-category-select');
+        if (catSelect && newPageData.categories) {
+          const currentCat = catSelect.value;
+          const currentCatOptions = Array.from(catSelect.options).map(o => String(o.value));
+          const newCategories = newPageData.categories;
+          
+          let needsCatUpdate = (newCategories.length + 1 !== currentCatOptions.length);
+          if (!needsCatUpdate) {
+            needsCatUpdate = newCategories.some(c => !currentCatOptions.includes(String(c.value)));
+          }
+
+          if (needsCatUpdate) {
+            let catHtml = `<option value="" ${!currentCat ? 'selected' : ''}>ALL CATEGORIES</option>`;
+            newCategories.forEach(c => {
+              const isSelected = (String(currentCat) === String(c.value));
+              catHtml += `<option value="${c.value}" ${isSelected ? 'selected' : ''}>${c.label.toUpperCase()}</option>`;
+            });
+            catSelect.innerHTML = catHtml;
           }
         }
 

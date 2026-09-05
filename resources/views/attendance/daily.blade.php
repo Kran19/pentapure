@@ -45,7 +45,7 @@
         @php
             $pdfRoute = $authUser['role'] === 'ADMIN' ? 'admin.attendance.daily.pdf' : 'attendance.daily.pdf';
         @endphp
-        <a href="{{ route($pdfRoute, ['date' => $date]) }}" class="btn btn-secondary" style="width:auto; padding:0.4rem 1rem; background:#34495e; color:white; text-decoration:none; display:inline-block;" target="_blank">
+        <a href="{{ route($pdfRoute, ['date' => $date]) }}" class="btn" style="width:auto; padding:0.4rem 1rem; background:#e67e22; color:white; text-decoration:none; display:inline-block; font-weight:600;" target="_blank">
           📄 Download Current Sheet
         </a>
       @endif
@@ -96,8 +96,8 @@
             $bout = $att?->break_out ? date('h:i', strtotime($att->break_out)) : '';
             
             $otUt = $att ? ($att->ot_ut ?? 'NONE') : 'NONE';
-            $otUtHours = $att ? ($att->ot_ut_hours ?? 0) : 0;
-            $advance = $att ? ($att->advance ?? 0) : 0;
+            $otUtHours = ($att && $att->ot_ut_hours > 0) ? (float)$att->ot_ut_hours : '';
+            $advance = ($att && $att->advance > 0) ? (float)$att->advance : '';
             $isFinished = $att ? ($att->is_finished ? true : false) : false;
             
             $isAdmin = ($authUser['role'] === 'ADMIN');
@@ -204,7 +204,7 @@
               <label class="ot-label" style="font-size:0.8rem; color:var(--text-muted); display:block;">{{ $otUt === 'UT' ? 'UT Hours' : 'OT Hours' }}</label>
               <div style="position:relative; width:100%;">
                 <span class="ot-sign" style="position:absolute; left:8px; top:50%; transform:translateY(-50%); font-weight:bold; color:{{ $otUt === 'UT' ? '#e74c3c' : '#2ecc71' }}; pointer-events:none; font-size:1.1rem;">{{ $otUt === 'UT' ? '-' : '+' }}</span>
-                <input type="number" name="attendances[{{$index}}][ot_ut_hours]" value="{{ $otUtHours }}" step="0.5" min="0" class="ot-hours" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; padding-left:22px; border:1px solid #ccc; border-radius:4px;">
+                <input type="number" name="attendances[{{$index}}][ot_ut_hours]" value="{{ $otUtHours }}" step="0.5" min="0" class="ot-hours" onwheel="this.blur()" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; padding-left:22px; border:1px solid #ccc; border-radius:4px;">
               </div>
             </div>
           </div>
@@ -213,12 +213,12 @@
           <div class="extra-field-flex" style="display:{{ $status === 'ABSENT' ? 'none' : 'flex' }}; gap:10px; margin-bottom:0.5rem;">
             <div style="flex:1;">
               <label style="font-size:0.8rem; color:var(--text-muted); display:block;">Advance (₹)</label>
-              <input type="number" name="attendances[{{$index}}][advance]" value="{{ $advance }}" min="0" step="1" class="advance-input" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
+              <input type="number" name="attendances[{{$index}}][advance]" value="{{ $advance }}" min="0" step="1" class="advance-input" onwheel="this.blur()" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
             </div>
             @if($w->salary_type === 'LABOUR_MUKADAM')
             <div style="flex:1;">
               <label style="font-size:0.8rem; color:var(--text-muted); display:block;">No. of Workers</label>
-              <input type="number" name="attendances[{{$index}}][num_workers]" value="{{ $att->num_workers ?? '' }}" min="0" step="1" class="num-workers-input" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
+              <input type="number" name="attendances[{{$index}}][num_workers]" value="{{ ($att && $att->num_workers > 0) ? $att->num_workers : '' }}" min="0" step="1" class="num-workers-input" onwheel="this.blur()" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
             </div>
             @endif
           </div>
@@ -351,17 +351,29 @@ function handleOTUTChange(selectEl) {
     const container = card.querySelector('.ot-hours-container');
     const label = card.querySelector('.ot-label');
     const sign = card.querySelector('.ot-sign');
+    const input = card.querySelector('.ot-hours');
     const val = selectEl.value;
 
     if (val === 'NONE') {
         container.style.display = 'none';
+        if (input) input.value = '';
     } else {
         container.style.display = 'block';
         label.innerText = val === 'UT' ? 'UT Hours' : 'OT Hours';
         sign.innerText = val === 'UT' ? '-' : '+';
         sign.style.color = val === 'UT' ? '#e74c3c' : '#2ecc71';
+        if (input && (input.value === '0' || input.value === '0.0' || input.value === '0.00')) {
+            input.value = '';
+        }
     }
 }
+
+// Prevent wheel scrolling on number inputs from modifying values
+document.addEventListener('wheel', function(e) {
+    if (e.target.tagName === 'INPUT' && e.target.type === 'number') {
+        e.target.blur();
+    }
+}, { passive: true });
 
 // Helper to update AM/PM badges dynamically based on selected shift
 function updateShiftBadges(card, val) {

@@ -142,8 +142,8 @@
                     $isSunday = $date->isSunday();
                     $isNight = $att && $att->shift_type === 'NIGHT';
                     
-                    $inTime = $att?->in_time ? date('H:i', strtotime($att->in_time)) : '';
-                    $outTime = $att?->out_time ? date('H:i', strtotime($att->out_time)) : '';
+                    $inTime = $att?->in_time ? date('h:i A', strtotime($att->in_time)) : '';
+                    $outTime = $att?->out_time ? date('h:i A', strtotime($att->out_time)) : '';
                 @endphp
                 <tr style="{{ $isSunday ? 'background-color:#fff8f8;' : '' }}">
                     <td style="border-left:2px solid #000; font-weight:bold;">
@@ -203,7 +203,7 @@
         </tr>
         <tr>
           <td style="border:2px solid #000; padding:6px;">ADVANCE</td>
-          <td style="border:2px solid #000; padding:6px; text-align:right;">{{ number_format($adjustment->advance, 2) }}</td>
+          <td style="border:2px solid #000; padding:6px; text-align:right;">{{ number_format($totalAdvance, 2) }}</td>
         </tr>
         <tr>
           <td style="border:2px solid #000; padding:6px;">PAYABLE SALARY</td>
@@ -241,7 +241,7 @@
         </tr>
         <tr>
           <td colspan="4" style="border:2px solid #000; padding:6px; text-align:center;">ADVANCE</td>
-          <td style="border:2px solid #000; padding:6px; text-align:right;">{{ number_format($adjustment->advance, 2) }}</td>
+          <td style="border:2px solid #000; padding:6px; text-align:right;">{{ number_format($totalAdvance, 2) }}</td>
         </tr>
         <tr>
           <td colspan="4" style="border:2px solid #000; padding:6px; text-align:center;">PAYABLE SALARY</td>
@@ -285,7 +285,7 @@
         <!-- Row 6 -->
         <tr>
           <td colspan="4" style="border:2px solid #000; padding:6px; text-align:center;">ADVANCE</td>
-          <td style="border:2px solid #000; padding:6px; text-align:right;">{{ number_format($adjustment->advance, 2) }}</td>
+          <td style="border:2px solid #000; padding:6px; text-align:right;">{{ number_format($totalAdvance, 2) }}</td>
         </tr>
         <!-- Row 7 -->
         <tr>

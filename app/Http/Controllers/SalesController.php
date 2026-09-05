@@ -307,7 +307,7 @@ class SalesController extends Controller
 
     public function history()
     {
-        $orders = Order::with(['company', 'transporter', 'items.product'])->orderByDesc('created_at')->get();
+        $orders = Order::with(['company', 'transporter', 'items.product', 'dispatchLogs'])->orderByDesc('created_at')->get();
         $companies = Company::orderBy('name')->get();
         $transporters = Transporter::orderBy('name')->get();
 
@@ -317,11 +317,21 @@ class SalesController extends Controller
                 'companyId'      => $o->company_id,
                 'companyName'    => strtoupper($o->company?->name ?? ''),
                 'transportId'    => $o->transporter_id,
+                'transportName'  => strtoupper($o->transporter?->name ?? ''),
+                'transporter'    => $o->transporter ? ['id' => $o->transporter->id, 'name' => strtoupper($o->transporter->name)] : null,
                 'total'          => $o->total,
                 'status'         => $o->status,
                 'dispatchStatus' => $o->dispatch_status,
                 'date'           => $o->created_at->toISOString(),
                 'notes'          => $o->notes,
+                'lrCopies'       => $o->dispatchLogs ? $o->dispatchLogs->filter(fn($l) => !empty($l->lr_image_path))->map(fn($l) => [
+                    'id'         => $l->id,
+                    'dispatchId' => 'DSP-' . str_pad($l->id, 4, '0', STR_PAD_LEFT),
+                    'url'        => asset($l->lr_image_path),
+                    'date'       => $l->created_at->format('d M Y, h:i A'),
+                    'driverNo'   => $l->driver_no,
+                    'lrNo'       => $l->lr_no,
+                ])->values()->toArray() : [],
                 'items'          => $o->items->map(fn($i)=>[
                     'id'          => $i->id,
                     'productId'   => $i->product_id,

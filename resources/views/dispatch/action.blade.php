@@ -43,12 +43,12 @@
           <option value="+81">+81</option>
           <option value="other">+...</option>
         </select>
-        <input type="text" id="dispatch-contact" placeholder="10-digit mobile or 079 landline" style="flex:1; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+        <input type="text" id="dispatch-contact" placeholder="10-digit mobile number" maxlength="10" oninput="app.handleContactInput(this, document.getElementById('dispatch-country-code'))" style="flex:1; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
       </div>
     </div>
     <div class="form-group">
-      <label>Driver Number</label>
-      <input type="text" id="dispatch-driver-no" placeholder="Optional" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+      <label>Vehicle Number</label>
+      <input type="text" id="dispatch-vehicle-no" placeholder="e.g. GJ-01-AB-1234 (Optional)" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
     </div>
 
     <div class="form-group">

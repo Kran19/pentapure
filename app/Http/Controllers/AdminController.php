@@ -1380,4 +1380,25 @@ class AdminController extends Controller
 
         return view('shared.product-history', compact('product', 'stage', 'grade', 'stockLogs', 'currentTotal'));
     }
+
+    public function updateStockNote(Request $request, $id)
+    {
+        $request->validate([
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $stock = Stock::findOrFail($id);
+        $stock->notes = trim($request->notes ?? '');
+        $stock->save();
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Note updated successfully!',
+                'notes'   => $stock->notes,
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Note updated successfully!');
+    }
 }

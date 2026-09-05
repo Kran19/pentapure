@@ -10,7 +10,7 @@
     window.userSlug = '{{ request()->segment(1) }}';
   </script>
   <title>Pentapure Factory Operations - Admin</title>
-  <link rel="stylesheet" href="{{ asset('css/style.css') }}?v=2.0">
+  <link rel="stylesheet" href="{{ asset('css/style.css') }}?v={{ filemtime(public_path('css/style.css')) }}">
   <link rel="stylesheet" href="{{ asset('css/tabulator-custom.css') }}">
   <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

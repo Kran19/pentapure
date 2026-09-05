@@ -245,7 +245,7 @@ html.dark-mode .info-preview-box .info-label {
             <option value="+81">+81</option>
             <option value="other">+...</option>
           </select>
-          <input type="text" id="comp-contact" value="{{ !empty($pageData['editCompany']) ? $pageData['editCompany']->contact : '' }}" placeholder="10-digit mobile or 079 landline" style="flex:1; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+          <input type="text" id="comp-contact" value="{{ !empty($pageData['editCompany']) ? $pageData['editCompany']->contact : '' }}" oninput="app.handleContactInput(this, document.getElementById('comp-country-code'))" placeholder="10-digit mobile number" maxlength="10" style="flex:1; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
         </div>
       </div>
       <button class="btn" onclick="app.submitCompany()" style="padding:1rem; font-size:1.1rem; margin-top:0.5rem;">{{ !empty($pageData['editCompany']) ? 'Update Company' : 'Save Company' }}</button>
@@ -326,7 +326,7 @@ html.dark-mode .info-preview-box .info-label {
             <option value="+81">+81</option>
             <option value="other">+...</option>
           </select>
-          <input type="text" id="trans-contact" placeholder="10-digit mobile or 079 landline" style="flex:1; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+          <input type="text" id="trans-contact" oninput="app.handleContactInput(this, document.getElementById('trans-country-code'))" placeholder="10-digit mobile number" maxlength="10" style="flex:1; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
         </div>
       </div>
       <div class="form-group">

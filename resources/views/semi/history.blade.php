@@ -56,7 +56,7 @@
   $paginatedArray = $paginated->values()->toArray();
 
   // Build PDF URL with current filters
-  $pdfUrl = route('history.pdf', ['panel' => 'semi']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&q=' . $q;
+  $pdfUrl = route('history.pdf', ['user_slug' => request()->segment(1) ?: 'semi', 'panel' => 'semi']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&q=' . $q;
 @endphp
 
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">

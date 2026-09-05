@@ -100,7 +100,7 @@
   <h2 style="margin:0;">📈 Sales Orders History</h2>
   <div style="display:flex; gap:8px;">
     <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action') }}" style="width:auto; padding:0.5rem 1rem; text-decoration:none;">+ Create New Order</a>
-    @php $pdfUrl = route('history.pdf', ['panel' => 'sales']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&company_id=' . $companyId . '&status=' . $statusFilter . '&q=' . $q; @endphp
+    @php $pdfUrl = route('history.pdf', ['user_slug' => request()->segment(1) ?: 'sales', 'panel' => 'sales']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&company_id=' . $companyId . '&status=' . $statusFilter . '&q=' . $q; @endphp
     <button id="export-pdf-btn" class="btn btn-sm btn-secondary" style="width:auto; padding:0.5rem 1rem;"
       onclick="app.exportHistoryPdf(this, '{{ $pdfUrl }}')">📄 Export PDF</button>
   </div>
@@ -174,6 +174,13 @@
             <span class="badge badge-open" style="font-size:0.6rem;">ORDER</span>
             <span>•</span>
             <span>{{ \Carbon\Carbon::parse($item['date'])->format('d M Y') }}</span>
+            @if(!empty($item['lrCopies']) && count($item['lrCopies']) > 0)
+              <span>•</span>
+              <span class="badge badge-done" style="font-size:0.65rem; background:#16a34a; color:#fff; padding:2px 6px; border-radius:4px;">LR UPLOADED</span>
+            @elseif(in_array(strtoupper(str_replace('_', ' ', $item['dispatchStatus'] ?? '')), ['DONE', 'PARTIAL', 'PARTIAL DISPATCH', 'FULLY DISPATCHED']))
+              <span>•</span>
+              <span class="badge badge-pending" style="font-size:0.65rem; background:#f59e0b; color:#fff; padding:2px 6px; border-radius:4px;">LR PENDING</span>
+            @endif
           </div>
         </div>
         <div style="display:flex; align-items:center; gap:12px; text-align:right;">
@@ -275,6 +282,32 @@
           </table>
         </div>
 
+        @if(!empty($item['lrCopies']) && count($item['lrCopies']) > 0)
+          <div style="margin-bottom:1rem; padding:0.8rem 1rem; background:rgba(0,128,0,0.04); border-radius:10px; border:1px solid rgba(46,204,113,0.3); box-sizing:border-box;">
+            <div style="color:#2ecc71; font-size:0.78rem; text-transform:uppercase; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+              <span>📦 Dispatched Lorry Receipt (LR) Copies</span>
+              <span class="badge badge-done" style="font-size:0.65rem; background:#16a34a; color:#fff; padding:2px 8px; border-radius:10px;">LR UPLOADED</span>
+            </div>
+            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+              @foreach($item['lrCopies'] as $lr)
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                  <img src="{{ $lr['url'] }}" style="max-height:140px; max-width:220px; border-radius:8px; object-fit:contain; cursor:pointer; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border, rgba(255,255,255,0.1));" onclick="app.viewImage(this.src)">
+                  <div style="font-size:0.72rem; color:var(--text-muted);">
+                    {{ $lr['dispatchId'] }} · {{ $lr['date'] }}
+                  </div>
+                </div>
+              @endforeach
+            </div>
+          </div>
+        @elseif(in_array(strtoupper(str_replace('_', ' ', $item['dispatchStatus'] ?? '')), ['DONE', 'PARTIAL', 'PARTIAL DISPATCH', 'FULLY DISPATCHED']))
+          <div style="margin-bottom:1rem; padding:0.6rem 1rem; background:rgba(255,165,0,0.04); border-radius:8px; border:1px dashed rgba(255,165,0,0.3); display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-size:0.8rem; color:var(--warning, #FFA500); font-weight:600;">
+              📦 Lorry Receipt (LR) Copy Pending
+            </div>
+            <span class="badge badge-pending" style="font-size:0.65rem; background:#f59e0b; color:#fff; padding:2px 8px; border-radius:10px;">LR PENDING</span>
+          </div>
+        @endif
+
         <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:0.8rem;">
           @if($canEdit)
             <a class="btn btn-sm" href="/sales/action?edit={{ $item['id'] }}" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px; background:var(--warning, #FFA500); color:#000; font-weight:600;">
@@ -286,7 +319,7 @@
               🚫 Cancel Order
             </button>
           @endif
-          <a class="btn btn-sm btn-secondary" href="/order/pdf/{{ $item['id'] }}" target="_blank" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
+          <a class="btn btn-sm btn-secondary" href="{{ url(request()->segment(1) . '/order/pdf/' . $item['id']) }}" target="_blank" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
             📄 Download PDF
           </a>
         </div>

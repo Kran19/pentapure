@@ -495,12 +495,12 @@ class DispatchController extends Controller
                 'notes'         => $d->notes ?: $d->order?->notes,
                 'dispatchNotes' => $d->notes,
                 'orderNotes'    => $d->order?->notes,
-                'items'         => $d->dispatchItems->map(fn($di) => [
+                'items'         => $d->dispatchItems->filter(fn($di) => $di->orderItem && $di->orderItem->order_id == $d->order_id)->map(fn($di) => [
                     'productName' => $di->orderItem?->product ? $di->orderItem->product->formatName($di->orderItem->grade) : 'Unknown',
                     'grade'       => $di->orderItem?->grade,
                     'productType' => $di->orderItem?->product?->type,
                     'quantity'    => (float) $di->quantity,
-                ]),
+                ])->values(),
             ]);
 
         $companies = Company::orderBy('name')->get()->map(fn($c) => [

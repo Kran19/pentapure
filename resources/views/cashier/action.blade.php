@@ -19,15 +19,15 @@ input[type="number"],
 #transaction-rows {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  margin-top: 1.2rem;
-  margin-bottom: 2rem;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .cashier-tx-row {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 0.9rem;
   width: 100%;
 }
 
@@ -154,7 +154,7 @@ input[type="number"],
 
     if (container.children.length > 0) {
       const hr = document.createElement('hr');
-      hr.style.cssText = 'border:0; border-top:1px dotted var(--glass-border, rgba(0,0,0,0.25)); margin:2.2rem 0; opacity:0.6;';
+      hr.style.cssText = 'border:0; border-top:2px dotted #4b5563; margin:0.9rem 0; opacity:0.85;';
       wrapper.appendChild(hr);
     }
 

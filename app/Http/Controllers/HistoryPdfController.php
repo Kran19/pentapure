@@ -368,7 +368,7 @@ class HistoryPdfController extends Controller
 
         foreach ($log->dispatchItems as $di) {
             $orderItem = $di->orderItem;
-            if ($orderItem) {
+            if ($orderItem && $orderItem->order_id == $log->order_id) {
                 $totalOrderedQty += (float) $orderItem->quantity;
                 $totalDispatchedQty += (float) $di->quantity;
                 $prevDispatched = (float) $orderItem->dispatched_qty - (float) $di->quantity;
@@ -515,9 +515,10 @@ class HistoryPdfController extends Controller
             
             $formatQty = fn($q, $u) => number_format($q, floor($q) == $q ? 0 : 2) . ' ' . $u;
 
+            $logItems = [];
             foreach ($log->dispatchItems as $di) {
                 $orderItem = $di->orderItem;
-                if ($orderItem) {
+                if ($orderItem && $orderItem->order_id == $log->order_id) {
                     $qty = (float) $di->quantity;
                     $orderedQty = (float) $orderItem->quantity;
                     $pendingQty = max(0, $orderedQty - (float) $orderItem->dispatched_qty);
@@ -538,12 +539,8 @@ class HistoryPdfController extends Controller
                     if (empty($locations)) {
                         $locations = 'N/A';
                     }
-                    
-                    $rows[] = [
-                        'dispatch_id' => 'DSP-' . str_pad($log->id, 4, '0', STR_PAD_LEFT),
-                        'order_id' => 'ORD-' . str_pad($order->id ?? 0, 4, '0', STR_PAD_LEFT),
-                        'date' => $log->created_at->format('d M Y'),
-                        'customer' => strtoupper($order?->company?->name ?? 'N/A'),
+
+                    $logItems[] = [
                         'product' => strtoupper($orderItem->product ? $orderItem->product->formatName($orderItem->grade) : 'Unknown'),
                         'grade' => strtoupper($orderItem->grade ?? 'NONE'),
                         'locations' => $locations,
@@ -556,10 +553,28 @@ class HistoryPdfController extends Controller
                         'amount' => $amount,
                         'rate' => $rate,
                         'unit' => $unit,
-                        'status' => $orderStatus,
-                        'lr_copy' => $log->lr_image_path,
                     ];
                 }
+            }
+
+            if (!empty($logItems)) {
+                $orderDate = $order ? $order->created_at : $log->created_at;
+                $dispatchDate = $log->created_at;
+                $diffDays = (int) $orderDate->copy()->startOfDay()->diffInDays($dispatchDate->copy()->startOfDay());
+                $dueDaysText = $diffDays === 0 ? '0 Days' : $diffDays . ($diffDays === 1 ? ' Day' : ' Days');
+
+                $rows[] = [
+                    'dispatch_id' => 'DSP-' . str_pad($log->id, 4, '0', STR_PAD_LEFT),
+                    'order_id' => 'ORD-' . str_pad($order->id ?? 0, 4, '0', STR_PAD_LEFT),
+                    'order_date' => $orderDate->format('d M Y'),
+                    'dispatch_date' => $dispatchDate->format('d M Y'),
+                    'due_days' => $diffDays,
+                    'due_days_text' => $dueDaysText,
+                    'customer' => strtoupper($order?->company?->name ?? 'N/A'),
+                    'status' => $orderStatus,
+                    'lr_copy' => $log->lr_image_path,
+                    'items' => $logItems,
+                ];
             }
         }
 
@@ -590,7 +605,17 @@ class HistoryPdfController extends Controller
         $customerSummary = [];
         $productSummary = [];
 
-        foreach (collect($rows)->groupBy('customer') as $custName => $custRows) {
+        $allFlatItems = [];
+        foreach ($rows as $logRow) {
+            foreach ($logRow['items'] as $item) {
+                $allFlatItems[] = array_merge($item, [
+                    'customer' => $logRow['customer'],
+                    'dispatch_id' => $logRow['dispatch_id'],
+                ]);
+            }
+        }
+
+        foreach (collect($allFlatItems)->groupBy('customer') as $custName => $custRows) {
             $customerSummary[] = [
                 'customer' => $custName,
                 'count' => $custRows->unique('dispatch_id')->count(),
@@ -598,7 +623,7 @@ class HistoryPdfController extends Controller
             ];
         }
 
-        foreach (collect($rows)->groupBy('product') as $prodName => $prodRows) {
+        foreach (collect($allFlatItems)->groupBy('product') as $prodName => $prodRows) {
             $productSummary[] = [
                 'product' => $prodName,
                 'count' => $prodRows->unique('dispatch_id')->count(),

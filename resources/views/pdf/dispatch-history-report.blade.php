@@ -5,8 +5,8 @@
     <title>Dispatch History Report - PentaPure</title>
     <style>
         @page {
-            size: A4 portrait;
-            margin: 10mm 10mm 10mm 10mm;
+            size: A4 landscape;
+            margin: 8mm 8mm 8mm 8mm;
         }
         body { font-family: 'DejaVu Sans', sans-serif; color: #101828; font-size: 8.5px; line-height: 1.35; text-transform: uppercase; }
         * { box-sizing: border-box; }
@@ -57,12 +57,12 @@
         
         /* Data table */
         .data-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-        .data-table th { background: #f8c300; color: #101828; padding: 5px 6px; font-weight: bold; text-align: left; font-size: 8px; border: 1px solid #344054; }
-        .data-table td { padding: 4px 6px; border: 1px solid #d0d5dd; font-size: 7.8px; vertical-align: middle; }
+        .data-table th { background: #f8c300; color: #101828; padding: 6px 7px; font-weight: bold; text-align: left; font-size: 8.5px; border: 1px solid #344054; }
+        .data-table td { padding: 6px 7px; border: 1px solid #d0d5dd; font-size: 8px; vertical-align: middle; }
         .data-table tr.total-row td { font-weight: bold; background: #f9fafb; border-top: 1.5px solid #111c31; }
         
         /* Badges */
-        .badge { display: inline-block; padding: 2px 5px; border-radius: 3px; font-weight: bold; font-size: 7px; text-transform: uppercase; white-space: nowrap; }
+        .badge { display: inline-block; padding: 3px 6px; border-radius: 3px; font-weight: bold; font-size: 7px; text-transform: uppercase; white-space: nowrap; }
         .badge-fully-dispatched, .badge-completed { background: #ecfdf3; color: #027a48; border: 1px solid #abefc6; }
         .badge-partial-dispatch, .badge-partial { background: #eff8ff; color: #175cd3; border: 1px solid #b2ddff; }
         .badge-partial-pending { background: #fff8eb; color: #b45309; border: 1px solid #fef08a; }
@@ -192,22 +192,22 @@
     <table class="data-table">
         <thead>
             <tr>
-                <th style="width: 8%;">Dispatch ID</th>
-                <th style="width: 8%;">Order ID</th>
-                <th style="width: 9%;">Date</th>
-                <th style="width: 12%;">Customer</th>
-                <th style="width: 20%;">Product Details</th>
-                <th style="width: 8%; color: #027a48;" class="text-right">Ord. Qty</th>
-                <th style="width: 8%; color: #b37400;" class="text-right">Disp. Qty</th>
-                <th style="width: 8%; color: #b42318;" class="text-right">Pend. Qty</th>
-                <th style="width: 9%;" class="text-right">Revenue</th>
-                <th style="width: 10%;" class="text-center">Status</th>
+                <th style="width: 9%;">Dispatch ID</th>
+                <th style="width: 10%;">Order Date</th>
+                <th style="width: 8%;" class="text-center">Due By Days</th>
+                <th style="width: 14%;">Customer</th>
+                <th style="width: 24%;">Product Details</th>
+                <th style="width: 7%; color: #027a48;" class="text-right">Ord. Qty</th>
+                <th style="width: 7%; color: #b37400;" class="text-right">Disp. Qty</th>
+                <th style="width: 7%; color: #b42318;" class="text-right">Pend. Qty</th>
+                <th style="width: 8%;" class="text-right">Revenue</th>
+                <th style="width: 6%;" class="text-center">Status</th>
             </tr>
         </thead>
         <tbody>
-            @forelse($rows as $idx => $row)
+            @forelse($rows as $idx => $logRow)
                 @php
-                    $rawStatus = strtoupper(trim(str_replace('_', ' ', $row['status'] ?? 'PENDING')));
+                    $rawStatus = strtoupper(trim(str_replace('_', ' ', $logRow['status'] ?? 'PENDING')));
                     $badgeClass = match($rawStatus) {
                         'FULLY DISPATCHED', 'COMPLETED', 'DONE' => 'badge-fully-dispatched',
                         'PARTIAL DISPATCH', 'PARTIAL' => 'badge-partial-dispatch',
@@ -215,29 +215,38 @@
                         'CANCELLED' => 'badge-cancelled',
                         default => 'badge-pending',
                     };
+                    $itemCount = count($logRow['items'] ?? []);
                 @endphp
-                <tr>
-                    <td>{{ $row['dispatch_id'] }}</td>
-                    <td>{{ $row['order_id'] }}</td>
-                    <td>{{ $row['date'] }}</td>
-                    <td>{{ $row['customer'] }}</td>
-                    <td>
-                        <div style="font-weight: bold;">{{ $row['product'] }}</div>
-                        <div style="color: #667085; font-size: 7px; margin-top: 2px;">
-                            <span style="color: #344054;">Grade:</span> {{ $row['grade'] }} | 
-                            <span style="color: #344054;">Loc:</span> {{ $row['locations'] }}
-                        </div>
-                    </td>
-                    <td class="text-right text-green"><strong>{{ $row['ordered_qty_formatted'] ?? number_format($row['ordered_qty'] ?? 0) . ' KG' }}</strong></td>
-                    <td class="text-right" style="color: #b37400;"><strong>{{ $row['dispatch_qty_formatted'] ?? number_format($row['qty'] ?? 0) . ' KG' }}</strong></td>
-                    <td class="text-right" style="color: {{ ($row['pending_qty'] ?? 0) > 0 ? '#b42318' : 'inherit' }};"><strong>{{ $row['pending_qty_formatted'] ?? number_format($row['pending_qty'] ?? 0) . ' KG' }}</strong></td>
-                    <td class="text-right"><strong>Rs. {{ number_format($row['amount'], 2) }}</strong></td>
-                    <td class="text-center">
-                        <span class="badge {{ $badgeClass }}">
-                            {{ $rawStatus }}
-                        </span>
-                    </td>
-                </tr>
+                @foreach($logRow['items'] as $itemIdx => $item)
+                    <tr>
+                        @if($itemIdx === 0)
+                            <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle;"><strong>{{ $logRow['dispatch_id'] }}</strong></td>
+                            <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle;">{{ $logRow['order_date'] }}</td>
+                            <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle; font-weight: bold; color: #344054;">
+                                {{ $logRow['due_days_text'] ?? '0 Days' }}
+                            </td>
+                            <td rowspan="{{ $itemCount }}" style="vertical-align: middle;"><strong>{{ $logRow['customer'] }}</strong></td>
+                        @endif
+                        <td>
+                            <div style="font-weight: bold; color: #101828;">{{ $item['product'] }}</div>
+                            <div style="color: #667085; font-size: 7.5px; margin-top: 2px;">
+                                <span style="color: #344054;">Grade:</span> {{ $item['grade'] }} | 
+                                <span style="color: #344054;">Loc:</span> {{ $item['locations'] }}
+                            </div>
+                        </td>
+                        <td class="text-right text-green"><strong>{{ $item['ordered_qty_formatted'] ?? number_format($item['ordered_qty'] ?? 0) . ' KG' }}</strong></td>
+                        <td class="text-right" style="color: #b37400;"><strong>{{ $item['dispatch_qty_formatted'] ?? number_format($item['qty'] ?? 0) . ' KG' }}</strong></td>
+                        <td class="text-right" style="color: {{ ($item['pending_qty'] ?? 0) > 0 ? '#b42318' : 'inherit' }};"><strong>{{ $item['pending_qty_formatted'] ?? number_format($item['pending_qty'] ?? 0) . ' KG' }}</strong></td>
+                        <td class="text-right"><strong>Rs. {{ number_format($item['amount'], 2) }}</strong></td>
+                        @if($itemIdx === 0)
+                            <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle;">
+                                <span class="badge {{ $badgeClass }}">
+                                    {{ $rawStatus }}
+                                </span>
+                            </td>
+                        @endif
+                    </tr>
+                @endforeach
             @empty
                 <tr>
                     <td colspan="10" class="text-center" style="padding: 15px; color: #667085;">No dispatch history found for the selected filters.</td>

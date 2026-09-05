@@ -534,6 +534,9 @@ class AttendanceController extends Controller
 
     public function allWorkerMonthlySalaryPdf(Request $request)
     {
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(180);
+
         $month = $request->query('month', date('Y-m'));
         $startDate = Carbon::parse($month)->startOfMonth()->toDateString();
         $endDate   = Carbon::parse($month)->endOfMonth()->toDateString();
@@ -567,7 +570,7 @@ class AttendanceController extends Controller
             ->get()
             ->keyBy('date');
 
-        $adjustment = WorkerMonthlyAdjustment::firstOrCreate(
+        $adjustment = WorkerMonthlyAdjustment::firstOrNew(
             ['worker_id' => $id, 'month' => $month],
             ['petrol_food_amount' => 0, 'advance' => 0, 'remark' => null]
         );
@@ -579,9 +582,11 @@ class AttendanceController extends Controller
         $hourlyRate = 0;
         $perDaySalary = 0;
         $attendanceSalary = 0;
+        $dailyAdvanceTotal = 0;
 
         foreach ($attendances as $att) {
             $totalOT += $att->overtime_hours;
+            $dailyAdvanceTotal += (float)($att->advance ?? 0);
             if ($worker->salary_type === 'LABOUR_MUKADAM') {
                 $presentDays += $att->num_workers ?? 0;
             } else {
@@ -628,12 +633,13 @@ class AttendanceController extends Controller
             $perDaySalary = $worker->daily_salary ?? 0;
         }
 
-        $payableSalary = $totalWage - $adjustment->advance;
+        $totalAdvance = $dailyAdvanceTotal + (float)($adjustment->advance ?? 0);
+        $payableSalary = $totalWage - $totalAdvance;
 
         return compact(
             'worker', 'attendances', 'month', 'start', 'end', 'daysInMonth',
             'adjustment', 'presentDays', 'perDaySalary', 'attendanceSalary',
-            'totalOT', 'hourlyRate', 'otUtAdjustment', 'totalWage', 'payableSalary'
+            'totalOT', 'hourlyRate', 'otUtAdjustment', 'totalWage', 'dailyAdvanceTotal', 'totalAdvance', 'payableSalary'
         );
     }
 

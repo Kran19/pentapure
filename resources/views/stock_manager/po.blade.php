@@ -1,10 +1,10 @@
-@extends('layouts.admin')
+@extends('layouts.app')
 
 @section('content')
 <div style="padding:0.25rem 0 1rem 0;">
   <h2 style="margin-bottom:1.5rem;">📋 PO Received by System</h2>
 
-  @if(empty($pageData['purchaseOrders']))
+  @if(empty($pageData['purchaseOrders']) || $pageData['purchaseOrders']->isEmpty())
     <div class="card" style="padding:2rem; text-align:center;">
       <p style="color:var(--text-muted); margin:0;">No purchase requests yet. Users will submit them from their profiles.</p>
     </div>

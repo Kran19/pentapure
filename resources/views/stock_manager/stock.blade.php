@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('layouts.app')
 
 @section('content')
 
@@ -204,7 +204,7 @@
       <table>
         <thead><tr><th>Product</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>min_qty</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="raw-stock-tbody">
-@foreach($rawItems as $s)
+          @foreach($rawItems as $s)
           @php 
             $isLow = $s->alert_limit > 0 && $s->quantity <= $s->alert_limit;
           @endphp
@@ -810,9 +810,7 @@ function updateStockTables(stockData) {
 
     const items = grouped[stage];
     
-    // Update headers count (optional, but good for UI consistency if we have access, maybe skip for now or just replace table body)
     if (items.length === 0) {
-      // Keep existing "No stock" message if handled by blade, or just leave empty table.
       tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">No stock recorded yet.</td></tr>`;
       continue;
     }
@@ -1145,8 +1143,6 @@ function adminExportStockPdf() {
   });
 }
 
-
-
 window.onBsStageChange = function(element) {
   const row = element.closest('.bulk-stock-row');
   const stage = row.querySelector('.bs-stage').value;
@@ -1195,8 +1191,6 @@ window.onBsStageChange = function(element) {
 window.onBsProductChange = function(element) {
   // Grade dropdown removed, do nothing
 };
-
-
 
 window.toggleStockFormCard = function() {
   const card = document.getElementById('stock-form-card');
@@ -1272,26 +1266,13 @@ window.adminSaveBulkStock = function() {
   .then(res => res.json())
   .then(data => {
     if (data.success) {
-      // 1. Reset form (but don't hide it)
       document.querySelectorAll('.loc-qty-input').forEach(inp => inp.value = '0');
       document.querySelector('.bs-loc-qty').value = '';
       const btnText = document.querySelector('.loc-dropdown-text');
       if (btnText) btnText.innerHTML = '📍 Select Locations <span style="float:right;">▼</span>';
 
-      // 2. Refresh page instantly
       sessionStorage.setItem('keepStockFormOpen', 'true');
       location.reload();
-
-      // 3. Show success message (will not show due to reload, but kept for logic)
-      Swal.fire({
-        icon: 'success',
-        title: 'Success',
-        text: 'Stock entries added successfully!',
-        timer: 1000,
-        showConfirmButton: false,
-        background: '#ffffff',
-        color: '#333333'
-      });
     } else {
       Swal.fire('Error', data.message || 'Something went wrong.', 'error');
     }
@@ -1350,13 +1331,10 @@ document.addEventListener('click', function(e) {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Initialize the single form on load
   const stageSelect = document.querySelector('#single-stock-row .bs-stage');
   if (stageSelect) {
     onBsStageChange(stageSelect);
   }
-  
-  // Instantly update all location labels on page load
   updateAllLocationLabels();
 });
 
@@ -1365,17 +1343,14 @@ function addStockRow() {
     const firstRow = wrapper.querySelector('.bulk-stock-row');
     const newRow = firstRow.cloneNode(true);
     
-    // Clear inputs in new row
     newRow.querySelectorAll('input').forEach(inp => {
         if (inp.type === 'number' || inp.type === 'text') inp.value = '';
     });
-    // Set location quantities to 0
     newRow.querySelectorAll('.loc-qty-input').forEach(inp => inp.value = '0');
     
     const dropdownText = newRow.querySelector('.loc-dropdown-text');
     if (dropdownText) dropdownText.textContent = 'Main Warehouse';
     
-    // For Select2, remove cloned artifacts
     const select2Span = newRow.querySelector('.select2-container');
     if (select2Span) select2Span.remove();
     
@@ -1387,17 +1362,14 @@ function addStockRow() {
         bsProduct.removeAttribute('aria-hidden');
     }
     
-    // Make sure select elements are un-selected
     newRow.querySelectorAll('select').forEach(sel => {
         sel.selectedIndex = 0;
         sel.removeAttribute('data-select2-id');
     });
     
-    // Hide grade wrapper initially
     const gradeWrapper = newRow.querySelector('.bs-grade-wrapper');
     if (gradeWrapper) gradeWrapper.style.display = 'none';
 
-    // Add remove button
     let actionsDiv = newRow.querySelector('.row-actions');
     if (!actionsDiv) {
         actionsDiv = document.createElement('div');
@@ -1407,22 +1379,19 @@ function addStockRow() {
     }
     actionsDiv.innerHTML = `<button type="button" class="btn btn-sm btn-danger" onclick="this.closest('.bulk-stock-row').remove()" style="height: 2rem; padding: 0 0.5rem; background: #dc3545; color: white; border: none; font-weight: bold; line-height: 1;" title="Remove row">✖</button>`;
 
-    // Add top border/margin to separate rows
     newRow.style.borderTop = '1px dashed #d1d5db';
     newRow.style.paddingTop = '1rem';
     newRow.style.marginTop = '1rem';
-
-    // Remove any leftover IDs
     newRow.removeAttribute('id');
 
     wrapper.appendChild(newRow);
     
-    // Trigger onBsStageChange to re-populate products and re-init any select2
     const stageSelect = newRow.querySelector('.bs-stage');
     if (typeof onBsStageChange === 'function') {
         onBsStageChange(stageSelect);
     }
 }
+
 document.addEventListener('DOMContentLoaded', function() {
   if (sessionStorage.getItem('keepStockFormOpen') === 'true') {
     const el = document.getElementById('bulk-stock-container');
@@ -1433,7 +1402,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
-/* Hide spin arrows on location quantity inputs */
 .loc-qty-input::-webkit-outer-spin-button,
 .loc-qty-input::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -1443,7 +1411,6 @@ document.addEventListener('DOMContentLoaded', function() {
   -moz-appearance: textfield;
 }
 
-/* High Contrast Overrides for Stock SweetAlert Modals */
 .swal-stock-popup,
 .swal2-popup.swal-stock-popup {
   background-color: #ffffff !important;
@@ -1470,7 +1437,6 @@ document.addEventListener('DOMContentLoaded', function() {
   -webkit-text-fill-color: #333333 !important;
 }
 
-/* Checkbox Card Option Containers & Labels */
 .swal-stock-popup label,
 .swal-stock-popup label span,
 .swal-stock-popup .export-option-card,
@@ -1506,7 +1472,6 @@ document.addEventListener('DOMContentLoaded', function() {
   cursor: pointer !important;
 }
 
-/* Field Labels */
 .swal-stock-popup .field-label {
   color: #4b5563 !important;
   -webkit-text-fill-color: #4b5563 !important;
@@ -1518,7 +1483,6 @@ document.addEventListener('DOMContentLoaded', function() {
   display: block !important;
 }
 
-/* Inputs & Date Pickers */
 .swal-stock-popup input[type="date"],
 .swal-stock-popup input[type="text"],
 .swal-stock-popup input[type="number"],
@@ -1589,16 +1553,11 @@ document.addEventListener('DOMContentLoaded', function() {
   background-color: #d1d5db !important;
 }
 
-/* Disable row hover effect for low stock (visual only, buttons remain clickable) */
 tr.low-stock-no-hover:hover {
   background-color: inherit !important;
   color: inherit !important;
 }
-</style>
-@endsection
 
-<style>
-/* White and Orange Theme for Forms */
 .white-orange-card {
     background-color: #ffffff !important;
     border: 1px solid #e5e7eb !important;
@@ -1644,10 +1603,7 @@ tr.low-stock-no-hover:hover {
 .white-orange-card span {
     color: #333333 !important;
 }
-</style>
 
-<style>
-/* Absolute override for all text in stock popup */
 .swal-stock-popup * {
     color: #333333 !important;
     -webkit-text-fill-color: #333333 !important;
@@ -1679,3 +1635,4 @@ tr.low-stock-no-hover:hover {
     -webkit-text-fill-color: #ffffff !important;
 }
 </style>
+@endsection

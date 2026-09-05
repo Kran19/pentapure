@@ -16,6 +16,7 @@
             margin: 0;
             padding: 0;
             line-height: 1.35;
+            text-transform: uppercase;
         }
         .page { width: 100%; position: relative; }
         

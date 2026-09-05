@@ -85,67 +85,70 @@
 
         <table>
             <thead>
-                @if($isMakadam)
-                    <tr>
-                        <th style="width: 40px;">S.R.NO</th>
-                        <th class="text-left">{{ $departmentName }}</th>
-                        <th style="width: 60px;">LABOUR</th>
-                        <th style="width: 80px;">IN TIME</th>
-                        <th style="width: 80px;">OUT TIME</th>
-                        <th style="width: 80px;">TOTAL O.T.</th>
-                    </tr>
-                @else
-                    <tr>
-                        <th style="width: 40px;">S.R.NO</th>
-                        <th class="text-left">{{ $departmentName }}</th>
-                        <th style="width: 65px;">IN TIME</th>
-                        <th style="width: 65px;">OUT TIME</th>
-                        <th style="width: 50px;">O.T.</th>
-                        <th style="width: 65px;">IN TIME</th>
-                        <th style="width: 65px;">OUT TIME</th>
-                        <th style="width: 50px;">O.T.</th>
-                    </tr>
-                @endif
+                <tr>
+                    <th rowspan="2" style="width: 30px; vertical-align: middle;">S.R.NO</th>
+                    <th rowspan="2" class="text-left" style="vertical-align: middle;">EMPLOYEE NAME</th>
+                    <th rowspan="2" style="width: 60px; vertical-align: middle;">STATUS</th>
+                    @if($isMakadam)
+                        <th rowspan="2" style="width: 45px; vertical-align: middle;">LABOUR</th>
+                    @endif
+                    <th colspan="2">DAY SHIFT</th>
+                    <th colspan="2">NIGHT SHIFT</th>
+                    <th rowspan="2" style="width: 55px; vertical-align: middle;">OT/UT</th>
+                </tr>
+                <tr>
+                    <th style="width: 65px;">IN TIME</th>
+                    <th style="width: 65px;">OUT TIME</th>
+                    <th style="width: 65px;">IN TIME</th>
+                    <th style="width: 65px;">OUT TIME</th>
+                </tr>
             </thead>
             <tbody>
                 @foreach($attendances as $index => $att)
-                    @if($isMakadam)
-                        <tr>
-                            <td>{{ $index + 1 }}</td>
-                            <td class="text-left">{{ $att->worker->name }}</td>
-                            <td>{{ $att->num_workers ?: '' }}</td>
-                            <td>{{ $att->in_time ? \Carbon\Carbon::parse($att->in_time)->format('H:i') : '' }}</td>
-                            <td>{{ $att->out_time ? \Carbon\Carbon::parse($att->out_time)->format('H:i') : '' }}</td>
-                            <td>{{ $att->ot_ut_hours > 0 ? '+' . (float)$att->ot_ut_hours : '' }}</td>
-                        </tr>
-                    @else
-                        @php
-                            $dayIn = '';
-                            $dayOut = '';
-                            $nightIn = '';
-                            $nightOut = '';
-                            
-                            if ($att->shift_type === 'NIGHT') {
-                                $nightIn = $att->in_time ? \Carbon\Carbon::parse($att->in_time)->format('H:i') : '';
-                                $nightOut = $att->out_time ? \Carbon\Carbon::parse($att->out_time)->format('H:i') : '';
-                            } else {
-                                $dayIn = $att->in_time ? \Carbon\Carbon::parse($att->in_time)->format('H:i') : '';
-                                $dayOut = $att->out_time ? \Carbon\Carbon::parse($att->out_time)->format('H:i') : '';
-                                $nightIn = $att->break_in ? \Carbon\Carbon::parse($att->break_in)->format('H:i') : '';
-                                $nightOut = $att->break_out ? \Carbon\Carbon::parse($att->break_out)->format('H:i') : '';
-                            }
-                        @endphp
-                        <tr>
-                            <td>{{ $index + 1 }}</td>
-                            <td class="text-left">{{ $att->worker->name }}</td>
-                            <td>{{ $dayIn }}</td>
-                            <td>{{ $dayOut }}</td>
-                            <td>{{ $att->overtime_hours > 0 ? '+' . (float)$att->overtime_hours : '' }}</td>
-                            <td>{{ $nightIn }}</td>
-                            <td>{{ $nightOut }}</td>
-                            <td>{{ $att->ot_ut_hours > 0 ? '+' . (float)$att->ot_ut_hours : '' }}</td>
-                        </tr>
-                    @endif
+                    @php
+                        $dayIn = '--:--';
+                        $dayOut = '--:--';
+                        $nightIn = '--:--';
+                        $nightOut = '--:--';
+                        
+                        if ($att->shift_type === 'NIGHT') {
+                            $nightIn = $att->in_time ? \Carbon\Carbon::parse($att->in_time)->format('h:i A') : '--:--';
+                            $nightOut = $att->out_time ? \Carbon\Carbon::parse($att->out_time)->format('h:i A') : '--:--';
+                        } else {
+                            $dayIn = $att->in_time ? \Carbon\Carbon::parse($att->in_time)->format('h:i A') : '--:--';
+                            $dayOut = $att->out_time ? \Carbon\Carbon::parse($att->out_time)->format('h:i A') : '--:--';
+                            $nightIn = $att->break_in ? \Carbon\Carbon::parse($att->break_in)->format('h:i A') : '--:--';
+                            $nightOut = $att->break_out ? \Carbon\Carbon::parse($att->break_out)->format('h:i A') : '--:--';
+                        }
+
+                        $statusText = $att->status ? strtoupper(str_replace('_', ' ', $att->status)) : 'ABSENT';
+
+                        $otUtDisplay = '--:--';
+                        if ($att->ot_ut === 'OT' && $att->ot_ut_hours > 0) {
+                            $otUtDisplay = '+' . (float)$att->ot_ut_hours . ' OT';
+                        } elseif ($att->ot_ut === 'UT' && $att->ot_ut_hours > 0) {
+                            $otUtDisplay = '-' . (float)$att->ot_ut_hours . ' UT';
+                        } elseif ($att->overtime_hours > 0) {
+                            $otUtDisplay = '+' . (float)$att->overtime_hours . ' OT';
+                        } elseif ($att->overtime_hours < 0) {
+                            $otUtDisplay = '-' . (float)abs($att->overtime_hours) . ' UT';
+                        }
+                    @endphp
+                    <tr>
+                        <td>{{ $index + 1 }}</td>
+                        <td class="text-left">{{ $att->worker->name ?? 'N/A' }}</td>
+                        <td style="color: {{ $statusText === 'ABSENT' ? '#d92d20' : '#027a48' }}; font-weight: bold;">
+                            {{ $statusText }}
+                        </td>
+                        @if($isMakadam)
+                            <td>{{ $att->num_workers ?: '--' }}</td>
+                        @endif
+                        <td>{{ $dayIn }}</td>
+                        <td>{{ $dayOut }}</td>
+                        <td>{{ $nightIn }}</td>
+                        <td>{{ $nightOut }}</td>
+                        <td>{{ $otUtDisplay }}</td>
+                    </tr>
                 @endforeach
             </tbody>
         </table>

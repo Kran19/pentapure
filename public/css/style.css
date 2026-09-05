@@ -1860,3 +1860,28 @@ img, svg {
     gap: 20px !important;
   }
 }
+
+/* --------------------------------------------------------------------------
+   ADMIN MODE FULL-SCREEN COVERAGE OVERRIDES
+   -------------------------------------------------------------------------- */
+body.admin-mode {
+  background: var(--dark) !important;
+  align-items: stretch !important;
+}
+
+body.admin-mode .app-container {
+  max-width: 100% !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+body.admin-mode .app-main-layout,
+body.admin-mode .admin-layout-wrapper {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+}

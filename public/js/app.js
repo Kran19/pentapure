@@ -95,25 +95,20 @@ const app = {
   },
 
   refreshAppTranslatables() {
-    const els = document.querySelectorAll('.bottom-nav .nav-item span');
-    if(els.length >= 4) {
-      els[0].innerText = this.t('Home');
-      els[1].innerText = this.t('Action');
-      els[2].innerText = this.t('History'); // Or Reports
-      
-      if (els.length === 5) {
-        if (this.currentUser && this.currentUser.role.toLowerCase() === 'attendance') {
-          els[3].innerText = this.t('Workers');
-        } else if (this.currentUser && this.currentUser.role.toLowerCase() === 'cashier') {
-          els[3].innerText = this.t('Report');
-        } else {
-          els[3].innerText = this.t('Team');
-        }
-        els[4].innerText = this.t('Profile');
-      } else {
-        els[3].innerText = this.t('Profile');
-      }
-    }
+    const items = document.querySelectorAll('.bottom-nav .nav-item');
+    items.forEach(item => {
+      const span = item.querySelector('span');
+      if (!span) return;
+      const href = item.getAttribute('href') || '';
+      if (href.endsWith('/home')) span.innerText = this.t('Home');
+      else if (href.endsWith('/action')) span.innerText = this.t('Action');
+      else if (href.endsWith('/stock')) span.innerText = this.t('Live Stock');
+      else if (href.endsWith('/po')) span.innerText = this.t('Purchase Request');
+      else if (href.endsWith('/history')) span.innerText = this.t('History');
+      else if (href.endsWith('/ledger')) span.innerText = this.t('Report');
+      else if (href.endsWith('/workers')) span.innerText = this.t('Workers');
+      else if (href.endsWith('/profile')) span.innerText = this.t('Profile');
+    });
   },
 
   togglePassword(id) {
@@ -1084,9 +1079,22 @@ const app = {
   },
 
   addOrderProductRow(prefillData = null) {
+    const container = document.getElementById('order-products');
+    if (!container) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'order-product-wrapper';
+
+    if (container.children.length > 0) {
+      const hr = document.createElement('hr');
+      hr.className = 'row-divider';
+      hr.style.cssText = 'border:0; border-top:2px dotted #4b5563; margin:0.9rem 0; opacity:0.85;';
+      wrapper.appendChild(hr);
+    }
+
     const div = document.createElement('div');
     div.className = 'dynamic-row order-product-row';
-    div.style.cssText = 'background:rgba(0,0,0,0.02); border:1px solid var(--border-soft, #DDCFAF); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:10px; margin-bottom:12px;';
+    div.style.cssText = 'background:transparent; border:none; padding:0; display:flex; flex-direction:column; gap:10px; margin-bottom:0;';
 
     const selectedProdId = prefillData ? prefillData.product_id : '';
     const selectedGrade = prefillData ? (prefillData.grade || 'NONE') : '';
@@ -1136,24 +1144,50 @@ const app = {
           <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">₹/UNIT</label>
           <input type="number" class="o-prod-price no-spinners" placeholder="₹/UNIT" value="${price}" step="any" min="0" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem;">
         </div>
-        <button type="button" class="btn btn-danger btn-remove-prod" onclick="this.closest('.order-product-row').remove()" title="Remove Product" style="flex:0 0 42px; width:42px; height:42px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:8px; background:#e11d48; color:#fff; border:none; cursor:pointer;">
+        <button type="button" class="btn btn-danger btn-remove-prod" onclick="app.removeOrderProductRow(this)" title="Remove Product" style="flex:0 0 42px; width:42px; height:42px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:8px; background:#e11d48; color:#fff; border:none; cursor:pointer;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>
     `;
 
-    const container = document.getElementById('order-products');
-    if (container) {
-      container.appendChild(div);
-      const selEl = div.querySelector('.o-prod-id');
-      this.populateProductSelect(selEl, selectedProdId, rowType);
-      if (selectedProdId) {
-        this.onOrderProductChange(selEl, selectedGrade);
-      } else {
-        const gradeSelect = div.querySelector('.o-prod-grade');
-        if (gradeSelect) gradeSelect.innerHTML = '<option value="NONE" selected>NONE</option>';
-      }
+    wrapper.appendChild(div);
+    container.appendChild(wrapper);
+
+    const selEl = div.querySelector('.o-prod-id');
+    this.populateProductSelect(selEl, selectedProdId, rowType);
+    if (selectedProdId) {
+      this.onOrderProductChange(selEl, selectedGrade);
+    } else {
+      const gradeSelect = div.querySelector('.o-prod-grade');
+      if (gradeSelect) gradeSelect.innerHTML = '<option value="NONE" selected>NONE</option>';
     }
+  },
+
+  removeOrderProductRow(btn) {
+    const wrapper = btn.closest('.order-product-wrapper') || btn.closest('.order-product-row');
+    if (wrapper) {
+      wrapper.remove();
+      this.updateOrderProductDividers();
+    }
+  },
+
+  updateOrderProductDividers() {
+    const container = document.getElementById('order-products');
+    if (!container) return;
+    const wrappers = container.querySelectorAll('.order-product-wrapper');
+    wrappers.forEach((w, idx) => {
+      let hr = w.querySelector('.row-divider');
+      if (idx === 0) {
+        if (hr) hr.remove();
+      } else {
+        if (!hr) {
+          hr = document.createElement('hr');
+          hr.className = 'row-divider';
+          hr.style.cssText = 'border:0; border-top:2px dotted #4b5563; margin:0.9rem 0; opacity:0.85;';
+          w.insertBefore(hr, w.firstChild);
+        }
+      }
+    });
   },
   onCompanyTypeChange(type) {
     const gstGroup = document.getElementById('comp-gst-group');
@@ -1172,12 +1206,27 @@ const app = {
     const inputEl = document.getElementById(prefix + '-contact');
     if (!codeEl || !inputEl) return;
     
-    if (codeEl.value === 'other') {
-      inputEl.placeholder = 'e.g. +44 123456789 or 079 landline';
-    } else if (codeEl.value === '+91') {
-      inputEl.placeholder = '10-digit mobile or 079 landline';
+    if (codeEl.value === '+91') {
+      inputEl.placeholder = '10-digit mobile number';
+      inputEl.setAttribute('maxlength', '10');
+      inputEl.value = inputEl.value.replace(/\D/g, '').slice(0, 10);
     } else {
-      inputEl.placeholder = 'Phone number without ' + codeEl.value;
+      inputEl.removeAttribute('maxlength');
+      if (codeEl.value === 'other') {
+        inputEl.placeholder = 'e.g. +44 123456789 or landline';
+      } else {
+        inputEl.placeholder = 'Phone number without ' + codeEl.value;
+      }
+    }
+  },
+
+  handleContactInput(inputEl, codeEl) {
+    if (!inputEl || !codeEl) return;
+    if (codeEl.value === '+91') {
+      inputEl.setAttribute('maxlength', '10');
+      inputEl.value = inputEl.value.replace(/\D/g, '').slice(0, 10);
+    } else {
+      inputEl.removeAttribute('maxlength');
     }
   },
 
@@ -1206,37 +1255,29 @@ const app = {
     return raw;
   },
 
-  validateContactNumber(contact) {
+  validateContactNumber(contact, code = '+91') {
     const clean = (contact || '').trim();
     if (!clean) return false;
     
-    // International number (starts with + and non-91 country code, e.g. +1, +44, +971)
-    if (/^\+(?!91\b)[0-9\s\-()]{6,20}$/.test(clean)) {
-      return true;
+    if (code === '+91') {
+      const digitsOnly = clean.replace(/^\+91[\s\-]*/, '').replace(/[\s\-()]/g, '');
+      return /^[0-9]{10}$/.test(digitsOnly);
     }
     
-    // 079 Landline
-    if (/^(\+91[\s\-]?)?0?79[\s\-]?[0-9]{6,8}$/.test(clean)) {
-      return true;
-    }
-    
-    // Indian 10-digit mobile
-    const digitsOnly = clean.replace(/^\+91[\s\-]*/, '').replace(/[\s\-()]/g, '');
-    if (/^[0-9]{10}$/.test(digitsOnly)) {
-      return true;
-    }
-    
-    return false;
+    return clean.length >= 3;
   },
 
   submitCompany() {
-    const name     = (document.getElementById('comp-name').value || '').trim();
-    const compType = document.getElementById('comp-type') ? document.getElementById('comp-type').value : 'registered';
-    const gstInput = document.getElementById('comp-gst');
-    let gst        = gstInput ? gstInput.value.trim().toUpperCase() : '';
-    const address  = (document.getElementById('comp-address').value || '').trim();
-    const pincode  = (document.getElementById('comp-pincode')?.value || '').trim();
-    const contact  = this.getFormattedContact('comp');
+    const name        = (document.getElementById('comp-name').value || '').trim();
+    const compType    = document.getElementById('comp-type') ? document.getElementById('comp-type').value : 'registered';
+    const gstInput    = document.getElementById('comp-gst');
+    let gst           = gstInput ? gstInput.value.trim().toUpperCase() : '';
+    const address     = (document.getElementById('comp-address').value || '').trim();
+    const pincode     = (document.getElementById('comp-pincode')?.value || '').trim();
+    const compCodeEl  = document.getElementById('comp-country-code');
+    const compCode    = compCodeEl ? compCodeEl.value : '+91';
+    const rawContact  = (document.getElementById('comp-contact')?.value || '').trim();
+    const contact     = this.getFormattedContact('comp');
     
     if (!name) return this.toast('Company Name is required', 'error');
     if (compType === 'unregistered') {
@@ -1248,8 +1289,20 @@ const app = {
     if (!address) return this.toast('Address is required', 'error');
     if (!pincode) return this.toast('Pincode is required (6 digits)', 'error');
     if (!/^[0-9]{6}$/.test(pincode)) return this.toast('Pincode must be exactly 6 digits', 'error');
-    if (!contact) return this.toast('Contact / Mobile number is required', 'error');
-    if (!this.validateContactNumber(contact)) return this.toast('Contact must be 10-digit Indian mobile (+91), 079 landline, or international number (+...)', 'error');
+    if (!contact || !rawContact) return this.toast('Contact / Mobile number is required', 'error');
+
+    if (compCode === '+91') {
+      if (!/^\d+$/.test(rawContact)) {
+        return this.toast('Contact number must contain only digits for India (+91)', 'error');
+      }
+      if (rawContact.length !== 10) {
+        return this.toast('Contact number must be exactly 10 digits for India (+91)', 'error');
+      }
+    } else {
+      if (!this.validateContactNumber(contact, compCode)) {
+        return this.toast('Please enter a valid contact number', 'error');
+      }
+    }
 
     const editIdEl = document.getElementById('edit-comp-id');
     const isEdit = editIdEl && editIdEl.value;
@@ -1277,14 +1330,31 @@ const app = {
   },
 
   submitTransport() {
-    const name     = (document.getElementById('trans-name').value || '').trim() || 'NA';
-    const gst      = (document.getElementById('trans-gst').value || '').trim().toUpperCase();
-    const contact  = this.getFormattedContact('trans');
-    const vehicles = (document.getElementById('trans-vehicles').value || '').trim();
+    const name        = (document.getElementById('trans-name').value || '').trim() || 'NA';
+    const gst         = (document.getElementById('trans-gst').value || '').trim().toUpperCase();
+    const transCodeEl = document.getElementById('trans-country-code');
+    const transCode   = transCodeEl ? transCodeEl.value : '+91';
+    const rawContact  = (document.getElementById('trans-contact')?.value || '').trim();
+    const contact     = this.getFormattedContact('trans');
+    const vehicles    = (document.getElementById('trans-vehicles').value || '').trim();
     
     if (!name) return this.toast('Transporter Name is required', 'error');
     if (gst && gst !== 'N/A' && !/^[A-Za-z0-9]{15}$/.test(gst)) return this.toast('GST must be exactly 15 alphanumeric characters', 'error');
-    if (contact && !this.validateContactNumber(contact)) return this.toast('Contact must be 10-digit Indian mobile (+91), 079 landline, or international number (+...)', 'error');
+    
+    if (rawContact) {
+      if (transCode === '+91') {
+        if (!/^\d+$/.test(rawContact)) {
+          return this.toast('Contact number must contain only digits for India (+91)', 'error');
+        }
+        if (rawContact.length !== 10) {
+          return this.toast('Contact number must be exactly 10 digits for India (+91)', 'error');
+        }
+      } else {
+        if (!this.validateContactNumber(contact, transCode)) {
+          return this.toast('Please enter a valid contact number', 'error');
+        }
+      }
+    }
 
     fetch('/transport', {
       method: 'POST',
@@ -1431,28 +1501,40 @@ const app = {
     if (hasError) return;
     if (items.length === 0) return this.toast('Enter location dispatch quantity for at least one item', 'error');
 
-    const driverNo = this.getFormattedContact('dispatch');
-    if (driverNo && !this.validateContactNumber(driverNo)) {
-      return this.toast('Driver Contact must be 10-digit Indian mobile (+91), 079 landline, or international number (+...)', 'error');
+    const dispCodeEl = document.getElementById('dispatch-country-code');
+    const dispCode   = dispCodeEl ? dispCodeEl.value : '+91';
+    const rawDriverContact = (document.getElementById('dispatch-contact')?.value || '').trim();
+    const driverNo   = this.getFormattedContact('dispatch');
+
+    if (rawDriverContact) {
+      if (dispCode === '+91') {
+        if (!/^\d+$/.test(rawDriverContact)) {
+          return this.toast('Driver Contact number must contain only digits for India (+91)', 'error');
+        }
+        if (rawDriverContact.length !== 10) {
+          return this.toast('Driver Contact number must be exactly 10 digits for India (+91)', 'error');
+        }
+      }
     }
 
     const transportId = document.getElementById('dispatch-transporter')?.value || document.getElementById('dispatch-transport')?.value || null;
-    const vehicleNo = document.getElementById('dispatch-vehicle')?.value || null;
-    const extraDriverNo = document.getElementById('dispatch-driver-no')?.value || '';
+    const vehicleNo = document.getElementById('dispatch-vehicle-no')?.value || document.getElementById('dispatch-vehicle')?.value || null;
     const lrNo = document.getElementById('dispatch-lr-no')?.value || '';
     const notes = document.getElementById('dispatch-notes') ? document.getElementById('dispatch-notes').value : '';
 
-    const finalDriverNo = extraDriverNo || driverNo || null;
+    const lrPreview = document.getElementById('lr-preview');
+    const lrImageBase64 = (lrPreview && lrPreview.src && lrPreview.src.startsWith('data:image/')) ? lrPreview.src : null;
 
     const payload = {
       order_id: orderId,
       transporter_id: transportId,
-      driver_number: finalDriverNo,
-      driver_no: finalDriverNo,
-      vehicle_number: vehicleNo,
+      driver_number: driverNo || null,
+      driver_no: driverNo || null,
+      vehicle_number: vehicleNo || null,
       lr_number: lrNo,
       notes: notes || null,
-      items: items
+      items: items,
+      lr_image: lrImageBase64
     };
 
     fetch('/action', {
@@ -1809,7 +1891,41 @@ const app = {
   },
 
   handleLateLRUpload(event, logId, idx) {
-    this.previewLateLR(event, logId, idx);
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      return this.toast('Only JPG, JPEG, PNG, and WEBP images are allowed.', 'error');
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const endpoint = '/' + (window.location.pathname.split('/')[1] || 'dispatch') + '/update-lr';
+      fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRF-TOKEN': window.csrfToken || ''
+        },
+        body: JSON.stringify({
+          log_id: logId,
+          lr_image: reader.result
+        })
+      })
+      .then(r => r.json())
+      .then(res => {
+        if (res.success) {
+          this.toast(res.message || 'LR Copy updated successfully!');
+          setTimeout(() => location.reload(), 600);
+        } else {
+          this.toast(res.message || 'Failed to update LR copy', 'error');
+        }
+      })
+      .catch(() => this.toast('Network error uploading LR copy.', 'error'));
+    };
+    reader.readAsDataURL(file);
   },
 
   addNewExpenseCategory() {

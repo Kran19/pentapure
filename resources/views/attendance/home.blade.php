@@ -82,7 +82,7 @@
                 <a href="{{ $dailyUrl }}?date={{ $sub->attendance_date->format('Y-m-d') }}" class="btn {{ $sub->status === 'SUBMITTED' ? 'btn-secondary' : '' }}" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; font-size: 0.85rem;">
                   {{ $sub->status === 'SUBMITTED' && $prefix !== 'admin' ? 'View' : 'Open' }}
                 </a>
-                @if($sub->status === 'SUBMITTED')
+                @if(in_array($sub->status, ['SUBMITTED', 'PARTIAL_SAVED']))
                   @php
                       $pdfRoute = (isset($prefix) && $prefix === 'admin') ? 'admin.attendance.daily.pdf' : 'attendance.daily.pdf';
                   @endphp

@@ -67,15 +67,17 @@ Route::get('/notifications/test', function() {
 // ── Shared Routes (Under {user_slug} prefix) ──────────────────────────────
 
 // ─── Global Direct Fallback PDF Routes ─────────────────────────────
-Route::middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE')->group(function() {
+Route::middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE,STOCK_MANAGER')->group(function() {
+    Route::get('/history/{panel}/pdf', [\App\Http\Controllers\HistoryPdfController::class, 'download']);
     Route::get('/dispatch/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'dispatchNotePdf']);
     Route::get('/dispatch/dispatch/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'dispatchNotePdf']);
     Route::get('/order/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'salesOrderPdf']);
     Route::get('/order/{id}/pdf', [\App\Http\Controllers\HistoryPdfController::class, 'salesOrderPdf']);
     Route::get('/sales/order/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'salesOrderPdf']);
     Route::get('/sales/sales/order/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'salesOrderPdf']);
+    Route::get('/cashier/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill'])->name('cashier.bill.view');
 });
-Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE')->group(function() {
+Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE,STOCK_MANAGER')->group(function() {
     Route::get('/api/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
     Route::post('/api/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
     Route::post('/api/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);
@@ -90,7 +92,14 @@ Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALE
     Route::get('/stock/live', [\App\Http\Controllers\AdminController::class, 'liveStockApi']);
     Route::post('/stock/adjust', [\App\Http\Controllers\AdminController::class, 'adjustStock']);
     Route::post('/stock/bulk-add', [\App\Http\Controllers\AdminController::class, 'bulkAddStock']);
+    Route::post('/stock/limit', [\App\Http\Controllers\AdminController::class, 'setStockLimit']);
+    Route::post('/stock/rate', [\App\Http\Controllers\AdminController::class, 'updateProductRate']);
+    Route::post('/stock/pdf', [\App\Http\Controllers\AdminController::class, 'downloadStockPdf']);
+    Route::post('/po/approve', [\App\Http\Controllers\AdminController::class, 'approvePO']);
+    Route::post('/po/receive', [\App\Http\Controllers\AdminController::class, 'receivePO']);
+    Route::delete('/po/{id}', [\App\Http\Controllers\AdminController::class, 'destroyPO']);
     
+    Route::get('/history/all-sheets/pdf', [\App\Http\Controllers\AttendanceController::class, 'allWorkerMonthlySalaryPdf']);
     Route::get('/history/{panel}/pdf', [\App\Http\Controllers\HistoryPdfController::class, 'download'])
         ->name('history.pdf');
     Route::get('/dispatch/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'dispatchNotePdf'])
@@ -253,6 +262,7 @@ foreach ($roleSlugs['CASHIER'] ?? [] as $slug) {
     Route::get('/profile',             'profile')->name($slug.'.profile');
     // Bill management
     Route::post('/bill/upload',        'uploadBill')->name($slug.'.bill.upload');
+    Route::get('/bill/{id}/view',       'viewBill')->name($slug.'.bill.view');
     Route::post('/categories',         [\App\Http\Controllers\AdminController::class, 'storeCategory']);
     Route::delete('/bill/{id}',        'destroyBill')->name($slug.'.bill.destroy');
     // Transaction management
@@ -261,11 +271,33 @@ foreach ($roleSlugs['CASHIER'] ?? [] as $slug) {
     });
 }
 
+// === STOCK MANAGER ROUTES ===
+foreach ($roleSlugs['STOCK_MANAGER'] ?? [] as $slug) {
+    Route::prefix($slug)->group(function () use ($slug) {
+        Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
+        Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
+        Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
+    });
+
+    Route::prefix($slug)->middleware('auth.role:STOCK_MANAGER')->controller(\App\Http\Controllers\StockManagerController::class)->group(function () use ($slug) {
+        Route::get('/home',        'home')->name($slug.'.home');
+        Route::get('/action',      'action')->name($slug.'.action');
+        Route::post('/action',     'storeInward')->name($slug.'.action.store');
+        Route::post('/outward',    'storeOutward')->name($slug.'.action.outward');
+        Route::get('/stock',       'stock')->name($slug.'.stock');
+        Route::post('/stock/pdf',  [\App\Http\Controllers\AdminController::class, 'downloadStockPdf'])->name($slug.'.stock.pdf');
+        Route::get('/po',          'po')->name($slug.'.po');
+        Route::post('/po',         'storePO')->name($slug.'.po.store');
+        Route::get('/history',     'history')->name($slug.'.history');
+        Route::post('/stock/note/{id}', 'updateNote')->name($slug.'.stock.note.update');
+        Route::get('/profile',     'profile')->name($slug.'.profile');
+    });
+}
+
 // === ADMIN ROUTES ===
 $adminSlugs = array_merge(
     $roleSlugs['ADMIN'] ?? [],
-    $roleSlugs['SUB_ADMIN'] ?? [],
-    $roleSlugs['STOCK_MANAGER'] ?? []
+    $roleSlugs['SUB_ADMIN'] ?? []
 );
 foreach ($adminSlugs as $slug) {
     Route::prefix($slug)->group(function () use ($slug) {
@@ -297,6 +329,7 @@ foreach ($adminSlugs as $slug) {
     Route::post('/stock/limit',       'setStockLimit');
     Route::post('/stock/rate',        'updateProductRate');
     Route::post('/stock/pdf',         'downloadStockPdf')->name($slug.'.stock.pdf');
+    Route::post('/stock/note/{id}',   'updateStockNote')->name($slug.'.stock.note.update');
     Route::get('/po',                 'po')->name($slug.'.po');
     Route::post('/po/approve',        'approvePO');
     Route::post('/po/receive',        'receivePO');
@@ -336,7 +369,7 @@ foreach ($adminSlugs as $slug) {
     Route::post('/attendance/daily',      [AttendanceController::class, 'storeDailyAttendance']);
     Route::get('/attendance/daily/pdf',   [AttendanceController::class, 'downloadDailyPdf'])->name($slug.'.attendance.daily.pdf');
     Route::get('/attendance/reports',     [AttendanceController::class, 'reports'])->name($slug.'.attendance.reports');
-    Route::get('/attendance/reports/all/pdf', [AttendanceController::class, 'allWorkerMonthlySalaryPdf']);
+    Route::get('/attendance/reports/all-sheets/pdf', [AttendanceController::class, 'allWorkerMonthlySalaryPdf']);
     Route::get('/attendance/reports/worker/{id}', [AttendanceController::class, 'workerReport']);
     Route::post('/attendance/reports/worker/{id}/adjust', [AttendanceController::class, 'updateMonthlyAdjustment']);
     Route::get('/attendance/reports/worker/{id}/pdf', [AttendanceController::class, 'workerMonthlySalaryPdf']);
@@ -383,7 +416,7 @@ foreach ($roleSlugs['ATTENDANCE'] ?? [] as $slug) {
     Route::get('/api/daily',          'dailyJson');
 
     Route::get('/history',            'reports')->name($slug.'.history');
-    Route::get('/history/all/pdf',    'allWorkerMonthlySalaryPdf');
+    Route::get('/history/all-sheets/pdf',    'allWorkerMonthlySalaryPdf');
     Route::get('/history/worker/{id}','workerReport');
     Route::post('/history/worker/{id}/adjust','updateMonthlyAdjustment');
     Route::get('/history/worker/{id}/pdf','workerMonthlySalaryPdf');

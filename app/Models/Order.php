@@ -40,6 +40,11 @@ class Order extends Model
         return $this->hasOne(DispatchLog::class);
     }
 
+    public function dispatchLogs(): HasMany
+    {
+        return $this->hasMany(DispatchLog::class);
+    }
+
     public function isPending(): bool
     {
         return $this->dispatch_status === 'PENDING';
