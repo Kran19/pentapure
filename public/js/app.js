@@ -2271,7 +2271,19 @@ const app = {
   },
 
   viewBill(billId, fileType) {
-    window.open(`/cashier/bill/${billId}/view`, '_blank');
+    const path = window.location.pathname;
+    let baseUrl = '';
+    const cashierIdx = path.indexOf('/cashier');
+    if (cashierIdx > 0) {
+      baseUrl = path.substring(0, cashierIdx);
+    } else {
+      const segments = path.split('/').filter(Boolean);
+      if (segments.length > 1 && !['cashier', 'admin', 'sub_admin', 'stock_manager'].includes(segments[0])) {
+        baseUrl = '/' + segments[0];
+      }
+    }
+    const targetUrl = `${baseUrl}/cashier/bill/${billId}/view`;
+    window.open(targetUrl, '_blank');
   },
 
   showBillUpload(txId) {
