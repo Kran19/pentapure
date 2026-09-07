@@ -952,7 +952,18 @@ const app = {
     }).then(result => {
       if (result.isConfirmed && result.value) {
         const payload = result.value;
-        fetch('/transport', {
+        const segments = window.location.pathname.split('/').filter(Boolean);
+        let currentSlug = 'sales';
+        if (segments.length > 0) {
+          if (segments[0] === 'penta-pure' && segments.length > 1) {
+            currentSlug = segments[1];
+          } else if (segments[0] !== 'penta-pure') {
+            currentSlug = segments[0];
+          }
+        }
+        const transportUrl = `${this.getBaseUrl()}/${currentSlug}/transport`;
+
+        fetch(transportUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1512,7 +1523,18 @@ const app = {
       body.order_id = editOrderIdEl.value;
     }
 
-    fetch('/order', {
+    const segments = window.location.pathname.split('/').filter(Boolean);
+    let currentSlug = 'sales';
+    if (segments.length > 0) {
+      if (segments[0] === 'penta-pure' && segments.length > 1) {
+        currentSlug = segments[1];
+      } else if (segments[0] !== 'penta-pure') {
+        currentSlug = segments[0];
+      }
+    }
+    const orderUrl = `${this.getBaseUrl()}/${currentSlug}/order`;
+
+    fetch(orderUrl, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json', 
@@ -1523,7 +1545,7 @@ const app = {
     })
     .then(r => r.json())
     .then(d => {
-      if (d.success) { this.toast(d.message); setTimeout(() => window.location.href = '/sales/history', 600); }
+      if (d.success) { this.toast(d.message); setTimeout(() => window.location.href = `${this.getBaseUrl()}/${currentSlug}/history`, 600); }
       else this.toast(d.message || 'Error saving order', 'error');
     })
     .catch(() => this.toast('Network error.', 'error'));
@@ -1988,8 +2010,19 @@ const app = {
     const imageData = window.tempLRData;
     if (!imageData) return this.toast('No image data found', 'error');
     
+    const segments = window.location.pathname.split('/').filter(Boolean);
+    let currentSlug = 'dispatch';
+    if (segments.length > 0) {
+      if (segments[0] === 'penta-pure' && segments.length > 1) {
+        currentSlug = segments[1];
+      } else if (segments[0] !== 'penta-pure') {
+        currentSlug = segments[0];
+      }
+    }
+    const endpoint = `${this.getBaseUrl()}/${currentSlug}/update-lr`;
+
     this.toast('Uploading LR...', 'info');
-    fetch('/update-lr', {
+    fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': window.csrfToken || csrfToken },
       body: JSON.stringify({ log_id: logId, lr_image: imageData })
@@ -2020,7 +2053,17 @@ const app = {
 
     const reader = new FileReader();
     reader.onload = () => {
-      const endpoint = '/' + (window.location.pathname.split('/')[1] || 'dispatch') + '/update-lr';
+      const segments = window.location.pathname.split('/').filter(Boolean);
+      let currentSlug = 'dispatch';
+      if (segments.length > 0) {
+        if (segments[0] === 'penta-pure' && segments.length > 1) {
+          currentSlug = segments[1];
+        } else if (segments[0] !== 'penta-pure') {
+          currentSlug = segments[0];
+        }
+      }
+      const endpoint = `${this.getBaseUrl()}/${currentSlug}/update-lr`;
+
       fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -2080,7 +2123,18 @@ const app = {
     const name = nameInput.value.trim();
     if (!name) return this.toast('Enter a category name', 'error');
     
-    fetch('/category', {
+    const segments = window.location.pathname.split('/').filter(Boolean);
+    let currentSlug = 'cashier';
+    if (segments.length > 0) {
+      if (segments[0] === 'penta-pure' && segments.length > 1) {
+        currentSlug = segments[1];
+      } else if (segments[0] !== 'penta-pure') {
+        currentSlug = segments[0];
+      }
+    }
+    const catUrl = `${this.getBaseUrl()}/${currentSlug}/category`;
+
+    fetch(catUrl, {
       method: 'POST',
       headers: { 'X-CSRF-TOKEN': window.csrfToken || csrfToken, 'Content-Type': 'application/json' },
       body: JSON.stringify({ name })
@@ -2109,7 +2163,18 @@ const app = {
   deleteExpenseCategory(id, name) {
     if (!confirm(`Are you sure you want to delete the category "${name}"?`)) return;
     
-    fetch(`/category/${id}`, {
+    const segments = window.location.pathname.split('/').filter(Boolean);
+    let currentSlug = 'cashier';
+    if (segments.length > 0) {
+      if (segments[0] === 'penta-pure' && segments.length > 1) {
+        currentSlug = segments[1];
+      } else if (segments[0] !== 'penta-pure') {
+        currentSlug = segments[0];
+      }
+    }
+    const catUrl = `${this.getBaseUrl()}/${currentSlug}/category/${id}`;
+
+    fetch(catUrl, {
       method: 'DELETE',
       headers: { 'X-CSRF-TOKEN': window.csrfToken || csrfToken, 'Content-Type': 'application/json' }
     })
@@ -2755,7 +2820,18 @@ const app = {
       confirmButtonColor: '#dc2626'
     }).then(result => {
       if (result.isConfirmed) {
-        fetch('/order/' + id + '/cancel', {
+        const segments = window.location.pathname.split('/').filter(Boolean);
+        let currentSlug = 'sales';
+        if (segments.length > 0) {
+          if (segments[0] === 'penta-pure' && segments.length > 1) {
+            currentSlug = segments[1];
+          } else if (segments[0] !== 'penta-pure') {
+            currentSlug = segments[0];
+          }
+        }
+        const cancelUrl = `${this.getBaseUrl()}/${currentSlug}/order/${id}/cancel`;
+
+        fetch(cancelUrl, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -2882,7 +2958,18 @@ const app = {
       confirmButtonColor: '#dc2626'
     }).then(result => {
       if (result.isConfirmed) {
-        fetch('/revert/' + id, {
+        const segments = window.location.pathname.split('/').filter(Boolean);
+        let currentSlug = 'dispatch';
+        if (segments.length > 0) {
+          if (segments[0] === 'penta-pure' && segments.length > 1) {
+            currentSlug = segments[1];
+          } else if (segments[0] !== 'penta-pure') {
+            currentSlug = segments[0];
+          }
+        }
+        const revertUrl = `${this.getBaseUrl()}/${currentSlug}/revert/${id}`;
+
+        fetch(revertUrl, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
