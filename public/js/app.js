@@ -2270,7 +2270,7 @@ const app = {
     });
   },
 
-  viewBill(billId, fileType) {
+  getBaseUrl() {
     const path = window.location.pathname;
     let baseUrl = '';
     const cashierIdx = path.indexOf('/cashier');
@@ -2282,8 +2282,16 @@ const app = {
         baseUrl = '/' + segments[0];
       }
     }
-    const targetUrl = `${baseUrl}/cashier/bill/${billId}/view`;
+    return baseUrl;
+  },
+
+  viewBill(billId, fileType) {
+    const targetUrl = `${this.getBaseUrl()}/cashier/bill/${billId}/view`;
     window.open(targetUrl, '_blank');
+  },
+
+  uploadBillPrompt(txId) {
+    this.showBillUpload(txId);
   },
 
   showBillUpload(txId) {
@@ -2303,7 +2311,7 @@ const app = {
                   <div style="display:flex; align-items:center; justify-content:space-between; background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px; padding:0.5rem 0.7rem;">
                     <span style="font-size:0.82rem; color:#111;">${b.file_type==='pdf'?'📄':'🖼️'} ${b.original_name}</span>
                     <div style="display:flex; gap:0.4rem;">
-                      <button onclick="window.open('/cashier/bill/${b.id}/view','_blank')" style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); color:#2563eb; border-radius:4px; padding:3px 8px; font-size:0.75rem; cursor:pointer;">View</button>
+                      <button onclick="app.viewBill(${b.id})" style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); color:#2563eb; border-radius:4px; padding:3px 8px; font-size:0.75rem; cursor:pointer;">View</button>
                       <button onclick="app.deleteBill(${b.id}, ${txId})" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); color:#dc2626; border-radius:4px; padding:3px 8px; font-size:0.75rem; cursor:pointer;">Delete</button>
                     </div>
                   </div>
@@ -2342,7 +2350,18 @@ const app = {
       formData.append('bill_file', result.value);
       formData.append('_token', window.csrfToken || csrfToken);
 
-      fetch('/bill/upload', { method: 'POST', body: formData })
+      const segments = window.location.pathname.split('/').filter(Boolean);
+      let currentSlug = 'cashier';
+      if (segments.length > 0) {
+        if (segments[0] === 'penta-pure' && segments.length > 1) {
+          currentSlug = segments[1];
+        } else {
+          currentSlug = segments[0];
+        }
+      }
+      const uploadUrl = `${this.getBaseUrl()}/${currentSlug}/bill/upload`;
+
+      fetch(uploadUrl, { method: 'POST', body: formData })
         .then(r => r.json())
         .then(d => {
           if (d.success) {
@@ -2369,7 +2388,18 @@ const app = {
       cancelButtonColor: '#30363d',
     }).then(result => {
       if (!result.isConfirmed) return;
-      fetch(`/bill/${billId}`, {
+      const segments = window.location.pathname.split('/').filter(Boolean);
+      let currentSlug = 'cashier';
+      if (segments.length > 0) {
+        if (segments[0] === 'penta-pure' && segments.length > 1) {
+          currentSlug = segments[1];
+        } else {
+          currentSlug = segments[0];
+        }
+      }
+      const deleteUrl = `${this.getBaseUrl()}/${currentSlug}/bill/${billId}`;
+
+      fetch(deleteUrl, {
         method: 'DELETE',
         headers: { 'X-CSRF-TOKEN': window.csrfToken || csrfToken, 'Content-Type': 'application/json' }
       })
