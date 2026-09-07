@@ -529,7 +529,18 @@ const app = {
       }))
     };
 
-    fetch('/action', {
+    const segments = window.location.pathname.split('/').filter(Boolean);
+    let currentSlug = 'finished';
+    if (segments.length > 0) {
+      if (segments[0] === 'penta-pure' && segments.length > 1) {
+        currentSlug = segments[1];
+      } else if (segments[0] !== 'penta-pure') {
+        currentSlug = segments[0];
+      }
+    }
+    const postUrl = `${this.getBaseUrl()}/${currentSlug}/action`;
+
+    fetch(postUrl, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json', 
@@ -1356,7 +1367,18 @@ const app = {
       }
     }
 
-    fetch('/transport', {
+    const segments = window.location.pathname.split('/').filter(Boolean);
+    let currentSlug = 'sales';
+    if (segments.length > 0) {
+      if (segments[0] === 'penta-pure' && segments.length > 1) {
+        currentSlug = segments[1];
+      } else {
+        currentSlug = segments[0];
+      }
+    }
+    const transportUrl = `${this.getBaseUrl()}/${currentSlug}/transport`;
+
+    fetch(transportUrl, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json', 
@@ -1372,6 +1394,91 @@ const app = {
       }
       else this.toast(d.message, 'error');
     }).catch(() => this.toast('Network error.', 'error'));
+  },
+
+  editTransporterPrompt(trans) {
+    if (!trans) return;
+
+    Swal.fire({
+      title: '✏️ Edit Transporter',
+      html: `
+        <div style="text-align:left;">
+          <div style="margin-bottom:0.8rem;">
+            <label style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:4px;">Transporter Name *</label>
+            <input type="text" id="edit-trans-name" value="${trans.name || ''}" class="swal2-input" style="width:100%; margin:0; box-sizing:border-box;">
+          </div>
+          <div style="margin-bottom:0.8rem;">
+            <label style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:4px;">GST No.</label>
+            <input type="text" id="edit-trans-gst" value="${trans.gst || ''}" maxlength="15" class="swal2-input" style="width:100%; margin:0; box-sizing:border-box; text-transform:uppercase;">
+          </div>
+          <div style="margin-bottom:0.8rem;">
+            <label style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:4px;">Driver Contact / Mobile No</label>
+            <input type="text" id="edit-trans-contact" value="${trans.contact || ''}" class="swal2-input" style="width:100%; margin:0; box-sizing:border-box;">
+          </div>
+          <div style="margin-bottom:0.8rem;">
+            <label style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:4px;">Vehicle No.</label>
+            <input type="text" id="edit-trans-vehicles" value="${trans.vehicles || ''}" class="swal2-input" style="width:100%; margin:0; box-sizing:border-box;">
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Update Transporter',
+      confirmButtonColor: 'var(--primary, #3b82f6)',
+      cancelButtonColor: '#30363d',
+      background: 'var(--dark-panel, #1e293b)',
+      color: 'var(--text-main, #fff)',
+      preConfirm: () => {
+        const name = (document.getElementById('edit-trans-name').value || '').trim();
+        const gst = (document.getElementById('edit-trans-gst').value || '').trim().toUpperCase();
+        const contact = (document.getElementById('edit-trans-contact').value || '').trim();
+        const vehicles = (document.getElementById('edit-trans-vehicles').value || '').trim();
+
+        if (!name) {
+          Swal.showValidationMessage('Transporter Name is required');
+          return false;
+        }
+        if (gst && gst !== 'N/A' && !/^[A-Za-z0-9]{15}$/.test(gst)) {
+          Swal.showValidationMessage('GST must be 15 alphanumeric characters or N/A');
+          return false;
+        }
+
+        return { name, gst: gst || 'N/A', contact, vehicles };
+      }
+    }).then(result => {
+      if (!result.isConfirmed) return;
+
+      const segments = window.location.pathname.split('/').filter(Boolean);
+      let currentSlug = 'sales';
+      if (segments.length > 0) {
+        if (segments[0] === 'penta-pure' && segments.length > 1) {
+          currentSlug = segments[1];
+        } else {
+          currentSlug = segments[0];
+        }
+      }
+      const updateUrl = `${this.getBaseUrl()}/${currentSlug}/transport/${trans.id}`;
+
+      fetch(updateUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRF-TOKEN': window.csrfToken || csrfToken
+        },
+        body: JSON.stringify(result.value)
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          this.toast(d.message || 'Transporter updated!', 'success');
+          sessionStorage.setItem('activeSalesTab', 'transport');
+          setTimeout(() => location.reload(), 600);
+        } else {
+          this.toast(d.message || 'Update failed', 'error');
+        }
+      })
+      .catch(() => this.toast('Network error during update', 'error'));
+    });
   },
 
   submitOrder() {
@@ -1537,7 +1644,19 @@ const app = {
       lr_image: lrImageBase64
     };
 
-    fetch('/action', {
+    const segments = window.location.pathname.split('/').filter(Boolean);
+    let currentSlug = 'dispatch';
+    if (segments.length > 0) {
+      if (segments[0] === 'penta-pure' && segments.length > 1) {
+        currentSlug = segments[1];
+      } else if (segments[0] !== 'penta-pure') {
+        currentSlug = segments[0];
+      }
+    }
+
+    const postUrl = `${this.getBaseUrl()}/${currentSlug}/action`;
+
+    fetch(postUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1550,7 +1669,7 @@ const app = {
     .then(res => {
       if (res.success) {
         this.toast(res.message || 'Dispatch recorded successfully!');
-        setTimeout(() => { window.location.href = '/dispatch/history'; }, 700);
+        setTimeout(() => { window.location.href = `${this.getBaseUrl()}/${currentSlug}/history`; }, 700);
       } else {
         this.toast(res.message || 'Error recording dispatch', 'error');
       }
@@ -2029,7 +2148,18 @@ const app = {
     formData.append('reference', ref);
     if (billFile) formData.append('bill_file', billFile);
 
-    fetch('/action', {
+    const segments = window.location.pathname.split('/').filter(Boolean);
+    let currentSlug = 'cashier';
+    if (segments.length > 0) {
+      if (segments[0] === 'penta-pure' && segments.length > 1) {
+        currentSlug = segments[1];
+      } else if (segments[0] !== 'penta-pure') {
+        currentSlug = segments[0];
+      }
+    }
+    const postUrl = `${this.getBaseUrl()}/${currentSlug}/action`;
+
+    fetch(postUrl, {
       method: 'POST',
       headers: { 
         'Accept': 'application/json',
@@ -2269,7 +2399,16 @@ const app = {
       cancelButtonColor: '#30363d',
     }).then(result => {
       if (!result.isConfirmed) return;
-      fetch(`/action/${id}`, {
+      const segments = window.location.pathname.split('/').filter(Boolean);
+      let currentSlug = 'cashier';
+      if (segments.length > 0) {
+        if (segments[0] === 'penta-pure' && segments.length > 1) {
+          currentSlug = segments[1];
+        } else if (segments[0] !== 'penta-pure') {
+          currentSlug = segments[0];
+        }
+      }
+      fetch(`${this.getBaseUrl()}/${currentSlug}/action/${id}`, {
         method: 'DELETE',
         headers: { 'X-CSRF-TOKEN': window.csrfToken || csrfToken }
       })
@@ -2286,22 +2425,30 @@ const app = {
   },
 
   getBaseUrl() {
-    const path = window.location.pathname;
-    let baseUrl = '';
-    const cashierIdx = path.indexOf('/cashier');
-    if (cashierIdx > 0) {
-      baseUrl = path.substring(0, cashierIdx);
-    } else {
-      const segments = path.split('/').filter(Boolean);
-      if (segments.length > 1 && !['cashier', 'admin', 'sub_admin', 'stock_manager'].includes(segments[0])) {
-        baseUrl = '/' + segments[0];
-      }
+    const segments = window.location.pathname.split('/').filter(Boolean);
+    if (segments.length > 0 && segments[0] === 'penta-pure') {
+      return '/penta-pure';
     }
-    return baseUrl;
+    return '';
   },
 
   viewBill(billId, fileType) {
-    const targetUrl = `${this.getBaseUrl()}/cashier/bill/${billId}/view`;
+    const segments = window.location.pathname.split('/').filter(Boolean);
+    let appBase = '';
+    let slug = 'cashier';
+
+    if (segments.length > 0) {
+      if (segments[0] === 'penta-pure') {
+        appBase = '/penta-pure';
+        if (segments.length > 1) {
+          slug = segments[1];
+        }
+      } else {
+        slug = segments[0];
+      }
+    }
+
+    const targetUrl = `${appBase}/${slug}/bill/${billId}/view`;
     window.open(targetUrl, '_blank');
   },
 
@@ -2485,7 +2632,18 @@ const app = {
     const category = document.getElementById('edit-tx-category').value;
     const note = document.getElementById('edit-tx-note').value;
 
-    fetch('/action/' + id, {
+    const segments = window.location.pathname.split('/').filter(Boolean);
+    let currentSlug = 'cashier';
+    if (segments.length > 0) {
+      if (segments[0] === 'penta-pure' && segments.length > 1) {
+        currentSlug = segments[1];
+      } else if (segments[0] !== 'penta-pure') {
+        currentSlug = segments[0];
+      }
+    }
+    const updateUrl = `${this.getBaseUrl()}/${currentSlug}/action/${id}`;
+
+    fetch(updateUrl, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': window.csrfToken || csrfToken },
         body: JSON.stringify({ amount, category, note })

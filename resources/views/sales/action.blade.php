@@ -353,6 +353,7 @@ html.dark-mode .info-preview-box .info-label {
               <th style="padding:8px 6px;">GST No.</th>
               <th style="padding:8px 6px;">Contact</th>
               <th style="padding:8px 6px;">Vehicles</th>
+              <th style="padding:8px 6px; text-align:center;">Action</th>
             </tr>
           </thead>
           <tbody id="action-transporters-tbody">
@@ -363,10 +364,15 @@ html.dark-mode .info-preview-box .info-label {
                 <td style="padding:8px 6px; font-family:monospace; color:var(--primary-light, #f59e0b);">{{ $trans['gst'] ?: 'N/A' }}</td>
                 <td style="padding:8px 6px;">{{ $trans['contact'] ?: '—' }}</td>
                 <td style="padding:8px 6px;">{{ $trans['vehicles'] ?: '—' }}</td>
+                <td style="padding:8px 6px; text-align:center;">
+                  <button type="button" class="btn btn-sm" onclick="app.editTransporterPrompt({{ json_encode($trans) }})" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; background:var(--warning, #FFA500); color:#000; font-weight:600; border:none; border-radius:4px; cursor:pointer;">
+                    ✏️ Edit
+                  </button>
+                </td>
               </tr>
             @empty
               <tr>
-                <td colspan="5" style="text-align:center; padding:1.5rem; color:var(--text-muted);">No transporters registered yet.</td>
+                <td colspan="6" style="text-align:center; padding:1.5rem; color:var(--text-muted);">No transporters registered yet.</td>
               </tr>
             @endforelse
           </tbody>

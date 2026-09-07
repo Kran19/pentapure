@@ -305,6 +305,53 @@ class SalesController extends Controller
         ]);
     }
 
+    public function updateTransporter(Request $request, $id)
+    {
+        $transporter = Transporter::findOrFail($id);
+        $request->merge(['name' => strtoupper($request->name)]);
+
+        $gstRule = ['nullable', 'string', 'regex:/^(N\/A|[A-Za-z0-9]{15})$/i'];
+        if ($request->gst && strtoupper($request->gst) !== 'N/A') {
+            $gstRule[] = 'unique:transporters,gst,' . $transporter->id;
+        }
+
+        $formattedContact = null;
+        if (!empty($request->contact)) {
+            $formattedContact = $this->validateAndFormatContact($request->contact);
+            if (!$formattedContact) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Contact must be a 10-digit Indian mobile (+91), a 079 landline number, or an international number (+...).'
+                ], 422);
+            }
+        }
+
+        $request->validate([
+            'name'     => 'required|string|max:255|unique:transporters,name,' . $transporter->id,
+            'gst'      => $gstRule,
+            'vehicles' => 'nullable|string',
+        ], [
+            'gst.regex'   => 'GST number must be 15 alphanumeric characters or N/A',
+            'name.unique' => 'Transporter name already exists',
+            'gst.unique'  => 'GST number already registered'
+        ]);
+
+        $request->merge(['contact' => $formattedContact]);
+
+        $transporter->update($request->only('name', 'gst', 'contact', 'vehicles'));
+        return response()->json([
+            'success' => true,
+            'message' => 'Transporter updated!',
+            'transporter' => [
+                'id' => $transporter->id,
+                'name' => $transporter->name,
+                'gst' => $transporter->gst,
+                'contact' => $transporter->contact,
+                'vehicles' => $transporter->vehicles,
+            ]
+        ]);
+    }
+
     public function history()
     {
         $orders = Order::with(['company', 'transporter', 'items.product', 'dispatchLogs'])->orderByDesc('created_at')->get();

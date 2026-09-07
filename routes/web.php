@@ -218,6 +218,8 @@ foreach ($roleSlugs['SALES'] ?? [] as $slug) {
     Route::post('/sales/company/{id}', 'updateCompany');
     Route::post('/transport',    'storeTransporter');
     Route::post('/sales/transport', 'storeTransporter');
+    Route::post('/transport/{id}', 'updateTransporter');
+    Route::post('/sales/transport/{id}', 'updateTransporter');
     Route::get('/history',       'history')->name($slug.'.history');
     Route::get('/profile',       'profile')->name($slug.'.profile');
     Route::get('/order/pdf/{id}', [HistoryPdfController::class, 'salesOrderPdf'])->name($slug.'.order.pdf');
@@ -438,4 +440,6 @@ foreach ($roleSlugs['ATTENDANCE'] ?? [] as $slug) {
 Route::middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE,SUB_ADMIN,STOCK_MANAGER')->group(function() {
     Route::get('/cashier/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill']);
     Route::get('/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill']);
+    Route::get('/{user_slug}/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill']);
+    Route::get('/{user_slug}/cashier/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill']);
 });
