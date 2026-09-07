@@ -192,26 +192,47 @@ class CashierController extends Controller
     // ── VIEW / STREAM BILL ─────────────────────────────────────────────────
     public function viewBill($id)
     {
-        $bill = TransactionBill::with('transaction')->findOrFail($id);
+        $bill = TransactionBill::with('transaction')->find($id);
+
+        if (!$bill) {
+            abort(404, 'Bill record #' . $id . ' not found.');
+        }
 
         $user = $this->authUser();
+        if (!$user) {
+            return redirect('/login')->with('error', 'Please log in to view bills.');
+        }
+
         $userModel = User::find($user['id']);
-        $visibleIds = $userModel->visible_cashiers ?? [];
+        $visibleIds = $userModel ? ($userModel->visible_cashiers ?? []) : [];
         if (is_string($visibleIds)) {
             $visibleIds = json_decode($visibleIds, true) ?? [];
         }
         $visibleIds = array_map('intval', $visibleIds);
 
-        $isAllowed = ($user['role'] === 'ADMIN') || 
-                     ($bill->transaction->user_id === $user['id']) || 
-                     (in_array((int)$bill->transaction->user_id, $visibleIds));
+        $role = $user['role'] ?? '';
+        $isAllowed = in_array($role, ['ADMIN', 'SUB_ADMIN', 'STOCK_MANAGER']) || 
+                     ($bill->transaction && (int)$bill->transaction->user_id === (int)$user['id']) || 
+                     ($bill->transaction && in_array((int)$bill->transaction->user_id, $visibleIds));
 
         if (!$isAllowed) {
-            abort(403);
+            abort(403, 'Unauthorized to view this bill.');
         }
 
         $path = Storage::disk('public')->path($bill->file_path);
-        if (!file_exists($path)) abort(404);
+        if (!file_exists($path)) {
+            $altPath = storage_path('app/public/' . $bill->file_path);
+            if (file_exists($altPath)) {
+                $path = $altPath;
+            } else {
+                $altPath2 = storage_path('app/' . $bill->file_path);
+                if (file_exists($altPath2)) {
+                    $path = $altPath2;
+                } else {
+                    abort(404, 'Bill file missing on server storage (' . $bill->file_path . ').');
+                }
+            }
+        }
 
         $disposition = request('download') ? 'attachment' : 'inline';
         

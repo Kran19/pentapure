@@ -81,6 +81,7 @@ Route::middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTE
     Route::get('/sales/order/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'salesOrderPdf']);
     Route::get('/sales/sales/order/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'salesOrderPdf']);
     Route::get('/cashier/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill'])->name('cashier.bill.view');
+    Route::get('/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill'])->name('bill.view');
 });
 Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE,STOCK_MANAGER')->group(function() {
     Route::get('/api/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
@@ -256,7 +257,7 @@ foreach ($roleSlugs['CASHIER'] ?? [] as $slug) {
         Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
-    Route::prefix($slug)->middleware('auth.role:CASHIER')->controller(CashierController::class)->group(function () use ($slug) {
+    Route::prefix($slug)->middleware('auth.role:ADMIN,CASHIER,SUB_ADMIN,STOCK_MANAGER')->controller(CashierController::class)->group(function () use ($slug) {
 
     Route::get('/home',                'home')->name($slug.'.home');
     Route::get('/action',              'action')->name($slug.'.action');
@@ -433,3 +434,8 @@ foreach ($roleSlugs['ATTENDANCE'] ?? [] as $slug) {
     });
 }
 
+// ── Global Catch-all Bill View Routes ──────────────────────────────────────
+Route::middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE,SUB_ADMIN,STOCK_MANAGER')->group(function() {
+    Route::get('/cashier/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill']);
+    Route::get('/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill']);
+});
