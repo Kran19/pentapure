@@ -73,12 +73,12 @@ class SalesController extends Controller
 
         $editOrder = null;
         if ($request->edit) {
-            $editOrder = Order::with('items.product')->findOrFail($request->edit);
+            $editOrder = Order::with('items.product')->find($request->edit);
         }
 
         $editCompany = null;
         if ($request->editCompany) {
-            $editCompany = Company::findOrFail($request->editCompany);
+            $editCompany = Company::find($request->editCompany);
         }
 
         $pageData = compact('companies', 'transportCompanies', 'products', 'grades', 'editOrder', 'editCompany');

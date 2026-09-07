@@ -324,6 +324,29 @@ header {
   overflow-x: auto !important;
   clear: both !important;
   margin-top: 0.5rem !important;
+  padding-bottom: 6px;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(148, 163, 184, 0.4) rgba(0, 0, 0, 0.04) !important;
+}
+
+.table-container::-webkit-scrollbar {
+  height: 5px !important;
+  width: 5px !important;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-radius: 10px !important;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35) !important;
+  border-radius: 10px !important;
+  transition: background 0.2s ease-in-out;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.65) !important;
 }
 
 .table-container table {

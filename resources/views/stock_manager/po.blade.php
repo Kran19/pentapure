@@ -10,8 +10,8 @@
     </div>
   @else
   <div class="card" style="padding:1.2rem;">
-    <div class="table-container">
-      <table>
+    <div class="table-container" style="overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; padding-bottom:6px;">
+      <table style="min-width: 850px; width:100%; border-collapse:collapse;">
         <thead>
           <tr>
             <th>Date</th>

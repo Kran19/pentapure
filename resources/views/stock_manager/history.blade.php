@@ -10,7 +10,7 @@
   </div>
 
   <div class="card" style="padding:1.2rem;">
-    <div class="table-container" style="overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch;">
+    <div class="table-container" style="overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; padding-bottom: 6px;">
       <table id="history-table" style="width: 100%; min-width: 950px; border-collapse: collapse;">
         <thead>
           <tr>

@@ -282,7 +282,7 @@ html.dark-mode .info-preview-box .info-label {
                 <td style="padding:8px 6px;">{{ $comp['contact'] ?: '—' }}</td>
                 <td style="padding:8px 6px; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ $comp['address'] }}">{{ $comp['address'] ?: '—' }}</td>
                 <td style="padding:8px 6px; text-align:center;">
-                  <a class="btn btn-sm" href="/sales/action?editCompany={{ $comp['id'] }}" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; text-decoration:none; background:var(--warning, #FFA500); color:#000; font-weight:600; display:inline-block;">
+                  <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action?editCompany=' . $comp['id']) }}" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; text-decoration:none; background:var(--warning, #FFA500); color:#000; font-weight:600; display:inline-block;">
                     ✏️ Edit
                   </a>
                 </td>

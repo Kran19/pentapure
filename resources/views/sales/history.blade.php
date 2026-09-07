@@ -310,7 +310,7 @@
 
         <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:0.8rem;">
           @if($canEdit)
-            <a class="btn btn-sm" href="/sales/action?edit={{ $item['id'] }}" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px; background:var(--warning, #FFA500); color:#000; font-weight:600;">
+            <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action?edit=' . $item['id']) }}" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px; background:var(--warning, #FFA500); color:#000; font-weight:600;">
               ✏️ Edit Order
             </a>
           @endif
