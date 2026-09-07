@@ -192,10 +192,23 @@ class CashierController extends Controller
     // ── VIEW / STREAM BILL ─────────────────────────────────────────────────
     public function viewBill($id)
     {
+        // 1. Try finding bill by TransactionBill ID first, then fallback to Transaction ID
         $bill = TransactionBill::with('transaction')->find($id);
 
         if (!$bill) {
-            abort(404, 'Bill record #' . $id . ' not found.');
+            $bill = TransactionBill::with('transaction')->where('transaction_id', $id)->latest()->first();
+        }
+
+        if (!$bill) {
+            return response("
+                <div style='font-family:sans-serif; text-align:center; padding:60px 20px; background:#0f172a; color:#fff; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;'>
+                    <div style='font-size:3.5rem; margin-bottom:1rem;'>📄</div>
+                    <h2 style='color:#ef4444; margin:0 0 10px 0;'>Bill Record Not Found</h2>
+                    <p style='color:#94a3b8; max-width:450px; line-height:1.5; font-size:0.95rem;'>
+                        No bill record associated with ID <strong>#{$id}</strong> was found in the database.
+                    </p>
+                </div>
+            ", 404)->header('Content-Type', 'text/html');
         }
 
         $user = $this->authUser();
@@ -219,19 +232,36 @@ class CashierController extends Controller
             abort(403, 'Unauthorized to view this bill.');
         }
 
-        $path = Storage::disk('public')->path($bill->file_path);
-        if (!file_exists($path)) {
-            $altPath = storage_path('app/public/' . $bill->file_path);
-            if (file_exists($altPath)) {
-                $path = $altPath;
-            } else {
-                $altPath2 = storage_path('app/' . $bill->file_path);
-                if (file_exists($altPath2)) {
-                    $path = $altPath2;
-                } else {
-                    abort(404, 'Bill file missing on server storage (' . $bill->file_path . ').');
-                }
+        // Search for file on disk across possible storage locations
+        $path = null;
+        $possiblePaths = [
+            Storage::disk('public')->path($bill->file_path),
+            storage_path('app/public/' . $bill->file_path),
+            storage_path('app/' . $bill->file_path),
+            public_path('storage/' . $bill->file_path),
+            public_path($bill->file_path),
+        ];
+
+        foreach ($possiblePaths as $p) {
+            if ($p && file_exists($p) && is_file($p)) {
+                $path = $p;
+                break;
             }
+        }
+
+        if (!$path) {
+            $name = e($bill->original_name ?? 'Bill Document');
+            $filePath = e($bill->file_path);
+            return response("
+                <div style='font-family:sans-serif; text-align:center; padding:60px 20px; background:#0f172a; color:#fff; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;'>
+                    <div style='font-size:3.5rem; margin-bottom:1rem;'>⚠️</div>
+                    <h2 style='color:#f59e0b; margin:0 0 10px 0;'>Bill File Missing on Storage</h2>
+                    <p style='color:#94a3b8; max-width:500px; line-height:1.5; font-size:0.95rem;'>
+                        The database record for <strong>{$name}</strong> exists, but the physical file is missing from server disk storage.<br>
+                        <span style='color:#64748b; font-size:0.8rem; display:block; margin-top:12px; background:#1e293b; padding:8px 12px; border-radius:6px;'>Expected path: {$filePath}</span>
+                    </p>
+                </div>
+            ", 404)->header('Content-Type', 'text/html');
         }
 
         $disposition = request('download') ? 'attachment' : 'inline';
