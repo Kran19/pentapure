@@ -55,6 +55,9 @@
           $sessUser = session('auth_user') ?? (auth()->user() ? auth()->user()->toArray() : null);
           $role = strtolower($sessUser['role'] ?? 'user');
           if ($role === 'sub_admin') $role = 'admin';
+          if (str_contains($role, 'stock_manager')) $role = 'stock_manager';
+          if (str_contains($role, 'cashier')) $role = 'cashier';
+          if (str_contains($role, 'attendance')) $role = 'attendance';
           
           $prefix = request()->segment(1);
           $currentRoute = request()->segment(2) ?? 'home';
@@ -124,7 +127,8 @@
                   'cashier' => ['Cashier', 'FINANCE'],
                   'sales' => ['Sales', 'SALES'],
                   'dispatch' => ['Dispatch', 'DISPATCH'],
-                  'attendance' => ['Attendance', 'ATTENDANCE']
+                  'attendance' => ['Attendance', 'ATTENDANCE'],
+                  'stock_manager' => ['Stock Manager', 'STOCK MANAGEMENT']
                 ];
                 $userName = $sessUser['name'] ?? ($segments[$role][0] ?? 'User');
                 $userRole = $sessUser['role'] ?? ($segments[$role][1] ?? strtoupper($role));
