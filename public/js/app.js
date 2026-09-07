@@ -2183,8 +2183,11 @@ const app = {
     const allCats = (window.serverPageData && window.serverPageData.categories) ? window.serverPageData.categories : [];
     const catOptions = allCats.map(c => {
         const val = c.value;
-        return `<option value="${val}" ${t.category === val ? 'selected' : ''}>${c.label}</option>`;
+        const isSelected = String(t.category || '').toLowerCase() === String(val || '').toLowerCase();
+        return `<option value="${val}" ${isSelected ? 'selected' : ''}>${c.label}</option>`;
     }).join('');
+
+    const isGeneralSelected = String(t.category || '').toLowerCase() === 'general';
 
     Swal.fire({
       title: 'Edit Transaction',
@@ -2197,7 +2200,7 @@ const app = {
           <div class="form-group mb-1">
             <label style="color:var(--text-muted); font-size:0.8rem;">Category</label>
             <select id="edit-tx-category" class="swal2-select" style="width:100%; margin:0; box-sizing:border-box;">
-              <option value="general" ${t.category === 'general' ? 'selected' : ''}>General</option>
+              <option value="general" ${isGeneralSelected ? 'selected' : ''}>General</option>
               ${catOptions}
             </select>
           </div>
@@ -2224,7 +2227,18 @@ const app = {
     
     if (!amount || amount <= 0) return this.toast('Invalid amount', 'error');
 
-    fetch(`/action/${id}`, {
+    const segments = window.location.pathname.split('/').filter(Boolean);
+    let currentSlug = 'cashier';
+    if (segments.length > 0) {
+      if (segments[0] === 'penta-pure' && segments.length > 1) {
+        currentSlug = segments[1];
+      } else {
+        currentSlug = segments[0];
+      }
+    }
+    const updateUrl = `${this.getBaseUrl()}/${currentSlug}/action/${id}`;
+
+    fetch(updateUrl, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken || csrfToken },
       body: JSON.stringify({ amount, category, note })
@@ -2233,12 +2247,13 @@ const app = {
     .then(d => {
       if (d.success) {
         this.toast(d.message, 'success');
-        this.closeDrawer();
-        setTimeout(() => location.reload(), 600);
+        if (typeof this.closeDrawer === 'function') this.closeDrawer();
+        setTimeout(() => location.reload(), 400);
       } else {
         this.toast(d.message || 'Update failed', 'error');
       }
-    });
+    })
+    .catch(() => this.toast('Network error during update', 'error'));
   },
 
   deleteTransaction(id) {

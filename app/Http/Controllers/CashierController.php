@@ -93,14 +93,32 @@ class CashierController extends Controller
         ]);
 
         $user = $this->authUser();
-        $tx = Transaction::where('id', $id)->where('user_id', $user['id'])->firstOrFail();
+        $tx = Transaction::where('id', $id)->first();
+        if (!$tx) {
+            return response()->json(['success' => false, 'message' => 'Transaction not found.'], 404);
+        }
+
+        $userModel = User::find($user['id']);
+        $visibleIds = $userModel ? ($userModel->visible_cashiers ?? []) : [];
+        if (is_string($visibleIds)) {
+            $visibleIds = json_decode($visibleIds, true) ?? [];
+        }
+        $visibleIds = array_map('intval', $visibleIds);
+
+        $isAllowed = in_array($user['role'], ['ADMIN', 'SUB_ADMIN']) || 
+                     ((int)$tx->user_id === (int)$user['id']) || 
+                     in_array((int)$tx->user_id, $visibleIds);
+
+        if (!$isAllowed) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized to edit this transaction.'], 403);
+        }
 
         $oldData = $tx->toArray();
 
         \DB::transaction(function() use ($request, $tx, $user, $oldData) {
             $tx->update([
                 'amount'   => $request->amount,
-                'category' => $request->category ?? $tx->category,
+                'category' => $request->has('category') ? $request->category : $tx->category,
                 'note'     => $request->note,
             ]);
 
@@ -119,12 +137,29 @@ class CashierController extends Controller
     public function destroyTransaction($id)
     {
         $user = $this->authUser();
-        $tx = Transaction::where('id', $id)->where('user_id', $user['id'])->firstOrFail();
+        $tx = Transaction::where('id', $id)->first();
+        if (!$tx) {
+            return response()->json(['success' => false, 'message' => 'Transaction not found.'], 404);
+        }
+
+        $userModel = User::find($user['id']);
+        $visibleIds = $userModel ? ($userModel->visible_cashiers ?? []) : [];
+        if (is_string($visibleIds)) {
+            $visibleIds = json_decode($visibleIds, true) ?? [];
+        }
+        $visibleIds = array_map('intval', $visibleIds);
+
+        $isAllowed = in_array($user['role'], ['ADMIN', 'SUB_ADMIN']) || 
+                     ((int)$tx->user_id === (int)$user['id']) || 
+                     in_array((int)$tx->user_id, $visibleIds);
+
+        if (!$isAllowed) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized to delete this transaction.'], 403);
+        }
 
         $oldData = $tx->toArray();
 
         \DB::transaction(function() use ($tx, $user, $oldData) {
-            // Also delete attached bills physically
             foreach ($tx->bills as $bill) {
                 if ($bill->file_path && file_exists(storage_path('app/public/' . $bill->file_path))) {
                     @unlink(storage_path('app/public/' . $bill->file_path));
@@ -134,7 +169,7 @@ class CashierController extends Controller
             $tx->delete();
 
             \App\Models\TransactionLog::create([
-                'transaction_id' => null, // Since it's deleted, or keep it but the FK must be nullable
+                'transaction_id' => null,
                 'user_id'        => $user['id'],
                 'action'         => 'DELETED',
                 'old_data'       => $oldData,
