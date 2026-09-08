@@ -7,7 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 class Worker extends Model
 {
     protected $fillable = [
-        'name', 'department_id', 'role', 'shift_type', 'salary_type', 'salary_amount', 'per_hour_salary', 'daily_salary', 'status'
+        'name', 'department_id', 'role', 'shift_type', 'salary_type', 'salary_amount', 'per_hour_salary', 'daily_salary', 'status', 'inactivated_at'
+    ];
+
+    protected $casts = [
+        'inactivated_at' => 'date',
     ];
 
     public function department()

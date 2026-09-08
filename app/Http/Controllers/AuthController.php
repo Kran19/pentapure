@@ -96,9 +96,17 @@ class AuthController extends Controller
         return $this->authenticatedRedirect();
     }
 
-    public function logout()
+    public function logout(\Illuminate\Http\Request $request = null)
     {
         session()->forget('auth_user');
+        session()->flush();
+        if ($request && $request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
+        if (\Illuminate\Support\Facades\Auth::check()) {
+            \Illuminate\Support\Facades\Auth::logout();
+        }
         return redirect()->route('global.login')->with('success', 'Logged out successfully.');
     }
 
@@ -109,18 +117,59 @@ class AuthController extends Controller
 
         if (in_array($role, ['SUB_ADMIN', 'STOCK_MANAGER'])) {
             $perms = session('auth_user')['permissions'] ?? [];
-            if (in_array('module_dashboard', $perms)) return redirect()->route($slug . '.home');
-            if (in_array('module_stock', $perms)) return redirect()->route($slug . '.stock');
-            if (in_array('module_products', $perms)) return redirect()->route($slug . '.products');
-            if (in_array('module_po', $perms)) return redirect()->route($slug . '.po');
-            if (in_array('module_dispatch', $perms)) return redirect()->route($slug . '.dispatch');
-            if (in_array('module_cashier', $perms)) return redirect()->route($slug . '.cashier_overview');
-            if (in_array('module_attendance', $perms)) return redirect()->route($slug . '.attendance.dashboard');
-            if (in_array('module_users', $perms)) return redirect()->route($slug . '.users');
-            if (in_array('module_grades', $perms)) return redirect()->route($slug . '.grades');
-            if (in_array('module_categories', $perms)) return redirect()->route($slug . '.categories');
-            if (in_array('module_logs', $perms)) return redirect()->route($slug . '.logs');
-            return redirect()->route($slug . '.home');
+
+            $hasPerm = function($modKey) use ($perms) {
+                return in_array('view_' . $modKey, $perms) 
+                    || in_array('edit_' . $modKey, $perms)
+                    || in_array('module_' . $modKey, $perms)
+                    || in_array($modKey, $perms)
+                    || in_array('can_manage', $perms);
+            };
+
+            $routeMap = [
+                'admin_dashboard' => $slug . '.home',
+                'admin_users' => $slug . '.users',
+                'admin_stock' => $slug . '.stock',
+                'admin_products' => $slug . '.products',
+                'admin_grades' => $slug . '.grades',
+                'admin_locations' => $slug . '.locations',
+                'admin_po' => $slug . '.po',
+                'admin_dispatch_activity' => $slug . '.dispatch.activity',
+                'admin_cashier_overview' => $slug . '.cashier_overview',
+                'admin_categories' => $slug . '.categories',
+                'admin_logs' => $slug . '.logs',
+                'admin_notifications' => $slug . '.notifications',
+                'cashier_action' => '/cashier2/action',
+                'cashier_history' => '/cashier2/history',
+                'cashier_ledger' => '/cashier2/ledger',
+                'sales_home' => '/sales/home',
+                'sales_action' => '/sales/action',
+                'sales_history' => '/sales/history',
+                'dispatch_home' => '/dispatch/home',
+                'dispatch_action' => '/dispatch/action',
+                'dispatch_history' => '/dispatch/history',
+                'stock_manager_home' => '/stock_manager/home',
+                'stock_manager_action' => '/stock_manager/action',
+                'stock_manager_stock' => '/stock_manager/stock',
+                'stock_manager_po' => '/stock_manager/po',
+                'stock_manager_history' => '/stock_manager/history',
+                'attendance_dashboard' => '/attendance/dashboard',
+                'attendance_departments' => '/attendance/departments',
+                'attendance_workers' => '/attendance/workers',
+                'attendance_daily' => '/attendance/daily',
+                'attendance_reports' => '/attendance/reports',
+            ];
+
+            foreach ($routeMap as $key => $target) {
+                if ($hasPerm($key)) {
+                    if (str_starts_with($target, '/')) {
+                        return redirect($target);
+                    }
+                    if (\Illuminate\Support\Facades\Route::has($target)) {
+                        return redirect()->route($target);
+                    }
+                }
+            }
         }
 
         return redirect()->route($slug . '.home');

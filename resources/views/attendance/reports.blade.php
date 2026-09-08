@@ -32,15 +32,15 @@
       <table>
         <thead>
           <tr>
+            <th style="width:45px;">#</th>
             <th>Employee Name</th>
             <th>Department</th>
             <th>Salary</th>
             <th class="no-print">Action</th>
             <th>Present</th>
-            <th>Half Days</th>
-            <th>Absent</th>
             <th>Total OT Hrs</th>
             <th>Total Payable (₹)</th>
+            <th style="min-width:220px;">Mark as Paid</th>
           </tr>
         </thead>
         <tbody>
@@ -59,9 +59,15 @@
                 <td colspan="9" style="font-weight:bold; color:var(--secondary);">📂 {{ strtoupper($deptName) }}</td>
             </tr>
             @foreach($workers as $data)
-              @php $grandTotal += $data['total_wage']; @endphp
-              <tr class="report-row">
-                <td style="padding-left:1.5rem; font-weight:600;">{{ $data['worker']->name }}</td>
+              @php 
+                $grandTotal += $data['total_wage']; 
+                $adj = $data['adjustment'] ?? null;
+                $isPaid = (bool)($adj?->is_paid ?? false);
+                $paidNote = $adj?->paid_note ?? '';
+              @endphp
+              <tr class="report-row" id="row-worker-{{ $data['worker']->id }}">
+                <td style="font-weight:bold; color:var(--text-muted);">{{ $data['worker_number'] ?? '-' }}</td>
+                <td style="font-weight:600;">{{ $data['worker']->name }}</td>
                 <td>{{ $data['worker']->department->name }}</td>
                 <td>
                     <div style="font-weight:bold;">₹{{ number_format($data['worker']->salary_amount, 0) }}</div>
@@ -76,10 +82,35 @@
                   <a href="{{ $reportUrl }}?month={{ $month }}" class="btn btn-sm" style="width:auto; padding:0.2rem 0.6rem; font-size:0.7rem; text-transform:uppercase;">View Sheet</a>
                 </td>
                 <td style="color:var(--secondary); font-weight:bold;">{{ $data['present'] }}</td>
-                <td style="color:var(--info);">{{ $data['half'] }}</td>
-                <td style="color:var(--danger);">{{ $data['absent'] }}</td>
                 <td style="font-weight:bold;">{{ number_format($data['total_ot'], 1) }}</td>
                 <td style="font-weight:bold; color:var(--primary-light); font-size:1.1rem;">₹{{ number_format($data['total_wage'], 2) }}</td>
+                <td>
+                  <div style="display:flex; align-items:center; gap:6px;">
+                    <button type="button" 
+                            onclick="togglePaidStatus({{ $data['worker']->id }}, true)"
+                            class="btn-paid-check"
+                            style="border:none; background:{{ $isPaid ? '#22c55e' : '#e2e8f0' }}; color:{{ $isPaid ? '#fff' : '#64748b' }}; border-radius:50%; width:28px; height:28px; font-weight:bold; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; font-size:14px;"
+                            title="Mark as Paid">
+                      ✓
+                    </button>
+                    <button type="button" 
+                            onclick="togglePaidStatus({{ $data['worker']->id }}, false)"
+                            class="btn-paid-cross"
+                            style="border:none; background:{{ !$isPaid ? '#ef4444' : '#e2e8f0' }}; color:{{ !$isPaid ? '#fff' : '#64748b' }}; border-radius:50%; width:28px; height:28px; font-weight:bold; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; font-size:14px;"
+                            title="Mark as Unpaid">
+                      ✕
+                    </button>
+                    <input type="text" 
+                           id="paid-note-{{ $data['worker']->id }}" 
+                           value="{{ $paidNote }}" 
+                           placeholder="Payment note..." 
+                           onchange="updatePaidNote({{ $data['worker']->id }})"
+                           style="padding:3px 8px; border:1px solid #ccc; border-radius:4px; font-size:0.75rem; width:110px; background:white; color:black; outline:none;">
+                  </div>
+                  <div id="paid-badge-{{ $data['worker']->id }}" style="margin-top:3px; font-size:0.68rem; font-weight:bold; color:{{ $isPaid ? '#22c55e' : '#ef4444' }};">
+                    {{ $isPaid ? '✓ PAID' : '✕ UNPAID' }}
+                  </div>
+                </td>
               </tr>
             @endforeach
           @endforeach
@@ -88,10 +119,11 @@
             <tr><td colspan="9" style="text-align:center; color:var(--text-muted);">No attendance records found for this month.</td></tr>
           @else
             <tr style="background:var(--glass-bg); font-weight:bold;">
-              <td colspan="3" style="text-align:right;">Grand Total Payroll Liability:</td>
+              <td colspan="4" style="text-align:right;">Grand Total Payroll Liability:</td>
               <td class="no-print"></td>
-              <td colspan="4"></td>
+              <td colspan="2"></td>
               <td style="color:var(--secondary); font-size:1.2rem;">₹{{ number_format($grandTotal, 2) }}</td>
+              <td></td>
             </tr>
           @endif
         </tbody>
@@ -101,6 +133,54 @@
 </div>
 
 <script>
+function togglePaidStatus(workerId, isPaid) {
+    const noteInput = document.getElementById('paid-note-' + workerId);
+    const paidNote = noteInput ? noteInput.value : '';
+    sendPaidStatusUpdate(workerId, isPaid, paidNote);
+}
+
+function updatePaidNote(workerId) {
+    const badge = document.getElementById('paid-badge-' + workerId);
+    const isPaid = badge ? badge.innerText.includes('PAID') : false;
+    const noteInput = document.getElementById('paid-note-' + workerId);
+    const paidNote = noteInput ? noteInput.value : '';
+    sendPaidStatusUpdate(workerId, isPaid, paidNote);
+}
+
+function sendPaidStatusUpdate(workerId, isPaid, paidNote) {
+    const postUrl = "{{ str_contains(request()->path(), 'admin') ? url(str_replace('reports', 'reports', request()->path()) . '/worker/') : url(request()->path() . '/worker/') }}/" + workerId + "/toggle-paid";
+    const formData = new FormData();
+    formData.append('_token', '{{ csrf_token() }}');
+    formData.append('month', '{{ $month }}');
+    formData.append('is_paid', isPaid ? 1 : 0);
+    formData.append('paid_note', paidNote || '');
+
+    fetch(postUrl, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    }).then(res => res.json()).then(data => {
+        if (data.success) {
+            const row = document.getElementById('row-worker-' + workerId);
+            if (row) {
+                const btnCheck = row.querySelector('.btn-paid-check');
+                const btnCross = row.querySelector('.btn-paid-cross');
+                const badge = document.getElementById('paid-badge-' + workerId);
+
+                if (data.is_paid) {
+                    btnCheck.style.background = '#22c55e'; btnCheck.style.color = '#fff';
+                    btnCross.style.background = '#e2e8f0'; btnCross.style.color = '#64748b';
+                    if (badge) { badge.innerText = '✓ PAID'; badge.style.color = '#22c55e'; }
+                } else {
+                    btnCheck.style.background = '#e2e8f0'; btnCheck.style.color = '#64748b';
+                    btnCross.style.background = '#ef4444'; btnCross.style.color = '#fff';
+                    if (badge) { badge.innerText = '✕ UNPAID'; badge.style.color = '#ef4444'; }
+                }
+            }
+        }
+    }).catch(err => console.error('Error updating paid status:', err));
+}
+
 function exportToExcel() {
     let csv = [];
     const table = document.querySelector("table");

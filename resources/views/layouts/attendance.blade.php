@@ -64,12 +64,12 @@
             📅 Daily Attendance
           </a>
           <a href="{{ url(request()->segment(1) . '/reports') }}" class="nav-item {{ $seg=='reports'?'active':'' }}">
-            📑 Monthly Reports
+            📑 Reports
           </a>
 
           <!-- Logout -->
           <div style="margin-top:auto;border-top:1px solid var(--glass-border);padding-top:0.5rem;">
-            <form method="POST" action="{{ route(request()->segment(1) . '.logout') }}" style="margin:0;">
+            <form method="POST" action="{{ url('/logout') }}" style="margin:0;">
               @csrf
               <button type="submit" class="nav-item"
                 style="width:100%;background:none;border:none;cursor:pointer;color:var(--danger);display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1.2rem;font-size:1rem;">
@@ -109,7 +109,7 @@
   <script>
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
     window.csrfToken = csrfToken;
-    window.logoutUrl = "{{ route(request()->segment(1) . '.logout') }}";
+    window.logoutUrl = "{{ url('/logout') }}";
   </script>
 </body>
 </html>

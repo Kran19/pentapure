@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Session\TokenMismatchException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -11,6 +12,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->validateCsrfTokens(except: [
+            'logout',
+            '*/logout',
+            'global/logout',
+        ]);
         $middleware->web(prepend: [
             \App\Http\Middleware\ScopeSessionBySlug::class,
             \App\Http\Middleware\NoCache::class,
@@ -20,5 +26,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (TokenMismatchException $e, $request) {
+            return redirect('/login')->with('error', 'Session expired. Please login again.');
+        });
     })->create();
+

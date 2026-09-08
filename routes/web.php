@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', fn () => redirect('/login'));
 Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name('global.login');
 Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name('global.login.post');
+Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name('logout');
+Route::match(['get', 'post'], '/global/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name('global.logout');
 
 try {
     $users = \App\Models\User::where('status', 'ACTIVE')->orderBy('role')->orderBy('id')->get();
@@ -72,7 +74,7 @@ Route::get('/notifications/test', function() {
 // ── Shared Routes (Under {user_slug} prefix) ──────────────────────────────
 
 // ─── Global Direct Fallback PDF Routes ─────────────────────────────
-Route::middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE,STOCK_MANAGER')->group(function() {
+Route::middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE,STOCK_MANAGER')->group(function() {
     Route::get('/history/{panel}/pdf', [\App\Http\Controllers\HistoryPdfController::class, 'download']);
     Route::get('/dispatch/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'dispatchNotePdf']);
     Route::get('/dispatch/dispatch/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'dispatchNotePdf']);
@@ -83,7 +85,7 @@ Route::middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTE
     Route::get('/cashier/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill'])->name('cashier.bill.view');
     Route::get('/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill'])->name('bill.view');
 });
-Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE,STOCK_MANAGER')->group(function() {
+Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE,STOCK_MANAGER')->group(function() {
     Route::get('/api/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
     Route::post('/api/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
     Route::post('/api/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);
@@ -137,10 +139,10 @@ foreach ($roleSlugs['RAW'] ?? [] as $slug) {
     Route::prefix($slug)->group(function () use ($slug) {
         Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
         Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
-        Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
+        Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
-    Route::prefix($slug)->middleware('auth.role:RAW')->controller(RawController::class)->group(function () use ($slug) {
+    Route::prefix($slug)->middleware('auth.role:RAW,SUB_ADMIN,STOCK_MANAGER')->controller(RawController::class)->group(function () use ($slug) {
 
     Route::get('/home',    'home')->name($slug.'.home');
     Route::get('/action',  'action')->name($slug.'.action');
@@ -158,10 +160,10 @@ foreach ($roleSlugs['SEMI'] ?? [] as $slug) {
     Route::prefix($slug)->group(function () use ($slug) {
         Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
         Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
-        Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
+        Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
-    Route::prefix($slug)->middleware('auth.role:SEMI')->controller(SemiController::class)->group(function () use ($slug) {
+    Route::prefix($slug)->middleware('auth.role:SEMI,SUB_ADMIN,STOCK_MANAGER')->controller(SemiController::class)->group(function () use ($slug) {
 
     Route::get('/home',    'home')->name($slug.'.home');
     Route::get('/action',  'action')->name($slug.'.action');
@@ -179,10 +181,10 @@ foreach ($roleSlugs['FINISHED'] ?? [] as $slug) {
     Route::prefix($slug)->group(function () use ($slug) {
         Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
         Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
-        Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
+        Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
-    Route::prefix($slug)->middleware('auth.role:FINISHED')->controller(FinishedController::class)->group(function () use ($slug) {
+    Route::prefix($slug)->middleware('auth.role:FINISHED,SUB_ADMIN,STOCK_MANAGER')->controller(FinishedController::class)->group(function () use ($slug) {
 
     Route::get('/home',    'home')->name($slug.'.home');
     Route::get('/action',  'action')->name($slug.'.action');
@@ -201,10 +203,10 @@ foreach ($roleSlugs['SALES'] ?? [] as $slug) {
     Route::prefix($slug)->group(function () use ($slug) {
         Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
         Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
-        Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
+        Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
-    Route::prefix($slug)->middleware('auth.role:SALES')->controller(SalesController::class)->group(function () use ($slug) {
+    Route::prefix($slug)->middleware('auth.role:SALES,SUB_ADMIN,STOCK_MANAGER')->controller(SalesController::class)->group(function () use ($slug) {
 
     Route::get('/home',          'home')->name($slug.'.home');
     Route::get('/action',        'action')->name($slug.'.action');
@@ -233,10 +235,10 @@ foreach ($roleSlugs['DISPATCH'] ?? [] as $slug) {
     Route::prefix($slug)->group(function () use ($slug) {
         Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
         Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
-        Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
+        Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
-    Route::prefix($slug)->middleware('auth.role:DISPATCH')->controller(DispatchController::class)->group(function () use ($slug) {
+    Route::prefix($slug)->middleware('auth.role:DISPATCH,SUB_ADMIN,STOCK_MANAGER')->controller(DispatchController::class)->group(function () use ($slug) {
 
     Route::get('/home',     'home')->name($slug.'.home');
     Route::get('/action',   'action')->name($slug.'.action');
@@ -256,7 +258,7 @@ foreach ($roleSlugs['CASHIER'] ?? [] as $slug) {
     Route::prefix($slug)->group(function () use ($slug) {
         Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
         Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
-        Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
+        Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
     Route::prefix($slug)->middleware('auth.role:ADMIN,CASHIER,SUB_ADMIN,STOCK_MANAGER')->controller(CashierController::class)->group(function () use ($slug) {
@@ -284,10 +286,10 @@ foreach ($roleSlugs['STOCK_MANAGER'] ?? [] as $slug) {
     Route::prefix($slug)->group(function () use ($slug) {
         Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
         Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
-        Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
+        Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
-    Route::prefix($slug)->middleware('auth.role:STOCK_MANAGER')->controller(\App\Http\Controllers\StockManagerController::class)->group(function () use ($slug) {
+    Route::prefix($slug)->middleware('auth.role:STOCK_MANAGER,SUB_ADMIN')->controller(\App\Http\Controllers\StockManagerController::class)->group(function () use ($slug) {
         Route::get('/home',        'home')->name($slug.'.home');
         Route::get('/action',      'action')->name($slug.'.action');
         Route::post('/action',     'storeInward')->name($slug.'.action.store');
@@ -311,10 +313,10 @@ foreach ($adminSlugs as $slug) {
     Route::prefix($slug)->group(function () use ($slug) {
         Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
         Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
-        Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
+        Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
-    Route::prefix($slug)->middleware('auth.role:ADMIN')->controller(AdminController::class)->group(function () use ($slug) {
+    Route::prefix($slug)->middleware('auth.role:ADMIN,SUB_ADMIN')->controller(AdminController::class)->group(function () use ($slug) {
 
     Route::get('/dashboard',          'dashboard')->name($slug.'.dashboard');
     Route::get('/home',               'dashboard')->name($slug.'.home');
@@ -377,10 +379,42 @@ foreach ($adminSlugs as $slug) {
     Route::post('/attendance/daily',      [AttendanceController::class, 'storeDailyAttendance']);
     Route::get('/attendance/daily/pdf',   [AttendanceController::class, 'downloadDailyPdf'])->name($slug.'.attendance.daily.pdf');
     Route::get('/attendance/reports',     [AttendanceController::class, 'reports'])->name($slug.'.attendance.reports');
-    Route::get('/attendance/reports/all-sheets/pdf', [AttendanceController::class, 'allWorkerMonthlySalaryPdf']);
-    Route::get('/attendance/reports/worker/{id}', [AttendanceController::class, 'workerReport']);
-    Route::post('/attendance/reports/worker/{id}/adjust', [AttendanceController::class, 'updateMonthlyAdjustment']);
-    Route::get('/attendance/reports/worker/{id}/pdf', [AttendanceController::class, 'workerMonthlySalaryPdf']);
+    Route::get('/attendance/history',     [AttendanceController::class, 'reports'])->name($slug.'.attendance.history');
+    Route::get('/attendance/history/all-sheets/pdf', [AttendanceController::class, 'allWorkerMonthlySalaryPdf'])->name($slug.'.attendance.history.all-sheets.pdf');
+    Route::get('/attendance/history/worker/{id}', [AttendanceController::class, 'workerReport'])->name($slug.'.attendance.history.worker');
+    Route::post('/attendance/history/worker/{id}/adjust', [AttendanceController::class, 'updateMonthlyAdjustment'])->name($slug.'.attendance.history.worker.adjust');
+    Route::post('/attendance/history/worker/{id}/toggle-paid', [AttendanceController::class, 'togglePaymentStatus'])->name($slug.'.attendance.history.worker.toggle-paid');
+    Route::get('/attendance/history/worker/{id}/pdf', [AttendanceController::class, 'workerMonthlySalaryPdf'])->name($slug.'.attendance.history.worker.pdf');
+    // ── Integrated Sub-Admin Panel Routes ──────────────────────────────
+    Route::get('/cashier/action',        [CashierController::class, 'action'])->name($slug.'.cashier.action');
+    Route::post('/cashier/action',       [CashierController::class, 'storeTransaction']);
+    Route::get('/cashier/history',       [CashierController::class, 'history'])->name($slug.'.cashier.history');
+    Route::get('/cashier/ledger',        [CashierController::class, 'ledger'])->name($slug.'.cashier.ledger');
+
+    Route::get('/sales/home',            [SalesController::class, 'home'])->name($slug.'.sales.home');
+    Route::get('/sales/action',          [SalesController::class, 'action'])->name($slug.'.sales.action');
+    Route::post('/sales/action',         [SalesController::class, 'storeOrder']);
+    Route::post('/sales/order',          [SalesController::class, 'storeOrder']);
+    Route::post('/sales/company',        [SalesController::class, 'storeCompany']);
+    Route::post('/sales/company/{id}',   [SalesController::class, 'updateCompany']);
+    Route::post('/sales/transport',      [SalesController::class, 'storeTransporter']);
+    Route::post('/sales/transport/{id}', [SalesController::class, 'updateTransporter']);
+    Route::get('/sales/history',         [SalesController::class, 'history'])->name($slug.'.sales.history');
+    Route::get('/sales/order/pdf/{id}',  [HistoryPdfController::class, 'salesOrderPdf'])->name($slug.'.sales.order.pdf');
+    Route::get('/order/pdf/{id}',        [HistoryPdfController::class, 'salesOrderPdf']);
+
+    Route::get('/dispatch/home',         [DispatchController::class, 'home'])->name($slug.'.dispatch.home');
+    Route::get('/dispatch/action',       [DispatchController::class, 'action'])->name($slug.'.dispatch.action');
+    Route::post('/dispatch/action',      [DispatchController::class, 'storeDispatch']);
+    Route::get('/dispatch/history',      [DispatchController::class, 'history'])->name($slug.'.dispatch.history');
+
+    Route::get('/stock-manager/home',    [\App\Http\Controllers\StockManagerController::class, 'home'])->name($slug.'.stock_manager.home');
+    Route::get('/stock-manager/action',  [\App\Http\Controllers\StockManagerController::class, 'action'])->name($slug.'.stock_manager.action');
+    Route::post('/stock-manager/action', [\App\Http\Controllers\StockManagerController::class, 'storeInward']);
+    Route::post('/stock-manager/outward',[\App\Http\Controllers\StockManagerController::class, 'storeOutward']);
+    Route::get('/stock-manager/stock',   [\App\Http\Controllers\StockManagerController::class, 'stock'])->name($slug.'.stock_manager.stock');
+    Route::get('/stock-manager/po',      [\App\Http\Controllers\StockManagerController::class, 'po'])->name($slug.'.stock_manager.po');
+    Route::get('/stock-manager/history', [\App\Http\Controllers\StockManagerController::class, 'history'])->name($slug.'.stock_manager.history');
     });
 
     // Admin can also generate any cashier's PDF
@@ -399,10 +433,10 @@ foreach ($roleSlugs['ATTENDANCE'] ?? [] as $slug) {
     Route::prefix($slug)->group(function () use ($slug) {
         Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
         Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
-        Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
+        Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
-    Route::prefix($slug)->middleware('auth.role:ATTENDANCE')->controller(AttendanceController::class)->group(function () use ($slug) {
+    Route::prefix($slug)->middleware('auth.role:ATTENDANCE,SUB_ADMIN,STOCK_MANAGER')->controller(AttendanceController::class)->group(function () use ($slug) {
 
     Route::get('/home',               'home')->name($slug.'.home');
     Route::get('/departments',        'departments')->name($slug.'.departments');
@@ -427,6 +461,7 @@ foreach ($roleSlugs['ATTENDANCE'] ?? [] as $slug) {
     Route::get('/history/all-sheets/pdf',    'allWorkerMonthlySalaryPdf');
     Route::get('/history/worker/{id}','workerReport');
     Route::post('/history/worker/{id}/adjust','updateMonthlyAdjustment');
+    Route::post('/history/worker/{id}/toggle-paid','togglePaymentStatus');
     Route::get('/history/worker/{id}/pdf','workerMonthlySalaryPdf');
 
     // Standard mobile nav aliases

@@ -52,7 +52,7 @@
   </div>
 
   <!-- Add/Edit Form -->
-  <div id="user-form-card" class="card white-orange-card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
+  <div id="user-form-card" class="card white-orange-card" style="display:none; margin-bottom:1.5rem; padding:1.2rem;">
     <div class="card-title">Create New User</div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
       <div class="form-group">
@@ -66,21 +66,8 @@
       <div class="form-group">
         <label>Phone Number *</label>
         <div style="display:flex; gap:8px;">
-          <select id="u-country-code" onchange="onAdminPhoneCodeChange()" style="width:72px; padding:0.6rem 0.2rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600; flex-shrink:0; text-align:center; cursor:pointer;">
-            <option value="+91" selected>+91</option>
-            <option value="+1">+1</option>
-            <option value="+44">+44</option>
-            <option value="+971">+971</option>
-            <option value="+966">+966</option>
-            <option value="+61">+61</option>
-            <option value="+65">+65</option>
-            <option value="+49">+49</option>
-            <option value="+33">+33</option>
-            <option value="+86">+86</option>
-            <option value="+81">+81</option>
-            <option value="other">+...</option>
-          </select>
-          <input type="text" id="u-phone" oninput="onAdminPhoneInput(this)" maxlength="10" placeholder="10-digit mobile or 079 landline" style="flex:1; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+          <input type="text" id="u-country-code" value="+91" placeholder="+91" oninput="onUserCountryCodeInput()" style="width:75px; padding:0.6rem 0.4rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600; text-align:center; flex-shrink:0;">
+          <input type="text" id="u-phone" placeholder="10-digit mobile or landline" oninput="onUserPhoneInput(this)" maxlength="10" style="flex:1; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
         </div>
       </div>
       <div class="form-group">
@@ -127,32 +114,94 @@
         @endforeach
       </div>
     </div>
-    
-    <div id="permissions-container" style="display:none; margin-top:1rem; border:1px solid var(--glass-border); padding:1.2rem; border-radius:8px; background:var(--glass-bg);">
-      <h4 style="margin-top:0; margin-bottom:1rem; color:var(--primary); font-size:1.1rem; text-transform:none;">Sub-Admin / Stock Manager Permissions</h4>
-      <div style="margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px solid var(--glass-border);">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <input type="checkbox" id="perm-can_manage" value="can_manage" style="width:20px; height:20px; margin:0; cursor:pointer;">
-          <span style="font-weight:bold; color:var(--danger); font-size:0.95rem; text-transform:none;">
-            Allow to Manage/Edit Data (If unchecked, user can only VIEW allowed panels)
-          </span>
+      @php
+    $permissionGroups = [
+        'Admin Panel' => [
+            ['key' => 'admin_dashboard', 'name' => 'Admin Dashboard', 'url' => '/admin/dashboard'],
+            ['key' => 'admin_users', 'name' => 'Users & Hierarchy', 'url' => '/admin/users'],
+            ['key' => 'admin_products', 'name' => 'Products Master', 'url' => '/admin/products'],
+            ['key' => 'admin_stock', 'name' => 'Live Stock', 'url' => '/admin/stock'],
+            ['key' => 'admin_po', 'name' => 'Purchase Requests', 'url' => '/admin/po'],
+            ['key' => 'admin_logs', 'name' => 'Activity Logs', 'url' => '/admin/logs'],
+            ['key' => 'admin_grades', 'name' => 'Grades Master', 'url' => '/admin/grades'],
+            ['key' => 'admin_locations', 'name' => 'Storage Location', 'url' => '/admin/locations'],
+            ['key' => 'admin_categories', 'name' => 'Expense Categories', 'url' => '/admin/categories'],
+            ['key' => 'admin_dispatch_activity', 'name' => 'Dispatch Activity', 'url' => '/admin/dispatch-activity'],
+            ['key' => 'admin_cashier_overview', 'name' => 'Cashier Overview', 'url' => '/admin/cashier-overview'],
+            ['key' => 'admin_notifications', 'name' => 'Notifications', 'url' => '/admin/notifications'],
+        ],
+        'Cashier Panel' => [
+            ['key' => 'cashier_action', 'name' => 'Cashier Action / Entry', 'url' => '/cashier2/action'],
+            ['key' => 'cashier_history', 'name' => 'Cashier History', 'url' => '/cashier2/history'],
+            ['key' => 'cashier_ledger', 'name' => 'Cashier Ledger', 'url' => '/cashier2/ledger'],
+        ],
+        'Sales Panel' => [
+            ['key' => 'sales_home', 'name' => 'Sales Dashboard', 'url' => '/sales/home'],
+            ['key' => 'sales_action', 'name' => 'Sales Action / Orders', 'url' => '/sales/action'],
+            ['key' => 'sales_history', 'name' => 'Sales History', 'url' => '/sales/history'],
+        ],
+        'Dispatch Panel' => [
+            ['key' => 'dispatch_home', 'name' => 'Dispatch Dashboard', 'url' => '/dispatch/home'],
+            ['key' => 'dispatch_action', 'name' => 'Dispatch Action / Entry', 'url' => '/dispatch/action'],
+            ['key' => 'dispatch_history', 'name' => 'Dispatch History', 'url' => '/dispatch/history'],
+        ],
+        'Stock Manager Panel' => [
+            ['key' => 'stock_manager_home', 'name' => 'Stock Manager Home', 'url' => '/stock_manager/home'],
+            ['key' => 'stock_manager_action', 'name' => 'Stock Outward Action', 'url' => '/stock_manager/action'],
+            ['key' => 'stock_manager_stock', 'name' => 'Live Stock View', 'url' => '/stock_manager/stock'],
+            ['key' => 'stock_manager_po', 'name' => 'Stock Purchase Orders', 'url' => '/stock_manager/po'],
+            ['key' => 'stock_manager_history', 'name' => 'Stock Manager History', 'url' => '/stock_manager/history'],
+        ],
+        'Attendance & HR Panel' => [
+            ['key' => 'attendance_dashboard', 'name' => 'Attendance Dashboard', 'url' => '/attendance/dashboard'],
+            ['key' => 'attendance_departments', 'name' => 'Departments Master', 'url' => '/attendance/departments'],
+            ['key' => 'attendance_workers', 'name' => 'Workers Master', 'url' => '/attendance/workers'],
+            ['key' => 'attendance_daily', 'name' => 'Daily Attendance Entry', 'url' => '/attendance/daily'],
+            ['key' => 'attendance_reports', 'name' => 'Reports & Payroll', 'url' => '/attendance/reports'],
+        ],
+    ];
+    @endphp
+
+    <div id="permissions-container" style="display:none; margin-top:1rem; border:1px solid #cbd5e1; padding:1.2rem; border-radius:10px; background:#f8fafc;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem; padding-bottom:0.8rem; border-bottom:1px solid #cbd5e1;">
+        <div>
+          <h4 style="margin:0; color:#1e293b; font-size:1.1rem; font-weight:700;">Sub-Admin / Stock Manager Page Permissions</h4>
+          <div style="font-size:0.85rem; color:#64748b; margin-top:2px;">Configure View (Read) & Edit (Write) permissions for each page across all panels.</div>
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button type="button" onclick="toggleAllPerms('view', true)" style="padding:0.35rem 0.8rem; font-size:0.8rem; font-weight:600; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer;">Select All View</button>
+          <button type="button" onclick="toggleAllPerms('edit', true)" style="padding:0.35rem 0.8rem; font-size:0.8rem; font-weight:600; background:#d97706; color:#fff; border:none; border-radius:6px; cursor:pointer;">Select All Edit</button>
+          <button type="button" onclick="toggleAllPerms('all', false)" style="padding:0.35rem 0.8rem; font-size:0.8rem; font-weight:600; background:#64748b; color:#fff; border:none; border-radius:6px; cursor:pointer;">Clear All</button>
         </div>
       </div>
-      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:1rem;">
-        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_dashboard" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Dashboard</span></div>
-        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_users" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Users & Hierarchy</span></div>
-        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_products" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Products Master</span></div>
-        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_stock" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Live Stock</span></div>
-        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_po" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Purchase Requests</span></div>
-        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_logs" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Activity Logs</span></div>
-        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_grades" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Grades Master</span></div>
-        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_locations" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Storage Location</span></div>
-        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_categories" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Expense Category Master</span></div>
-        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_dispatch" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Dispatch Activity</span></div>
-        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_cashier" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Cashier Overview</span></div>
-        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_notifications" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Notifications</span></div>
-        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="sub-perm" value="module_attendance" style="width:16px;height:16px;margin:0;"> <span style="font-size:0.9rem; text-transform:none;">Attendance & HR</span></div>
-      </div>
+
+      @foreach($permissionGroups as $groupName => $modules)
+        <div style="margin-bottom:1.2rem; background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; overflow:hidden;">
+          <div style="background:#f1f5f9; padding:0.6rem 1rem; font-weight:700; color:#334155; font-size:0.95rem; border-bottom:1px solid #e2e8f0;">
+            {{ $groupName }}
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:0.6rem; padding:0.8rem;">
+            @foreach($modules as $m)
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0.8rem; border:1px solid #f1f5f9; border-radius:6px; background:#ffffff;">
+                <div>
+                  <div style="font-weight:600; font-size:0.85rem; color:#1e293b;">{{ $m['name'] }}</div>
+                  <div style="font-size:0.75rem; color:#94a3b8; font-family:monospace;">{{ $m['url'] }}</div>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.6rem; flex-shrink:0;">
+                  <label style="display:flex; align-items:center; gap:4px; margin:0; font-size:0.8rem; cursor:pointer; background:#eff6ff; color:#1e40af; padding:3px 8px; border-radius:4px; border:1px solid #bfdbfe; font-weight:600;">
+                    <input type="checkbox" class="perm-view-cb" data-module="{{ $m['key'] }}" value="view_{{ $m['key'] }}" onchange="onPermViewToggle(this)" style="margin:0; width:14px; height:14px; cursor:pointer;">
+                    View
+                  </label>
+                  <label style="display:flex; align-items:center; gap:4px; margin:0; font-size:0.8rem; cursor:pointer; background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:4px; border:1px solid #fde68a; font-weight:600;">
+                    <input type="checkbox" class="perm-edit-cb" data-module="{{ $m['key'] }}" value="edit_{{ $m['key'] }}" onchange="onPermEditToggle(this)" style="margin:0; width:14px; height:14px; cursor:pointer;">
+                    Edit
+                  </label>
+                </div>
+              </div>
+            @endforeach
+          </div>
+        </div>
+      @endforeach
     </div>
 
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:1rem;">
@@ -213,7 +262,7 @@
             <td>
               <div class="action-btns">
                 <button class="btn-icon edit" onclick="adminEditUser({{ json_encode($user) }})" title="Edit">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 2 2h14a2 2 0 0 2 2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
                 @if($user['id'] != auth()->id())
                   <button class="btn-icon notify" onclick="openNotifyModal({{ $user['id'] }}, '{{ addslashes($user['name']) }}')" title="Notify User">
@@ -241,19 +290,79 @@
 <script>
 let editingUserId = null;
 
+function onPermViewToggle(viewCb) {
+  const modKey = viewCb.dataset.module;
+  const editCb = document.querySelector(`.perm-edit-cb[data-module="${modKey}"]`);
+  if (!viewCb.checked && editCb) {
+    editCb.checked = false;
+  }
+}
+
+function onPermEditToggle(editCb) {
+  const modKey = editCb.dataset.module;
+  const viewCb = document.querySelector(`.perm-view-cb[data-module="${modKey}"]`);
+  if (editCb.checked && viewCb) {
+    viewCb.checked = true;
+  }
+}
+
+function toggleAllPerms(type, check) {
+  if (type === 'view') {
+    document.querySelectorAll('.perm-view-cb').forEach(cb => {
+      cb.checked = check;
+      if (!check) {
+        const modKey = cb.dataset.module;
+        const editCb = document.querySelector(`.perm-edit-cb[data-module="${modKey}"]`);
+        if (editCb) editCb.checked = false;
+      }
+    });
+  } else if (type === 'edit') {
+    document.querySelectorAll('.perm-edit-cb').forEach(cb => {
+      cb.checked = check;
+      if (check) {
+        const modKey = cb.dataset.module;
+        const viewCb = document.querySelector(`.perm-view-cb[data-module="${modKey}"]`);
+        if (viewCb) viewCb.checked = true;
+      }
+    });
+  } else if (type === 'all') {
+    document.querySelectorAll('.perm-view-cb, .perm-edit-cb').forEach(cb => cb.checked = false);
+  }
+}
+
+function onUserPhoneInput(el) {
+  const code = (document.getElementById('u-country-code').value || '').trim();
+  if (code === '+91') {
+    el.value = el.value.replace(/\D/g, '').slice(0, 10);
+  }
+}
+
+function onUserCountryCodeInput() {
+  const codeEl = document.getElementById('u-country-code');
+  const phoneEl = document.getElementById('u-phone');
+  if (!codeEl || !phoneEl) return;
+  if (codeEl.value.trim() === '+91') {
+    phoneEl.setAttribute('maxlength', '10');
+    onUserPhoneInput(phoneEl);
+  } else {
+    phoneEl.removeAttribute('maxlength');
+  }
+}
+
 function resetUserForm() {
   editingUserId = null;
   document.querySelector('#user-form-card .card-title').innerText = 'Create New User';
   document.getElementById('u-name').value = '';
   document.getElementById('u-email').value = '';
-  document.getElementById('u-phone').value = ''; if(document.getElementById('u-country-code')) document.getElementById('u-country-code').value = '+91';
+  document.getElementById('u-country-code').value = '+91';
+  document.getElementById('u-phone').value = '';
+  onUserCountryCodeInput();
   document.getElementById('u-role').value = '';
   document.getElementById('u-branch').value = '';
   document.getElementById('u-password').value = '';
   document.getElementById('u-password').placeholder = 'Set password';
   
-  if(document.getElementById('perm-can_manage')) document.getElementById('perm-can_manage').checked = false;
-  document.querySelectorAll('.sub-perm').forEach(cb => cb.checked = false);
+  document.querySelectorAll('.perm-view-cb, .perm-edit-cb').forEach(cb => cb.checked = false);
   document.querySelectorAll('.visible-cashier-cb').forEach(cb => {
       cb.checked = false;
       cb.parentElement.style.display = 'flex';
@@ -261,7 +370,6 @@ function resetUserForm() {
   document.querySelectorAll('.attendance-dept-cb').forEach(cb => cb.checked = false);
   
   toggleRoleFields('');
-  onAdminPhoneCodeChange();
   document.getElementById('user-form-card').style.display = 'block';
   document.getElementById('user-form-card').scrollIntoView({ behavior: 'smooth' });
 }
@@ -300,30 +408,6 @@ function toggleRoleFields(role) {
   }
 }
 
-function onAdminPhoneInput(inputEl) {
-  const codeEl = document.getElementById('u-country-code');
-  if (codeEl && codeEl.value === '+91') {
-    inputEl.value = inputEl.value.replace(/\D/g, '').slice(0, 10);
-  }
-}
-
-function onAdminPhoneCodeChange() {
-  const codeEl = document.getElementById('u-country-code');
-  const inputEl = document.getElementById('u-phone');
-  if (!codeEl || !inputEl) return;
-  if (codeEl.value === '+91') {
-    inputEl.placeholder = '10-digit mobile or 079 landline';
-    inputEl.setAttribute('maxlength', '10');
-    onAdminPhoneInput(inputEl);
-  } else if (codeEl.value === 'other') {
-    inputEl.placeholder = 'e.g. +44 123456789 or 079 landline';
-    inputEl.removeAttribute('maxlength');
-  } else {
-    inputEl.placeholder = 'Phone number without ' + codeEl.value;
-    inputEl.removeAttribute('maxlength');
-  }
-}
-
 function adminEditUser(user) {
   editingUserId = user.id;
   document.getElementById('user-form-card').style.display = 'block';
@@ -331,23 +415,16 @@ function adminEditUser(user) {
   document.getElementById('u-name').value = user.name;
   document.getElementById('u-email').value = user.email || '';
   
-  const userPhone = (user.phone || '').trim();
-  const match = userPhone.match(/^(\+\d{1,4})\s*(.*)$/);
-  const codeEl = document.getElementById('u-country-code');
-  if (match && codeEl) {
-    const hasOption = Array.from(codeEl.options).some(op => op.value === match[1]);
-    if (hasOption) {
-      codeEl.value = match[1];
-      document.getElementById('u-phone').value = match[2];
-    } else {
-      codeEl.value = 'other';
-      document.getElementById('u-phone').value = userPhone;
-    }
+  const rawUserPhone = (user.phone || '').trim();
+  const phoneMatch = rawUserPhone.match(/^(\+\d{1,4})\s*(.*)$/);
+  if (phoneMatch) {
+    document.getElementById('u-country-code').value = phoneMatch[1];
+    document.getElementById('u-phone').value = phoneMatch[2];
   } else {
-    if (codeEl) codeEl.value = '+91';
-    document.getElementById('u-phone').value = userPhone;
+    document.getElementById('u-country-code').value = '+91';
+    document.getElementById('u-phone').value = rawUserPhone;
   }
-  onAdminPhoneCodeChange();
+  onUserCountryCodeInput();
   
   document.getElementById('u-role').value = user.role;
   document.getElementById('u-branch').value = user.branch || '';
@@ -355,9 +432,13 @@ function adminEditUser(user) {
   
   // Set permissions if it's a SUB_ADMIN or STOCK_MANAGER or ATTENDANCE
   const perms = user.permissions || [];
-  document.getElementById('perm-can_manage').checked = perms.includes('can_manage');
-  document.querySelectorAll('.sub-perm').forEach(cb => {
-      cb.checked = perms.includes(cb.value);
+  document.querySelectorAll('.perm-view-cb').forEach(cb => {
+    const modKey = cb.dataset.module;
+    cb.checked = perms.includes(cb.value) || perms.includes('view_' + modKey) || perms.includes('module_' + modKey) || perms.includes(modKey) || perms.includes('edit_' + modKey);
+  });
+  document.querySelectorAll('.perm-edit-cb').forEach(cb => {
+    const modKey = cb.dataset.module;
+    cb.checked = perms.includes(cb.value) || perms.includes('edit_' + modKey) || perms.includes('can_manage') || perms.includes('edit_module_' + modKey);
   });
   
   document.querySelectorAll('.attendance-dept-cb').forEach(cb => {
@@ -382,26 +463,19 @@ function adminEditUser(user) {
 
 function adminSaveUser() {
   const perms = [];
-  if (document.getElementById('perm-can_manage').checked) perms.push('can_manage');
-  document.querySelectorAll('.sub-perm:checked').forEach(cb => perms.push(cb.value));
+  document.querySelectorAll('.perm-view-cb:checked').forEach(cb => perms.push(cb.value));
+  document.querySelectorAll('.perm-edit-cb:checked').forEach(cb => perms.push(cb.value));
   document.querySelectorAll('.attendance-dept-cb:checked').forEach(cb => perms.push(parseInt(cb.value)));
 
-  const rawPhone = (document.getElementById('u-phone').value || '').trim();
-  const code = document.getElementById('u-country-code').value;
-  let formattedPhone = rawPhone;
-  if (rawPhone && !rawPhone.startsWith('+') && !/^0?79[\s\-]?[0-9]{6,8}$/.test(rawPhone)) {
-    if (code !== 'other') formattedPhone = code + ' ' + rawPhone;
-  }
+  const code = (document.getElementById('u-country-code').value || '').trim();
+  const phone = (document.getElementById('u-phone').value || '').trim();
+  const fullPhone = code ? (code + ' ' + phone) : phone;
 
-  if (code === '+91' || formattedPhone.startsWith('+91')) {
-    let phoneDigits = rawPhone;
-    if (phoneDigits.startsWith('+91')) {
-      phoneDigits = phoneDigits.substring(3);
-    }
-    const cleanDigits = phoneDigits.replace(/\D/g, '');
-    const isLandline = /^0?79[\s\-]?[0-9]{6,8}$/.test(rawPhone);
+  if (code === '+91') {
+    const cleanDigits = phone.replace(/\D/g, '');
+    const isLandline = /^0?79[\s\-]?[0-9]{6,8}$/.test(phone);
     if (!isLandline && cleanDigits.length !== 10) {
-      Swal.fire('Invalid Phone', 'Phone number must be exactly 10 digits for India (+91) or 079 landline', 'warning');
+      Swal.fire('Invalid Phone', 'Phone number must be exactly 10 digits for +91', 'warning');
       return;
     }
   }
@@ -410,7 +484,7 @@ function adminSaveUser() {
     user_id: editingUserId,
     name: document.getElementById('u-name').value,
     email: document.getElementById('u-email').value,
-    phone: formattedPhone,
+    phone: fullPhone,
     role: document.getElementById('u-role').value,
     branch: document.getElementById('u-branch').value,
     password: document.getElementById('u-password').value,

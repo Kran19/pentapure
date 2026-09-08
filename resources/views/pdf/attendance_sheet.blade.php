@@ -123,15 +123,16 @@
 
                         $statusText = $att->status ? strtoupper(str_replace('_', ' ', $att->status)) : 'ABSENT';
 
-                        $otUtDisplay = '--:--';
+                        $otUtDisplay = '';
+                        $isUt = false;
+                        $isOt = false;
+
                         if ($att->ot_ut === 'OT' && $att->ot_ut_hours > 0) {
                             $otUtDisplay = '+' . (float)$att->ot_ut_hours . ' OT';
+                            $isOt = true;
                         } elseif ($att->ot_ut === 'UT' && $att->ot_ut_hours > 0) {
                             $otUtDisplay = '-' . (float)$att->ot_ut_hours . ' UT';
-                        } elseif ($att->overtime_hours > 0) {
-                            $otUtDisplay = '+' . (float)$att->overtime_hours . ' OT';
-                        } elseif ($att->overtime_hours < 0) {
-                            $otUtDisplay = '-' . (float)abs($att->overtime_hours) . ' UT';
+                            $isUt = true;
                         }
                     @endphp
                     <tr>
@@ -147,7 +148,9 @@
                         <td>{{ $dayOut }}</td>
                         <td>{{ $nightIn }}</td>
                         <td>{{ $nightOut }}</td>
-                        <td>{{ $otUtDisplay }}</td>
+                        <td style="{{ $isUt ? 'background-color: #f8d7da; color: #721c24; font-weight: bold;' : ($isOt ? 'color: #027a48; font-weight: bold;' : '') }}">
+                            {{ $otUtDisplay }}
+                        </td>
                     </tr>
                 @endforeach
             </tbody>

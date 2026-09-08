@@ -52,7 +52,7 @@
 
       @if(!$isLocked)
         @if($authUser['role'] !== 'ADMIN')
-          <button class="btn btn-secondary" onclick="markAllPresent()" style="width:auto; padding:0.4rem 1rem;">Mark All</button>
+          <button class="btn btn-secondary" onclick="markAllPresent()" style="width:auto; padding:0.4rem 1rem;">Present All</button>
         @endif
         
         @if(!$submission || $submission->status === 'PENDING')
@@ -144,7 +144,7 @@
                   <option value="PAID LEAVE" {{ $status=='PAID LEAVE'?'selected':'' }}>PAID LEAVE (1)</option>
               </select>
             </div>
-            <div style="flex:1; display:{{ $status === 'ABSENT' ? 'none' : 'block' }};" class="extra-field-block">
+            <div style="flex:1; display:{{ in_array($status, ['ABSENT', 'HOLIDAY']) ? 'none' : 'block' }};" class="extra-field-block">
               <label style="font-size:0.8rem; color:var(--text-muted); display:block;">Shift</label>
               <select name="attendances[{{$index}}][shift_type]" class="shift-select" onchange="handleShiftChange(this)" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
                   <option value="DAY" {{ $shift=='DAY'?'selected':'' }}>Day Shift</option>
@@ -155,7 +155,7 @@
           </div>
 
           <!-- Row 2: In Time | Out Time -->
-          <div class="extra-field-flex" style="display:{{ $status === 'ABSENT' ? 'none' : 'flex' }}; gap:10px; margin-bottom:0.75rem;">
+          <div class="extra-field-flex" style="display:{{ in_array($status, ['ABSENT', 'HOLIDAY']) ? 'none' : 'flex' }}; gap:10px; margin-bottom:0.75rem;">
             <div style="flex:1;">
               <label class="label-in" style="font-size:0.8rem; color:var(--text-muted); display:block;">In Time</label>
               <div style="position:relative; display:flex; align-items:center;">
@@ -173,7 +173,7 @@
           </div>
 
           <!-- Row 3: Break / Night Shift -->
-          <div class="row-3 extra-field-flex" style="display:{{ ($status !== 'ABSENT' && $shift === 'CUSTOM') ? 'flex' : 'none' }}; gap:10px; margin-bottom:0.75rem;">
+          <div class="row-3 extra-field-flex" style="display:{{ (!in_array($status, ['ABSENT', 'HOLIDAY']) && $shift === 'CUSTOM') ? 'flex' : 'none' }}; gap:10px; margin-bottom:0.75rem;">
             <div style="flex:1;">
               <label class="label-bin" style="font-size:0.8rem; color:var(--text-muted); display:block;">Night In Time</label>
               <div style="position:relative; display:flex; align-items:center;">
@@ -191,7 +191,7 @@
           </div>
 
           <!-- Row 4: OT/UT | OT/UT Hours -->
-          <div class="extra-field-flex" style="display:{{ $status === 'ABSENT' ? 'none' : 'flex' }}; gap:10px; margin-bottom:0.75rem;">
+          <div class="extra-field-flex" style="display:{{ in_array($status, ['ABSENT', 'HOLIDAY']) ? 'none' : 'flex' }}; gap:10px; margin-bottom:0.75rem;">
             <div style="flex:1;">
               <label style="font-size:0.8rem; color:var(--text-muted); display:block;">OT / UT</label>
               <select name="attendances[{{$index}}][ot_ut]" class="ot-select" onchange="handleOTUTChange(this)" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
@@ -210,7 +210,7 @@
           </div>
 
           <!-- Row 5: Advance & Num Workers -->
-          <div class="extra-field-flex" style="display:{{ $status === 'ABSENT' ? 'none' : 'flex' }}; gap:10px; margin-bottom:0.5rem;">
+          <div class="extra-field-flex" style="display:{{ in_array($status, ['ABSENT', 'HOLIDAY']) ? 'none' : 'flex' }}; gap:10px; margin-bottom:0.5rem;">
             <div style="flex:1;">
               <label style="font-size:0.8rem; color:var(--text-muted); display:block;">Advance (₹)</label>
               <input type="number" name="attendances[{{$index}}][advance]" value="{{ $advance }}" min="0" step="1" class="advance-input" onwheel="this.blur()" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
@@ -284,7 +284,7 @@ function handleStatusChange(selectEl) {
     const extraBlocks = card.querySelectorAll('.extra-field-block');
     const extraFlexes = card.querySelectorAll('.extra-field-flex');
 
-    if (val === 'ABSENT') {
+    if (val === 'ABSENT' || val === 'HOLIDAY') {
         extraBlocks.forEach(f => f.style.display = 'none');
         extraFlexes.forEach(f => f.style.display = 'none');
         inputs.forEach(i => { i.value = ''; i.disabled = true; });
@@ -416,6 +416,31 @@ function markAllPresent() {
 
 // Save All via AJAX
 function saveAllAttendance(mode = 'partial') {
+    if (window.isReadOnly) {
+        return Swal.fire('View-Only Mode', 'You have View-Only permission for Attendance Daily Entry. Saving attendance is disabled.', 'warning');
+    }
+
+    if (mode === 'final') {
+        Swal.fire({
+            title: 'Are you sure for final save of date {{ \Carbon\Carbon::parse($date)->format('d-m-Y') }} attendance?',
+            text: "You won't be able to edit attendance for date {{ \Carbon\Carbon::parse($date)->format('d-m-Y') }} after this.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e67e22',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, Final Save',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                executeSaveAttendance(mode);
+            }
+        });
+    } else {
+        executeSaveAttendance(mode);
+    }
+}
+
+function executeSaveAttendance(mode) {
     const form = document.getElementById('bulk-attendance-form');
     const formData = new FormData(form);
     

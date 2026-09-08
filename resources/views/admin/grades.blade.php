@@ -7,8 +7,8 @@
         <button class="btn" onclick="openGradeForm()" style="width:auto; padding:0.6rem 1.2rem;">+ Add New Grade</button>
     </div>
 
-    <!-- Add/Edit Form Card (Open by default) -->
-    <div id="grade-form-card" class="card white-orange-card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
+    <!-- Add/Edit Form Card -->
+    <div id="grade-form-card" class="card white-orange-card" style="display:none; margin-bottom:1.5rem; padding:1.2rem;">
         <div class="card-title" id="form-card-title">Add New Grade</div>
         <form id="grade-form">
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1rem;">

@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends(in_array(session('auth_user')['role'] ?? '', ['ADMIN', 'SUB_ADMIN', 'STOCK_MANAGER']) || str_contains(request()->path(), 'sub_admin') || str_contains(request()->path(), 'admin') ? 'layouts.admin' : 'layouts.app')
 
 @section('content')
 <style>
@@ -248,10 +248,19 @@ input[type="number"],
 
     if (validationFailed) return;
 
+    if (window.isReadOnly) {
+      if (typeof Swal !== 'undefined') {
+        Swal.fire('View-Only Mode', 'You have View-Only permission for Cashier Entry. Saving transactions is disabled.', 'warning');
+      } else {
+        alert('You have View-Only permission for Cashier Entry. Saving transactions is disabled.');
+      }
+      return;
+    }
+
     btn.disabled = true;
     btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin" style="vertical-align: middle; margin-right:5px;"><circle cx="12" cy="12" r="10" opacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path></svg> Saving...`;
 
-    fetch(window.baseUrl + '/' + window.userSlug + '/action', {
+    fetch(window.location.pathname, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',

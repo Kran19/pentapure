@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends(in_array(session('auth_user')['role'] ?? '', ['ADMIN', 'SUB_ADMIN', 'STOCK_MANAGER']) || str_contains(request()->path(), 'sub_admin') || str_contains(request()->path(), 'admin') ? 'layouts.admin' : 'layouts.app')
 
 @section('content')
 <div style="padding:0.25rem 0 1rem 0;">
@@ -81,6 +81,9 @@
 <script>
 const csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
 function adminDeletePO(id) {
+  if (window.isReadOnly) {
+    return Swal.fire('View-Only Mode', 'You have View-Only permission. Deleting PO is disabled.', 'warning');
+  }
   Swal.fire({
     title: 'Are you sure?',
     text: "Delete this purchase request?",
@@ -106,6 +109,9 @@ function adminDeletePO(id) {
 }
 
 function adminApprovePO(id, btn) {
+  if (window.isReadOnly) {
+    return Swal.fire('View-Only Mode', 'You have View-Only permission. Approving PO is disabled.', 'warning');
+  }
   Swal.fire({
     title: 'Mark as Read?',
     text: "This will acknowledge the request without modifying stock.",
@@ -135,6 +141,9 @@ function adminApprovePO(id, btn) {
 }
 
 function adminReceivePO(id, btn) {
+  if (window.isReadOnly) {
+    return Swal.fire('View-Only Mode', 'You have View-Only permission. Receiving PO is disabled.', 'warning');
+  }
   Swal.fire({
     title: 'Mark as Received?',
     text: "This will acknowledge the physical receipt of the order.",

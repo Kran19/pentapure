@@ -7,8 +7,8 @@
     <button class="btn" onclick="openWorkerForm()" style="width:auto; padding:0.6rem 1.2rem;">+ Add Worker</button>
   </div>
 
-  <!-- Add/Edit Form Card (Open by default) -->
-  <div id="worker-form-card" class="card white-orange-card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
+  <!-- Add/Edit Form Card -->
+  <div id="worker-form-card" class="card white-orange-card" style="display:none; margin-bottom:1.5rem; padding:1.2rem;">
     <div class="card-title" id="w-form-title">Add Worker</div>
     <form id="worker-form">
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-top:1rem;">
@@ -43,7 +43,7 @@
             <option value="DAILY">Daily (₹ / Day)</option>
             <option value="MONTHLY">Monthly (₹ / Month)</option>
             <option value="FIXED_MONTHLY">Fixed Monthly (₹ / Month)</option>
-            <option value="LABOUR_MUKADAM">LABOUR(MUKADAM)</option>
+            <option value="LABOUR_MUKADAM">MUKADAM (₹ / LABOUR)</option>
           </select>
         </div>
         <div class="form-group">
@@ -74,6 +74,7 @@
       <table>
         <thead>
           <tr>
+            <th style="width:45px;">#</th>
             <th>Name</th>
             <th>Department</th>
             <th>Role</th>
@@ -84,8 +85,9 @@
           </tr>
         </thead>
         <tbody>
-          @foreach($workers as $w)
+          @foreach($workers as $i => $w)
           <tr class="worker-row">
+            <td style="text-align:center; font-weight:bold; color:var(--text-muted); font-size:0.85rem;">{{ $i + 1 }}</td>
             <td style="font-weight:600;">{{ $w->name }}</td>
             <td>{{ $w->department->name }}</td>
             <td style="color:var(--text-muted);">{{ $w->role ?? '—' }}</td>

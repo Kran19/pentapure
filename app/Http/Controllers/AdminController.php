@@ -849,87 +849,81 @@ class AdminController extends Controller
 
     public function adjustStock(Request $request)
     {
-
         $request->validate([
-
             'product_id'  => 'required|exists:products,id',
             'stage'       => 'required|in:RAW,SEMI,FINISHED',
             'grade'       => 'required',
             'quantity'    => 'required|numeric|min:0',
             'adjust_type' => 'nullable|in:set,add,subtract',
             'reason'      => 'nullable|string|max:255',
+            'location'    => 'nullable|string',
             'min_qty'     => 'nullable|numeric|min:0',
         ]);
 
-        if ($request->has('min_qty')) {
+        if ($request->has('min_qty') && $request->min_qty !== null) {
             \App\Models\StockLimit::updateOrCreate(
                 ['product_id' => $request->product_id, 'stage' => $request->stage, 'grade' => $request->grade],
                 ['alert_limit' => $request->min_qty]
             );
         }
 
-        $type   = $request->input('adjust_type', 'set');
+        $type   = $request->input('adjust_type', 'add');
         $qty    = (float) $request->quantity;
         $reason = trim($request->input('reason', ''));
-        $note   = 'Manual admin adjustment' . ($reason ? " — {$reason}" : '');
 
-        // Current net qty for the product/stage/grade combination
-        $current = (float) (DB::table('stocks')
+        $locationName = $request->input('location') ? trim($request->location) : 'Main Warehouse';
+        $locationId   = Location::firstOrCreate(['name' => $locationName])->id;
+
+        $note = "Manual adjustment at location '{$locationName}'" . ($reason ? " — {$reason}" : '');
+
+        // Net quantity at target location
+        $locAvailable = (float) (DB::table('stocks')
             ->where('product_id', $request->product_id)
             ->where('stage', $request->stage)
             ->where('grade', $request->grade)
+            ->where('location_id', $locationId)
             ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
             ->value('net') ?? 0);
 
         if ($type === 'set') {
-            $diff = $qty - $current;
+            $diff = $qty - $locAvailable;
             if ($diff == 0) {
-                return response()->json(['success' => true, 'message' => 'Stock is already at that value — no change made.']);
+                return response()->json(['success' => true, 'message' => "Stock at location '{$locationName}' is already {$qty} kg — no change made."]);
             }
             $txnQty  = abs($diff);
             $txnType = $diff > 0 ? 'IN' : 'OUT';
-            $summary = "Set to {$qty} kg (was {$current} kg)";
+            $summary = "Set location '{$locationName}' to {$qty} kg (was {$locAvailable} kg)";
         } elseif ($type === 'add') {
             if ($qty == 0) {
                 return response()->json(['success' => true, 'message' => 'Nothing to add — quantity is 0.']);
             }
             $txnQty  = $qty;
             $txnType = 'IN';
-            $summary = "Added {$qty} kg (was {$current} kg)";
+            $summary = "Added {$qty} kg to '{$locationName}' (location stock was {$locAvailable} kg)";
         } else { // subtract
             if ($qty == 0) {
                 return response()->json(['success' => true, 'message' => 'Nothing to subtract — quantity is 0.']);
             }
-            if ($qty > $current) {
-                return response()->json(['success' => false, 'message' => "Cannot subtract {$qty} kg — only {$current} kg in stock."]);
+            if ($qty > $locAvailable) {
+                return response()->json(['success' => false, 'message' => "Cannot subtract {$qty} kg from location '{$locationName}' — only {$locAvailable} kg available in this location."]);
             }
             $txnQty  = $qty;
             $txnType = 'OUT';
-            $summary = "Subtracted {$qty} kg (was {$current} kg)";
+            $summary = "Subtracted {$qty} kg from '{$locationName}' (location stock was {$locAvailable} kg)";
         }
 
-        if ($txnType === 'OUT') {
-            Stock::deductStock(
-                $request->product_id,
-                $request->stage,
-                $request->grade,
-                $txnQty,
-                session('auth_user')['id'],
-                "{$note} [{$summary}]"
-            );
-        } else {
-            $defaultLocId = Location::firstOrCreate(['name' => 'Main Warehouse'])->id;
+        DB::transaction(function () use ($request, $locationId, $txnQty, $txnType, $note, $summary) {
             Stock::create([
                 'product_id'       => $request->product_id,
-                'user_id'          => session('auth_user')['id'],
+                'user_id'          => session('auth_user')['id'] ?? null,
                 'stage'            => $request->stage,
                 'grade'            => $request->grade,
-                'location_id'      => $defaultLocId,
+                'location_id'      => $locationId,
                 'quantity'         => $txnQty,
-                'transaction_type' => 'IN',
+                'transaction_type' => $txnType,
                 'notes'            => "{$note} [{$summary}]",
             ]);
-        }
+        });
 
         return response()->json(['success' => true, 'message' => "Stock updated! {$summary}."]);
     }

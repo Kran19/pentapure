@@ -8,6 +8,7 @@
   <script>
     window.baseUrl = '{{ url('') }}';
     window.userSlug = '{{ request()->segment(1) }}';
+    window.isReadOnly = {{ !empty($isReadOnly) ? 'true' : 'false' }};
   </script>
   <title>Pentapure Factory Operations - Admin</title>
   <link rel="stylesheet" href="{{ asset('css/style.css') }}?v={{ filemtime(public_path('css/style.css')) }}">
@@ -86,74 +87,176 @@
 
           @php 
             $seg = request()->segment(2) ?? 'dashboard'; 
-            $role = $authUser['role'];
+            $role = $authUser['role'] ?? 'ADMIN';
             $perms = $authUser['permissions'] ?? [];
-            $can = fn($m) => $role === 'ADMIN' || in_array($m, $perms);
+
+            $can = function($m) use ($role, $perms) {
+                if ($role === 'ADMIN') return true;
+                if (in_array('can_manage', $perms)) return true;
+                if (in_array($m, $perms)) return true;
+
+                $key = str_starts_with($m, 'module_') ? substr($m, 7) : $m;
+                $checkKeys = [$key];
+                if (!str_starts_with($key, 'admin_')) {
+                    $checkKeys[] = 'admin_' . $key;
+                }
+
+                foreach ($checkKeys as $k) {
+                    if (in_array('view_' . $k, $perms) || 
+                        in_array('edit_' . $k, $perms) || 
+                        in_array('module_' . $k, $perms) || 
+                        in_array($k, $perms)) {
+                        return true;
+                    }
+                }
+                return false;
+            };
           @endphp
 
-          @if($can('module_dashboard'))
+          {{-- Admin Panel Links --}}
+          @if($can('admin_dashboard'))
           <a href="{{ url(request()->segment(1) . '/home') }}" class="nav-item {{ $seg=='home' || $seg=='dashboard'?'active':'' }}">
             Dashboard
           </a>
           @endif
 
-          @if($can('module_users'))
+          @if($can('admin_users'))
           <a href="{{ url(request()->segment(1) . '/users') }}" class="nav-item {{ $seg=='users'?'active':'' }}">
             Users &amp; Hierarchy
           </a>
           @endif
 
-          @if($can('module_stock'))
+          @if($can('admin_stock'))
           <a href="{{ url(request()->segment(1) . '/stock') }}" class="nav-item {{ $seg=='stock'?'active':'' }}">
             Live Stock
           </a>
           @endif
 
-          @if($can('module_products'))
+          @if($can('admin_products'))
           <a href="{{ url(request()->segment(1) . '/products') }}" class="nav-item {{ $seg=='products'?'active':'' }}">
             Products Master
           </a>
           @endif
 
-          @if($can('module_grades'))
+          @if($can('admin_grades'))
           <a href="{{ url(request()->segment(1) . '/grades') }}" class="nav-item {{ $seg=='grades'?'active':'' }}">
             Grades Master
           </a>
           @endif
 
-          @if($can('module_locations'))
+          @if($can('admin_locations'))
           <a href="{{ url(request()->segment(1) . '/locations') }}" class="nav-item {{ $seg=='locations'?'active':'' }}">
             Storage Location
           </a>
           @endif
 
-          @if($can('module_po'))
+          @if($can('admin_po'))
           <a href="{{ url(request()->segment(1) . '/po') }}" class="nav-item {{ $seg=='po'?'active':'' }}">
             Purchase Requests
           </a>
           @endif
 
-          @if($can('module_dispatch'))
+          @if($can('admin_dispatch_activity'))
           <a href="{{ url(request()->segment(1) . '/dispatch-activity') }}" class="nav-item {{ $seg=='dispatch-activity'?'active':'' }}">
             Dispatch Activity
           </a>
           @endif
 
-          @if($can('module_cashier'))
+          @if($can('admin_cashier_overview'))
           <a href="{{ url(request()->segment(1) . '/cashier-overview') }}" class="nav-item {{ $seg=='cashier-overview'?'active':'' }}">
             Cashier Overview
           </a>
           @endif
 
-          @if($can('module_categories'))
+          @if($can('admin_categories'))
           <a href="{{ url(request()->segment(1) . '/categories') }}" class="nav-item {{ $seg=='categories'?'active':'' }}">
             Expense Category Master
           </a>
           @endif
 
+          {{-- Sub-Admin Specific Module Panel Links --}}
+          @if($role !== 'ADMIN')
+            {{-- Cashier Panel Links --}}
+            @if($can('cashier_action'))
+            <a href="{{ url(request()->segment(1) . '/cashier/action') }}" class="nav-item {{ request()->segment(2)=='cashier' && request()->segment(3)=='action' ? 'active' : '' }}">
+              Cashier Entry
+            </a>
+            @endif
+            @if($can('cashier_history'))
+            <a href="{{ url(request()->segment(1) . '/cashier/history') }}" class="nav-item {{ request()->segment(2)=='cashier' && request()->segment(3)=='history' ? 'active' : '' }}">
+              Cashier History
+            </a>
+            @endif
+            @if($can('cashier_ledger'))
+            <a href="{{ url(request()->segment(1) . '/cashier/ledger') }}" class="nav-item {{ request()->segment(2)=='cashier' && request()->segment(3)=='ledger' ? 'active' : '' }}">
+              Cashier Ledger
+            </a>
+            @endif
+
+            {{-- Sales Panel Links --}}
+            @if($can('sales_home'))
+            <a href="{{ url(request()->segment(1) . '/sales/home') }}" class="nav-item {{ request()->segment(2)=='sales' && request()->segment(3)=='home' ? 'active' : '' }}">
+              Sales Dashboard
+            </a>
+            @endif
+            @if($can('sales_action'))
+            <a href="{{ url(request()->segment(1) . '/sales/action') }}" class="nav-item {{ request()->segment(2)=='sales' && request()->segment(3)=='action' ? 'active' : '' }}">
+              Sales Orders
+            </a>
+            @endif
+            @if($can('sales_history'))
+            <a href="{{ url(request()->segment(1) . '/sales/history') }}" class="nav-item {{ request()->segment(2)=='sales' && request()->segment(3)=='history' ? 'active' : '' }}">
+              Sales History
+            </a>
+            @endif
+
+            {{-- Dispatch Panel Links --}}
+            @if($can('dispatch_home'))
+            <a href="{{ url(request()->segment(1) . '/dispatch/home') }}" class="nav-item {{ request()->segment(2)=='dispatch' && request()->segment(3)=='home' ? 'active' : '' }}">
+              Dispatch Home
+            </a>
+            @endif
+            @if($can('dispatch_action'))
+            <a href="{{ url(request()->segment(1) . '/dispatch/action') }}" class="nav-item {{ request()->segment(2)=='dispatch' && request()->segment(3)=='action' ? 'active' : '' }}">
+              Dispatch Entry
+            </a>
+            @endif
+            @if($can('dispatch_history'))
+            <a href="{{ url(request()->segment(1) . '/dispatch/history') }}" class="nav-item {{ request()->segment(2)=='dispatch' && request()->segment(3)=='history' ? 'active' : '' }}">
+              Dispatch History
+            </a>
+            @endif
+
+            {{-- Stock Manager Panel Links --}}
+            @if($can('stock_manager_home'))
+            <a href="{{ url(request()->segment(1) . '/stock-manager/home') }}" class="nav-item {{ request()->segment(2)=='stock-manager' && request()->segment(3)=='home' ? 'active' : '' }}">
+              Stock Home
+            </a>
+            @endif
+            @if($can('stock_manager_action'))
+            <a href="{{ url(request()->segment(1) . '/stock-manager/action') }}" class="nav-item {{ request()->segment(2)=='stock-manager' && request()->segment(3)=='action' ? 'active' : '' }}">
+              Stock Outward
+            </a>
+            @endif
+            @if($can('stock_manager_stock'))
+            <a href="{{ url(request()->segment(1) . '/stock-manager/stock') }}" class="nav-item {{ request()->segment(2)=='stock-manager' && request()->segment(3)=='stock' ? 'active' : '' }}">
+              Stock View
+            </a>
+            @endif
+            @if($can('stock_manager_po'))
+            <a href="{{ url(request()->segment(1) . '/stock-manager/po') }}" class="nav-item {{ request()->segment(2)=='stock-manager' && request()->segment(3)=='po' ? 'active' : '' }}">
+              Stock PO
+            </a>
+            @endif
+            @if($can('stock_manager_history'))
+            <a href="{{ url(request()->segment(1) . '/stock-manager/history') }}" class="nav-item {{ request()->segment(2)=='stock-manager' && request()->segment(3)=='history' ? 'active' : '' }}">
+              Stock History
+            </a>
+            @endif
+          @endif
+
           <!-- Attendance Accordion -->
-          @if($can('module_attendance'))
-          @php $attSegs = ['attendance-dash','attendance-depts','attendance-workers','attendance-daily','attendance-reports']; @endphp
+          @if($can('attendance_dashboard') || $can('attendance_departments') || $can('attendance_workers') || $can('attendance_daily') || $can('attendance_reports'))
           <div>
             <div class="nav-item" id="att-toggle" onclick="toggleAttMenu()"
               style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
@@ -162,32 +265,42 @@
                 style="transition:transform 0.3s;"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
             <div id="att-submenu" style="display:none; padding-left:1rem; border-left:2px solid var(--primary);">
-              <a href="{{ url(request()->segment(1) . '/attendance/dashboard') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
+              @if($can('attendance_dashboard'))
+              <a href="{{ url(request()->segment(1) . '/attendance/dashboard') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='dashboard' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
                 Dashboard
               </a>
-              <a href="{{ url(request()->segment(1) . '/attendance/departments') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
+              @endif
+              @if($can('attendance_departments'))
+              <a href="{{ url(request()->segment(1) . '/attendance/departments') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='departments' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
                 Departments
               </a>
-              <a href="{{ url(request()->segment(1) . '/attendance/workers') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
+              @endif
+              @if($can('attendance_workers'))
+              <a href="{{ url(request()->segment(1) . '/attendance/workers') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='workers' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
                 Workers List
               </a>
-              <a href="{{ url(request()->segment(1) . '/attendance/daily') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
-                @if($authUser['role'] === 'ATTENDANCE') Daily Entry @else Daily Review @endif
+              @endif
+              @if($can('attendance_daily'))
+              <a href="{{ url(request()->segment(1) . '/attendance/daily') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='daily' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
+                Daily Entry
               </a>
-              <a href="{{ url(request()->segment(1) . '/attendance/reports') }}" class="nav-item" style="font-size:0.9rem; padding:0.6rem 1rem;">
-                Monthly Reports
+              @endif
+              @if($can('attendance_reports'))
+              <a href="{{ url(request()->segment(1) . '/attendance/reports') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='reports' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
+                Reports
               </a>
+              @endif
             </div>
           </div>
           @endif
 
-          @if($can('module_logs'))
+          @if($can('admin_logs'))
           <a href="{{ url(request()->segment(1) . '/logs') }}" class="nav-item {{ $seg=='logs'?'active':'' }}">
             Activity Logs
           </a>
           @endif
 
-          @if($can('module_notifications'))
+          @if($can('admin_notifications'))
           <a href="{{ url(request()->segment(1) . '/notifications') }}" class="nav-item {{ $seg=='notifications'?'active':'' }}"
              style="display:flex; justify-content:space-between; align-items:center;">
             <span>Notifications</span>
@@ -200,7 +313,7 @@
             <div class="nav-item" style="cursor:pointer; display:flex; align-items:center; gap:0.75rem; padding:0.85rem 1.2rem; font-size:1rem;" onclick="toggleTheme()">
               <span id="theme-icon">🌙</span> <span id="theme-text">Dark Mode</span>
             </div>
-            <form method="POST" action="{{ route(request()->segment(1) . '.logout') }}" style="margin:0;">
+            <form method="POST" action="{{ url('/logout') }}" style="margin:0;">
               @csrf
               <button type="submit" class="nav-item"
                 style="width:100%;background:none;border:none;cursor:pointer;color:var(--danger);display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1.2rem;font-size:1rem;">
@@ -224,6 +337,11 @@
                 </svg>
                 Back
               </button>
+            </div>
+          @endif
+          @if(!empty($isReadOnly))
+            <div style="margin-bottom:1rem; padding:0.75rem 1.2rem; background:#fffbe8; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:8px; color:#92400e; font-weight:600; display:flex; align-items:center; gap:8px; font-size:0.9rem; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+              <span>🔒 <strong>View-Only Mode</strong>: You have read-only access to this page. Action buttons like Add, Edit, Delete, or Save are disabled.</span>
             </div>
           @endif
           @yield('content')
@@ -257,7 +375,7 @@
     });
 
     window.csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-    window.logoutUrl = "{{ route(request()->segment(1) . '.logout') }}";
+    window.logoutUrl = "{{ url('/logout') }}";
 
     @if(isset($pageData))
     window.serverPageData = @json($pageData);

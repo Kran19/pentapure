@@ -4,9 +4,12 @@
     <meta charset="utf-8">
     <title>Monthly Salary Sheet</title>
     <style>
+        @page {
+            margin: 10px 15px 10px 15px;
+        }
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            font-size: 10px;
+            font-size: 8px;
             margin: 0;
             padding: 0;
             color: #000;
@@ -17,122 +20,105 @@
         }
         th, td {
             border: 1px solid #000;
-            padding: 4px;
+            padding: 2px 3px;
             text-align: center;
         }
         .header-box {
             border: 2px solid #000;
-            padding: 8px;
-            margin-bottom: 10px;
+            padding: 4px 8px;
+            margin-bottom: 6px;
         }
         .summary-table {
-            margin-top: 15px;
+            margin-top: 8px;
             width: 100%;
             border: 2px solid #000;
             border-collapse: collapse;
         }
         .summary-table td {
             border: none;
-            padding: 6px 8px;
+            padding: 3px 6px;
             text-align: left;
             font-weight: bold;
         }
-        .summary-table .amount {
-            text-align: right;
-            width: 35%;
-            border-left: 1px solid #000;
-        }
-        .summary-table .row-bottom {
-            border-bottom: 1px solid #000;
-        }
         .signatures {
-            margin-top: 40px;
+            margin-top: 15px;
             width: 100%;
         }
         .signatures td {
             border: none;
             text-align: center;
             font-weight: bold;
-            padding-top: 30px;
         }
     </style>
 </head>
 <body>
 
-    <div style="text-align:center; margin-bottom:15px;">
-        <table style="width:100%; border:none; margin-bottom:5px;">
+    <div style="text-align:center; margin-bottom:8px;">
+        <table style="width:100%; border:none; margin-bottom:3px;">
             <tr>
-                <td style="border:none; width:45px; text-align:left; vertical-align:middle; padding:0;">
+                <td style="border:none; width:75px; text-align:left; vertical-align:middle; padding:0;">
                     @if(file_exists(public_path('logo.png')))
-                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 42px; height: 42px; object-fit: contain;">
+                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 36px; height: 36px; object-fit: contain;">
                     @endif
                 </td>
                 <td style="border:none; text-align:center; vertical-align:middle; padding:0;">
-                    <div style="font-size:9px; font-weight:bold; border:1px solid #000; padding:2px 10px; display:inline-block; margin-bottom:3px;">OFFICIAL RECORD</div>
-                    <div style="font-size:16px; font-weight:800; letter-spacing:1px; color:#101828;">PENTAPURE FOOD &amp; SPICES PVT.LTD.</div>
-                    <div style="font-size:10px; margin-bottom:3px;">Factory &amp; Warehouse Operations</div>
-                    <div style="border-top:2px solid #000; border-bottom:2px solid #000; padding:2px 10px; font-weight:bold; font-size:11px; display:inline-block;">MONTHLY SALARY SHEET</div>
+                    <div style="font-size:8px; font-weight:bold; border:1px solid #000; padding:1px 8px; display:inline-block; margin-bottom:2px;">OFFICIAL RECORD</div>
+                    <div style="font-size:14px; font-weight:800; letter-spacing:1px; color:#101828;">PENTAPURE FOOD &amp; SPICES PVT.LTD.</div>
+                    <div style="font-size:9px; margin-bottom:2px;">Factory &amp; Warehouse Operations</div>
+                    <div style="border-top:1.5px solid #000; border-bottom:1.5px solid #000; padding:1px 8px; font-weight:bold; font-size:10px; display:inline-block;">MONTHLY SALARY SHEET</div>
                 </td>
-                <td style="border:none; width:45px; padding:0;"></td>
+                <td style="border:none; width:130px; text-align:right; vertical-align:top; padding:0;">
+                    @if(!empty($adjustment) && $adjustment->is_paid)
+                        <span style="background:#27ae60; color:#ffffff; padding:4px 10px; border-radius:3px; font-size:10px; font-weight:bold; display:inline-block; text-transform:uppercase;">PAID</span>
+                    @else
+                        <span style="background:#e74c3c; color:#ffffff; padding:4px 10px; border-radius:3px; font-size:10px; font-weight:bold; display:inline-block; text-transform:uppercase;">UNPAID</span>
+                    @endif
+                    @if(!empty($adjustment->paid_note))
+                        <div style="font-size:8px; color:#222; margin-top:3px; font-style:italic; font-weight:bold;">
+                            Note: {{ $adjustment->paid_note }}
+                        </div>
+                    @endif
+                </td>
             </tr>
         </table>
     </div>
 
-    @if($worker->salary_type !== 'LABOUR_MUKADAM')
     <div class="header-box">
-        <table style="border:none;">
+        <table style="border:none; width:100%;">
             <tr>
-                <td style="border:none; text-align:left; padding:0;">
-                    <h2 style="margin:0; font-size:14px;">STAFF</h2>
-                    <div style="font-size:12px;">NAME: {{ strtoupper($worker->name) }}</div>
+                <td style="border:none; text-align:left; vertical-align:middle; width:30%; padding:0;">
+                    <strong style="font-size:11px; text-transform:uppercase;">{{ strtoupper($worker->department->name ?? 'MAKADAM') }}</strong>
                 </td>
-                <td style="border:none; text-align:right; font-size:14px; font-weight:bold; padding:0;">
+                <td style="border:none; text-align:center; vertical-align:middle; width:45%; padding:0; font-size:10px; font-weight:bold;">
+                    NAME: {{ strtoupper($worker->name) }}
+                    @if(!empty($workerNumber))
+                        <span style="margin-left:8px; border:1px solid #777; padding:1px 6px; border-radius:3px; background:#f5f5f5;">EMP NO: {{ $workerNumber }}</span>
+                    @endif
+                </td>
+                <td style="border:none; text-align:right; vertical-align:middle; width:25%; padding:0; font-size:11px; font-weight:bold;">
                     {{ strtoupper(\Carbon\Carbon::parse($month)->format('Y F')) }}
                 </td>
             </tr>
         </table>
     </div>
-    @endif
 
     <table>
         <thead>
-            @if($worker->salary_type === 'LABOUR_MUKADAM')
             <tr style="background-color: #f0f0f0;">
-                <th colspan="2" style="border:2px solid #000; text-align:left; font-size:14px; padding:6px;">{{ strtoupper($worker->department->name ?? 'MAKADAM') }}</th>
-                <th colspan="7" style="border:2px solid #000; text-align:left; font-size:14px; padding:6px;">NAME : {{ strtoupper($worker->name) }}</th>
+                <th rowspan="2" style="border:2px solid #000; width:50px; font-size:8.5px;">DATE</th>
+                <th rowspan="2" style="border:2px solid #000; width:52px; font-size:8.5px;">{{ $worker->salary_type === 'LABOUR_MUKADAM' ? 'PRESENT LABOUR' : 'STATUS' }}</th>
+                <th colspan="2" style="border:2px solid #000; font-size:8.5px;">DAY SHIFT</th>
+                <th colspan="2" style="border:2px solid #000; font-size:8.5px;">NIGHT SHIFT</th>
+                <th rowspan="2" style="border:2px solid #000; width:55px; font-size:7.5px;">OVER TIME /<br>UNDER TIME</th>
+                <th rowspan="2" style="border:2px solid #000; width:50px; font-size:8.5px;">ADVANCE</th>
+                <th rowspan="2" style="border:2px solid #000; font-size:8.5px;">REMARK</th>
             </tr>
             <tr style="background-color: #f0f0f0;">
-                <th rowspan="2" style="border:2px solid #000; width:50px; font-size:12px;">{{ strtoupper(\Carbon\Carbon::parse($month)->format('Y')) }}<br>{{ strtoupper(\Carbon\Carbon::parse($month)->format('F')) }}</th>
-                <th rowspan="2" style="border:2px solid #000;">PRESENT<br>LABOUR</th>
-                <th colspan="2" style="border:2px solid #000;">DAY SHIFT</th>
-                <th colspan="2" style="border:2px solid #000;">NIGHT SHIFT</th>
-                <th rowspan="2" style="border:2px solid #000; width:60px;">OVER TIME /<br>UNDER TIME</th>
-                <th colspan="2" style="border:2px solid #000;">NO. : </th>
+                <th style="border:2px solid #000; border-top:1px solid #000; width:46px; font-size:7px;">IN TIME</th>
+                <th style="border:2px solid #000; border-top:1px solid #000; width:46px; font-size:7px;">OUT TIME</th>
+                <th style="border:2px solid #000; border-top:1px solid #000; width:46px; font-size:7px;">IN TIME</th>
+                <th style="border:2px solid #000; border-top:1px solid #000; width:46px; font-size:7px;">OUT TIME</th>
             </tr>
-            <tr style="background-color: #f0f0f0;">
-                <th style="border:2px solid #000; border-top:1px solid #000;">IN TIME</th>
-                <th style="border:2px solid #000; border-top:1px solid #000;">OUT TIME</th>
-                <th style="border:2px solid #000; border-top:1px solid #000;">IN TIME</th>
-                <th style="border:2px solid #000; border-top:1px solid #000;">OUT TIME</th>
-                <th style="border:2px solid #000; border-top:1px solid #000; width:45px;">ADVANCE</th>
-                <th style="border:2px solid #000; border-top:1px solid #000; width:45px;">REMARK</th>
-            </tr>
-            @else
-            <tr style="background-color: #f0f0f0;">
-                <th rowspan="2" style="border:2px solid #000; width:50px;">DATE</th>
-                <th rowspan="2" style="border:2px solid #000;">STATUS</th>
-                <th colspan="2" style="border:2px solid #000;">DAY SHIFT</th>
-                <th colspan="2" style="border:2px solid #000;">NIGHT SHIFT</th>
-                <th rowspan="2" style="border:2px solid #000; width:60px;">OVER TIME /<br>UNDER TIME</th>
-                <th rowspan="2" style="border:2px solid #000;">NO.</th>
-            </tr>
-            <tr style="background-color: #f0f0f0;">
-                <th style="border:2px solid #000; border-top:1px solid #000;">IN TIME</th>
-                <th style="border:2px solid #000; border-top:1px solid #000;">OUT TIME</th>
-                <th style="border:2px solid #000; border-top:1px solid #000;">IN TIME</th>
-                <th style="border:2px solid #000; border-top:1px solid #000;">OUT TIME</th>
-            </tr>
-            @endif
         </thead>
         <tbody>
             @for($date = $start->copy(); $date->lte($end); $date->addDay())
@@ -146,39 +132,30 @@
                     $outTime = $att?->out_time ? date('h:i A', strtotime($att->out_time)) : '';
                 @endphp
                 <tr style="{{ $isSunday ? 'background-color:#fff8f8;' : '' }}">
-                    <td style="border-left:2px solid #000; font-weight:bold;">
-                        {{ $date->format('j') }} ({{ substr($date->format('D'), 0, 3) }})
+                    <td style="border-left:2px solid #000; font-weight:bold; text-align:left; white-space:nowrap; padding-left:4px; font-size:8px;">
+                        <span style="display:inline-block; width:14px; text-align:right;">{{ $date->format('j') }}</span> ({{ substr($date->format('D'), 0, 3) }})
                     </td>
-                    <td style="font-weight:bold; color:{{ $att?->status === 'ABSENT' ? '#d00' : '#000' }};">
-                        {{ $att?->status ?? ($isSunday ? 'SUNDAY' : '') }}
+                    <td style="font-weight:bold; font-size:7.5px; color:{{ $att?->status === 'ABSENT' ? '#d00' : '#000' }};">
+                        {{ $worker->salary_type === 'LABOUR_MUKADAM' ? ($att?->num_workers ?? '') : ($att?->status ?? '') }}
                     </td>
-                    <td>{{ !$isNight ? $inTime : '' }}</td>
-                    <td>{{ !$isNight ? $outTime : '' }}</td>
-                    <td>{{ $isNight ? $inTime : '' }}</td>
-                    <td>{{ $isNight ? $outTime : '' }}</td>
-                    <td style="font-weight:bold; color:{{ ($att?->overtime_hours ?? 0) < 0 ? '#d00' : '#000' }};">
+                    <td style="font-size:7.5px; white-space:nowrap;">{{ !$isNight ? $inTime : '' }}</td>
+                    <td style="font-size:7.5px; white-space:nowrap;">{{ !$isNight ? $outTime : '' }}</td>
+                    <td style="font-size:7.5px; white-space:nowrap;">{{ $isNight ? $inTime : '' }}</td>
+                    <td style="font-size:7.5px; white-space:nowrap;">{{ $isNight ? $outTime : '' }}</td>
+                    <td style="font-weight:bold; font-size:7.5px; color:{{ ($att?->overtime_hours ?? 0) < 0 ? '#d00' : '#000' }};">
                         @if($att && $att->overtime_hours != 0)
                             {{ $att->overtime_hours > 0 ? '+' : '' }}{{ number_format($att->overtime_hours, 1) }}
                         @endif
                     </td>
-                    @if($worker->salary_type === 'LABOUR_MUKADAM')
-                    <td style="border-right:1px solid #000; font-size:9px;">
+                    <td style="font-size:7.5px; text-align:center;">
                         {{ $att && $att->advance > 0 ? $att->advance : '' }}
                     </td>
-                    <td style="border-right:2px solid #000; font-size:8px;">
+                    <td style="border-right:2px solid #000; font-size:7px; text-align:left; padding-left:3px;">
                         {{ $att?->remark ?? '' }}
                     </td>
-                    @else
-                    <td style="border-right:2px solid #000; font-size:8px;">
-                        @if($att && $att->advance > 0)
-                            Adv: {{ $att->advance }}
-                        @endif
-                        {{ $att?->remark ?? '' }}
-                    </td>
-                    @endif
                 </tr>
             @endfor
-            <tr><td colspan="{{ $worker->salary_type === 'LABOUR_MUKADAM' ? 9 : 8 }}" style="padding:0; border:none; border-top:2px solid #000;"></td></tr>
+            <tr><td colspan="9" style="padding:0; border:none; border-top:2px solid #000;"></td></tr>
         </tbody>
     </table>
 
@@ -191,7 +168,7 @@
         <tr>
           <td style="border:2px solid #000; padding:6px;">
             <div style="display:inline-block; width:45%; color:#000;">OTHER</div>
-            <div style="display:inline-block; width:50%; text-align:center;">PETROL / FOODS</div>
+            <div style="display:inline-block; width:50%; text-align:center;">{{ strtoupper($adjustment->other_allowance_label ?? 'PETROL / FOODS') }}</div>
           </td>
           <td style="border:2px solid #000; padding:6px; text-align:right;">
             {{ $adjustment->petrol_food_amount > 0 ? '+' : '' }}{{ number_format($adjustment->petrol_food_amount, 2) }}
@@ -232,7 +209,7 @@
         </tr>
         <tr>
           <td style="border:2px solid #000; padding:6px; text-align:center;">OTHER</td>
-          <td colspan="3" style="border:2px solid #000; padding:6px; text-align:center;">PETROL/ FOODS</td>
+          <td colspan="3" style="border:2px solid #000; padding:6px; text-align:center;">{{ strtoupper($adjustment->other_allowance_label ?? 'PETROL / FOODS') }}</td>
           <td style="border:2px solid #000; padding:6px; text-align:right;">{{ $adjustment->petrol_food_amount > 0 ? '+' : '' }}{{ number_format($adjustment->petrol_food_amount, 2) }}</td>
         </tr>
         <tr>
@@ -274,7 +251,7 @@
         <!-- Row 4 -->
         <tr>
           <td style="border:2px solid #000; padding:6px; text-align:center;">OTHER</td>
-          <td colspan="3" style="border:2px solid #000; padding:6px; text-align:center;">PETROL/ FOODS</td>
+          <td colspan="3" style="border:2px solid #000; padding:6px; text-align:center;">{{ strtoupper($adjustment->other_allowance_label ?? 'PETROL / FOODS') }}</td>
           <td style="border:2px solid #000; padding:6px; text-align:right;">{{ number_format($adjustment->petrol_food_amount, 2) }}</td>
         </tr>
         <!-- Row 5 -->
@@ -295,14 +272,23 @@
     </table>
     @endif
 
-    <table class="signatures">
+    <table class="signatures" style="margin-top:25px; width:100%; border-collapse:collapse;">
         <tr>
-            <td>
-                EMPLOYEE<br>
-                <span style="font-weight:normal; font-size:9px;">(NAME)</span>
+            <td style="border:none; text-align:center; padding:0 10px; vertical-align:bottom; width:33.33%;">
+                <div style="height:35px; font-weight:bold; font-size:11px; color:#000; display:flex; align-items:flex-end; justify-content:center;">{{ strtoupper($worker->name) }}</div>
+                <div style="border-bottom:1px solid #000; margin:4px auto; width:85%;"></div>
+                <div style="font-size:9px; font-weight:bold; color:#000; margin-top:2px;">(EMPLOYEE SIGN)</div>
             </td>
-            <td>PREPARED BY</td>
-            <td>VERIFIED BY</td>
+            <td style="border:none; text-align:center; padding:0 10px; vertical-align:bottom; width:33.33%;">
+                <div style="height:35px; font-weight:bold; font-size:11px; color:#000; display:flex; align-items:flex-end; justify-content:center;">{{ strtoupper(session('auth_user')['name'] ?? 'MANAGER') }}</div>
+                <div style="border-bottom:1px solid #000; margin:4px auto; width:85%;"></div>
+                <div style="font-size:9px; font-weight:bold; color:#000; margin-top:2px;">(PREPARED BY)</div>
+            </td>
+            <td style="border:none; text-align:center; padding:0 10px; vertical-align:bottom; width:33.33%;">
+                <div style="height:35px;"></div>
+                <div style="border-bottom:1px solid #000; margin:4px auto; width:85%;"></div>
+                <div style="font-weight:bold; font-size:10px; color:#000;">VERIFIED BY</div>
+            </td>
         </tr>
     </table>
 

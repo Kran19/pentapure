@@ -141,7 +141,7 @@
                     <option value="DAILY">Daily (₹ / Day)</option>
                     <option value="MONTHLY">Monthly (₹ / Month)</option>
                     <option value="FIXED_MONTHLY">Fixed Monthly (₹ / Month)</option>
-                    <option value="LABOUR_MUKADAM">LABOUR(MUKADAM)</option>
+                    <option value="LABOUR_MUKADAM">MUKADAM (₹ / LABOUR)</option>
                   </select>
                 </div>
                 <div class="form-group">

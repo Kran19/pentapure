@@ -7,8 +7,8 @@
     <button class="btn" onclick="openDeptForm()" style="width:auto; padding:0.6rem 1.2rem;">+ Add Department</button>
   </div>
 
-  <!-- Add/Edit Form Card (Open by default) -->
-  <div id="dept-form-card" class="card white-orange-card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
+  <!-- Add/Edit Form Card -->
+  <div id="dept-form-card" class="card white-orange-card" style="display:none; margin-bottom:1.5rem; padding:1.2rem;">
     <div class="card-title" id="dept-form-title">Add Department</div>
     <form id="dept-form">
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1rem;">

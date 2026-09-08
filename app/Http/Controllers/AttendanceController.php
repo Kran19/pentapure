@@ -49,7 +49,7 @@ class AttendanceController extends Controller
             'totalOT'           => $totalOT,
             'departments'       => $departments,
             'recentSubmissions' => $recentSubmissions,
-            'layout'            => str_contains($request->path(), 'admin') ? 'layouts.admin' : 'layouts.app'
+            'layout'            => $this->getLayout($request)
         ]);
     }
 
@@ -59,7 +59,7 @@ class AttendanceController extends Controller
         $departments = Department::withCount('workers')->get();
         return view('attendance.departments', [
             'departments' => $departments,
-            'layout'      => str_contains($request->path(), 'admin') ? 'layouts.admin' : 'layouts.app'
+            'layout'      => $this->getLayout($request)
         ]);
     }
 
@@ -83,12 +83,12 @@ class AttendanceController extends Controller
     // --- WORKERS ---
     public function workers(Request $request)
     {
-        $workers     = Worker::with('department')->orderBy('name')->get();
+        $workers     = Worker::with('department')->orderBy('id')->get();
         $departments = Department::where('is_active', true)->orderBy('name')->get();
         return view('attendance.workers', [
             'workers'     => $workers,
             'departments' => $departments,
-            'layout'      => str_contains($request->path(), 'admin') ? 'layouts.admin' : 'layouts.app'
+            'layout'      => $this->getLayout($request)
         ]);
     }
 
@@ -139,7 +139,14 @@ class AttendanceController extends Controller
         }
 
         if ($request->worker_id) {
-            Worker::findOrFail($request->worker_id)->update($data);
+            $existing = Worker::findOrFail($request->worker_id);
+            // Auto-set inactivated_at when status changes to INACTIVE
+            if ($request->status === 'INACTIVE' && $existing->status !== 'INACTIVE') {
+                $data['inactivated_at'] = now()->toDateString();
+            } elseif ($request->status === 'ACTIVE') {
+                $data['inactivated_at'] = null;
+            }
+            $existing->update($data);
             return response()->json(['success' => true, 'message' => 'Worker updated']);
         }
         Worker::create($data);
@@ -157,8 +164,17 @@ class AttendanceController extends Controller
     {
         $date = $request->date ?? Carbon::today()->toDateString();
         
+        // Show workers who were active on the given date:
+        // status=ACTIVE OR (status=INACTIVE but inactivated_at is after the date)
         $workersQuery = Worker::with(['department', 'attendances' => fn($q) => $q->whereDate('date', $date)])
-            ->where('status', 'ACTIVE')->orderBy('name');
+            ->where(function($q) use ($date) {
+                $q->where('status', 'ACTIVE')
+                  ->orWhere(function($q2) use ($date) {
+                      $q2->where('status', 'INACTIVE')
+                         ->where('inactivated_at', '>', $date);
+                  });
+            })
+            ->orderBy('name');
             
         $departmentsQuery = \App\Models\Department::orderBy('name');
 
@@ -185,7 +201,7 @@ class AttendanceController extends Controller
             'departments' => $departments,
             'date'        => $date,
             'submission'  => $submission,
-            'layout'      => str_contains($request->path(), 'admin') ? 'layouts.admin' : 'layouts.app',
+            'layout'      => $this->getLayout($request),
             'authUser'    => $this->authUser()
         ]);
     }
@@ -195,7 +211,14 @@ class AttendanceController extends Controller
     {
         $date = $request->date ?? Carbon::today()->toDateString();
         $workersQuery = Worker::with(['department', 'attendances' => fn($q) => $q->where('date', $date)])
-            ->where('status', 'ACTIVE')->orderBy('name');
+            ->where(function($q) use ($date) {
+                $q->where('status', 'ACTIVE')
+                  ->orWhere(function($q2) use ($date) {
+                      $q2->where('status', 'INACTIVE')
+                         ->where('inactivated_at', '>', $date);
+                  });
+            })
+            ->orderBy('name');
             
         $authUser = $this->authUser();
         if ($authUser && $authUser['role'] === 'ATTENDANCE') {
@@ -308,13 +331,15 @@ class AttendanceController extends Controller
                 }
 
                 $totalHours  = max(0, $mins / 60);
-                $overtimeHrs = max(0, $totalHours - $std);
+                $overtimeHrs = 0;
             }
 
             if (($rec['ot_ut'] ?? 'NONE') === 'OT') {
                 $overtimeHrs = (float)($rec['ot_ut_hours'] ?? 0);
             } elseif (($rec['ot_ut'] ?? 'NONE') === 'UT') {
                 $overtimeHrs = -(float)($rec['ot_ut_hours'] ?? 0);
+            } else {
+                $overtimeHrs = 0;
             }
 
             $hourly = ($worker->daily_salary ?? 500) / $std;
@@ -443,10 +468,24 @@ class AttendanceController extends Controller
         $startDate = Carbon::parse($month)->startOfMonth()->toDateString();
         $endDate   = Carbon::parse($month)->endOfMonth()->toDateString();
 
-        // Get workers and their attendance for the month
+        // Sequential numbers mapping based on creation order (id)
+        $allWorkersOrder = Worker::orderBy('id')->pluck('id')->toArray();
+        $workerNumberMap = [];
+        foreach ($allWorkersOrder as $idx => $wId) {
+            $workerNumberMap[$wId] = $idx + 1;
+        }
+
+        // Get workers who are ACTIVE OR INACTIVE with attendance records in the month
         $workers = Worker::with(['department', 'attendances' => function($q) use ($startDate, $endDate) {
             $q->whereBetween('date', [$startDate, $endDate]);
-        }])->where('status', 'ACTIVE')->orderBy('name')->get();
+        }])->where(function($q) use ($startDate, $endDate) {
+            $q->where('status', 'ACTIVE')
+              ->orWhereHas('attendances', function($aq) use ($startDate, $endDate) {
+                  $aq->whereBetween('date', [$startDate, $endDate]);
+              });
+        })->orderBy('name')->get();
+
+        $adjustments = WorkerMonthlyAdjustment::where('month', $month)->get()->keyBy('worker_id');
 
         $reportData = [];
         foreach ($workers as $w) {
@@ -464,8 +503,6 @@ class AttendanceController extends Controller
                 if ($w->salary_type === 'DAILY' || $w->salary_type === 'LABOUR_MUKADAM') {
                     $totalWage += $att->calculated_wage;
                 } else {
-                    // For Monthly, we only sum the OT portion here. 
-                    // Base salary is added once at the end.
                     $hourly = ($w->daily_salary ?? 0) / 9;
                     $otPay = $att->overtime_hours * ($hourly * 1.5);
                     $totalWage += $otPay;
@@ -476,27 +513,57 @@ class AttendanceController extends Controller
                 $totalWage += $w->salary_amount;
             }
 
+            $adj = $adjustments->get($w->id);
+
             $reportData[$w->id] = [
-                'worker'     => $w,
-                'present'    => $present,
-                'absent'     => $absent,
-                'half'       => $half,
-                'total_ot'   => $totalOT,
-                'total_wage' => $totalWage
+                'worker'        => $w,
+                'worker_number' => $workerNumberMap[$w->id] ?? null,
+                'present'       => $present,
+                'absent'        => $absent,
+                'half'          => $half,
+                'total_ot'      => $totalOT,
+                'total_wage'    => $totalWage,
+                'adjustment'    => $adj
             ];
         }
 
         return view('attendance.reports', [
             'reportData' => $reportData,
             'month'      => $month,
-            'layout'     => str_contains($request->path(), 'admin') ? 'layouts.admin' : 'layouts.app'
+            'layout'     => $this->getLayout($request)
+        ]);
+    }
+
+    public function togglePaymentStatus(Request $request, $id)
+    {
+        $request->validate([
+            'month' => 'required|date_format:Y-m',
+            'is_paid' => 'required|boolean',
+            'paid_note' => 'nullable|string'
+        ]);
+
+        $adj = WorkerMonthlyAdjustment::firstOrNew([
+            'worker_id' => $id,
+            'month' => $request->month
+        ]);
+
+        $adj->is_paid = $request->is_paid;
+        $adj->paid_note = $request->paid_note;
+        $adj->paid_at = $request->is_paid ? now() : null;
+        $adj->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Payment status updated successfully',
+            'is_paid' => (bool)$adj->is_paid,
+            'paid_note' => $adj->paid_note
         ]);
     }
 
     public function workerReport(Request $request, $id)
     {
         $data = $this->prepareWorkerReportData($request, $id);
-        $data['layout'] = str_contains($request->path(), 'admin') ? 'layouts.admin' : 'layouts.app';
+        $data['layout'] = $this->getLayout($request);
         return view('attendance.worker_report', $data);
     }
 
@@ -505,6 +572,7 @@ class AttendanceController extends Controller
         $request->validate([
             'month' => 'required|date_format:Y-m',
             'petrol_food_amount' => 'nullable|numeric',
+            'other_allowance_label' => 'nullable|string|max:100',
             'advance' => 'nullable|numeric',
             'remark' => 'nullable|string'
         ]);
@@ -513,6 +581,7 @@ class AttendanceController extends Controller
             ['worker_id' => $id, 'month' => $request->month],
             [
                 'petrol_food_amount' => $request->petrol_food_amount ?? 0,
+                'other_allowance_label' => $request->other_allowance_label ?: 'PETROL / FOODS',
                 'advance' => $request->advance ?? 0,
                 'remark' => $request->remark
             ]
@@ -541,7 +610,12 @@ class AttendanceController extends Controller
         $startDate = Carbon::parse($month)->startOfMonth()->toDateString();
         $endDate   = Carbon::parse($month)->endOfMonth()->toDateString();
 
-        $workers = Worker::where('status', 'ACTIVE')->orderBy('name')->get();
+        $workers = Worker::where(function($q) use ($startDate, $endDate) {
+            $q->where('status', 'ACTIVE')
+              ->orWhereHas('attendances', function($aq) use ($startDate, $endDate) {
+                  $aq->whereBetween('date', [$startDate, $endDate]);
+              });
+        })->orderBy('name')->get();
 
         $allData = [];
         foreach($workers as $worker) {
@@ -559,6 +633,10 @@ class AttendanceController extends Controller
     private function prepareWorkerReportData(Request $request, $id)
     {
         $worker = Worker::with('department')->findOrFail($id);
+
+        $allWorkersOrder = Worker::orderBy('id')->pluck('id')->toArray();
+        $workerNumber = array_search($worker->id, $allWorkersOrder);
+        $workerNumber = ($workerNumber !== false) ? ($workerNumber + 1) : null;
         
         $month = $request->query('month', date('Y-m'));
         $start = Carbon::parse($month)->startOfMonth();
@@ -572,7 +650,7 @@ class AttendanceController extends Controller
 
         $adjustment = WorkerMonthlyAdjustment::firstOrNew(
             ['worker_id' => $id, 'month' => $month],
-            ['petrol_food_amount' => 0, 'advance' => 0, 'remark' => null]
+            ['petrol_food_amount' => 0, 'other_allowance_label' => 'PETROL / FOODS', 'advance' => 0, 'remark' => null]
         );
 
         $totalOT = 0;
@@ -637,7 +715,7 @@ class AttendanceController extends Controller
         $payableSalary = $totalWage - $totalAdvance;
 
         return compact(
-            'worker', 'attendances', 'month', 'start', 'end', 'daysInMonth',
+            'worker', 'workerNumber', 'attendances', 'month', 'start', 'end', 'daysInMonth',
             'adjustment', 'presentDays', 'perDaySalary', 'attendanceSalary',
             'totalOT', 'hourlyRate', 'otUtAdjustment', 'totalWage', 'dailyAdvanceTotal', 'totalAdvance', 'payableSalary'
         );
@@ -646,8 +724,17 @@ class AttendanceController extends Controller
     public function profile(Request $request)
     {
         $authUser = $this->authUser();
-        $layout = str_contains($request->path(), 'admin') ? 'layouts.admin' : 'layouts.app';
+        $layout = $this->getLayout($request);
         return view('attendance.profile', compact('authUser', 'layout'));
+    }
+
+    private function getLayout(Request $request)
+    {
+        $role = session('auth_user')['role'] ?? '';
+        if (in_array($role, ['ADMIN', 'SUB_ADMIN', 'STOCK_MANAGER']) || str_contains($request->path(), 'admin') || str_contains($request->path(), 'sub_admin')) {
+            return 'layouts.admin';
+        }
+        return 'layouts.app';
     }
 
     private function getPresentMultiplier($status) {

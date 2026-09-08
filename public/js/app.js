@@ -104,7 +104,7 @@ const app = {
       else if (href.endsWith('/action')) span.innerText = this.t('Action');
       else if (href.endsWith('/stock')) span.innerText = this.t('Live Stock');
       else if (href.endsWith('/po')) span.innerText = this.t('Purchase Request');
-      else if (href.endsWith('/history')) span.innerText = this.t('History');
+      else if (href.endsWith('/history')) span.innerText = this.t('Reports');
       else if (href.endsWith('/ledger')) span.innerText = this.t('Report');
       else if (href.endsWith('/workers')) span.innerText = this.t('Workers');
       else if (href.endsWith('/profile')) span.innerText = this.t('Profile');
@@ -951,17 +951,10 @@ const app = {
       }
     }).then(result => {
       if (result.isConfirmed && result.value) {
-        const payload = result.value;
-        const segments = window.location.pathname.split('/').filter(Boolean);
-        let currentSlug = 'sales';
-        if (segments.length > 0) {
-          if (segments[0] === 'penta-pure' && segments.length > 1) {
-            currentSlug = segments[1];
-          } else if (segments[0] !== 'penta-pure') {
-            currentSlug = segments[0];
-          }
+        if (window.isReadOnly) {
+          return this.toast('You have View-Only permission. Adding transporter is disabled.', 'error');
         }
-        const transportUrl = `${this.getBaseUrl()}/${currentSlug}/transport`;
+        const transportUrl = `${this.getSalesPrefix()}/transport`;
 
         fetch(transportUrl, {
           method: 'POST',
@@ -1326,13 +1319,17 @@ const app = {
       }
     }
 
+    if (window.isReadOnly) {
+      return this.toast('You have View-Only permission. Saving company is disabled.', 'error');
+    }
+
     const editIdEl = document.getElementById('edit-comp-id');
     const isEdit = editIdEl && editIdEl.value;
 
     const exists = ((window.serverPageData && window.serverPageData.companies) || []).find(c => c.id != (isEdit || 0) && (c.name.toLowerCase() === name.toLowerCase() || (gst && gst !== 'N/A' && c.gst === gst)));
     if (exists) return this.toast('Company with this name or GST already exists', 'error');
 
-    const url = isEdit ? '/company/' + isEdit : '/company';
+    const url = isEdit ? `${this.getSalesPrefix()}/company/${isEdit}` : `${this.getSalesPrefix()}/company`;
     fetch(url, {
       method: 'POST',
       headers: { 
@@ -1378,16 +1375,11 @@ const app = {
       }
     }
 
-    const segments = window.location.pathname.split('/').filter(Boolean);
-    let currentSlug = 'sales';
-    if (segments.length > 0) {
-      if (segments[0] === 'penta-pure' && segments.length > 1) {
-        currentSlug = segments[1];
-      } else {
-        currentSlug = segments[0];
-      }
+    if (window.isReadOnly) {
+      return this.toast('You have View-Only permission. Saving transporter is disabled.', 'error');
     }
-    const transportUrl = `${this.getBaseUrl()}/${currentSlug}/transport`;
+
+    const transportUrl = `${this.getSalesPrefix()}/transport`;
 
     fetch(transportUrl, {
       method: 'POST',
@@ -1458,16 +1450,11 @@ const app = {
     }).then(result => {
       if (!result.isConfirmed) return;
 
-      const segments = window.location.pathname.split('/').filter(Boolean);
-      let currentSlug = 'sales';
-      if (segments.length > 0) {
-        if (segments[0] === 'penta-pure' && segments.length > 1) {
-          currentSlug = segments[1];
-        } else {
-          currentSlug = segments[0];
-        }
+      if (window.isReadOnly) {
+        return this.toast('You have View-Only permission. Updating transporter is disabled.', 'error');
       }
-      const updateUrl = `${this.getBaseUrl()}/${currentSlug}/transport/${trans.id}`;
+
+      const updateUrl = `${this.getSalesPrefix()}/transport/${trans.id}`;
 
       fetch(updateUrl, {
         method: 'POST',
@@ -1523,16 +1510,12 @@ const app = {
       body.order_id = editOrderIdEl.value;
     }
 
-    const segments = window.location.pathname.split('/').filter(Boolean);
-    let currentSlug = 'sales';
-    if (segments.length > 0) {
-      if (segments[0] === 'penta-pure' && segments.length > 1) {
-        currentSlug = segments[1];
-      } else if (segments[0] !== 'penta-pure') {
-        currentSlug = segments[0];
-      }
+    if (window.isReadOnly) {
+      return this.toast('You have View-Only permission. Creating/editing orders is disabled.', 'error');
     }
-    const orderUrl = `${this.getBaseUrl()}/${currentSlug}/order`;
+
+    const orderUrl = window.location.pathname;
+    const historyRedirectUrl = window.location.pathname.replace('/action', '/history');
 
     fetch(orderUrl, {
       method: 'POST',
@@ -1545,7 +1528,7 @@ const app = {
     })
     .then(r => r.json())
     .then(d => {
-      if (d.success) { this.toast(d.message); setTimeout(() => window.location.href = `${this.getBaseUrl()}/${currentSlug}/history`, 600); }
+      if (d.success) { this.toast(d.message); setTimeout(() => window.location.href = historyRedirectUrl, 600); }
       else this.toast(d.message || 'Error saving order', 'error');
     })
     .catch(() => this.toast('Network error.', 'error'));
@@ -1666,17 +1649,12 @@ const app = {
       lr_image: lrImageBase64
     };
 
-    const segments = window.location.pathname.split('/').filter(Boolean);
-    let currentSlug = 'dispatch';
-    if (segments.length > 0) {
-      if (segments[0] === 'penta-pure' && segments.length > 1) {
-        currentSlug = segments[1];
-      } else if (segments[0] !== 'penta-pure') {
-        currentSlug = segments[0];
-      }
+    if (window.isReadOnly) {
+      return this.toast('You have View-Only permission. Dispatching items is disabled.', 'error');
     }
 
-    const postUrl = `${this.getBaseUrl()}/${currentSlug}/action`;
+    const postUrl = window.location.pathname;
+    const historyRedirectUrl = window.location.pathname.replace('/action', '/history');
 
     fetch(postUrl, {
       method: 'POST',
@@ -1691,7 +1669,7 @@ const app = {
     .then(res => {
       if (res.success) {
         this.toast(res.message || 'Dispatch recorded successfully!');
-        setTimeout(() => { window.location.href = `${this.getBaseUrl()}/${currentSlug}/history`; }, 700);
+        setTimeout(() => { window.location.href = historyRedirectUrl; }, 700);
       } else {
         this.toast(res.message || 'Error recording dispatch', 'error');
       }
@@ -2497,6 +2475,21 @@ const app = {
     return '';
   },
 
+  getSalesPrefix() {
+    const pathname = window.location.pathname;
+    const segments = pathname.split('/').filter(Boolean);
+    if (segments.length > 0 && segments[0] === 'penta-pure') {
+      segments.shift();
+    }
+    if (segments.length >= 2 && ['admin', 'sub_admin'].includes(segments[0])) {
+      return `${this.getBaseUrl()}/${segments[0]}/sales`;
+    }
+    if (segments.length >= 1 && segments[0] === 'sales') {
+      return `${this.getBaseUrl()}/sales`;
+    }
+    return `${this.getBaseUrl()}/${segments[0] || 'sales'}`;
+  },
+
   viewBill(billId, fileType) {
     const segments = window.location.pathname.split('/').filter(Boolean);
     let appBase = '';
@@ -3119,6 +3112,11 @@ window.downloadPdfAsync = async function(url, data = {}, btnElement = null) {
 
     const response = await fetch(url, options);
     if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('You do not have permission to export or view this PDF report.');
+      } else if (response.status === 404) {
+        throw new Error('The requested PDF report or order record was not found.');
+      }
       throw new Error(`PDF generation failed with status ${response.status}`);
     }
 

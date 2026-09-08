@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends(in_array(session('auth_user')['role'] ?? '', ['ADMIN', 'SUB_ADMIN', 'STOCK_MANAGER']) || str_contains(request()->path(), 'sub_admin') || str_contains(request()->path(), 'admin') ? 'layouts.admin' : 'layouts.app')
 
 @section('content')
 @php
@@ -485,10 +485,19 @@ function submitSmInward(e) {
     return;
   }
 
+  if (window.isReadOnly) {
+    if (typeof Swal !== 'undefined') {
+      Swal.fire('View-Only Mode', 'You have View-Only permission for Stock Inward/Outward. Action is disabled.', 'warning');
+    } else {
+      alert('You have View-Only permission for Stock Inward/Outward. Action is disabled.');
+    }
+    return;
+  }
+
   btn.disabled = true;
   btn.innerText = 'Adding...';
 
-  fetch(window.baseUrl + '/' + window.userSlug + '/action', {
+  fetch(window.location.pathname, {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json', 
@@ -583,10 +592,19 @@ function submitSmOutward(e) {
     return;
   }
 
+  if (window.isReadOnly) {
+    if (typeof Swal !== 'undefined') {
+      Swal.fire('View-Only Mode', 'You have View-Only permission for Stock Inward/Outward. Action is disabled.', 'warning');
+    } else {
+      alert('You have View-Only permission for Stock Inward/Outward. Action is disabled.');
+    }
+    return;
+  }
+
   btn.disabled = true;
   btn.innerText = 'Outwarding...';
 
-  fetch(window.baseUrl + '/' + window.userSlug + '/outward', {
+  fetch(window.location.pathname.replace('/action', '/outward'), {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json', 

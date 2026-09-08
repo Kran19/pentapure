@@ -222,15 +222,17 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
             </td>
-            <td style="font-weight:bold; color:var(--text-color);">{{ number_format($s->alert_limit, 2) }}</td>
+            <td style="font-weight:bold; color:var(--text-color);">
+              {{ number_format($s->alert_limit, 2) }}
+              <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+              </button>
+            </td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="RAW" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
               <div style="display:flex; align-items:center; gap:0.4rem;">
-                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }}, {{ $s->alert_limit }})" title="Adjust">
+                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }})" title="Adjust Stock">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
-                </button>
-                <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Set Alert Limit" style="color:var(--danger);">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 </button>
                 <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
               </div>
@@ -273,15 +275,17 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
             </td>
-            <td style="font-weight:bold; color:var(--text-color);">{{ number_format($s->alert_limit, 2) }}</td>
+            <td style="font-weight:bold; color:var(--text-color);">
+              {{ number_format($s->alert_limit, 2) }}
+              <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+              </button>
+            </td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="SEMI" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
               <div style="display:flex; align-items:center; gap:0.4rem;">
-                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }}, {{ $s->alert_limit }})" title="Adjust">
+                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }})" title="Adjust Stock">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
-                </button>
-                <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Set Alert Limit" style="color:var(--danger);">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 </button>
                 <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
               </div>
@@ -324,15 +328,17 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
             </td>
-            <td style="font-weight:bold; color:var(--text-color);">{{ number_format($s->alert_limit, 2) }}</td>
+            <td style="font-weight:bold; color:var(--text-color);">
+              {{ number_format($s->alert_limit, 2) }}
+              <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+              </button>
+            </td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="FINISHED" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
               <div style="display:flex; align-items:center; gap:0.4rem;">
-                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }}, {{ $s->alert_limit }})" title="Adjust">
+                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }})" title="Adjust Stock">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
-                </button>
-                <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Set Alert Limit" style="color:var(--danger);">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 </button>
                 <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
               </div>
@@ -466,16 +472,52 @@ function adminAddStock() {
   });
 }
 
-function adminAdjustStock(productId, stage, grade, productName = '', currentQty = 0, currentMinQty = 0) {
+async function adminAdjustStock(productId, stage, grade, productName = '', currentQty = 0) {
   const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG' }[stage] || stage;
   const displayGrade = grade !== 'NONE' ? ` &nbsp;·&nbsp; Grade: <strong style="color:#333;">${grade}</strong>` : '';
+
+  // Fetch locations
+  let allLocations = window._swalAllLocations || [];
+  if (!allLocations || allLocations.length === 0) {
+    try {
+      const locRes = await fetch(window.baseUrl + '/' + window.userSlug + '/api/locations');
+      const locData = await locRes.json();
+      if (locData.success) {
+        allLocations = locData.locations;
+        window._swalAllLocations = allLocations;
+      }
+    } catch (e) {
+      console.error('Failed to load locations', e);
+    }
+  }
+
+  if (!allLocations || allLocations.length === 0) {
+    allLocations = [{ name: 'Main Warehouse' }];
+  }
+
+  const mappings = getStoredLocationMappings();
+  const key = `${productId}_${grade}_${stage}`;
+  const locMap = mappings[key] || {};
+
+  let locOptionsHtml = allLocations.map(loc => {
+    const locName = (loc.name || '').trim();
+    let q = 0;
+    for (const [k, v] of Object.entries(locMap)) {
+      if (k.trim().toLowerCase() === locName.toLowerCase()) {
+        q = v;
+        break;
+      }
+    }
+    return `<option value="${escapeHtml(locName)}">${escapeHtml(locName)} (${q.toFixed(2)} kg)</option>`;
+  }).join('');
 
   Swal.fire({
     title: 'Adjust Stock',
     html: `
-      <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:#6b7280;">
-        <strong style="color:var(--primary); font-size:1.05rem;">${productName} (${stage})</strong><br>
+      <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:#6b7280; background:var(--bg-sidebar, #FFF8EA); border:1px solid var(--border-soft, #ECE4CF); border-radius:8px; padding:10px 12px;">
+        <strong style="color:var(--primary); font-size:1.05rem;">${escapeHtml(productName)} (${stage})</strong><br>
         <span style="font-size:0.85rem;">${stageLabel}${displayGrade}</span>
+        <div style="margin-top:4px; font-size:0.85rem; color:#333;">Total Current Stock: <strong style="color:var(--secondary);">${currentQty.toFixed(2)} kg</strong></div>
       </div>
 
       <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
@@ -486,29 +528,31 @@ function adminAdjustStock(productId, stage, grade, productName = '', currentQty 
         background:#fff; border:1px solid #d1d5db; color:#333;
         font-size:0.95rem; margin-bottom:1rem; outline:none;
       ">
-        <option value="set">🎯 Set — Override to exact quantity</option>
         <option value="add">➕ Add — Increase current stock</option>
         <option value="subtract">➖ Subtract — Decrease current stock</option>
+        <option value="set">🎯 Set — Override to exact quantity</option>
+      </select>
+
+      <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
+        Storage Location *
+      </label>
+      <select id="swal-adj-loc" style="
+        width:100%; padding:0.65rem 0.8rem; border-radius:8px;
+        background:#fff; border:1px solid #d1d5db; color:#333;
+        font-size:0.95rem; margin-bottom:1rem; outline:none;
+      ">
+        ${locOptionsHtml}
       </select>
 
       <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
         Quantity (kg)
       </label>
-      <input id="swal-qty" type="number" min="0" step="0.01" value="${currentQty}" placeholder="e.g. 150.00" style="
+      <input id="swal-qty" type="number" min="0" step="0.01" value="" placeholder="e.g. 50.00" style="
         width:100%; padding:0.65rem 0.8rem; border-radius:8px;
         background:#fff; border:1px solid #d1d5db; color:#333;
         font-size:1rem; margin-bottom:1rem; outline:none; box-sizing:border-box;
       ">
-
-      <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
-        Min Qty (Alert Limit)
-      </label>
-      <input id="swal-min-qty" type="number" min="0" step="0.01" value="${currentMinQty}" placeholder="e.g. 50.00" style="
-        width:100%; padding:0.65rem 0.8rem; border-radius:8px;
-        background:#fff; border:1px solid #d1d5db; color:#333;
-        font-size:1rem; margin-bottom:1rem; outline:none; box-sizing:border-box;
-      ">
-
+      
       <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
         Reason / Note <span style="font-weight:400;">(optional)</span>
       </label>
@@ -533,21 +577,25 @@ function adminAdjustStock(productId, stage, grade, productName = '', currentQty 
       cancelButton: 'swal-cancel-btn',
     },
     preConfirm: () => {
-      const qty    = parseFloat(document.getElementById('swal-qty').value);
-      const type   = document.getElementById('swal-adj-type').value;
-      const reason = document.getElementById('swal-reason').value.trim();
-      const minQty = parseFloat(document.getElementById('swal-min-qty').value) || 0;
+      const qty      = parseFloat(document.getElementById('swal-qty').value);
+      const type     = document.getElementById('swal-adj-type').value;
+      const location = document.getElementById('swal-adj-loc').value;
+      const reason   = document.getElementById('swal-reason').value.trim();
 
       if (isNaN(qty) || qty < 0) {
         Swal.showValidationMessage('⚠️ Please enter a valid quantity (≥ 0).');
         return false;
       }
-      return { qty, type, reason, min_qty: minQty };
+      if (!location) {
+        Swal.showValidationMessage('⚠️ Please select a storage location.');
+        return false;
+      }
+      return { qty, type, location, reason };
     }
   }).then(result => {
     if (!result.isConfirmed) return;
 
-    const { qty, type, reason, min_qty } = result.value;
+    const { qty, type, location, reason } = result.value;
 
     Swal.fire({
       title: 'Applying…',
@@ -567,8 +615,8 @@ function adminAdjustStock(productId, stage, grade, productName = '', currentQty 
         grade,
         quantity: qty,
         adjust_type: type,
-        reason,
-        min_qty
+        location,
+        reason
       })
     })
     .then(r => r.json())
@@ -581,8 +629,7 @@ function adminAdjustStock(productId, stage, grade, productName = '', currentQty 
           background: '#ffffff',
           color: '#333333',
           confirmButtonColor: '#f59e0b',
-          timer: 2000,
-          timerProgressBar: true,
+          timer: 1500,
           showConfirmButton: false
         }).then(() => fetchLiveStock());
       } else {
@@ -596,11 +643,11 @@ function adminAdjustStock(productId, stage, grade, productName = '', currentQty 
         });
       }
     })
-    .catch(() => {
+    .catch(e => {
       Swal.fire({
         icon: 'error',
-        title: 'Network Error',
-        text: 'Could not reach the server. Please try again.',
+        title: 'Error',
+        text: 'Failed to communicate with server: ' + e.message,
         background: '#ffffff',
         color: '#333333',
         confirmButtonColor: '#f59e0b',
@@ -661,7 +708,7 @@ function adminUpdateRate(productId, currentRate, name) {
             confirmButtonColor: '#f59e0b',
             timer: 1500, 
             showConfirmButton: false 
-          }).then(() => location.reload());
+          }).then(() => fetchLiveStock());
         } else {
           Swal.fire({ 
             icon: 'error', 
@@ -757,7 +804,7 @@ function adminSetLimit(productId, stage, grade, currentLimit, productName = '') 
           confirmButtonColor: '#f59e0b',
           timer: 1500,
           showConfirmButton: false
-        }).then(() => location.reload());
+        }).then(() => fetchLiveStock());
       } else {
         Swal.fire({
           icon: 'error',
@@ -847,15 +894,17 @@ function updateStockTables(stockData) {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
             </button>
           </td>
-          <td style="font-weight:bold; color:var(--text-color);">${limit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+          <td style="font-weight:bold; color:var(--text-color);">
+            ${limit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+            <button class="btn-icon edit" onclick="adminSetLimit('${s.productId}', '${s.stage}', '${s.grade}', '${limit}', '${escapeHtml(s.name)}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+            </button>
+          </td>
           <td class="location-col" data-product="${s.productId}" data-grade="${s.grade}" data-stage="${stage}" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
           <td>
             <div style="display:flex; align-items:center; gap:0.4rem;">
-              <button class="btn-icon edit" onclick="adminAdjustStock('${s.productId}', '${s.stage}', '${s.grade}', '${escapeHtml(s.name)}', ${s.quantity}, ${limit})" title="Adjust">
+              <button class="btn-icon edit" onclick="adminAdjustStock('${s.productId}', '${s.stage}', '${s.grade}', '${escapeHtml(s.name)}', ${s.quantity})" title="Adjust Stock">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
-              </button>
-              <button class="btn-icon edit" onclick="adminSetLimit('${s.productId}', '${s.stage}', '${s.grade}', '${limit}', '${escapeHtml(s.name)}')" title="Set Alert Limit" style="color:var(--danger);">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
               </button>
               <button class="btn btn-sm" onclick="window.location.href='{{ url(request()->segment(1) . '/product') }}/' + s.productId + '/' + s.stage + '/' + s.grade + '/history'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
             </div>
@@ -899,12 +948,49 @@ function updateAllLocationLabels() {
   });
 }
 
+window._swalAllLocations = [];
+window._swalCurrentLocMap = {};
+
+window.onTransferFromChange = function(fromSelectEl) {
+  const selectedFrom = (fromSelectEl ? fromSelectEl.value : '').trim().toLowerCase();
+  const toSelect = document.getElementById('swal-transfer-to');
+  if (!toSelect) return;
+  
+  const currentToVal = (toSelect.value || '').trim().toLowerCase();
+  
+  let toHtml = '<option value="" disabled selected>To Location</option>';
+  (window._swalAllLocations || []).forEach(loc => {
+    const locName = (loc.name || '').trim();
+    if (locName && locName.toLowerCase() !== selectedFrom) {
+      let qty = 0;
+      if (window._swalCurrentLocMap) {
+        for (const [k, v] of Object.entries(window._swalCurrentLocMap)) {
+          if (k.trim().toLowerCase() === locName.toLowerCase()) {
+            qty = v;
+            break;
+          }
+        }
+      }
+      const isSelected = (locName.toLowerCase() === currentToVal) ? 'selected' : '';
+      toHtml += `<option value="${escapeHtml(locName)}" ${isSelected}>${escapeHtml(locName)} (${qty.toFixed(2)} kg)</option>`;
+    }
+  });
+  toSelect.innerHTML = toHtml;
+  
+  if (currentToVal && currentToVal === selectedFrom) {
+    toSelect.value = '';
+  }
+};
+
 async function showLocationBreakdown(el) {
   const pId = el.getAttribute('data-product');
   const grade = el.getAttribute('data-grade') || 'NONE';
   const stage = el.getAttribute('data-stage');
   const key = `${pId}_${grade}_${stage}`;
-  
+
+  const row = el.closest('tr');
+  const prodDetail = row && row.cells[0] ? row.cells[0].innerText.trim() : '';
+
   // Fetch available locations from DB
   let allLocations = [];
   try {
@@ -924,9 +1010,9 @@ async function showLocationBreakdown(el) {
   const mappings = getStoredLocationMappings();
   const totalStockQty = getAvailableStockForLocationCell(el);
   const locMap = mappings[key] || {};
-  
-  const assignedQty = Object.values(locMap).reduce((t, q) => t + q, 0);
-  const unassignedQty = Math.max(totalStockQty - assignedQty, 0);
+
+  window._swalAllLocations = allLocations;
+  window._swalCurrentLocMap = locMap;
 
   let locationsListHtml = Object.entries(locMap).map(([loc, qty]) => `
     <div style="display:flex; justify-content:space-between; padding:8px 12px; background:#f9fafb; border-radius:8px; margin-bottom:6px;">
@@ -935,23 +1021,38 @@ async function showLocationBreakdown(el) {
     </div>
   `).join('') || '<p style="text-align:center; color:#6b7280; margin: 1rem 0;">No locations linked yet.</p>';
 
-  let optionsHtml = allLocations.map(loc => `<option value="${escapeHtml(loc.name)}">${escapeHtml(loc.name)}</option>`).join('');
-  
-  let fromOptionsHtml = Object.entries(locMap).map(([loc, qty]) => `<option value="${escapeHtml(loc)}">${escapeHtml(loc)} (${qty} kg)</option>`).join('');
+  const fromEntries = Object.entries(locMap).filter(([loc, qty]) => qty > 0);
+
   let transferHtml = '';
-  if (Object.keys(locMap).length > 0) {
+  if (fromEntries.length > 0) {
+    const defaultFromLoc = fromEntries[0][0];
+    const defaultFromLower = defaultFromLoc.trim().toLowerCase();
+
+    let initialToOptionsHtml = allLocations
+      .filter(loc => (loc.name || '').trim().toLowerCase() !== defaultFromLower)
+      .map(loc => {
+        const locName = (loc.name || '').trim();
+        let qty = 0;
+        for (const [k, v] of Object.entries(locMap)) {
+          if (k.trim().toLowerCase() === locName.toLowerCase()) {
+            qty = v;
+            break;
+          }
+        }
+        return `<option value="${escapeHtml(locName)}">${escapeHtml(locName)} (${qty.toFixed(2)} kg)</option>`;
+      }).join('');
+
     transferHtml = `
       <div style="border-top:1px dashed var(--border-soft); padding-top:1rem; margin-top:1rem; text-align:left;">
         <label style="display:block; font-size:0.8rem; color:#6b7280; margin-bottom:0.5rem;">Transfer Stock</label>
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-          <select id="swal-transfer-from" style="flex:1; min-width:100px; padding:0.45rem; background:#ffffff; border:1px solid #d1d5db; color:#333333; border-radius:6px; font-size:0.8rem;">
-            <option value="" disabled selected>From Location</option>
-            ${fromOptionsHtml}
+          <select id="swal-transfer-from" onchange="onTransferFromChange(this)" style="flex:1; min-width:100px; padding:0.45rem; background:#ffffff; border:1px solid #d1d5db; color:#333333; border-radius:6px; font-size:0.8rem;">
+            ${fromEntries.map(([loc, qty], idx) => `<option value="${escapeHtml(loc)}" ${idx === 0 ? 'selected' : ''}>${escapeHtml(loc)} (${qty.toFixed(2)} kg)</option>`).join('')}
           </select>
           <span style="color:#6b7280; font-size:0.8rem;">➡</span>
           <select id="swal-transfer-to" style="flex:1; min-width:100px; padding:0.45rem; background:#ffffff; border:1px solid #d1d5db; color:#333333; border-radius:6px; font-size:0.8rem;">
             <option value="" disabled selected>To Location</option>
-            ${optionsHtml}
+            ${initialToOptionsHtml}
           </select>
           <input type="number" id="swal-transfer-qty" min="0.01" step="0.01" placeholder="Qty (kg)" style="width:80px; padding:0.45rem; background:#ffffff; border:1px solid #d1d5db; color:#333333; border-radius:6px; font-size:0.8rem;">
           <button class="btn btn-sm" onclick="transferLocationMapping('${pId}', '${stage}', '${grade}', this)" style="padding:0.45rem 0.8rem;">Transfer</button>
@@ -963,10 +1064,15 @@ async function showLocationBreakdown(el) {
   Swal.fire({
     title: '📍 Stock Storage Locations',
     html: `
-      <div style="display:flex; justify-content:space-between; margin-bottom:1rem; font-size:0.85rem; color:#333; background:var(--bg-sidebar, #FFF8EA); border:1px solid var(--border-soft, #ECE4CF); border-radius:8px; padding:10px; flex-wrap:wrap; gap:0.5rem;">
-        <div><span style="color:#6b7280;">Total Stock:</span> <strong>${totalStockQty.toFixed(2)} kg</strong></div>
-        <div><span style="color:#6b7280;">Assigned:</span> <strong style="color:var(--secondary);">${assignedQty.toFixed(2)} kg</strong></div>
-        <div><span style="color:#6b7280;">Available (Unassigned):</span> <strong style="color:var(--primary-light);">${unassignedQty.toFixed(2)} kg</strong></div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; font-size:0.85rem; color:#333; background:var(--bg-sidebar, #FFF8EA); border:1px solid var(--border-soft, #ECE4CF); border-radius:8px; padding:10px 14px; flex-wrap:wrap; gap:0.5rem;">
+        <div style="text-align:left;">
+          <span style="color:#6b7280; font-size:0.75rem; display:block; text-transform:uppercase; font-weight:600;">Product</span>
+          <strong style="color:var(--text-color); font-size:0.95rem;">${escapeHtml(prodDetail)}</strong>
+        </div>
+        <div style="text-align:right;">
+          <span style="color:#6b7280; font-size:0.75rem; display:block; text-transform:uppercase; font-weight:600;">Total Stock</span>
+          <strong style="color:var(--secondary); font-size:0.95rem;">${totalStockQty.toFixed(2)} kg</strong>
+        </div>
       </div>
       <div style="margin-bottom:1rem; max-height:200px; overflow-y:auto;">
         ${locationsListHtml}
@@ -1017,7 +1123,7 @@ window.addLocationMapping = async function(productId, stage, grade, remainingQty
         timer: 1000,
         showConfirmButton: false
       }).then(() => {
-        location.reload();
+        fetchLiveStock();
       });
     } else {
       Swal.showValidationMessage(data.message || 'Failed to save mapping');
@@ -1064,7 +1170,7 @@ window.transferLocationMapping = async function(productId, stage, grade, buttonE
         timer: 1000,
         showConfirmButton: false
       }).then(() => {
-        location.reload();
+        fetchLiveStock();
       });
     } else {
       Swal.showValidationMessage(data.message || 'Failed to transfer stock');

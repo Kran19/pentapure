@@ -4,11 +4,11 @@
 <div style="padding:1.5rem;">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
     <h2 style="margin:0;">📍 Warehouse / Storage Locations Master</h2>
-    <button class="btn" onclick="document.getElementById('loc-form-card').style.display='block'; resetLocationForm();" style="width:auto; padding:0.6rem 1.2rem;">+ Add Location</button>
+    <button class="btn" onclick="document.getElementById('loc-form-card').style.display='block'; resetLocationForm(); document.getElementById('loc-form-card').scrollIntoView({ behavior: 'smooth' });" style="width:auto; padding:0.6rem 1.2rem;">+ Add Location</button>
   </div>
 
-  <!-- Add / Edit Form Card (Open by default) -->
-  <div id="loc-form-card" class="card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
+  <!-- Add / Edit Form Card -->
+  <div id="loc-form-card" class="card" style="display:none; margin-bottom:1.5rem; padding:1.2rem;">
     <div class="card-title" id="loc-card-title">Add / Edit Warehouse Location</div>
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1rem;">
       <div class="form-group">

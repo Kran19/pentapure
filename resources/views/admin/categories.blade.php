@@ -7,8 +7,8 @@
     <button class="btn" onclick="openCategoryForm()" style="width:auto; padding:0.6rem 1.2rem;">+ Add New Category</button>
   </div>
 
-  <!-- Add/Edit Form Card (Open by default) -->
-  <div id="category-form-card" class="card white-orange-card" style="display:block; margin-bottom:1.5rem; padding:1.2rem;">
+  <!-- Add/Edit Form Card -->
+  <div id="category-form-card" class="card white-orange-card" style="display:none; margin-bottom:1.5rem; padding:1.2rem;">
     <div class="card-title" id="form-card-title">Add New Category</div>
     <form id="category-form">
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1rem;">
@@ -81,6 +81,7 @@
     document.getElementById('form-card-title').innerText = 'Add New Category';
     document.getElementById('category-name').value = '';
     document.getElementById('category-form-card').style.display = 'block';
+    document.getElementById('category-form-card').scrollIntoView({ behavior: 'smooth' });
   }
 
   function adminEditCategory(c) {
