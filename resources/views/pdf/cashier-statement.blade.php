@@ -5,139 +5,130 @@
 <title>PentaPure - Account Statement</title>
 <style>
 @page {
-    margin: 0;
+    margin: 15px;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
-    font-family: DejaVu Sans, sans-serif;
-    font-size: 10px;
-    color: #1a1a2e;
-    line-height: 1.4;
-    text-transform: uppercase;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 9px;
+    color: #1e293b;
+    line-height: 1.35;
+    background: #ffffff;
+}
+
+.pdf-container {
+    padding: 15px 25px;
 }
 
 /* ── HEADER ── */
 .header-table {
     width: 100%;
-    background: #f8c300;
-    padding: 14px 20px;
+    background: #ffc107;
+    padding: 10px 14px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    border-collapse: collapse;
 }
-.brand-name { font-size: 22px; font-weight: bold; color: #101828; letter-spacing: 1px; }
-.brand-sub  { font-size: 9px; color: #101828; margin-top: 2px; }
+.brand-name { font-size: 18px; font-weight: bold; color: #000000; letter-spacing: 0.5px; }
+.brand-sub  { font-size: 8px; font-weight: bold; color: #222222; margin-top: 1px; }
 
 /* ── META BOX ── */
 .meta-table {
     width: 100%;
-    margin: 14px 20px 0;
+    margin-bottom: 12px;
     border-collapse: collapse;
-    border: 1px solid #aaa;
+    border: 1px solid #cbd5e1;
 }
 .meta-table td {
     padding: 6px 10px;
     font-size: 9px;
-    border: 1px solid #aaa;
+    border: 1px solid #cbd5e1;
 }
-.meta-title { font-size: 13px; font-weight: bold; }
-.meta-sub   { font-size: 9px; color: #444; }
+.meta-title { font-size: 12px; font-weight: bold; color: #0f172a; }
 
 /* ── CONTENT ── */
-.content { padding: 14px 20px; }
-
-/* ── SUMMARY STRIP ── */
-.summary-table {
-    width: 100%;
-    margin-bottom: 12px;
-    border-collapse: collapse;
-    border: 1px solid #ddd;
-    background: #f8f9fc;
-}
-.summary-table td {
-    text-align: center;
-    padding: 8px 4px;
-    border: 1px solid #ddd;
-    width: 25%;
-}
-.summary-val  { font-size: 13px; font-weight: bold; color: #1a2744; }
-.summary-lbl  { font-size: 8px; color: #777; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
-.color-green  { color: #1a7a37; }
-.color-red    { color: #b91c1c; }
+.content { width: 100%; }
 
 /* ── MAIN TABLE ── */
 .data-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
     font-size: 9px;
 }
 .data-table thead th {
-    background: #f8c300;
-    color: #101828;
-    padding: 7px 5px;
+    background: #ffc107;
+    color: #000000;
+    padding: 7px 6px;
     font-weight: bold;
     text-align: left;
-    border: 1px solid #667085;
+    border: 1px solid #94a3b8;
+    font-size: 9px;
 }
 .data-table tbody td {
-    padding: 7px 5px;
-    border: 1px solid #d0d7e3;
-    vertical-align: top;
+    padding: 6px 6px;
+    border: 1px solid #e2e8f0;
+    vertical-align: middle;
 }
-.data-table tbody tr:nth-child(even) { background: #f5f7fc; }
+.data-table tbody tr:nth-child(even) { background: #f8fafc; }
 
-.amt-in    { color: #15803d; }
-.amt-out   { color: #b91c1c; }
+.amt-in    { color: #16a34a; font-weight: bold; }
+.amt-out   { color: #dc2626; font-weight: bold; }
 
 /* ── BALANCE BAR ── */
 .balance-table {
     width: 100%;
     margin-bottom: 14px;
+    border-collapse: collapse;
 }
 .balance-table td {
     vertical-align: middle;
 }
 .bal-right {
     text-align: right; 
-    padding: 10px 14px;
+    padding: 8px 14px;
     border-radius: 4px;
 }
-.bal-right.positive { background: #dcfce7; border: 1px solid #86efac; }
+.bal-right.positive { background: #f0fdf4; border: 1px solid #86efac; }
 .bal-right.negative { background: #fef2f2; border: 1px solid #fca5a5; }
-.bal-label  { font-size: 9px; color: #555; font-weight: bold; }
-.bal-amount { font-size: 20px; font-weight: bold; }
+.bal-label  { font-size: 8px; color: #64748b; font-weight: bold; text-transform: uppercase; }
+.bal-amount { font-size: 15px; font-weight: bold; margin-top: 1px; }
 
 /* ── FOOTER ── */
 .footer-table {
     width: 100%;
-    border-top: 1px solid #ccc;
-    padding-top: 12px;
-    margin-top: 16px;
+    border-top: 1px solid #cbd5e1;
+    padding-top: 10px;
+    margin-top: 15px;
+    border-collapse: collapse;
 }
-.footer-note  { font-size: 8px; color: #888; line-height: 1.7; }
-.sig-line     { border-top: 1px solid #333; width: 160px; display: inline-block; margin-bottom: 3px; }
-.sig-name     { font-size: 10px; font-weight: bold; color: #1a2744; }
-.sig-role     { font-size: 8px; color: #888; }
+.footer-note  { font-size: 8px; color: #64748b; line-height: 1.4; }
+.sig-line     { border-top: 1px solid #334155; width: 140px; display: inline-block; margin-bottom: 3px; }
+.sig-name     { font-size: 9px; font-weight: bold; color: #0f172a; }
+.sig-role     { font-size: 8px; color: #64748b; }
 </style>
 </head>
 <body>
+<div class="pdf-container">
 
 <table class="header-table">
     <tr>
-        <td style="width: 65%; color: #101828;">
+        <td style="width: 60%; color: #101828; vertical-align: middle;">
             <table style="width: 100%; border-collapse: collapse;">
                 <tr>
-                    <td style="width: 60px; padding: 0; vertical-align: middle; border: none; background: transparent;">
+                    <td style="width: 45px; padding: 0; vertical-align: middle; border: none; background: transparent;">
                         @if(file_exists(public_path('logo.png')))
-                            <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 50px; height: 50px; object-fit: contain;">
+                            <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 40px; height: 40px; object-fit: contain;">
                         @endif
                     </td>
-                    <td style="text-align: left; padding-left: 10px; vertical-align: middle; border: none; background: transparent;">
+                    <td style="text-align: left; padding-left: 8px; vertical-align: middle; border: none; background: transparent;">
                         <div class="brand-name">PentaPure</div>
                         <div class="brand-sub">FOOD &amp; SPICES PVT.LTD.</div>
                     </td>
                 </tr>
             </table>
         </td>
-        <td style="width: 35%; text-align: right; color: #101828; font-size: 9px; vertical-align: middle;">
+        <td style="width: 40%; text-align: right; color: #101828; font-size: 8.5px; vertical-align: middle;">
             <div>Report ID: RPT-{{ str_pad($reportId, 4, '0', STR_PAD_LEFT) }}</div>
             <div>Generated: {{ $generatedOn }}</div>
             <div>Cashier: {{ $cashierName }}</div>
@@ -147,8 +138,8 @@ body {
 
 <table class="meta-table">
     <tr>
-        <td colspan="2" style="border-bottom: 1px solid #aaa; background: #f0f0f0; padding: 10px;">
-            <span class="meta-title" style="font-size: 15px; font-weight: bold;">
+        <td colspan="2" style="border-bottom: 1px solid #cbd5e1; background: #f1f5f9; padding: 8px 10px;">
+            <span class="meta-title">
                 DURATION: {{ \Carbon\Carbon::parse($fromDate)->format('d-M-Y') }} - {{ \Carbon\Carbon::parse($toDate)->format('d-M-Y') }}
             </span>
         </td>
@@ -168,11 +159,11 @@ body {
     <table class="data-table">
         <thead>
             <tr>
-                <th style="width: 90px;">Date</th>
+                <th style="width: 85px;">Date</th>
                 <th>Description</th>
                 <th style="width: 90px;">Category</th>
-                <th style="width: 90px; text-align: right;">Amt</th>
-                <th style="width: 100px; text-align: right;">Balance</th>
+                <th style="width: 85px; text-align: right;">Amt</th>
+                <th style="width: 95px; text-align: right;">Balance</th>
             </tr>
         </thead>
         <tbody>
@@ -195,7 +186,7 @@ body {
             </tr>
             @empty
             <tr>
-                <td colspan="5" style="padding:20px; text-align:center; color:#888;">
+                <td colspan="5" style="padding:15px; text-align:center; color:#888;">
                     No transactions found for this period.
                 </td>
             </tr>
@@ -205,12 +196,12 @@ body {
 
     <table class="balance-table">
         <tr>
-            <td style="width: 60%; font-size: 9px; color: #555;">
+            <td style="width: 55%; font-size: 8.5px; color: #555;">
                 Opening Balance: <strong>{{ number_format($openingBalance, 2) }}</strong>
                 &nbsp;+&nbsp; Income: <strong style="color:#15803d;">{{ number_format($sumIn, 2) }}</strong>
                 &nbsp;−&nbsp; Expense: <strong style="color:#b91c1c;">{{ number_format($sumOut, 2) }}</strong>
             </td>
-            <td style="width: 40%;" class="bal-right {{ $closingBalance >= 0 ? 'positive' : 'negative' }}">
+            <td style="width: 45%;" class="bal-right {{ $closingBalance >= 0 ? 'positive' : 'negative' }}">
                 <div class="bal-label">Closing Balance</div>
                 <div class="bal-amount {{ $closingBalance >= 0 ? 'color-green' : 'color-red' }}">
                     {{ number_format(abs($closingBalance), 2) }}
@@ -231,8 +222,8 @@ body {
                     @endif
                 </div>
             </td>
-            <td style="width: 40%; text-align: right; vertical-align: bottom;">
-                <div style="font-family: DejaVu Sans, sans-serif; font-size:16px; color:#1a2744; margin-bottom:3px;">PentaPure</div>
+            <td style="width: 40%; text-align: right; vertical-align: bottom; padding-right: 10px;">
+                <div style="font-size: 14px; font-weight: bold; color: #1a2744; margin-bottom: 2px;">PentaPure</div>
                 <div class="sig-line"></div><br>
                 <div class="sig-name">Authorized Signature</div>
                 <div class="sig-role">PentaPure Admin</div>
@@ -240,6 +231,7 @@ body {
         </tr>
     </table>
 
+</div>
 </div>
 </body>
 </html>

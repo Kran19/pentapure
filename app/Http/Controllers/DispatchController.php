@@ -515,6 +515,49 @@ class DispatchController extends Controller
         return view('dispatch.history', compact('pageData'));
     }
 
+    public function report()
+    {
+        $orders = Order::with(['company', 'transporter', 'items.product', 'dispatchLogs'])
+            ->orderByDesc('created_at')
+            ->get();
+
+        $reportOrders = $orders->map(fn($o) => [
+            'id'             => $o->id,
+            'orderId'        => $o->id,
+            'companyId'      => $o->company_id,
+            'companyName'    => $o->company?->name,
+            'transportName'  => $o->transporter?->name,
+            'orderTotal'     => $o->total,
+            'status'         => $o->status,
+            'dispatchStatus' => $o->dispatch_status,
+            'date'           => $o->created_at->toISOString(),
+            'notes'          => $o->notes,
+            'totalQty'       => (float) $o->items->sum('quantity'),
+            'dispatchedQty'  => (float) $o->items->sum('dispatched_qty'),
+            'remainingQty'   => (float) $o->items->sum(fn($i) => $i->remainingQty()),
+            'items'          => $o->items->map(fn($i) => [
+                'id'            => $i->id,
+                'productName'   => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
+                'grade'         => $i->grade,
+                'productType'   => $i->product?->type,
+                'quantity'      => (float) $i->quantity,
+                'dispatchedQty' => (float) $i->dispatched_qty,
+                'remainingQty'  => (float) $i->remainingQty(),
+            ])->values(),
+        ]);
+
+        $companies = Company::orderBy('name')->get()->map(fn($c) => [
+            'id'   => $c->id,
+            'name' => strtoupper($c->name ?? '')
+        ]);
+
+        $pageData = [
+            'orders'    => $reportOrders,
+            'companies' => $companies,
+        ];
+        return view('dispatch.report', compact('pageData'));
+    }
+
     public function profile()
     {
         return view('dispatch.profile');

@@ -95,19 +95,26 @@ const app = {
   },
 
   refreshAppTranslatables() {
-    const items = document.querySelectorAll('.bottom-nav .nav-item');
+    const items = document.querySelectorAll('.bottom-nav .nav-item, .admin-sidebar .nav-item');
     items.forEach(item => {
-      const span = item.querySelector('span');
-      if (!span) return;
       const href = item.getAttribute('href') || '';
-      if (href.endsWith('/home')) span.innerText = this.t('Home');
-      else if (href.endsWith('/action')) span.innerText = this.t('Action');
-      else if (href.endsWith('/stock')) span.innerText = this.t('Live Stock');
-      else if (href.endsWith('/po')) span.innerText = this.t('Purchase Request');
-      else if (href.endsWith('/history')) span.innerText = this.t('Reports');
-      else if (href.endsWith('/ledger')) span.innerText = this.t('Report');
-      else if (href.endsWith('/workers')) span.innerText = this.t('Workers');
-      else if (href.endsWith('/profile')) span.innerText = this.t('Profile');
+      const textNode = item.querySelector('span') || item;
+      if (!textNode) return;
+      
+      const cleanText = textNode.innerText.trim();
+      if (href.endsWith('/home') || href.endsWith('/dashboard')) {
+        if (cleanText.includes('Home') || cleanText.includes('Dashboard')) textNode.innerText = cleanText.replace(/Home|Dashboard/g, this.t('Home'));
+      } else if (href.endsWith('/action')) {
+        if (cleanText.includes('Action')) textNode.innerText = cleanText.replace('Action', this.t('Action'));
+      } else if (href.endsWith('/stock')) {
+        if (cleanText.includes('Live Stock') || cleanText.includes('Stock')) textNode.innerText = cleanText.replace(/Live Stock|Stock/g, this.t('Live Stock'));
+      } else if (href.endsWith('/po')) {
+        if (cleanText.includes('Purchase Request') || cleanText.includes('Purchase Orders')) textNode.innerText = cleanText.replace(/Purchase Request|Purchase Orders/g, this.t('Purchase Orders'));
+      } else if (href.endsWith('/history')) {
+        if (cleanText.includes('History') || cleanText.includes('Reports')) textNode.innerText = cleanText.replace(/History|Reports/g, this.t('History'));
+      } else if (href.endsWith('/profile')) {
+        if (cleanText.includes('Profile')) textNode.innerText = cleanText.replace('Profile', this.t('Profile'));
+      }
     });
   },
 
@@ -885,28 +892,22 @@ const app = {
         <div style="text-align:left; font-size:0.9rem;">
           <div style="margin-bottom:12px;">
             <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.8rem; text-transform:uppercase;">Transporter Name *</label>
-            <input id="swal-trans-name" class="swal2-input" placeholder="e.g. Maruti Freight or NA" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;" value="NA">
+            <input id="swal-trans-name" class="swal2-input" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;" value="NA">
           </div>
           <div style="margin-bottom:12px;">
             <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.8rem; text-transform:uppercase;">GST Number (Optional)</label>
-            <input id="swal-trans-gst" class="swal2-input" placeholder="15-digit GSTIN or N/A" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;" value="N/A">
+            <input id="swal-trans-gst" class="swal2-input" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;" value="N/A">
           </div>
           <div style="margin-bottom:12px;">
             <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.8rem; text-transform:uppercase;">Contact Number (Optional)</label>
             <div style="display:flex; gap:8px;">
-              <select id="swal-trans-code" style="width:72px; padding:0.6rem 0.2rem; border-radius:6px; border:1px solid #d1d5db; font-weight:600; text-align:center;">
-                <option value="+91" selected>+91</option>
-                <option value="+1">+1</option>
-                <option value="+44">+44</option>
-                <option value="+971">+971</option>
-                <option value="other">+...</option>
-              </select>
-              <input id="swal-trans-phone" class="swal2-input" placeholder="10-digit mobile number" style="flex:1; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;">
+              <input id="swal-trans-code" class="swal2-input" value="+91" oninput="if(this.value.trim()==='+91'){ document.getElementById('swal-trans-phone').setAttribute('maxlength','10'); document.getElementById('swal-trans-phone').value = document.getElementById('swal-trans-phone').value.replace(/\\D/g,'').slice(0,10); } else { document.getElementById('swal-trans-phone').removeAttribute('maxlength'); }" style="width:75px; margin:0; padding:0.6rem 0.4rem; font-size:0.9rem; font-weight:600; text-align:center; box-sizing:border-box; border-radius:6px; flex-shrink:0;">
+              <input id="swal-trans-phone" class="swal2-input" oninput="if(document.getElementById('swal-trans-code').value.trim()==='+91'){ this.value = this.value.replace(/\\D/g,'').slice(0,10); }" maxlength="10" style="flex:1; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;">
             </div>
           </div>
           <div style="margin-bottom:8px;">
             <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.8rem; text-transform:uppercase;">Vehicle Numbers (Optional)</label>
-            <input id="swal-trans-vehicles" class="swal2-input" placeholder="e.g. GJ01AB1234, GJ01CD5678" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;">
+            <input id="swal-trans-vehicles" class="swal2-input" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;">
           </div>
         </div>
       `,
@@ -919,7 +920,7 @@ const app = {
         const name = (document.getElementById('swal-trans-name').value || '').trim();
         const gst = (document.getElementById('swal-trans-gst').value || '').trim().toUpperCase();
         const rawPhone = (document.getElementById('swal-trans-phone').value || '').trim();
-        const code = document.getElementById('swal-trans-code').value;
+        const code = (document.getElementById('swal-trans-code').value || '').trim();
         const vehicles = (document.getElementById('swal-trans-vehicles').value || '').trim();
 
         if (!name) {
@@ -934,7 +935,7 @@ const app = {
 
         let formattedContact = '';
         if (rawPhone) {
-          if (code === '+91' && !rawPhone.startsWith('+')) {
+          if (code === '+91') {
             const digits = rawPhone.replace(/\D/g, '');
             const isLandline = /^0?79[\s\-]?[0-9]{6,8}$/.test(rawPhone);
             if (!isLandline && digits.length !== 10) {
@@ -943,7 +944,7 @@ const app = {
             }
             formattedContact = '+91 ' + rawPhone;
           } else {
-            formattedContact = (code !== 'other' && !rawPhone.startsWith('+')) ? (code + ' ' + rawPhone) : rawPhone;
+            formattedContact = code ? (code + ' ' + rawPhone) : rawPhone;
           }
         }
 
@@ -963,7 +964,7 @@ const app = {
             'Accept': 'application/json',
             'X-CSRF-TOKEN': window.csrfToken || csrfToken
           },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(result.value)
         })
         .then(r => r.json())
         .then(d => {
@@ -1103,7 +1104,7 @@ const app = {
     if (container.children.length > 0) {
       const hr = document.createElement('hr');
       hr.className = 'row-divider';
-      hr.style.cssText = 'border:0; border-top:2px dotted #4b5563; margin:0.9rem 0; opacity:0.85;';
+      hr.style.cssText = 'border:0; border-top:2px solid var(--primary, #D88A00); margin:1.2rem 0; opacity:0.85;';
       wrapper.appendChild(hr);
     }
 
@@ -1153,11 +1154,11 @@ const app = {
         </div>
         <div style="flex:1; min-width:80px;">
           <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">QTY</label>
-          <input type="number" class="o-prod-qty no-spinners" placeholder="QTY" value="${qty}" step="any" min="0.001" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem;">
+          <input type="number" class="o-prod-qty no-spinners" value="${qty}" step="any" min="0.001" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem;">
         </div>
         <div style="flex:1; min-width:80px;">
           <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">₹/UNIT</label>
-          <input type="number" class="o-prod-price no-spinners" placeholder="₹/UNIT" value="${price}" step="any" min="0" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem;">
+          <input type="number" class="o-prod-price no-spinners" value="${price}" step="any" min="0" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem;">
         </div>
         <button type="button" class="btn btn-danger btn-remove-prod" onclick="app.removeOrderProductRow(this)" title="Remove Product" style="flex:0 0 42px; width:42px; height:42px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:8px; background:#e11d48; color:#fff; border:none; cursor:pointer;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -1198,7 +1199,7 @@ const app = {
         if (!hr) {
           hr = document.createElement('hr');
           hr.className = 'row-divider';
-          hr.style.cssText = 'border:0; border-top:2px dotted #4b5563; margin:0.9rem 0; opacity:0.85;';
+          hr.style.cssText = 'border:0; border-top:2px solid var(--primary, #D88A00); margin:1.2rem 0; opacity:0.85;';
           w.insertBefore(hr, w.firstChild);
         }
       }
@@ -1534,29 +1535,6 @@ const app = {
     .catch(() => this.toast('Network error.', 'error'));
   },
 
-  previewLR(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!allowed.includes(file.type)) {
-      this.toast('Only JPG, JPEG, PNG, and WEBP images are allowed.', 'error');
-      event.target.value = '';
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = function(){
-      const img = document.getElementById('lr-preview');
-      if (img) {
-        img.src = reader.result;
-        img.style.display = 'block';
-      }
-      window.currentLRImage = reader.result;
-    };
-    reader.readAsDataURL(file);
-  },
-
   submitDispatch() {
     const orderId = document.getElementById('dispatch-order').value;
     if (!orderId) return this.toast('Select an order', 'error');
@@ -1566,12 +1544,11 @@ const app = {
 
     const items = [];
     let hasError = false;
-    let locationUpdates = [];
 
     itemContainers.forEach(container => {
       const itemId = Number(container.dataset.itemId || container.id.replace('loc-splits-', ''));
       const max = Number(container.dataset.max || document.querySelector(`.dispatch-item-qty[data-item-id="${itemId}"]`)?.dataset.max || 0);
-      const splitInputs = container.querySelectorAll('.loc-split-qty');
+      const splitInputs = container.querySelectorAll('.inner-qty-input, .loc-split-qty');
       
       let splitSum = 0;
       const splits = [];
@@ -1580,19 +1557,13 @@ const app = {
         const sQty = Number(sInp.value);
         const locName = sInp.dataset.loc || sInp.closest('.loc-row')?.querySelector('.loc-split-select')?.value;
         if (sQty > 0 && locName) {
-          const sMax = Number(sInp.dataset.max || sInp.max || 0);
+          const sMax = Number(sInp.dataset.avail || sInp.dataset.max || sInp.max || 0);
           if (sMax > 0 && sQty > sMax) {
             this.toast(`Location qty (${sQty} kg) exceeds available stock (${sMax} kg) in ${locName}`, 'error');
             hasError = true;
           }
           splitSum += sQty;
           splits.push({ location_key: locName, dispatch_location_qty: sQty });
-
-          const orderItem = (window.currentDispatchOrderItems || []).find(x => x.id == itemId);
-          if (orderItem) {
-            const locKey = `${orderItem.productId}_${orderItem.grade || 'NONE'}_${orderItem.productType || 'FINISHED'}`;
-            locationUpdates.push({ locKey, location: locName, deduct: sQty });
-          }
         }
       });
 
@@ -1677,6 +1648,56 @@ const app = {
     .catch(() => this.toast('Network error while recording dispatch.', 'error'));
   },
 
+  toggleDispatchLocationDropdown(btn) {
+    const menu = btn.nextElementSibling;
+    if (menu) {
+      menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    }
+  },
+
+  recalcDispatchLocationDropdownTotals(itemId, maxRemaining) {
+    const container = document.getElementById(`loc-splits-${itemId}`);
+    if (!container) return;
+
+    const inputs = container.querySelectorAll('.inner-qty-input');
+    let sumEnteredQty = 0;
+    const activeLocSummary = [];
+
+    inputs.forEach(inp => {
+      const qty = parseFloat(inp.value) || 0;
+      const locName = inp.getAttribute('data-loc');
+      const avail = parseFloat(inp.getAttribute('data-avail') || 0);
+
+      if (qty > 0) {
+        if (avail > 0 && qty > avail) {
+          this.toast(`Entered qty (${qty} kg) exceeds available stock (${avail} kg) in ${locName}`, 'error');
+        }
+        sumEnteredQty += qty;
+        activeLocSummary.push(`${locName.toUpperCase()} (${qty} KG)`);
+      }
+    });
+
+    sumEnteredQty = Math.round(sumEnteredQty * 1000) / 1000;
+
+    if (maxRemaining > 0 && sumEnteredQty > maxRemaining) {
+      this.toast(`Total dispatch qty (${sumEnteredQty} kg) exceeds remaining order qty (${maxRemaining} kg)`, 'error');
+    }
+
+    const dropdownBtn = container.querySelector('.custom-location-dropdown .loc-dropdown-text');
+    if (dropdownBtn) {
+      if (activeLocSummary.length > 0) {
+        dropdownBtn.textContent = activeLocSummary.join(', ');
+      } else {
+        dropdownBtn.textContent = 'Select Storage Location';
+      }
+    }
+
+    const directInput = document.querySelector(`.dispatch-item-qty[data-item-id="${itemId}"]`);
+    if (directInput) {
+      directInput.value = sumEnteredQty > 0 ? sumEnteredQty : '';
+    }
+  },
+
   previewLR(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -1738,8 +1759,7 @@ const app = {
               ${baseName} ${displayGrade ? `<strong style="font-weight:800; color:var(--primary-light, #F4B400);">${displayGrade}</strong> ` : ''}(${displayType})
             </span>
             <span style="color:var(--text-muted); font-size:0.8rem;">
-              Total: ${i.quantity} kg
-              ${alreadyDispatched > 0 ? ` • Already sent: ${alreadyDispatched} kg` : ''}
+              Total Order Qty: ${i.quantity} kg • Pending Order: ${remaining} kg
             </span>
           </div>
           <div style="display:flex; align-items:center; gap:10px; margin-bottom: 8px;">
@@ -1820,13 +1840,34 @@ const app = {
               window[`locData_${i.id}`] = data.breakdown;
               const hasAnyStock = data.breakdown.some(loc => loc.quantity > 0);
               
+              let dropdownItemsHtml = '';
+              data.breakdown.forEach(loc => {
+                const locName = loc.name;
+                const avail = loc.quantity || 0;
+                dropdownItemsHtml += `
+                  <li style="margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:#111827; gap:8px;">
+                    <span style="padding-left:0.2rem; font-weight:600; color:#111827;">${locName.toUpperCase()} (AVAIL: ${avail} KG)</span>
+                    <input type="number" min="0" step="0.001" class="form-control form-control-sm inner-qty-input no-spinners" 
+                           data-loc="${locName}" data-avail="${avail}" data-item-id="${i.id}" data-max-remaining="${remaining}"
+                           oninput="app.recalcDispatchLocationDropdownTotals(${i.id}, ${remaining})" 
+                           style="width: 75px; text-align:center; padding: 0.2rem; height:1.8rem; font-size:0.8rem; border:1px solid #d1d5db; border-radius:4px; background:#ffffff; color:#111827; font-weight:700;" value="0">
+                  </li>
+                `;
+              });
+
               container.innerHTML = `
                 <div style="margin-top:8px; padding:10px; background:rgba(0,0,0,0.15); border-radius:8px; border:1px solid var(--border-soft, #DDCFAF);">
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Select Locations & Quantities:</span>
-                    <button type="button" class="btn btn-sm btn-secondary" onclick="app.addDispatchLocationRow(${i.id}, ${remaining})" style="padding:0.2rem 0.5rem; font-size:0.72rem; width:auto;">+ Add Location</button>
-                  </div>
-                  <div id="loc-rows-${i.id}" style="display:flex; flex-direction:column; gap:8px;">
+                  <div style="margin-bottom:6px;">
+                    <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted, #9ca3af); text-transform:uppercase; display:block; margin-bottom:4px;">STORAGE LOCATION *</label>
+                    <div class="custom-location-dropdown" id="dispatch-custom-location-dropdown-${i.id}">
+                      <button type="button" onclick="app.toggleDispatchLocationDropdown(this)" style="width:100%; text-align:left; display:flex; justify-content:space-between; align-items:center; background:#ffffff; border:1px solid #d1d5db; padding:0.65rem 0.75rem; font-size:0.88rem; font-weight:600; color:#111827; border-radius:8px; cursor:pointer;">
+                        <span class="loc-dropdown-text">Select Storage Location</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                      </button>
+                      <ul class="dropdown-menu shadow" style="display:none; position:absolute; top:100%; left:0; z-index:1000; width:100%; max-height:260px; overflow-y:auto; background:#ffffff; border:1px solid #d1d5db; border-radius:8px; list-style:none; margin-top:0.25rem; padding:0.5rem; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+                        ${dropdownItemsHtml}
+                      </ul>
+                    </div>
                   </div>
                   ${!hasAnyStock ? `
                     <div style="margin-top:6px; padding:6px; background:rgba(239,68,68,0.1); color:#f87171; border-radius:6px; font-size:0.75rem; text-align:center;">
@@ -1835,7 +1876,6 @@ const app = {
                   ` : ''}
                 </div>
               `;
-              this.addDispatchLocationRow(i.id, remaining);
             } else {
               container.innerHTML = `
                 <div style="margin-top:8px; padding:8px; background:rgba(239,68,68,0.1); color:#f87171; border-radius:6px; font-size:0.8rem; text-align:center;">
@@ -2251,17 +2291,17 @@ const app = {
           <div style="margin-bottom:0.8rem;">
             <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Date Filter Mode</label>
             <select id="sp-date-type" onchange="const isAsOn = this.value === 'as_on_date'; document.getElementById('sp-custom-date-grid').style.display = isAsOn ? 'none' : 'grid'; document.getElementById('sp-as-on-date-container').style.display = isAsOn ? 'block' : 'none';" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
-              <option value="custom" selected>Custom</option>
-              <option value="as_on_date">As on date</option>
+              <option value="as_on_date" selected>As on date</option>
+              <option value="custom">Custom</option>
             </select>
           </div>
 
-          <div id="sp-as-on-date-container" style="display:none; margin-bottom:0.8rem;">
+          <div id="sp-as-on-date-container" style="display:block; margin-bottom:0.8rem;">
             <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Date</label>
             <input id="sp-as-on" type="date" value="${today}" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
           </div>
 
-          <div id="sp-custom-date-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; margin-bottom:0.8rem;">
+          <div id="sp-custom-date-grid" style="display:none; grid-template-columns:1fr 1fr; gap:0.8rem; margin-bottom:0.8rem;">
             <div>
               <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">From Date</label>
               <input id="sp-from" type="date" value="${oneMonthAgo}" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
@@ -2361,24 +2401,36 @@ const app = {
     }).join('');
 
     const isGeneralSelected = String(t.category || '').toLowerCase() === 'general';
+    const currentType = (t.type || 'OUT').toUpperCase();
 
     Swal.fire({
-      title: 'Edit Transaction',
+      title: '✏️ Edit Transaction',
       html: `
         <div style="text-align:left;">
-          <div class="form-group mb-1">
-            <label style="color:var(--text-muted); font-size:0.8rem;">Amount</label>
-            <input type="number" id="edit-tx-amount" value="${t.amount}" class="swal2-input" style="width:100%; margin:0; box-sizing:border-box;">
+          <div class="form-group mb-1" style="margin-bottom:0.8rem;">
+            <label style="color:var(--text-muted); font-size:0.8rem; font-weight:600; display:block; margin-bottom:4px;">Type</label>
+            <select id="edit-tx-type" class="swal2-select" style="width:100%; margin:0; box-sizing:border-box;">
+              <option value="IN" ${currentType === 'IN' ? 'selected' : ''}>CASH IN (+)</option>
+              <option value="OUT" ${currentType === 'OUT' ? 'selected' : ''}>CASH OUT (-)</option>
+            </select>
           </div>
-          <div class="form-group mb-1">
-            <label style="color:var(--text-muted); font-size:0.8rem;">Category</label>
+          <div class="form-group mb-1" style="margin-bottom:0.8rem;">
+            <label style="color:var(--text-muted); font-size:0.8rem; font-weight:600; display:block; margin-bottom:4px;">Amount (₹)</label>
+            <input type="number" step="0.01" id="edit-tx-amount" value="${t.amount}" class="swal2-input" style="width:100%; margin:0; box-sizing:border-box;">
+          </div>
+          <div class="form-group mb-1" style="margin-bottom:0.8rem;">
+            <label style="color:var(--text-muted); font-size:0.8rem; font-weight:600; display:block; margin-bottom:4px;">Category</label>
             <select id="edit-tx-category" class="swal2-select" style="width:100%; margin:0; box-sizing:border-box;">
               <option value="general" ${isGeneralSelected ? 'selected' : ''}>General</option>
               ${catOptions}
             </select>
           </div>
-          <div class="form-group mb-1">
-            <label style="color:var(--text-muted); font-size:0.8rem;">Note</label>
+          <div class="form-group mb-1" style="margin-bottom:0.8rem;">
+            <label style="color:var(--text-muted); font-size:0.8rem; font-weight:600; display:block; margin-bottom:4px;">Reference / Bill No. (optional)</label>
+            <input type="text" id="edit-tx-reference" value="${t.reference || ''}" placeholder="e.g. INV-1002" class="swal2-input" style="width:100%; margin:0; box-sizing:border-box;">
+          </div>
+          <div class="form-group mb-1" style="margin-bottom:0.8rem;">
+            <label style="color:var(--text-muted); font-size:0.8rem; font-weight:600; display:block; margin-bottom:4px;">Note</label>
             <input type="text" id="edit-tx-note" value="${t.note || ''}" class="swal2-input" style="width:100%; margin:0; box-sizing:border-box;">
           </div>
         </div>
@@ -2394,8 +2446,10 @@ const app = {
   },
 
   saveTransactionEdit(id) {
+    const type = document.getElementById('edit-tx-type').value;
     const amount = Number(document.getElementById('edit-tx-amount').value);
     const category = document.getElementById('edit-tx-category').value;
+    const reference = document.getElementById('edit-tx-reference').value;
     const note = document.getElementById('edit-tx-note').value;
     
     if (!amount || amount <= 0) return this.toast('Invalid amount', 'error');
@@ -2507,7 +2561,32 @@ const app = {
     }
 
     const targetUrl = `${appBase}/${slug}/bill/${billId}/view`;
-    window.open(targetUrl, '_blank');
+    const isPdf = String(fileType).toLowerCase().includes('pdf');
+
+    let htmlContent = '';
+    if (isPdf) {
+      htmlContent = `<iframe src="${targetUrl}" style="width:100%; height:550px; border:none; border-radius:8px;"></iframe>`;
+    } else {
+      htmlContent = `
+        <div style="display:flex; justify-center:center; align-items:center; width:100%; max-height:550px; overflow:auto;">
+          <img src="${targetUrl}" style="max-width:100%; max-height:500px; object-fit:contain; border-radius:8px; display:block; margin:0 auto;" alt="Bill Image" />
+        </div>
+      `;
+    }
+
+    Swal.fire({
+      title: '📄 View Bill',
+      html: htmlContent,
+      width: '650px',
+      showCloseButton: true,
+      showConfirmButton: false,
+      background: '#161b22',
+      color: '#e6edf3',
+      padding: '1.2rem',
+      customClass: {
+        closeButton: 'bill-modal-close-btn'
+      }
+    });
   },
 
   uploadBillPrompt(txId) {

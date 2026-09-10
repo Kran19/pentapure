@@ -5,7 +5,7 @@
   $q = request('q', '');
   $category = request('category', '');
   $specificDate = request('specific_date', '');
-  $dateRange = request('range', 'this_month');
+  $dateRange = request('range', 'all');
   $startDate = request('start', '');
   $endDate = request('end', '');
   $activeTab = request('tab', 'personal'); // personal, team, daily
@@ -74,6 +74,19 @@
     }
   }
 
+  // Compute running balance for all filtered transactions in chronological order (oldest to newest)
+  $chronoFiltered = $filtered->sortBy('date')->values();
+  $runningBal = 0;
+  $balMap = [];
+  foreach ($chronoFiltered as $item) {
+    if (($item['type'] ?? 'OUT') === 'IN') {
+      $runningBal += (float)($item['amount'] ?? 0);
+    } else {
+      $runningBal -= (float)($item['amount'] ?? 0);
+    }
+    $balMap[$item['id']] = $runningBal;
+  }
+
   $filtered = $filtered->sortByDesc('date');
 
   $page = request('page', 1);
@@ -122,11 +135,10 @@
 <form id="ledger-filter-form" method="GET" action="{{ url()->current() }}" onsubmit="event.preventDefault(); applyLedgerFilters();" style="margin-bottom:1.2rem;">
   <div class="form-group" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:1rem;">
     
-    <!-- Ledger Type (Personal / Team / Day Wise) -->
+    <!-- Ledger Type (Personal / Team) -->
     <select name="tab" id="ledger-tab-select" onchange="onLedgerTabChange(this.value)" style="width:auto; flex:1; min-width:160px; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600;">
       <option value="personal" {{ $activeTab==='personal'?'selected':'' }}>PERSONAL LEDGER</option>
       <option value="team" {{ $activeTab==='team'?'selected':'' }}>TEAM LEDGER</option>
-      <option value="daily" {{ $activeTab==='daily'?'selected':'' }}>DAY WISE BALANCE</option>
     </select>
 
     <!-- Team Member Selector (Shown when tab === 'team') -->
@@ -197,6 +209,7 @@
           <th style="padding:12px; text-align:left;">Details</th>
           <th style="padding:12px; text-align:left;">Category</th>
           <th style="padding:12px; text-align:right;">Amount</th>
+          <th style="padding:12px; text-align:right;">Balance</th>
           <th style="padding:12px; text-align:center;">Bills</th>
           <th style="padding:12px; text-align:center;">Action</th>
         </tr>
@@ -231,6 +244,10 @@
             <td style="padding:12px; font-weight:bold; color:{{ $t['type'] === 'IN' ? '#16a34a' : '#dc2626' }}; text-align:right; white-space:nowrap;">
               {{ $t['type'] === 'IN' ? '+' : '-' }}₹{{ number_format($t['amount'], 2) }}
             </td>
+            @php $cBal = $balMap[$t['id']] ?? 0; @endphp
+            <td style="padding:12px; font-weight:bold; color:{{ $cBal >= 0 ? '#16a34a' : '#dc2626' }}; text-align:right; white-space:nowrap;">
+              ₹{{ number_format($cBal, 2) }}
+            </td>
             <td style="padding:12px; text-align:center; min-width:80px;">
               @if(!empty($t['bills']))
                 <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:4px;">
@@ -254,7 +271,7 @@
           </tr>
         @empty
           <tr>
-            <td colspan="6" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
+            <td colspan="7" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
               No transactions found matching criteria.
             </td>
           </tr>
@@ -426,6 +443,17 @@
       });
     }
 
+    // Compute running balance per item (in chronological order)
+    const chronoFiltered = [...filtered].sort((a, b) => new Date(a.date) - new Date(b.date));
+    let runningBal = 0;
+    const balanceMap = {};
+    chronoFiltered.forEach(item => {
+      const amt = Number(item.amount) || 0;
+      if (item.type === 'IN') runningBal += amt;
+      else runningBal -= amt;
+      balanceMap[item.id] = runningBal;
+    });
+
     // Sort by date desc
     filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -457,7 +485,7 @@
     if (filtered.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="6" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
+          <td colspan="7" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
             No transactions found matching criteria.
           </td>
         </tr>
@@ -477,6 +505,10 @@
 
       const amtFormatted = (t.type === 'IN' ? '+' : '-') + '₹' + Number(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const amtColor = (t.type === 'IN') ? '#16a34a' : '#dc2626';
+
+      const rowBal = balanceMap[t.id] || 0;
+      const rowBalFormatted = '₹' + Number(rowBal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const rowBalColor = rowBal >= 0 ? '#16a34a' : '#dc2626';
 
       let billsHtml = '<span style="color:var(--text-muted); font-size:0.75rem;">No Bills</span>';
       if (t.bills && t.bills.length > 0) {
@@ -512,6 +544,9 @@
           <td style="padding:12px; font-weight:bold; color:${amtColor}; text-align:right; white-space:nowrap;">
             ${amtFormatted}
           </td>
+          <td style="padding:12px; font-weight:bold; color:${rowBalColor}; text-align:right; white-space:nowrap;">
+            ${rowBalFormatted}
+          </td>
           <td style="padding:12px; text-align:center; min-width:80px;">
             ${billsHtml}
           </td>
@@ -532,7 +567,7 @@
     if (tabVal === 'team' && selectedMember && selectedMember !== 'all') params.set('team_member', selectedMember);
     if (catVal) params.set('category', catVal);
     if (specificDate) params.set('specific_date', specificDate);
-    if (rangeVal && rangeVal !== 'this_month') params.set('range', rangeVal);
+    if (rangeVal && rangeVal !== 'all') params.set('range', rangeVal);
     if (rangeVal === 'custom') {
       if (startDate) params.set('start', startDate);
       if (endDate) params.set('end', endDate);
@@ -549,11 +584,11 @@
     if (memberSelect) memberSelect.value = 'all';
     document.getElementById('ledger-category-select').value = '';
     document.getElementById('ledger-specific-date').value = '';
-    document.getElementById('ledger-range-select').value = 'this_month';
+    document.getElementById('ledger-range-select').value = 'all';
     document.getElementById('ledger-start-date').value = '';
     document.getElementById('ledger-end-date').value = '';
     document.getElementById('ledger-search-input').value = '';
-    toggleCustomDates('this_month');
+    toggleCustomDates('all');
     onLedgerTabChange('personal');
   }
 

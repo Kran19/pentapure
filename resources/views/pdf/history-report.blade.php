@@ -244,7 +244,7 @@
                         <td>{{ $row['date'] }}</td>
                         <td><strong>{{ $row['company_name'] ?? '-' }}</strong></td>
                         <td>
-                            <span class="badge {{ ($row['dispatch_status'] ?? '') === 'DONE' ? 'badge-ok' : 'badge-warn' }}">{{ $row['dispatch_status'] ?? 'PENDING' }}</span>
+                            <span class="badge {{ in_array(($row['dispatch_status'] ?? ''), ['FULLY DISPATCHED', 'DONE', 'COMPLETED']) ? 'badge-ok' : 'badge-warn' }}">{{ $row['dispatch_status'] ?? 'PENDING' }}</span>
                         </td>
                         <td class="center">
                             <strong>{{ $row['total_items'] ?? 0 }}</strong> Items<br>

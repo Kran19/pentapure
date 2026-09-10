@@ -145,6 +145,51 @@ input[type="number"],
     });
   }
 
+  function handleBillChange(input) {
+    const container = input.closest('.bill-attach-container');
+    const previewArea = container.querySelector('.bill-file-actions');
+    const fileNameSpan = container.querySelector('.bill-file-name');
+    
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      fileNameSpan.textContent = file.name;
+      previewArea.style.display = 'inline-flex';
+    } else {
+      fileNameSpan.textContent = '';
+      previewArea.style.display = 'none';
+    }
+  }
+
+  function removeBillFile(btn) {
+    const container = btn.closest('.bill-attach-container');
+    const input = container.querySelector('.tx-bill');
+    input.value = '';
+    handleBillChange(input);
+  }
+
+  function previewBillFile(btn) {
+    const container = btn.closest('.bill-attach-container');
+    const input = container.querySelector('.tx-bill');
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      const fileUrl = URL.createObjectURL(file);
+      
+      if (file.type.startsWith('image/')) {
+        Swal.fire({
+          title: file.name,
+          imageUrl: fileUrl,
+          imageAlt: 'Attached Bill Preview',
+          confirmButtonColor: '#f59e0b',
+          width: '600px'
+        });
+      } else if (file.type === 'application/pdf') {
+        window.open(fileUrl, '_blank');
+      } else {
+        Swal.fire('File Preview', file.name, 'info');
+      }
+    }
+  }
+
   function addTransactionRow() {
     const categories = window.expenseCategories || [];
     const container = document.getElementById('transaction-rows');
@@ -154,7 +199,7 @@ input[type="number"],
 
     if (container.children.length > 0) {
       const hr = document.createElement('hr');
-      hr.style.cssText = 'border:0; border-top:2px dotted #4b5563; margin:0.9rem 0; opacity:0.85;';
+      hr.style.cssText = 'border:0; border-top:2px solid #f59e0b; margin:1.2rem 0; opacity:0.9;';
       wrapper.appendChild(hr);
     }
 
@@ -201,9 +246,20 @@ input[type="number"],
           <input type="text" class="tx-ref" placeholder="e.g. INV-001">
         </div>
 
-        <div class="form-group" style="flex:1 1 180px;">
+        <div class="form-group bill-attach-container" style="flex:1 1 200px;">
           <label>Attach Bill (optional)</label>
-          <input type="file" class="tx-bill" accept="image/jpeg,image/png,application/pdf">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="file" class="tx-bill" accept="image/jpeg,image/png,application/pdf" onchange="handleBillChange(this)">
+            <div class="bill-file-actions" style="display:none; align-items:center; gap:4px; font-size:0.8rem; font-weight:600; white-space:nowrap;">
+              <span class="bill-file-name" style="max-width:90px; overflow:hidden; text-overflow:ellipsis; display:inline-block; color:#f59e0b;"></span>
+              <button type="button" onclick="previewBillFile(this)" title="View Attached File" style="background:#f59e0b; color:#fff; border:none; border-radius:6px; padding:6px 9px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;">
+                👁️
+              </button>
+              <button type="button" onclick="removeBillFile(this)" title="Delete Attached File" style="background:#e11d48; color:#fff; border:none; border-radius:6px; padding:6px 9px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;">
+                🗑️
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     `;

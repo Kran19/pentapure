@@ -9,19 +9,19 @@
   $companyId = request('company_id', '');
   $statusFilter = request('status', '');
 
-  $filtered = collect($pageData['dispatchLogs'] ?? []);
+  $filtered = collect($pageData['orders'] ?? []);
 
   // 1. Company Filter
   if ($companyId) {
-    $filtered = $filtered->filter(function($d) use ($companyId) {
-      return (string)($d['companyId'] ?? '') === (string)$companyId;
+    $filtered = $filtered->filter(function($o) use ($companyId) {
+      return (string)($o['companyId'] ?? '') === (string)$companyId;
     });
   }
 
   // 2. Status Filter
   if ($statusFilter) {
-    $filtered = $filtered->filter(function($d) use ($statusFilter) {
-      $st = strtoupper(trim((string)($d['dispatchStatus'] ?? $d['status'] ?? '')));
+    $filtered = $filtered->filter(function($o) use ($statusFilter) {
+      $st = strtoupper(trim((string)($o['dispatchStatus'] ?? $o['status'] ?? '')));
       $st = str_replace('_', ' ', $st);
       $target = strtoupper(trim(str_replace('_', ' ', $statusFilter)));
       
@@ -43,11 +43,12 @@
 
   // 3. Search Query Filter
   if ($q) {
-    $filtered = $filtered->filter(function($d) use ($q) {
+    $filtered = $filtered->filter(function($o) use ($q) {
       $query = strtolower($q);
-      return str_contains(strtolower($d['companyName'] ?? ''), $query) ||
-             str_contains(strtolower($d['transportName'] ?? ''), $query) ||
-             str_contains(strtolower((string)$d['orderId']), $query);
+      return str_contains(strtolower($o['companyName'] ?? ''), $query) ||
+             str_contains(strtolower($o['transportName'] ?? ''), $query) ||
+             str_contains(strtolower((string)$o['id']), $query) ||
+             str_contains(strtolower((string)($o['orderId'] ?? '')), $query);
     });
   }
 
@@ -113,7 +114,7 @@
 
 @php $pdfUrl = route('history.pdf', ['user_slug' => request()->segment(1) ?: 'dispatch', 'panel' => 'dispatch']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&company_id=' . $companyId . '&status=' . $statusFilter . '&q=' . $q; @endphp
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
-  <h2 style="margin:0;">📦 Dispatch Logs History</h2>
+  <h2 style="margin:0;">📋 Dispatch Orders Report</h2>
   <button id="export-pdf-btn" class="btn btn-sm btn-secondary" style="width:auto; padding:0.5rem 1rem;"
     onclick="app.exportHistoryPdf(this, '{{ $pdfUrl }}')">📄 Export PDF</button>
 </div>
@@ -172,32 +173,39 @@
 <div style="display:flex; flex-direction:column; gap:10px;">
   @forelse($paginated as $idx => $d)
     @php
-      $lrUploaded = !empty($d['lrImage']);
-      $lrStatus = $lrUploaded ? '<span class="badge badge-done" style="font-size:0.65rem;">LR UPLOADED</span>' : '<span class="badge" style="font-size:0.65rem; background:#dc2626 !important; color:#ffffff !important; font-weight:700; padding:3px 8px; border-radius:4px;">LR PENDING</span>';
+      $rawSt = strtoupper(trim((string)($d['dispatchStatus'] ?? $d['status'] ?? 'PENDING')));
+      $statusBadge = '';
+      if (in_array($rawSt, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED'])) {
+        $statusBadge = '<span class="badge badge-done" style="font-size:0.65rem; background:#16a34a; color:#fff; padding:2px 6px; border-radius:4px; font-weight:700;">FULLY DISPATCHED</span>';
+      } elseif (in_array($rawSt, ['PARTIAL', 'PARTIAL DISPATCH'])) {
+        $statusBadge = '<span class="badge" style="font-size:0.65rem; background:#f59e0b; color:#fff; padding:2px 6px; border-radius:4px; font-weight:700;">PARTIAL DISPATCH</span>';
+      } elseif ($rawSt === 'PARTIAL PENDING') {
+        $statusBadge = '<span class="badge" style="font-size:0.65rem; background:#8b5cf6; color:#fff; padding:2px 6px; border-radius:4px; font-weight:700;">PARTIAL PENDING</span>';
+      } else {
+        $statusBadge = '<span class="badge badge-pending" style="font-size:0.65rem; background:#eab308; color:#000; padding:2px 6px; border-radius:4px; font-weight:700;">PENDING</span>';
+      }
     @endphp
     <div class="card dispatch-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--glass-border, rgba(255,255,255,0.06)); background:var(--card-bg, rgba(255,255,255,0.03)); transition:all 0.2s ease;">
       <!-- Clickable Header Row -->
-      <div onclick="toggleHistoryAccordion('disp-acc-{{ $d['id'] }}', this)" style="cursor:pointer; padding:1.1rem; display:flex; justify-content:space-between; align-items:center; user-select:none;">
+      <div onclick="toggleReportAccordion('rep-acc-{{ $d['id'] }}', this)" style="cursor:pointer; padding:1.1rem; display:flex; justify-content:space-between; align-items:center; user-select:none;">
         <div style="flex:1; padding-right:15px;">
           <div style="font-weight:600; font-size:1rem; color:var(--text-main); line-height:1.3;">
-            Order #{{ strtoupper((string)$d['orderId']) }} - {{ $d['companyName'] ?? 'N/A' }}
+            Order #{{ strtoupper((string)$d['id']) }} - {{ $d['companyName'] ?? 'N/A' }}
           </div>
           <div style="margin-top:6px; font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-            {!! $lrStatus !!}
+            {!! $statusBadge !!}
             <span>•</span>
             <span>Transporter: {{ $d['transportName'] ?? 'N/A' }}</span>
             <span>•</span>
-            <span>{{ \Carbon\Carbon::parse($d['date'])->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}</span>
+            <span>Ordered: {{ \Carbon\Carbon::parse($d['date'])->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}</span>
           </div>
         </div>
         <div style="display:flex; align-items:center; gap:10px; text-align:right; flex-wrap:nowrap;">
-          <div style="display:flex; flex-direction:column; gap:5px; align-items:stretch;">
-            <a href="{{ url(request()->segment(1) . '/pdf/' . $d['id']) }}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm" style="width:100%; padding:0.3rem 0.75rem; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-weight:600; background:var(--primary, #D88A00); color:#000; white-space:nowrap;">
-              📄 Download PDF
+          <div style="display:flex; flex-direction:column; gap:5px; align-items:flex-end;">
+            <div style="font-weight:700; font-size:1.1rem; color:var(--primary, #D88A00);">₹{{ number_format($d['orderTotal'] ?? 0, 2) }}</div>
+            <a href="{{ url(request()->segment(1) . '/order/pdf/' . $d['id']) }}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm" style="width:auto; padding:0.3rem 0.75rem; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-weight:600; background:var(--primary, #D88A00); color:#000; white-space:nowrap;">
+              📄 Order PDF
             </a>
-            <button type="button" class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); app.revertDispatch({{ $d['id'] }})" style="width:100%; padding:0.3rem 0.75rem; font-size:0.75rem; border-color:#ef4444 !important; color:#ef4444 !important; display:inline-flex; align-items:center; justify-content:center; gap:4px; white-space:nowrap;">
-              ↩ Revert Dispatch
-            </button>
           </div>
           <div class="acc-chevron" style="transition:transform 0.25s ease; color:var(--text-muted); display:flex; align-items:center;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -208,11 +216,11 @@
       </div>
 
       <!-- Expandable Details Dropdown / Collapsible -->
-      <div id="disp-acc-{{ $d['id'] }}" class="disp-accordion-content" style="display:none; padding:1.2rem; border-top:1px solid var(--glass-border, rgba(255,255,255,0.06)); background:rgba(0,0,0,0.02);">
+      <div id="rep-acc-{{ $d['id'] }}" class="rep-accordion-content" style="display:none; padding:1.2rem; border-top:1px solid var(--glass-border, rgba(255,255,255,0.06)); background:rgba(0,0,0,0.02);">
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:1rem; margin-bottom:1rem;">
           <div>
-            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Order</div>
-            <div style="font-weight:700;">#{{ strtoupper((string)$d['orderId']) }}</div>
+            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Order ID</div>
+            <div style="font-weight:700;">#{{ strtoupper((string)$d['id']) }}</div>
           </div>
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Date & Time</div>
@@ -227,22 +235,22 @@
             <div style="font-weight:600; font-size:0.9rem;">{{ $d['transportName'] ?? 'N/A' }}</div>
           </div>
           <div>
-            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Dispatched By</div>
-            <div style="font-weight:500; font-size:0.85rem;">{{ $d['dispatchedBy'] ?? 'System' }}</div>
+            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Total Order Qty</div>
+            <div style="font-weight:700; font-size:0.95rem;">{{ number_format($d['totalQty'] ?? 0, 3) }} kg</div>
           </div>
           <div>
-            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Order Value</div>
-            <div style="font-weight:700; font-size:1.1rem; color:var(--primary, #D88A00);">₹{{ number_format($d['orderTotal'] ?? 0, 2) }}</div>
+            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Dispatched Qty</div>
+            <div style="font-weight:700; font-size:0.95rem; color:#16a34a;">{{ number_format($d['dispatchedQty'] ?? 0, 3) }} kg</div>
           </div>
           <div>
-            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">LR Status</div>
-            <div>{!! $lrStatus !!}</div>
+            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Remaining Qty</div>
+            <div style="font-weight:700; font-size:0.95rem; color:#ef4444;">{{ number_format($d['remainingQty'] ?? 0, 3) }} kg</div>
           </div>
         </div>
 
         @if(!empty($d['items']) && count($d['items']) > 0)
           <div style="margin-bottom:1rem; background:rgba(0,0,0,0.15); border-radius:8px; padding:12px; border-left:3px solid var(--primary, #D88A00);">
-            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">Items Dispatched in this Round</div>
+            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">Ordered Items List</div>
             @foreach($d['items'] as $item)
               @php
                 $pName = preg_replace('/\s+(PURE|PREMIUM|COMMERCIAL|NONE|\b[A-Za-z0-9_-]+\b)\s*\((fg|raw|semi)\)$/i', '', $item['productName'] ?? 'Unknown');
@@ -250,34 +258,22 @@
                 $gName = ($item['grade'] && $item['grade'] !== 'NONE' && $item['grade'] !== 'N/A') ? $item['grade'] : '';
                 $tName = ($item['productType'] === 'FINISHED') ? 'FG' : ($item['productType'] ? strtoupper($item['productType']) : 'N/A');
               @endphp
-              <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.88rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.88rem; flex-wrap:wrap; gap:8px;">
                 <span>{{ $pName }} @if($gName)<strong style="font-weight:800; color:var(--primary, #D88A00);">{{ $gName }}</strong> @endif({{ $tName }})</span>
-                <span style="font-weight:bold; color:var(--primary, #D88A00);">{{ $item['quantity'] }} kg</span>
+                <span style="font-size:0.8rem; color:var(--text-muted);">
+                  Total: <strong style="color:var(--text-main);">{{ $item['quantity'] }} kg</strong> | 
+                  Dispatched: <strong style="color:#16a34a;">{{ $item['dispatchedQty'] }} kg</strong> | 
+                  Pending: <strong style="color:#ef4444;">{{ $item['remainingQty'] }} kg</strong>
+                </span>
               </div>
             @endforeach
           </div>
         @endif
-
-        @if($lrUploaded)
-          <div style="margin-bottom:1rem;">
-            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:0.5rem;">LR Copy</div>
-            <img src="{{ $d['lrImage'] }}" style="width:100%; border-radius:10px; max-height:200px; object-fit:contain; cursor:pointer; background:rgba(0,0,0,0.2);" onclick="app.viewImage(this.src)">
-            <div style="margin-top:8px;">
-              <button class="btn btn-sm btn-secondary" style="width:auto; font-size:0.75rem;" onclick="document.getElementById('late-lr-input-{{ $d['id'] }}').click()">Update LR Copy</button>
-            </div>
-          </div>
-        @else
-          <div style="margin-bottom:1rem; padding:1.2rem; background:rgba(220,38,38,0.06); border:1px dashed rgba(220,38,38,0.3); border-radius:10px; text-align:center;">
-            <div style="color:#ef4444; font-weight:700; font-size:0.88rem; margin-bottom:8px;">LR Copy Pending</div>
-            <button class="btn btn-sm btn-secondary" style="width:auto; font-size:0.8rem; border-color:#ef4444; color:#ef4444;" onclick="document.getElementById('late-lr-input-{{ $d['id'] }}').click()">Upload LR Now</button>
-          </div>
-        @endif
-        <input type="file" id="late-lr-input-{{ $d['id'] }}" accept=".jpg,.jpeg,.png,.webp" style="display:none;" onchange="app.handleLateLRUpload(event, {{ $d['id'] }}, {{ $idx }})">
       </div>
     </div>
   @empty
     <div class="card" style="padding:2rem; text-align:center; color:var(--text-muted);">
-      No historical dispatch logs found.
+      No orders found matching the filter criteria.
     </div>
   @endforelse
 </div>
@@ -295,11 +291,7 @@
 @endif
 
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    // Keep filter state
-  });
-
-  function toggleHistoryAccordion(contentId, headerEl) {
+  function toggleReportAccordion(contentId, headerEl) {
     const content = document.getElementById(contentId);
     if (!content) return;
     const chevron = headerEl.querySelector('.acc-chevron');

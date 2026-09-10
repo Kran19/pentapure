@@ -69,6 +69,11 @@
         </div>
 
         <!-- Sidebar -->
+        @php 
+          $seg = request()->segment(2) ?? 'dashboard'; 
+          $role = $authUser['role'] ?? session('auth_user')['role'] ?? 'ADMIN';
+          $perms = $authUser['permissions'] ?? session('auth_user')['permissions'] ?? [];
+        @endphp
         <div id="admin-sidebar" class="admin-sidebar">
           <div style="text-align:center;padding:1rem 1rem 0.5rem;">
             <img src="{{ asset('logo.png') }}" alt="Logo"
@@ -76,7 +81,7 @@
           </div>
           <div style="padding:0 1rem 1rem;font-size:1.3rem;font-weight:bold;color:var(--dark-brand);
             border-bottom:1px solid var(--glass-border);display:flex;justify-content:space-between;align-items:center;">
-            <div>Admin<span style="color:var(--primary-light)">Panel</span></div>
+            <div>{{ ($role === 'STOCK_MANAGER') ? 'Stock' : 'Admin' }}<span style="color:var(--primary-light)">{{ ($role === 'STOCK_MANAGER') ? 'Manager' : 'Panel' }}</span></div>
             <svg class="admin-close-btn" width="24" height="24" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2"
               onclick="document.getElementById('admin-sidebar').classList.remove('mobile-open')">
@@ -86,172 +91,202 @@
           </div>
 
           @php 
-            $seg = request()->segment(2) ?? 'dashboard'; 
-            $role = $authUser['role'] ?? 'ADMIN';
-            $perms = $authUser['permissions'] ?? [];
-
             $can = function($m) use ($role, $perms) {
                 if ($role === 'ADMIN') return true;
                 if (in_array('can_manage', $perms)) return true;
-                if (in_array($m, $perms)) return true;
-
-                $key = str_starts_with($m, 'module_') ? substr($m, 7) : $m;
-                $checkKeys = [$key];
-                if (!str_starts_with($key, 'admin_')) {
-                    $checkKeys[] = 'admin_' . $key;
-                }
-
-                foreach ($checkKeys as $k) {
-                    if (in_array('view_' . $k, $perms) || 
-                        in_array('edit_' . $k, $perms) || 
-                        in_array('module_' . $k, $perms) || 
-                        in_array($k, $perms)) {
-                        return true;
-                    }
-                }
+                if (in_array($m, $perms) || in_array('view_' . $m, $perms) || in_array('edit_' . $m, $perms) || in_array('module_' . $m, $perms)) return true;
+                if ($role === 'STOCK_MANAGER' && str_starts_with($m, 'stock_manager_') && empty($perms)) return true;
                 return false;
             };
           @endphp
 
           {{-- Admin Panel Links --}}
-          @if($can('admin_dashboard'))
-          <a href="{{ url(request()->segment(1) . '/home') }}" class="nav-item {{ $seg=='home' || $seg=='dashboard'?'active':'' }}">
-            Dashboard
-          </a>
-          @endif
-
-          @if($can('admin_users'))
-          <a href="{{ url(request()->segment(1) . '/users') }}" class="nav-item {{ $seg=='users'?'active':'' }}">
-            Users &amp; Hierarchy
-          </a>
-          @endif
-
-          @if($can('admin_stock'))
-          <a href="{{ url(request()->segment(1) . '/stock') }}" class="nav-item {{ $seg=='stock'?'active':'' }}">
-            Live Stock
-          </a>
-          @endif
-
-          @if($can('admin_products'))
-          <a href="{{ url(request()->segment(1) . '/products') }}" class="nav-item {{ $seg=='products'?'active':'' }}">
-            Products Master
-          </a>
-          @endif
-
-          @if($can('admin_grades'))
-          <a href="{{ url(request()->segment(1) . '/grades') }}" class="nav-item {{ $seg=='grades'?'active':'' }}">
-            Grades Master
-          </a>
-          @endif
-
-          @if($can('admin_locations'))
-          <a href="{{ url(request()->segment(1) . '/locations') }}" class="nav-item {{ $seg=='locations'?'active':'' }}">
-            Storage Location
-          </a>
-          @endif
-
-          @if($can('admin_po'))
-          <a href="{{ url(request()->segment(1) . '/po') }}" class="nav-item {{ $seg=='po'?'active':'' }}">
-            Purchase Requests
-          </a>
-          @endif
-
-          @if($can('admin_dispatch_activity'))
-          <a href="{{ url(request()->segment(1) . '/dispatch-activity') }}" class="nav-item {{ $seg=='dispatch-activity'?'active':'' }}">
-            Dispatch Activity
-          </a>
-          @endif
-
-          @if($can('admin_cashier_overview'))
-          <a href="{{ url(request()->segment(1) . '/cashier-overview') }}" class="nav-item {{ $seg=='cashier-overview'?'active':'' }}">
-            Cashier Overview
-          </a>
-          @endif
-
-          @if($can('admin_categories'))
-          <a href="{{ url(request()->segment(1) . '/categories') }}" class="nav-item {{ $seg=='categories'?'active':'' }}">
-            Expense Category Master
-          </a>
-          @endif
-
-          {{-- Sub-Admin Specific Module Panel Links --}}
-          @if($role !== 'ADMIN')
-            {{-- Cashier Panel Links --}}
-            @if($can('cashier_action'))
-            <a href="{{ url(request()->segment(1) . '/cashier/action') }}" class="nav-item {{ request()->segment(2)=='cashier' && request()->segment(3)=='action' ? 'active' : '' }}">
-              Cashier Entry
-            </a>
-            @endif
-            @if($can('cashier_history'))
-            <a href="{{ url(request()->segment(1) . '/cashier/history') }}" class="nav-item {{ request()->segment(2)=='cashier' && request()->segment(3)=='history' ? 'active' : '' }}">
-              Cashier History
-            </a>
-            @endif
-            @if($can('cashier_ledger'))
-            <a href="{{ url(request()->segment(1) . '/cashier/ledger') }}" class="nav-item {{ request()->segment(2)=='cashier' && request()->segment(3)=='ledger' ? 'active' : '' }}">
-              Cashier Ledger
-            </a>
-            @endif
-
-            {{-- Sales Panel Links --}}
-            @if($can('sales_home'))
-            <a href="{{ url(request()->segment(1) . '/sales/home') }}" class="nav-item {{ request()->segment(2)=='sales' && request()->segment(3)=='home' ? 'active' : '' }}">
-              Sales Dashboard
-            </a>
-            @endif
-            @if($can('sales_action'))
-            <a href="{{ url(request()->segment(1) . '/sales/action') }}" class="nav-item {{ request()->segment(2)=='sales' && request()->segment(3)=='action' ? 'active' : '' }}">
-              Sales Orders
-            </a>
-            @endif
-            @if($can('sales_history'))
-            <a href="{{ url(request()->segment(1) . '/sales/history') }}" class="nav-item {{ request()->segment(2)=='sales' && request()->segment(3)=='history' ? 'active' : '' }}">
-              Sales History
-            </a>
-            @endif
-
-            {{-- Dispatch Panel Links --}}
-            @if($can('dispatch_home'))
-            <a href="{{ url(request()->segment(1) . '/dispatch/home') }}" class="nav-item {{ request()->segment(2)=='dispatch' && request()->segment(3)=='home' ? 'active' : '' }}">
-              Dispatch Home
-            </a>
-            @endif
-            @if($can('dispatch_action'))
-            <a href="{{ url(request()->segment(1) . '/dispatch/action') }}" class="nav-item {{ request()->segment(2)=='dispatch' && request()->segment(3)=='action' ? 'active' : '' }}">
-              Dispatch Entry
-            </a>
-            @endif
-            @if($can('dispatch_history'))
-            <a href="{{ url(request()->segment(1) . '/dispatch/history') }}" class="nav-item {{ request()->segment(2)=='dispatch' && request()->segment(3)=='history' ? 'active' : '' }}">
-              Dispatch History
-            </a>
-            @endif
-
-            {{-- Stock Manager Panel Links --}}
+          @if($role === 'STOCK_MANAGER')
+            {{-- Core Stock Manager Pages (Only shown if permitted or if perms array is empty/default) --}}
             @if($can('stock_manager_home'))
-            <a href="{{ url(request()->segment(1) . '/stock-manager/home') }}" class="nav-item {{ request()->segment(2)=='stock-manager' && request()->segment(3)=='home' ? 'active' : '' }}">
-              Stock Home
+            <a href="{{ url(request()->segment(1) . '/home') }}" class="nav-item {{ $seg=='home' || $seg=='dashboard'?'active':'' }}">
+              Stock Manager Home
             </a>
             @endif
             @if($can('stock_manager_action'))
-            <a href="{{ url(request()->segment(1) . '/stock-manager/action') }}" class="nav-item {{ request()->segment(2)=='stock-manager' && request()->segment(3)=='action' ? 'active' : '' }}">
-              Stock Outward
+            <a href="{{ url(request()->segment(1) . '/action') }}" class="nav-item {{ $seg=='action'?'active':'' }}">
+              Stock Outward Action
             </a>
             @endif
             @if($can('stock_manager_stock'))
-            <a href="{{ url(request()->segment(1) . '/stock-manager/stock') }}" class="nav-item {{ request()->segment(2)=='stock-manager' && request()->segment(3)=='stock' ? 'active' : '' }}">
-              Stock View
+            <a href="{{ url(request()->segment(1) . '/stock') }}" class="nav-item {{ $seg=='stock'?'active':'' }}">
+              Live Stock View
             </a>
             @endif
             @if($can('stock_manager_po'))
-            <a href="{{ url(request()->segment(1) . '/stock-manager/po') }}" class="nav-item {{ request()->segment(2)=='stock-manager' && request()->segment(3)=='po' ? 'active' : '' }}">
-              Stock PO
+            <a href="{{ url(request()->segment(1) . '/po') }}" class="nav-item {{ $seg=='po'?'active':'' }}">
+              Stock Purchase Orders
             </a>
             @endif
             @if($can('stock_manager_history'))
-            <a href="{{ url(request()->segment(1) . '/stock-manager/history') }}" class="nav-item {{ request()->segment(2)=='stock-manager' && request()->segment(3)=='history' ? 'active' : '' }}">
-              Stock History
+            <a href="{{ url(request()->segment(1) . '/history') }}" class="nav-item {{ $seg=='history'?'active':'' }}">
+              Stock Manager History
             </a>
+            @endif
+            <a href="{{ url(request()->segment(1) . '/profile') }}" class="nav-item {{ $seg=='profile'?'active':'' }}">
+              Profile
+            </a>
+
+            {{-- Optional Additional Modules if explicitly granted by Admin --}}
+            @if($can('admin_users'))
+            <a href="{{ url(request()->segment(1) . '/users') }}" class="nav-item {{ $seg=='users'?'active':'' }}">
+              Users &amp; Hierarchy
+            </a>
+            @endif
+            @if($can('admin_products'))
+            <a href="{{ url(request()->segment(1) . '/products') }}" class="nav-item {{ $seg=='products'?'active':'' }}">
+              Products Master
+            </a>
+            @endif
+            @if($can('admin_stock'))
+            <a href="{{ url(request()->segment(1) . '/admin/stock') }}" class="nav-item {{ request()->segment(2)=='admin' && request()->segment(3)=='stock' ? 'active' : '' }}">
+              Admin Live Stock
+            </a>
+            @endif
+            @if($can('admin_grades'))
+            <a href="{{ url(request()->segment(1) . '/grades') }}" class="nav-item {{ $seg=='grades'?'active':'' }}">
+              Grades Master
+            </a>
+            @endif
+            @if($can('admin_locations'))
+            <a href="{{ url(request()->segment(1) . '/locations') }}" class="nav-item {{ $seg=='locations'?'active':'' }}">
+              Storage Location
+            </a>
+            @endif
+            @if($can('admin_dispatch_activity'))
+            <a href="{{ url(request()->segment(1) . '/dispatch-activity') }}" class="nav-item {{ $seg=='dispatch-activity'?'active':'' }}">
+              Dispatch Activity
+            </a>
+            @endif
+            @if($can('admin_cashier_overview'))
+            <a href="{{ url(request()->segment(1) . '/cashier-overview') }}" class="nav-item {{ $seg=='cashier-overview'?'active':'' }}">
+              Cashier Overview
+            </a>
+            @endif
+            @if($can('admin_categories'))
+            <a href="{{ url(request()->segment(1) . '/categories') }}" class="nav-item {{ $seg=='categories'?'active':'' }}">
+              Expense Category Master
+            </a>
+            @endif
+          @else
+            {{-- Admin Panel Links --}}
+            @if($can('admin_dashboard'))
+            <a href="{{ url(request()->segment(1) . '/home') }}" class="nav-item {{ $seg=='home' || $seg=='dashboard'?'active':'' }}">
+              Dashboard
+            </a>
+            @endif
+
+            @if($can('admin_users'))
+            <a href="{{ url(request()->segment(1) . '/users') }}" class="nav-item {{ $seg=='users'?'active':'' }}">
+              Users &amp; Hierarchy
+            </a>
+            @endif
+
+            @if($can('admin_stock'))
+            <a href="{{ url(request()->segment(1) . '/stock') }}" class="nav-item {{ $seg=='stock'?'active':'' }}">
+              Live Stock
+            </a>
+            @endif
+
+            @if($can('admin_products'))
+            <a href="{{ url(request()->segment(1) . '/products') }}" class="nav-item {{ $seg=='products'?'active':'' }}">
+              Products Master
+            </a>
+            @endif
+
+            @if($can('admin_grades'))
+            <a href="{{ url(request()->segment(1) . '/grades') }}" class="nav-item {{ $seg=='grades'?'active':'' }}">
+              Grades Master
+            </a>
+            @endif
+
+            @if($can('admin_locations'))
+            <a href="{{ url(request()->segment(1) . '/locations') }}" class="nav-item {{ $seg=='locations'?'active':'' }}">
+              Storage Location
+            </a>
+            @endif
+
+            @if($can('admin_po'))
+            <a href="{{ url(request()->segment(1) . '/po') }}" class="nav-item {{ $seg=='po'?'active':'' }}">
+              Purchase Requests
+            </a>
+            @endif
+
+            @if($can('admin_dispatch_activity'))
+            <a href="{{ url(request()->segment(1) . '/dispatch-activity') }}" class="nav-item {{ $seg=='dispatch-activity'?'active':'' }}">
+              Dispatch Activity
+            </a>
+            @endif
+
+            @if($can('admin_cashier_overview'))
+            <a href="{{ url(request()->segment(1) . '/cashier-overview') }}" class="nav-item {{ $seg=='cashier-overview'?'active':'' }}">
+              Cashier Overview
+            </a>
+            @endif
+
+            @if($can('admin_categories'))
+            <a href="{{ url(request()->segment(1) . '/categories') }}" class="nav-item {{ $seg=='categories'?'active':'' }}">
+              Expense Category Master
+            </a>
+            @endif
+
+            {{-- Sub-Admin Specific Module Panel Links --}}
+            @if($role !== 'ADMIN')
+              {{-- Cashier Panel Links --}}
+              @if($can('cashier_action'))
+              <a href="{{ url(request()->segment(1) . '/cashier/action') }}" class="nav-item {{ request()->segment(2)=='cashier' && request()->segment(3)=='action' ? 'active' : '' }}">
+                Cashier Entry
+              </a>
+              @endif
+              @if($can('cashier_ledger'))
+              <a href="{{ url(request()->segment(1) . '/cashier/ledger') }}" class="nav-item {{ request()->segment(2)=='cashier' && request()->segment(3)=='ledger' ? 'active' : '' }}">
+                Cashier Ledger
+              </a>
+              @endif
+
+              {{-- Sales Panel Links --}}
+              @if($can('sales_home'))
+              <a href="{{ url(request()->segment(1) . '/sales/home') }}" class="nav-item {{ request()->segment(2)=='sales' && request()->segment(3)=='home' ? 'active' : '' }}">
+                Sales Dashboard
+              </a>
+              @endif
+              @if($can('sales_action'))
+              <a href="{{ url(request()->segment(1) . '/sales/action') }}" class="nav-item {{ request()->segment(2)=='sales' && request()->segment(3)=='action' ? 'active' : '' }}">
+                Sales Orders
+              </a>
+              @endif
+              @if($can('sales_history'))
+              <a href="{{ url(request()->segment(1) . '/sales/history') }}" class="nav-item {{ request()->segment(2)=='sales' && request()->segment(3)=='history' ? 'active' : '' }}">
+                Sales History
+              </a>
+              @endif
+
+              {{-- Dispatch Panel Links --}}
+              @if($can('dispatch_home'))
+              <a href="{{ url(request()->segment(1) . '/dispatch/home') }}" class="nav-item {{ request()->segment(2)=='dispatch' && request()->segment(3)=='home' ? 'active' : '' }}">
+                Dispatch Home
+              </a>
+              @endif
+              @if($can('dispatch_action'))
+              <a href="{{ url(request()->segment(1) . '/dispatch/action') }}" class="nav-item {{ request()->segment(2)=='dispatch' && request()->segment(3)=='action' ? 'active' : '' }}">
+                Dispatch Entry
+              </a>
+              @endif
+              @if($can('dispatch_history'))
+              <a href="{{ url(request()->segment(1) . '/dispatch/history') }}" class="nav-item {{ request()->segment(2)=='dispatch' && request()->segment(3)=='history' ? 'active' : '' }}">
+                History
+              </a>
+              @endif
+              @if($can('dispatch_report') || $can('dispatch_history'))
+              <a href="{{ url(request()->segment(1) . '/dispatch/report') }}" class="nav-item {{ request()->segment(2)=='dispatch' && request()->segment(3)=='report' ? 'active' : '' }}">
+                Report
+              </a>
+              @endif
             @endif
           @endif
 
@@ -270,24 +305,24 @@
                 Dashboard
               </a>
               @endif
-              @if($can('attendance_departments'))
-              <a href="{{ url(request()->segment(1) . '/attendance/departments') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='departments' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
-                Departments
-              </a>
-              @endif
-              @if($can('attendance_workers'))
-              <a href="{{ url(request()->segment(1) . '/attendance/workers') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='workers' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
-                Workers List
-              </a>
-              @endif
               @if($can('attendance_daily'))
               <a href="{{ url(request()->segment(1) . '/attendance/daily') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='daily' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
                 Daily Entry
               </a>
               @endif
+              @if($can('attendance_departments'))
+              <a href="{{ url(request()->segment(1) . '/attendance/departments') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='departments' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
+                Departments
+              </a>
+              @endif
               @if($can('attendance_reports'))
               <a href="{{ url(request()->segment(1) . '/attendance/reports') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='reports' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
                 Reports
+              </a>
+              @endif
+              @if($can('attendance_workers'))
+              <a href="{{ url(request()->segment(1) . '/attendance/workers') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='workers' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
+                Workers List
               </a>
               @endif
             </div>

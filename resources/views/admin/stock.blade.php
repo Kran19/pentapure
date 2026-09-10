@@ -235,6 +235,9 @@
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
                 <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
+                <button class="btn-icon delete" onclick="adminDeleteStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}')" title="Delete Stock Entry">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
               </div>
             </td>
           </tr>
@@ -288,6 +291,9 @@
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
                 <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
+                <button class="btn-icon delete" onclick="adminDeleteStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}')" title="Delete Stock Entry">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
               </div>
             </td>
           </tr>
@@ -341,6 +347,9 @@
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
                 <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
+                <button class="btn-icon delete" onclick="adminDeleteStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}')" title="Delete Stock Entry">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
               </div>
             </td>
           </tr>
@@ -367,6 +376,34 @@ function escapeHtml(value) {
     '"': '&quot;',
     "'": '&#039;'
   }[char]));
+}
+
+function adminDeleteStock(productId, stage, grade, productName = '') {
+  Swal.fire({
+    title: 'Delete Stock Entry?',
+    text: `Are you sure you want to delete stock for ${productName} (${stage})? This will reset stock quantity to 0 across all locations.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#dc2626',
+    confirmButtonText: 'Yes, delete stock!'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      fetch(window.baseUrl + '/' + window.userSlug + '/stock/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify({ product_id: productId, stage, grade })
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          Swal.fire('Deleted!', d.message || 'Stock reset to 0.', 'success');
+          setTimeout(() => location.reload(), 800);
+        } else {
+          Swal.fire('Error!', d.message || 'Could not delete stock.', 'error');
+        }
+      });
+    }
+  });
 }
 
 function adminAddStock() {
@@ -472,44 +509,34 @@ function adminAddStock() {
   });
 }
 
-async function adminAdjustStock(productId, stage, grade, productName = '', currentQty = 0) {
+function adminAdjustStock(productId, stage, grade, productName = '', currentQty = 0) {
   const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG' }[stage] || stage;
   const displayGrade = grade !== 'NONE' ? ` &nbsp;·&nbsp; Grade: <strong style="color:#333;">${grade}</strong>` : '';
 
-  // Fetch locations
-  let allLocations = window._swalAllLocations || [];
-  if (!allLocations || allLocations.length === 0) {
-    try {
-      const locRes = await fetch(window.baseUrl + '/' + window.userSlug + '/api/locations');
-      const locData = await locRes.json();
-      if (locData.success) {
-        allLocations = locData.locations;
-        window._swalAllLocations = allLocations;
-      }
-    } catch (e) {
-      console.error('Failed to load locations', e);
-    }
-  }
-
-  if (!allLocations || allLocations.length === 0) {
-    allLocations = [{ name: 'Main Warehouse' }];
-  }
-
-  const mappings = getStoredLocationMappings();
+  // Get locations breakdown instantly from serverPageData locationMappings
   const key = `${productId}_${grade}_${stage}`;
-  const locMap = mappings[key] || {};
+  const locMap = (locationMappings && locationMappings[key]) ? locationMappings[key] : {};
+  const locBreakdown = [];
+  for (const [locName, qty] of Object.entries(locMap)) {
+    locBreakdown.push({ name: locName, quantity: parseFloat(qty) || 0 });
+  }
 
-  let locOptionsHtml = allLocations.map(loc => {
-    const locName = (loc.name || '').trim();
-    let q = 0;
-    for (const [k, v] of Object.entries(locMap)) {
-      if (k.trim().toLowerCase() === locName.toLowerCase()) {
-        q = v;
-        break;
+  const masterLocNames = (window._swalAllLocations && window._swalAllLocations.length)
+    ? window._swalAllLocations.map(l => l.name)
+    : ['Main Warehouse', 'Warehouse A', 'Warehouse B', 'Rack 1', 'Cold Room'];
+
+  window._swalLocBreakdown = locBreakdown;
+  window._swalAllMasterLocs = masterLocNames.map(n => ({ name: n }));
+
+  // Background fetch to refresh fresh location breakdown silently if needed
+  fetch(`/api/stock/locations?product_id=${productId}&stage=${stage}&grade=${encodeURIComponent(grade)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.success && data.breakdown) {
+        window._swalLocBreakdown = data.breakdown;
+        renderSwalLocationDropdownMenu();
       }
-    }
-    return `<option value="${escapeHtml(locName)}">${escapeHtml(locName)} (${q.toFixed(2)} kg)</option>`;
-  }).join('');
+    }).catch(() => {});
 
   Swal.fire({
     title: 'Adjust Stock',
@@ -517,85 +544,111 @@ async function adminAdjustStock(productId, stage, grade, productName = '', curre
       <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:#6b7280; background:var(--bg-sidebar, #FFF8EA); border:1px solid var(--border-soft, #ECE4CF); border-radius:8px; padding:10px 12px;">
         <strong style="color:var(--primary); font-size:1.05rem;">${escapeHtml(productName)} (${stage})</strong><br>
         <span style="font-size:0.85rem;">${stageLabel}${displayGrade}</span>
-        <div style="margin-top:4px; font-size:0.85rem; color:#333;">Total Current Stock: <strong style="color:var(--secondary);">${currentQty.toFixed(2)} kg</strong></div>
+        <div style="margin-top:4px; font-size:0.85rem; color:#333;">Total Current Stock: <strong id="swal-total-stock-badge" style="color:var(--secondary);">${currentQty.toFixed(2)} kg</strong></div>
       </div>
 
       <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
         Adjustment Type
       </label>
-      <select id="swal-adj-type" style="
+      <select id="swal-adj-type" onchange="onSwalAdjTypeChange()" style="
         width:100%; padding:0.65rem 0.8rem; border-radius:8px;
         background:#fff; border:1px solid #d1d5db; color:#333;
-        font-size:0.95rem; margin-bottom:1rem; outline:none;
+        font-size:0.95rem; margin-bottom:1rem; outline:none; font-weight:600;
       ">
-        <option value="add">➕ Add — Increase current stock</option>
-        <option value="subtract">➖ Subtract — Decrease current stock</option>
         <option value="set">🎯 Set — Override to exact quantity</option>
+        <option value="add" selected>➕ Add — Increase current stock</option>
+        <option value="subtract">➖ Subtract — Decrease current stock</option>
       </select>
 
-      <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
-        Storage Location *
-      </label>
-      <select id="swal-adj-loc" style="
-        width:100%; padding:0.65rem 0.8rem; border-radius:8px;
-        background:#fff; border:1px solid #d1d5db; color:#333;
-        font-size:0.95rem; margin-bottom:1rem; outline:none;
-      ">
-        ${locOptionsHtml}
-      </select>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
+        <label style="font-size:0.82rem; font-weight:700; color:#374151; margin:0;">STORAGE LOCATION *</label>
+      </div>
 
-      <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
-        Quantity (kg)
-      </label>
-      <input id="swal-qty" type="number" min="0" step="0.01" value="" placeholder="e.g. 50.00" style="
-        width:100%; padding:0.65rem 0.8rem; border-radius:8px;
-        background:#fff; border:1px solid #d1d5db; color:#333;
-        font-size:1rem; margin-bottom:1rem; outline:none; box-sizing:border-box;
-      ">
-      
+      <div style="display:flex; gap:0.5rem; align-items:flex-start; width:100%; margin-bottom:1rem;">
+        <div style="flex:3; min-width:240px; position:relative;">
+          <div class="custom-location-dropdown" id="swal-custom-loc-dd" style="width:100%; position:relative;">
+            <button type="button" onclick="event.stopPropagation(); this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'block' ? 'none' : 'block';" style="width:100%; text-align:left; display:flex; justify-content:space-between; align-items:center; background:#fff; border: 1px solid #d1d5db; padding: 0.6rem 0.85rem; font-size:0.9rem; font-weight:600; color:#111827; border-radius:8px; cursor:pointer;">
+              <span class="loc-dropdown-text">Select Storage Location</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+            <ul class="dropdown-menu shadow" style="display:none; position:absolute; top:100%; left:0; z-index:999999 !important; width:360px; max-height:260px; overflow-y:auto; background:#ffffff !important; border:1px solid #d1d5db; border-radius:8px; list-style:none; margin-top:0.25rem; padding:0.6rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2) !important;">
+              <!-- Dynamically rendered -->
+            </ul>
+          </div>
+        </div>
+
+        <div style="flex:1; min-width:110px;">
+          <input type="number" min="0" step="0.001" id="swal-main-qty-input" class="no-spinners" placeholder="0" value="0" oninput="onSwalMainQtyInput(this)" style="height:2.6rem; padding:0.4rem 0.6rem; font-size:1.05rem; font-weight:700; text-align:center; width:100%; border:1px solid #d1d5db; border-radius:8px; box-sizing:border-box;">
+        </div>
+      </div>
+
       <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
         Reason / Note <span style="font-weight:400;">(optional)</span>
       </label>
       <textarea id="swal-reason" rows="2" placeholder="e.g. Physical count correction, spillage, etc." style="
         width:100%; padding:0.65rem 0.8rem; border-radius:8px;
         background:#fff; border:1px solid #d1d5db; color:#333;
-        font-size:0.9rem; resize:vertical; outline:none; box-sizing:border-box;
+        font-size:0.9rem; resize:vertical; outline:none; box-sizing:border-box; margin-bottom:1.5rem;
       "></textarea>
+
+      <div style="display:flex; justify-content:flex-end; gap:0.75rem; border-top:1px solid #f3f4f6; padding-top:1rem; position:relative; z-index:1;">
+        <button type="button" class="btn" onclick="Swal.clickConfirm()" style="padding:0.65rem 1.4rem; font-weight:700; background:#f59e0b; color:#ffffff; border:none; border-radius:8px; cursor:pointer;">Apply Adjustment</button>
+        <button type="button" class="btn btn-secondary" onclick="Swal.close()" style="padding:0.65rem 1.4rem; font-weight:600; background:#f3f4f6; color:#4b5563; border:none; border-radius:8px; cursor:pointer;">Cancel</button>
+      </div>
     `,
     background: '#ffffff',
     color: '#333333',
-    showCancelButton: true,
-    confirmButtonText: 'Apply Adjustment',
-    cancelButtonText: 'Cancel',
-    confirmButtonColor: '#f59e0b',
-    cancelButtonColor: '#9ca3af',
-    focusConfirm: false,
-    width: '460px',
-    customClass: {
-      popup: 'swal-stock-popup',
-      confirmButton: 'swal-confirm-btn',
-      cancelButton: 'swal-cancel-btn',
+    showConfirmButton: false,
+    showCancelButton: false,
+    width: '600px',
+    didOpen: (popup) => {
+      if (popup) {
+        popup.style.setProperty('overflow', 'visible', 'important');
+        const htmlContainer = popup.querySelector('.swal2-html-container');
+        if (htmlContainer) {
+          htmlContainer.style.setProperty('overflow', 'visible', 'important');
+        }
+      }
+      renderSwalLocationDropdownMenu();
     },
     preConfirm: () => {
-      const qty      = parseFloat(document.getElementById('swal-qty').value);
-      const type     = document.getElementById('swal-adj-type').value;
-      const location = document.getElementById('swal-adj-loc').value;
-      const reason   = document.getElementById('swal-reason').value.trim();
+      const type = document.getElementById('swal-adj-type').value;
+      const reason = document.getElementById('swal-reason').value.trim();
+      const locInputs = document.querySelectorAll('#swal-custom-loc-dd .inner-qty-input');
+      const splits = [];
+      let totalQtyEntered = 0;
 
-      if (isNaN(qty) || qty < 0) {
-        Swal.showValidationMessage('⚠️ Please enter a valid quantity (≥ 0).');
-        return false;
+      locInputs.forEach(inp => {
+        const loc = inp.getAttribute('data-loc');
+        const avail = parseFloat(inp.getAttribute('data-avail') || 0);
+        const val = parseFloat(inp.value) || 0;
+
+        if (type === 'set') {
+          splits.push({ location: loc, quantity: val });
+        } else if (val > 0) {
+          if (type === 'subtract' && val > avail) {
+            Swal.showValidationMessage(`⚠️ Cannot subtract ${val} kg from '${loc}' — only ${avail} kg available.`);
+            return false;
+          }
+          splits.push({ location: loc, quantity: val });
+          totalQtyEntered += val;
+        }
+      });
+
+      if (splits.length === 0 && type !== 'set') {
+        const mainVal = parseFloat(document.getElementById('swal-main-qty-input').value) || 0;
+        if (mainVal <= 0) {
+          Swal.showValidationMessage('⚠️ Please enter a quantity for at least one storage location.');
+          return false;
+        }
+        splits.push({ location: 'Main Warehouse', quantity: mainVal });
       }
-      if (!location) {
-        Swal.showValidationMessage('⚠️ Please select a storage location.');
-        return false;
-      }
-      return { qty, type, location, reason };
+
+      return { type, reason, splits, mainQty: parseFloat(document.getElementById('swal-main-qty-input').value) || 0 };
     }
   }).then(result => {
     if (!result.isConfirmed) return;
-
-    const { qty, type, location, reason } = result.value;
+    const { type, reason, splits, mainQty } = result.value;
 
     Swal.fire({
       title: 'Applying…',
@@ -606,18 +659,21 @@ async function adminAdjustStock(productId, stage, grade, productName = '', curre
       didOpen: () => Swal.showLoading()
     });
 
+    const payload = {
+      product_id: productId,
+      stage,
+      grade,
+      adjust_type: type,
+      reason,
+      location_splits: splits,
+      quantity: mainQty,
+      location: splits.length ? splits[0].location : 'Main Warehouse'
+    };
+
     fetch(window.baseUrl + '/' + window.userSlug + '/stock/adjust', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-      body: JSON.stringify({
-        product_id: productId,
-        stage,
-        grade,
-        quantity: qty,
-        adjust_type: type,
-        location,
-        reason
-      })
+      body: JSON.stringify(payload)
     })
     .then(r => r.json())
     .then(d => {
@@ -654,6 +710,109 @@ async function adminAdjustStock(productId, stage, grade, productName = '', curre
       });
     });
   });
+}
+
+function renderSwalLocationDropdownMenu() {
+  const dropdownMenu = document.querySelector('#swal-custom-loc-dd .dropdown-menu');
+  if (!dropdownMenu) return;
+
+  const locMap = {};
+  (window._swalLocBreakdown || []).forEach(l => { locMap[l.name.trim().toLowerCase()] = l.quantity; });
+  const locs = (window._swalAllMasterLocs || []).map(l => l.name);
+
+  const type = document.getElementById('swal-adj-type')?.value || 'add';
+
+  let html = '';
+  locs.forEach(locName => {
+    const key = locName.trim().toLowerCase();
+    const avail = locMap[key] !== undefined ? locMap[key] : 0;
+    const initialVal = type === 'set' ? avail : 0;
+    html += `
+      <li style="margin-bottom:0.4rem; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:#333; gap:8px;">
+        <span style="padding-left:0.2rem; font-weight:600;">${escapeHtml(locName.toUpperCase())} (${avail.toFixed(2)} KG)</span>
+        <input type="number" min="0" step="0.001" class="form-control form-control-sm inner-qty-input no-spinners" data-loc="${escapeHtml(locName)}" data-avail="${avail}" oninput="recalcSwalDropdownTotals()" style="width:75px; text-align:center; padding:0.2rem; height:1.8rem; font-size:0.8rem; border:1px solid #d1d5db; border-radius:4px;" value="${initialVal}">
+      </li>
+    `;
+  });
+
+  dropdownMenu.innerHTML = html;
+  recalcSwalDropdownTotals();
+}
+
+function onSwalAdjTypeChange() {
+  renderSwalLocationDropdownMenu();
+}
+
+function recalcSwalDropdownTotals() {
+  const inputs = document.querySelectorAll('#swal-custom-loc-dd .inner-qty-input');
+  let sumEnteredQty = 0;
+  const activeLocSummary = [];
+  const type = document.getElementById('swal-adj-type')?.value || 'add';
+
+  const totalExistingAvail = (window._swalLocBreakdown || []).reduce((sum, l) => sum + (parseFloat(l.quantity) || 0), 0);
+
+  inputs.forEach(inp => {
+    const qty = parseFloat(inp.value) || 0;
+    const locName = inp.getAttribute('data-loc');
+    const avail = parseFloat(inp.getAttribute('data-avail') || 0);
+
+    if (type === 'set') {
+      activeLocSummary.push(`${locName.toUpperCase()} (${qty} KG)`);
+      sumEnteredQty += qty;
+    } else if (qty > 0) {
+      sumEnteredQty += qty;
+      const previewQty = type === 'add' ? (avail + qty) : Math.max(0, avail - qty);
+      activeLocSummary.push(`${locName.toUpperCase()} (${previewQty} KG)`);
+    }
+  });
+
+  const btnText = document.querySelector('#swal-custom-loc-dd .loc-dropdown-text');
+  if (btnText) {
+    if (activeLocSummary.length > 0) {
+      btnText.textContent = activeLocSummary.join(', ');
+    } else {
+      btnText.textContent = 'Select Storage Location';
+    }
+  }
+
+  const mainQtyInput = document.getElementById('swal-main-qty-input');
+  if (mainQtyInput) {
+    mainQtyInput.value = sumEnteredQty > 0 ? sumEnteredQty : 0;
+  }
+
+  let grandTotal = 0;
+  if (type === 'set') {
+    grandTotal = sumEnteredQty;
+  } else if (type === 'add') {
+    grandTotal = totalExistingAvail + sumEnteredQty;
+  } else { // subtract
+    grandTotal = Math.max(0, totalExistingAvail - sumEnteredQty);
+  }
+
+  const badge = document.getElementById('swal-total-stock-badge');
+  if (badge) {
+    badge.innerText = `${grandTotal.toLocaleString('en-IN', { maximumFractionDigits: 3 })} kg`;
+  }
+}
+
+function onSwalMainQtyInput(mainInput) {
+  const mainVal = parseFloat(mainInput.value) || 0;
+  const totalExistingAvail = (window._swalLocBreakdown || []).reduce((sum, l) => sum + (parseFloat(l.quantity) || 0), 0);
+  const type = document.getElementById('swal-adj-type')?.value || 'add';
+
+  let grandTotal = 0;
+  if (type === 'set') {
+    grandTotal = mainVal;
+  } else if (type === 'add') {
+    grandTotal = totalExistingAvail + mainVal;
+  } else {
+    grandTotal = Math.max(0, totalExistingAvail - mainVal);
+  }
+
+  const badge = document.getElementById('swal-total-stock-badge');
+  if (badge) {
+    badge.innerText = `${grandTotal.toLocaleString('en-IN', { maximumFractionDigits: 3 })} kg`;
+  }
 }
 
 function adminUpdateRate(productId, currentRate, name) {

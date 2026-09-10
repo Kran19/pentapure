@@ -56,7 +56,7 @@
     <div class="card-title">Create New User</div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
       <div class="form-group">
-        <label>Full Name *</label>
+        <label>Full Name <span class="required-star" style="color:#dc2626 !important; font-weight:700;">*</span></label>
         <input type="text" id="u-name" placeholder="User name">
       </div>
       <div class="form-group">
@@ -64,14 +64,14 @@
         <input type="email" id="u-email" placeholder="email@pentapure.com">
       </div>
       <div class="form-group">
-        <label>Phone Number *</label>
+        <label>Phone Number <span class="required-star" style="color:#dc2626 !important; font-weight:700;">*</span></label>
         <div style="display:flex; gap:8px;">
           <input type="text" id="u-country-code" value="+91" placeholder="+91" oninput="onUserCountryCodeInput()" style="width:75px; padding:0.6rem 0.4rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600; text-align:center; flex-shrink:0;">
           <input type="text" id="u-phone" placeholder="10-digit mobile or landline" oninput="onUserPhoneInput(this)" maxlength="10" style="flex:1; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
         </div>
       </div>
       <div class="form-group">
-        <label>Role *</label>
+        <label>Role <span class="required-star" style="color:#dc2626 !important; font-weight:700;">*</span></label>
         <select id="u-role" onchange="toggleRoleFields(this.value)">
           <option value="">-- Select Role --</option>
           @foreach(['RAW','SEMI','FINISHED','CASHIER','SALES','DISPATCH','ATTENDANCE','ADMIN','SUB_ADMIN','STOCK_MANAGER'] as $r)
@@ -80,7 +80,7 @@
         </select>
       </div>
       <div class="form-group" id="branch-field-container" style="display:none;">
-        <label>Assigned Branch (Cashier Only)</label>
+        <label>Assigned Branch (Cashier Only) <span class="required-star" style="color:#dc2626 !important; font-weight:700;">*</span></label>
         <input type="text" id="u-branch" placeholder="e.g. Main Factory">
       </div>
     </div>
@@ -144,6 +144,7 @@
             ['key' => 'dispatch_home', 'name' => 'Dispatch Dashboard', 'url' => '/dispatch/home'],
             ['key' => 'dispatch_action', 'name' => 'Dispatch Action / Entry', 'url' => '/dispatch/action'],
             ['key' => 'dispatch_history', 'name' => 'Dispatch History', 'url' => '/dispatch/history'],
+            ['key' => 'dispatch_report', 'name' => 'Dispatch Report', 'url' => '/dispatch/report'],
         ],
         'Stock Manager Panel' => [
             ['key' => 'stock_manager_home', 'name' => 'Stock Manager Home', 'url' => '/stock_manager/home'],
@@ -175,12 +176,27 @@
         </div>
       </div>
 
-      @foreach($permissionGroups as $groupName => $modules)
-        <div style="margin-bottom:1.2rem; background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; overflow:hidden;">
-          <div style="background:#f1f5f9; padding:0.6rem 1rem; font-weight:700; color:#334155; font-size:0.95rem; border-bottom:1px solid #e2e8f0;">
-            {{ $groupName }}
+      @foreach($permissionGroups as $groupIndex => $groupData)
+        @php
+          $groupName = is_array($groupData) && isset($groupData['name']) ? $groupData['name'] : (is_string($groupIndex) ? $groupIndex : '');
+          $modules = is_array($groupData) && isset($groupData['modules']) ? $groupData['modules'] : $groupData;
+          $gSlug = 'perm-group-' . \Illuminate\Support\Str::slug($groupName);
+        @endphp
+        <div class="perm-group-card" id="{{ $gSlug }}" style="margin-bottom:1.2rem; background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; overflow:hidden;">
+          <div style="background:#f1f5f9; padding:0.6rem 1rem; font-weight:700; color:#334155; font-size:0.95rem; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="togglePermDrawer('{{ $gSlug }}', event)">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span>{{ $groupName }}</span>
+              <label style="display:flex; align-items:center; gap:6px; margin:0; font-size:0.8rem; font-weight:600; color:#475569; cursor:pointer;" onclick="event.stopPropagation();">
+                <input type="checkbox" class="group-select-all-cb" data-group="{{ $gSlug }}" onchange="toggleGroupPerms('{{ $gSlug }}', this.checked)" style="width:16px; height:16px; margin:0; cursor:pointer;">
+                <span>Select All</span>
+              </label>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="drawer-status-badge" style="font-size:0.75rem; font-weight:600; color:#64748b; background:#e2e8f0; padding:2px 8px; border-radius:12px;">Closed</span>
+              <span class="drawer-toggle-icon" style="transition:transform 0.3s ease; display:inline-block; font-size:1.1rem; color:#475569; line-height:1;">▼</span>
+            </div>
           </div>
-          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:0.6rem; padding:0.8rem;">
+          <div class="perm-group-body" style="display:none; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:0.6rem; padding:0.8rem;">
             @foreach($modules as $m)
               <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0.8rem; border:1px solid #f1f5f9; border-radius:6px; background:#ffffff;">
                 <div>
@@ -189,11 +205,11 @@
                 </div>
                 <div style="display:flex; align-items:center; gap:0.6rem; flex-shrink:0;">
                   <label style="display:flex; align-items:center; gap:4px; margin:0; font-size:0.8rem; cursor:pointer; background:#eff6ff; color:#1e40af; padding:3px 8px; border-radius:4px; border:1px solid #bfdbfe; font-weight:600;">
-                    <input type="checkbox" class="perm-view-cb" data-module="{{ $m['key'] }}" value="view_{{ $m['key'] }}" onchange="onPermViewToggle(this)" style="margin:0; width:14px; height:14px; cursor:pointer;">
+                    <input type="checkbox" class="perm-view-cb" data-group="{{ $gSlug }}" data-module="{{ $m['key'] }}" value="view_{{ $m['key'] }}" onchange="onPermViewToggle(this)" style="margin:0; width:14px; height:14px; cursor:pointer;">
                     View
                   </label>
                   <label style="display:flex; align-items:center; gap:4px; margin:0; font-size:0.8rem; cursor:pointer; background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:4px; border:1px solid #fde68a; font-weight:600;">
-                    <input type="checkbox" class="perm-edit-cb" data-module="{{ $m['key'] }}" value="edit_{{ $m['key'] }}" onchange="onPermEditToggle(this)" style="margin:0; width:14px; height:14px; cursor:pointer;">
+                    <input type="checkbox" class="perm-edit-cb" data-group="{{ $gSlug }}" data-module="{{ $m['key'] }}" value="edit_{{ $m['key'] }}" onchange="onPermEditToggle(this)" style="margin:0; width:14px; height:14px; cursor:pointer;">
                     Edit
                   </label>
                 </div>
@@ -206,7 +222,7 @@
 
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:1rem;">
       <div class="form-group">
-        <label>Password *</label>
+        <label>Password <span class="required-star" style="color:#dc2626 !important; font-weight:700;">*</span></label>
         <div class="password-wrapper">
           <input type="password" id="u-password" placeholder="Set password" style="padding-right:2.5rem;">
           <button type="button" class="password-toggle" onclick="app.togglePassword('u-password')">
@@ -290,11 +306,54 @@
 <script>
 let editingUserId = null;
 
+function togglePermDrawer(groupSlug, event) {
+  const card = document.getElementById(groupSlug);
+  if (!card) return;
+  const body = card.querySelector('.perm-group-body');
+  const badge = card.querySelector('.drawer-status-badge');
+  const icon = card.querySelector('.drawer-toggle-icon');
+  if (!body) return;
+
+  const isClosed = body.style.display === 'none' || !body.style.display;
+  if (isClosed) {
+    body.style.display = 'grid';
+    if (badge) { badge.innerText = 'Open'; badge.style.background = '#dbeafe'; badge.style.color = '#1e40af'; }
+    if (icon) { icon.style.transform = 'rotate(180deg)'; }
+  } else {
+    body.style.display = 'none';
+    if (badge) { badge.innerText = 'Closed'; badge.style.background = '#e2e8f0'; badge.style.color = '#64748b'; }
+    if (icon) { icon.style.transform = 'rotate(0deg)'; }
+  }
+}
+
+function toggleGroupPerms(groupSlug, check) {
+  const card = document.getElementById(groupSlug);
+  if (!card) return;
+  const viewCbs = card.querySelectorAll('.perm-view-cb');
+  const editCbs = card.querySelectorAll('.perm-edit-cb');
+  viewCbs.forEach(cb => cb.checked = check);
+  editCbs.forEach(cb => cb.checked = check);
+}
+
+function syncGroupSelectAll(groupSlug) {
+  const card = document.getElementById(groupSlug);
+  if (!card) return;
+  const groupSelectAll = card.querySelector('.group-select-all-cb');
+  if (!groupSelectAll) return;
+  const allCbs = card.querySelectorAll('.perm-view-cb, .perm-edit-cb');
+  if (allCbs.length === 0) return;
+  const checkedCbs = card.querySelectorAll('.perm-view-cb:checked, .perm-edit-cb:checked');
+  groupSelectAll.checked = (allCbs.length === checkedCbs.length);
+}
+
 function onPermViewToggle(viewCb) {
   const modKey = viewCb.dataset.module;
   const editCb = document.querySelector(`.perm-edit-cb[data-module="${modKey}"]`);
   if (!viewCb.checked && editCb) {
     editCb.checked = false;
+  }
+  if (viewCb.dataset.group) {
+    syncGroupSelectAll(viewCb.dataset.group);
   }
 }
 
@@ -303,6 +362,9 @@ function onPermEditToggle(editCb) {
   const viewCb = document.querySelector(`.perm-view-cb[data-module="${modKey}"]`);
   if (editCb.checked && viewCb) {
     viewCb.checked = true;
+  }
+  if (editCb.dataset.group) {
+    syncGroupSelectAll(editCb.dataset.group);
   }
 }
 
@@ -328,6 +390,10 @@ function toggleAllPerms(type, check) {
   } else if (type === 'all') {
     document.querySelectorAll('.perm-view-cb, .perm-edit-cb').forEach(cb => cb.checked = false);
   }
+  document.querySelectorAll('.group-select-all-cb').forEach(cb => {
+    const groupSlug = cb.dataset.group;
+    if (groupSlug) syncGroupSelectAll(groupSlug);
+  });
 }
 
 function onUserPhoneInput(el) {
@@ -363,6 +429,7 @@ function resetUserForm() {
   document.getElementById('u-password').placeholder = 'Set password';
   
   document.querySelectorAll('.perm-view-cb, .perm-edit-cb').forEach(cb => cb.checked = false);
+  document.querySelectorAll('.group-select-all-cb').forEach(cb => cb.checked = false);
   document.querySelectorAll('.visible-cashier-cb').forEach(cb => {
       cb.checked = false;
       cb.parentElement.style.display = 'flex';
@@ -394,6 +461,18 @@ function toggleRoleFields(role) {
   
   if (role === 'SUB_ADMIN' || role === 'STOCK_MANAGER') {
     permContainer.style.display = 'block';
+    if (role === 'STOCK_MANAGER' && !editingUserId) {
+      document.querySelectorAll('.perm-view-cb, .perm-edit-cb').forEach(cb => {
+        const modKey = cb.dataset.module;
+        if (modKey && modKey.startsWith('stock_manager_')) {
+          cb.checked = true;
+        }
+      });
+      document.querySelectorAll('.group-select-all-cb').forEach(cb => {
+        const groupSlug = cb.dataset.group;
+        if (groupSlug) syncGroupSelectAll(groupSlug);
+      });
+    }
   } else {
     permContainer.style.display = 'none';
   }
@@ -439,6 +518,11 @@ function adminEditUser(user) {
   document.querySelectorAll('.perm-edit-cb').forEach(cb => {
     const modKey = cb.dataset.module;
     cb.checked = perms.includes(cb.value) || perms.includes('edit_' + modKey) || perms.includes('can_manage') || perms.includes('edit_module_' + modKey);
+  });
+
+  document.querySelectorAll('.group-select-all-cb').forEach(cb => {
+    const groupSlug = cb.dataset.group;
+    if (groupSlug) syncGroupSelectAll(groupSlug);
   });
   
   document.querySelectorAll('.attendance-dept-cb').forEach(cb => {
@@ -494,6 +578,9 @@ function adminSaveUser() {
   
   if (!payload.name || !payload.role || !payload.phone) {
     Swal.fire('Required', 'Name, Phone and Role are required', 'warning'); return;
+  }
+  if (payload.role === 'CASHIER' && !payload.branch.trim()) {
+    Swal.fire('Required', 'Assigned Branch is required for Cashier role', 'warning'); return;
   }
   if (!editingUserId && !payload.password) {
     Swal.fire('Required', 'Password is required for new users', 'warning'); return;
@@ -674,7 +761,11 @@ function openNotifyModal(userId, userName) {
     -webkit-text-fill-color: #374151 !important;
     border: none !important;
 }
-.white-orange-card span {
+.white-orange-card span:not(.required-star) {
     color: #333333 !important;
+}
+.required-star {
+    color: #dc2626 !important;
+    font-weight: 700 !important;
 }
 </style>

@@ -83,4 +83,12 @@ class Product extends Model
             "CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END"
         ));
     }
+
+    public function totalAvailableStock(): float
+    {
+        $net = $this->stocks()->sum(\Illuminate\Support\Facades\DB::raw(
+            "CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END"
+        ));
+        return max(0, (float) $net);
+    }
 }

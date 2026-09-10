@@ -37,11 +37,20 @@ class HistoryPdfController extends Controller
         [$from, $to] = $this->dateRange($request);
         $formattedFromDate = $from ? $from->format('d-m-Y') : now()->format('d-m-Y');
         $formattedToDate   = $to   ? $to->format('d-m-Y')   : now()->format('d-m-Y');
-        $randomSerial = rand(1000, 9999);
-        if ($from && $to && $from->format('Y-m-d') !== $to->format('Y-m-d')) {
-            $filename = 'pentapure_' . strtolower($panel) . '_' . $formattedFromDate . 'to' . $formattedToDate . '_' . $randomSerial . '.pdf';
+        
+        if ($panel === 'SALES') {
+            if ($from && $to && $from->format('Y-m-d') !== $to->format('Y-m-d')) {
+                $filename = 'PENTAPURE_SALES_HISTORY_' . $formattedFromDate . 'TO' . $formattedToDate . '.pdf';
+            } else {
+                $filename = 'PENTAPURE_SALES_HISTORY_' . $formattedFromDate . '.pdf';
+            }
         } else {
-            $filename = 'pentapure_' . strtolower($panel) . '_' . $formattedFromDate . '_' . $randomSerial . '.pdf';
+            $randomSerial = rand(1000, 9999);
+            if ($from && $to && $from->format('Y-m-d') !== $to->format('Y-m-d')) {
+                $filename = 'PENTAPURE_' . strtoupper($panel) . '_' . $formattedFromDate . 'TO' . $formattedToDate . '_' . $randomSerial . '.pdf';
+            } else {
+                $filename = 'PENTAPURE_' . strtoupper($panel) . '_' . $formattedFromDate . '_' . $randomSerial . '.pdf';
+            }
         }
 
         return $pdf->download($filename)
@@ -127,8 +136,15 @@ class HistoryPdfController extends Controller
             }
         }
 
-        $from = isset($from) ? $from : ($fromInput ? Carbon::parse($fromInput)->startOfDay() : now()->subDays(30)->startOfDay());
-        $to = isset($to) ? $to : ($toInput ? Carbon::parse($toInput)->endOfDay() : now()->endOfDay());
+        if (($request->range === 'all' || !$request->range) && !$fromInput && !$toInput) {
+            $earliestOrderDate = Order::min('created_at');
+            $from = $earliestOrderDate ? Carbon::parse($earliestOrderDate)->startOfDay() : Carbon::parse('2020-01-01')->startOfDay();
+            $to = now()->endOfDay();
+        } else {
+            $from = isset($from) ? $from : ($fromInput ? Carbon::parse($fromInput)->startOfDay() : Carbon::parse('2020-01-01')->startOfDay());
+            $to = isset($to) ? $to : ($toInput ? Carbon::parse($toInput)->endOfDay() : now()->endOfDay());
+        }
+
         return [$from, $to];
     }
 
@@ -196,6 +212,9 @@ class HistoryPdfController extends Controller
     private function salesRows(Carbon $from, Carbon $to): array
     {
         $q = request('q');
+        $companyId = request('company_id');
+        $statusFilter = request('status');
+
         $query = Order::with(['company', 'items'])->whereBetween('created_at', [$from, $to]);
         if ($q) {
             $query->where(function($sub) use ($q) {
@@ -205,18 +224,55 @@ class HistoryPdfController extends Controller
                   ->orWhere('id', 'like', "%{$q}%");
             });
         }
+        if ($companyId) {
+            $query->where('company_id', $companyId);
+        }
+        if ($statusFilter) {
+            $query->where(function($sub) use ($statusFilter) {
+                if ($statusFilter === 'PENDING') {
+                    $sub->where('status', 'CANCELLED')
+                        ->orWhereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED'])
+                        ->orWhereNull('dispatch_status');
+                } elseif ($statusFilter === 'PARTIAL_PENDING') {
+                    $sub->where('status', '!=', 'CANCELLED')
+                        ->whereIn('dispatch_status', ['PARTIAL_PENDING', 'PARTIAL PENDING']);
+                } elseif ($statusFilter === 'PARTIAL') {
+                    $sub->where('status', '!=', 'CANCELLED')
+                        ->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED']);
+                } elseif ($statusFilter === 'DONE') {
+                    $sub->where('status', '!=', 'CANCELLED')
+                        ->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'DISPATCHED']);
+                }
+            });
+        }
+
         return $query->latest()->get()
-            ->map(fn ($o) => [
-                'id' => 'ORD-' . str_pad($o->id, 4, '0', STR_PAD_LEFT),
-                'type' => 'Order',
-                'date' => $o->created_at->format('d M Y'),
-                'status' => $o->status,
-                'dispatch_status' => $o->dispatch_status,
-                'amount' => (float) $o->total,
-                'company_name' => $o->company?->name ?? '-',
-                'total_items' => count($o->items),
-                'total_qty' => collect($o->items)->sum('quantity'),
-            ])->toArray();
+            ->map(function ($o) {
+                $oStatus = strtoupper($o->status ?? '');
+                $dStatus = strtoupper(str_replace('_', ' ', $o->dispatch_status ?? 'PENDING'));
+
+                if ($oStatus === 'CANCELLED' || $dStatus === 'PENDING' || $dStatus === 'UNASSIGNED' || empty($dStatus)) {
+                    $dispStatusFormatted = 'PENDING';
+                } elseif ($dStatus === 'PARTIAL PENDING') {
+                    $dispStatusFormatted = 'PARTIAL PENDING';
+                } elseif ($dStatus === 'PARTIAL' || $dStatus === 'PARTIAL DISPATCH' || $dStatus === 'PARTIALLY DISPATCHED') {
+                    $dispStatusFormatted = 'PARTIAL DISPATCH';
+                } else {
+                    $dispStatusFormatted = 'FULLY DISPATCHED';
+                }
+
+                return [
+                    'id' => 'ORD-' . str_pad($o->id, 4, '0', STR_PAD_LEFT),
+                    'type' => 'Order',
+                    'date' => $o->created_at->format('d M Y'),
+                    'status' => $o->status,
+                    'dispatch_status' => $dispStatusFormatted,
+                    'amount' => (float) $o->total,
+                    'company_name' => $o->company?->name ?? '-',
+                    'total_items' => count($o->items),
+                    'total_qty' => collect($o->items)->sum('quantity'),
+                ];
+            })->toArray();
     }
 
     private function dispatchRows(Carbon $from, Carbon $to): array
@@ -343,8 +399,12 @@ class HistoryPdfController extends Controller
             'totalItems' => count($order->items),
         ];
 
+        $companyNameClean = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $order->company?->name ?? 'COMPANY'));
+        $createdDateStr = $order->created_at ? $order->created_at->format('d-m-y') : now()->format('d-m-y');
+        $pdfFilename = strtoupper($data['orderNo']) . '_SALES_' . $companyNameClean . '_' . $createdDateStr . '.pdf';
+
         $pdf = Pdf::loadView('pdf.sales-order', $data)->setPaper('A4', 'portrait');
-        return $pdf->download($data['orderNo'] . '_Sales_Order_' . now()->format('Ymd_His') . '.pdf');
+        return $pdf->download($pdfFilename);
     }
 
     public function dispatchNotePdf(Request $request, $id)
@@ -420,225 +480,179 @@ class HistoryPdfController extends Controller
         $user = $this->authUser();
         [$from, $to] = $this->dateRange($request);
         
-        $query = DispatchLog::with([
-            'order.company',
-            'order.transporter',
-            'order.creator',
-            'order.items',
-            'user',
-            'dispatchItems.orderItem.product',
-            'dispatchItems.locationAllocations.location'
+        $query = Order::with([
+            'company',
+            'transporter',
+            'creator',
+            'items.product',
+            'dispatchLogs.dispatchItems.locationAllocations.location'
         ])->whereBetween('created_at', [$from, $to]);
 
         $q = $request->q;
         if ($q) {
             $query->where(function($sub) use ($q) {
-                $sub->whereHas('order.company', function($qc) use ($q) {
+                $sub->whereHas('company', function($qc) use ($q) {
                     $qc->where('name', 'like', "%{$q}%");
-                })->orWhere('order_id', 'like', "%{$q}%")
-                  ->orWhereHas('dispatchItems.orderItem.product', function($qp) use ($q) {
+                })->orWhere('id', 'like', "%{$q}%")
+                  ->orWhereHas('items.product', function($qp) use ($q) {
                       $qp->where('name', 'like', "%{$q}%");
                   });
             });
         }
         $companyId = $request->company_id;
         if ($companyId) {
-            $query->whereHas('order', function($qo) use ($companyId) {
-                $qo->where('company_id', $companyId);
-            });
+            $query->where('company_id', $companyId);
         }
         $statusFilter = $request->status;
         if ($statusFilter) {
             $target = strtoupper(trim(str_replace('_', ' ', $statusFilter)));
-            $query->whereHas('order', function($qo) use ($target) {
+            $query->where(function($qo) use ($target) {
                 if ($target === 'FULLY DISPATCHED' || $target === 'DONE') {
-                    $qo->whereIn('dispatch_status', ['DONE', 'FULLY_DISPATCHED']);
+                    $qo->where('status', '!=', 'CANCELLED')
+                       ->whereIn('dispatch_status', ['DONE', 'FULLY_DISPATCHED', 'FULLY DISPATCHED']);
                 } elseif ($target === 'PARTIAL PENDING') {
-                    $qo->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_PENDING']);
+                    $qo->where('status', '!=', 'CANCELLED')
+                       ->whereIn('dispatch_status', ['PARTIAL_PENDING', 'PARTIAL PENDING']);
                 } elseif ($target === 'PARTIAL DISPATCH' || $target === 'PARTIAL') {
-                    $qo->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_PENDING']);
+                    $qo->where('status', '!=', 'CANCELLED')
+                       ->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH']);
                 } elseif ($target === 'PENDING') {
-                    $qo->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED']);
+                    $qo->where('status', 'CANCELLED')
+                       ->orWhereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED'])
+                       ->orWhereNull('dispatch_status');
                 } else {
                     $qo->where('dispatch_status', 'like', "%{$target}%");
                 }
             });
         }
 
-        $logs = $query->latest()->get();
+        $orders = $query->latest()->get();
         
         $rows = [];
-        $totalQty = 0;
+        $totalQuantity = 0;
         $totalOrderedQty = 0;
         $totalPendingQty = 0;
-        $totalAmount = 0;
+        $totalValue = 0;
         $fullyDispatchedCount = 0;
         $partialDispatchCount = 0;
         $partialPendingCount = 0;
         $pendingCount = 0;
         $cancelledCount = 0;
         
-        $uniqueOrders = [];
+        $customerSummaryMap = [];
+        $productSummaryMap = [];
 
-        foreach ($logs as $log) {
-            $order = $log->order;
-            if ($order) {
-                $uniqueOrders[$order->id] = $order;
-            }
-            
-            // Determine normalized order status among the 4 requested statuses
-            $orderStatus = 'PENDING';
-            if ($order) {
-                $st = strtoupper(trim(str_replace('_', ' ', (string)($order->dispatch_status ?? 'PENDING'))));
-                if ($order->status === 'CANCELLED') {
-                    $orderStatus = 'CANCELLED';
-                } elseif ($st === 'DONE' || $st === 'FULLY DISPATCHED') {
-                    $orderStatus = 'FULLY DISPATCHED';
-                } elseif ($st === 'PARTIAL PENDING') {
-                    $orderStatus = 'PARTIAL PENDING';
-                } elseif ($st === 'PARTIAL' || $st === 'PARTIAL DISPATCH') {
-                    $totalDispatched = (float) $order->items->sum('dispatched_qty');
-                    $totalOrdered = (float) $order->items->sum('quantity');
-                    if ($totalDispatched >= $totalOrdered && $totalOrdered > 0) {
-                        $orderStatus = 'FULLY DISPATCHED';
-                    } elseif ($totalDispatched > 0) {
-                        $orderStatus = 'PARTIAL DISPATCH';
-                    } else {
-                        $orderStatus = 'PARTIAL PENDING';
-                    }
-                } elseif (in_array($st, ['PENDING', 'OPEN', 'UNASSIGNED'])) {
-                    $orderStatus = 'PENDING';
-                } else {
-                    $orderStatus = $st ?: 'PENDING';
-                }
-            }
-            
-            $formatQty = fn($q, $u) => number_format($q, floor($q) == $q ? 0 : 2) . ' ' . $u;
+        $formatQty = fn($q, $u) => number_format($q, floor($q) == $q ? 0 : 2) . ' ' . $u;
 
-            $logItems = [];
-            foreach ($log->dispatchItems as $di) {
-                $orderItem = $di->orderItem;
-                if ($orderItem && $orderItem->order_id == $log->order_id) {
-                    $qty = (float) $di->quantity;
-                    $orderedQty = (float) $orderItem->quantity;
-                    $pendingQty = max(0, $orderedQty - (float) $orderItem->dispatched_qty);
-                    $rate = (float) $orderItem->price;
-                    $amount = $qty * $rate;
-                    $unit = strtoupper($orderItem->product?->unit ?? 'KG');
-
-                    $totalQty += $qty;
-                    $totalOrderedQty += $orderedQty;
-                    $totalPendingQty += $pendingQty;
-                    $totalAmount += $amount;
-
-                    $locations = $di->locationAllocations
-                        ->map(fn($loc) => $loc->location->name ?? 'Unknown')
-                        ->unique()
-                        ->implode(', ');
-                    
-                    if (empty($locations)) {
-                        $locations = 'N/A';
-                    }
-
-                    $logItems[] = [
-                        'product' => strtoupper($orderItem->product ? $orderItem->product->formatName($orderItem->grade) : 'Unknown'),
-                        'grade' => strtoupper($orderItem->grade ?? 'NONE'),
-                        'locations' => $locations,
-                        'ordered_qty' => $orderedQty,
-                        'ordered_qty_formatted' => $formatQty($orderedQty, $unit),
-                        'qty' => $qty,
-                        'dispatch_qty_formatted' => $formatQty($qty, $unit),
-                        'pending_qty' => $pendingQty,
-                        'pending_qty_formatted' => $formatQty($pendingQty, $unit),
-                        'amount' => $amount,
-                        'rate' => $rate,
-                        'unit' => $unit,
-                    ];
-                }
-            }
-
-            if (!empty($logItems)) {
-                $orderDate = $order ? $order->created_at : $log->created_at;
-                $dispatchDate = $log->created_at;
-                $diffDays = (int) $orderDate->copy()->startOfDay()->diffInDays($dispatchDate->copy()->startOfDay());
-                $dueDaysText = $diffDays === 0 ? '0 Days' : $diffDays . ($diffDays === 1 ? ' Day' : ' Days');
-
-                $rows[] = [
-                    'dispatch_id' => 'DSP-' . str_pad($log->id, 4, '0', STR_PAD_LEFT),
-                    'order_id' => 'ORD-' . str_pad($order->id ?? 0, 4, '0', STR_PAD_LEFT),
-                    'order_date' => $orderDate->format('d M Y'),
-                    'dispatch_date' => $dispatchDate->format('d M Y'),
-                    'due_days' => $diffDays,
-                    'due_days_text' => $dueDaysText,
-                    'customer' => strtoupper($order?->company?->name ?? 'N/A'),
-                    'status' => $orderStatus,
-                    'lr_copy' => $log->lr_image_path,
-                    'items' => $logItems,
-                ];
-            }
-        }
-
-        // Count statuses based on order state
-        foreach ($uniqueOrders as $order) {
-            $st = strtoupper(trim(str_replace('_', ' ', (string)($order->dispatch_status ?? 'PENDING'))));
+        foreach ($orders as $order) {
+            $rawSt = strtoupper(trim(str_replace('_', ' ', (string)($order->dispatch_status ?? 'PENDING'))));
             if ($order->status === 'CANCELLED') {
+                $orderStatus = 'CANCELLED';
                 $cancelledCount++;
-            } elseif ($st === 'DONE' || $st === 'FULLY DISPATCHED') {
+            } elseif ($rawSt === 'DONE' || $rawSt === 'FULLY DISPATCHED') {
+                $orderStatus = 'FULLY DISPATCHED';
                 $fullyDispatchedCount++;
-            } elseif ($st === 'PARTIAL PENDING') {
+            } elseif ($rawSt === 'PARTIAL PENDING') {
+                $orderStatus = 'PARTIAL PENDING';
                 $partialPendingCount++;
-            } elseif ($st === 'PARTIAL' || $st === 'PARTIAL DISPATCH') {
-                $totalDispatched = (float) $order->items->sum('dispatched_qty');
-                $totalOrdered = (float) $order->items->sum('quantity');
-                if ($totalDispatched >= $totalOrdered && $totalOrdered > 0) {
+            } elseif ($rawSt === 'PARTIAL' || $rawSt === 'PARTIAL DISPATCH') {
+                $dispTotal = (float) $order->items->sum('dispatched_qty');
+                $ordTotal = (float) $order->items->sum('quantity');
+                if ($dispTotal >= $ordTotal && $ordTotal > 0) {
+                    $orderStatus = 'FULLY DISPATCHED';
                     $fullyDispatchedCount++;
-                } elseif ($totalDispatched > 0) {
+                } elseif ($dispTotal > 0) {
+                    $orderStatus = 'PARTIAL DISPATCH';
                     $partialDispatchCount++;
                 } else {
+                    $orderStatus = 'PARTIAL PENDING';
                     $partialPendingCount++;
                 }
             } else {
+                $orderStatus = 'PENDING';
                 $pendingCount++;
             }
-        }
 
-        $customerSummary = [];
-        $productSummary = [];
+            $orderItems = [];
+            foreach ($order->items as $item) {
+                $orderedQty = (float) $item->quantity;
+                $dispatchedQty = (float) $item->dispatched_qty;
+                $pendingQty = max(0, $orderedQty - $dispatchedQty);
+                $rate = (float) $item->price;
+                $amount = $orderedQty * $rate;
+                $unit = strtoupper($item->product?->unit ?? 'KG');
 
-        $allFlatItems = [];
-        foreach ($rows as $logRow) {
-            foreach ($logRow['items'] as $item) {
-                $allFlatItems[] = array_merge($item, [
-                    'customer' => $logRow['customer'],
-                    'dispatch_id' => $logRow['dispatch_id'],
-                ]);
+                $totalOrderedQty += $orderedQty;
+                $totalQuantity += $dispatchedQty;
+                $totalPendingQty += $pendingQty;
+                $totalValue += $amount;
+
+                $locationsList = [];
+                foreach ($order->dispatchLogs as $dlog) {
+                    foreach ($dlog->dispatchItems as $di) {
+                        if ($di->order_item_id == $item->id) {
+                            foreach ($di->locationAllocations as $alloc) {
+                                if (!empty($alloc->location?->name)) {
+                                    $locationsList[] = strtoupper($alloc->location->name);
+                                }
+                            }
+                        }
+                    }
+                }
+                $locationsStr = !empty($locationsList) ? implode(', ', array_unique($locationsList)) : 'MAIN WAREHOUSE';
+                $productFullName = strtoupper($item->product ? $item->product->formatName($item->grade) : 'UNKNOWN');
+
+                $orderItems[] = [
+                    'product' => $productFullName,
+                    'grade' => strtoupper($item->grade ?? 'NONE'),
+                    'locations' => $locationsStr,
+                    'ordered_qty' => $orderedQty,
+                    'ordered_qty_formatted' => $formatQty($orderedQty, $unit),
+                    'qty' => $dispatchedQty,
+                    'dispatch_qty_formatted' => $formatQty($dispatchedQty, $unit),
+                    'pending_qty' => $pendingQty,
+                    'pending_qty_formatted' => $formatQty($pendingQty, $unit),
+                    'amount' => $amount,
+                    'rate' => $rate,
+                    'unit' => $unit,
+                ];
+
+                if (!isset($productSummaryMap[$productFullName])) {
+                    $productSummaryMap[$productFullName] = ['product' => $productFullName, 'qty' => 0, 'count' => 0];
+                }
+                $productSummaryMap[$productFullName]['qty'] += $dispatchedQty > 0 ? $dispatchedQty : $orderedQty;
+                $productSummaryMap[$productFullName]['count'] += 1;
+            }
+
+            if (!empty($orderItems)) {
+                $orderDate = $order->created_at;
+                $nowDate = now();
+                $diffDays = (int) $orderDate->copy()->startOfDay()->diffInDays($nowDate->copy()->startOfDay());
+                $dueDaysText = $diffDays === 0 ? '0 Days' : $diffDays . ($diffDays === 1 ? ' Day' : ' Days');
+
+                $custName = strtoupper($order->company?->name ?? 'N/A');
+
+                $rows[] = [
+                    'dispatch_id' => 'ORD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT),
+                    'order_id' => 'ORD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT),
+                    'order_date' => $orderDate->format('d M Y'),
+                    'dispatch_date' => $orderDate->format('d M Y'),
+                    'due_days' => $diffDays,
+                    'due_days_text' => $dueDaysText,
+                    'customer' => $custName,
+                    'status' => $orderStatus,
+                    'lr_copy' => null,
+                    'items' => $orderItems,
+                ];
+
+                if (!isset($customerSummaryMap[$custName])) {
+                    $customerSummaryMap[$custName] = ['customer' => $custName, 'qty' => 0, 'count' => 0];
+                }
+                $custDispatched = (float) $order->items->sum('dispatched_qty');
+                $customerSummaryMap[$custName]['qty'] += $custDispatched > 0 ? $custDispatched : (float) $order->items->sum('quantity');
+                $customerSummaryMap[$custName]['count'] += 1;
             }
         }
-
-        foreach (collect($allFlatItems)->groupBy('customer') as $custName => $custRows) {
-            $customerSummary[] = [
-                'customer' => $custName,
-                'count' => $custRows->unique('dispatch_id')->count(),
-                'qty' => $custRows->sum('qty'),
-            ];
-        }
-
-        foreach (collect($allFlatItems)->groupBy('product') as $prodName => $prodRows) {
-            $productSummary[] = [
-                'product' => $prodName,
-                'count' => $prodRows->unique('dispatch_id')->count(),
-                'qty' => $prodRows->sum('qty'),
-            ];
-        }
-
-        // Fetch LR copies to show at the bottom
-        $lrCopies = $logs->filter(fn($l) => !empty($l->lr_image_path))
-            ->map(fn($l) => [
-                'dispatch_id' => 'DSP-' . str_pad($l->id, 4, '0', STR_PAD_LEFT),
-                'order_id' => 'ORD-' . str_pad($l->order_id, 4, '0', STR_PAD_LEFT),
-                'customer' => $l->order?->company?->name ?? 'N/A',
-                'path' => $l->lr_image_path
-            ])->toArray();
 
         return [
             'reportId' => 'RPT-DISP-' . now()->format('Ymd') . '-' . rand(100, 999),
@@ -646,21 +660,21 @@ class HistoryPdfController extends Controller
             'generatedOn' => now()->format('d M Y, h:i A'),
             'fromDate' => $from ? $from->format('d M Y') : 'All Time',
             'toDate' => $to ? $to->format('d M Y') : now()->format('d M Y'),
-            'totalRecords' => count($logs),
+            'totalRecords' => count($rows),
             'completedCount' => $fullyDispatchedCount,
             'fullyDispatchedCount' => $fullyDispatchedCount,
             'partialDispatchCount' => $partialDispatchCount,
             'partialPendingCount' => $partialPendingCount,
             'pendingCount' => $pendingCount,
             'cancelledCount' => $cancelledCount,
-            'totalValue' => $totalAmount,
-            'totalQuantity' => $totalQty,
+            'totalQuantity' => $totalQuantity,
             'totalOrderedQty' => $totalOrderedQty,
             'totalPendingQty' => $totalPendingQty,
+            'totalValue' => $totalValue,
             'rows' => $rows,
-            'customerSummary' => $customerSummary,
-            'productSummary' => $productSummary,
-            'lrCopies' => $lrCopies,
+            'customerSummary' => array_values($customerSummaryMap),
+            'productSummary' => array_values($productSummaryMap),
+            'lrCopies' => [],
         ];
     }
 }

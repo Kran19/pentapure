@@ -10,7 +10,7 @@
     window.userSlug = '{{ request()->segment(1) }}';
   </script>
   <title>Pentapure Factory - Attendance Management</title>
-  <link rel="stylesheet" href="{{ asset('css/style.css') }}">
+  <link rel="stylesheet" href="{{ asset('css/style.css') }}?v={{ filemtime(public_path('css/style.css')) }}">
   <link rel="stylesheet" href="{{ asset('css/tabulator-custom.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
@@ -38,9 +38,9 @@
             <img src="{{ asset('logo.png') }}" alt="Logo"
               style="width:80px;object-fit:contain;margin-bottom:0.5rem;">
           </div>
-          <div style="padding:0 1rem 1rem;font-size:1.3rem;font-weight:bold;color:var(--dark-brand);
-            border-bottom:1px solid var(--glass-border);display:flex;justify-content:space-between;align-items:center;">
-            <div>Attendance<span style="color:var(--primary-light)">System</span></div>
+          <div style="padding:0 1rem 1rem;font-size:1rem;font-weight:bold;color:var(--dark-brand);
+            border-bottom:1px solid var(--glass-border);display:flex;justify-content:space-between;align-items:center;white-space:nowrap;">
+            <div>Attendance <span style="color:var(--secondary)">System</span></div>
             <svg class="admin-close-btn" width="24" height="24" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2"
               onclick="document.getElementById('admin-sidebar').classList.remove('mobile-open')">
@@ -54,17 +54,20 @@
           <a href="{{ url(request()->segment(1) . '/home') }}" class="nav-item {{ $seg=='home'?'active':'' }}">
             📊 Dashboard
           </a>
+          <a href="{{ url(request()->segment(1) . '/daily') }}" class="nav-item {{ $seg=='daily'?'active':'' }}">
+            📅 Daily Attendance
+          </a>
           <a href="{{ url(request()->segment(1) . '/departments') }}" class="nav-item {{ $seg=='departments'?'active':'' }}">
             🏢 Departments
+          </a>
+          <a href="{{ url(request()->segment(1) . '/reports') }}" class="nav-item {{ $seg=='reports'?'active':'' }}">
+            📑 Reports
           </a>
           <a href="{{ url(request()->segment(1) . '/workers') }}" class="nav-item {{ $seg=='workers'?'active':'' }}">
             👷‍♂️ Workers Master
           </a>
-          <a href="{{ url(request()->segment(1) . '/daily') }}" class="nav-item {{ $seg=='daily'?'active':'' }}">
-            📅 Daily Attendance
-          </a>
-          <a href="{{ url(request()->segment(1) . '/reports') }}" class="nav-item {{ $seg=='reports'?'active':'' }}">
-            📑 Reports
+          <a href="{{ url(request()->segment(1) . '/profile') }}" class="nav-item {{ $seg=='profile'?'active':'' }}">
+            👤 Profile
           </a>
 
           <!-- Logout -->

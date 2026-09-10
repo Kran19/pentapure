@@ -31,7 +31,7 @@ class UserSeeder extends Seeder
             ['name' => 'Raj',           'email' => 'sales@pentapure.com',      'role' => 'SALES',         'password' => 'sales@123'],
             ['name' => 'Ravi',          'email' => 'dispatch@pentapure.com',   'role' => 'DISPATCH',      'password' => 'dispatch@123'],
             ['name' => 'Manager',       'email' => 'attendance@pentapure.com', 'role' => 'ATTENDANCE',    'password' => 'attendance@123'],
-            ['name' => 'Stock Manager', 'email' => 'stockmanager@pentapure.com', 'role' => 'STOCK_MANAGER', 'password' => 'stock@123', 'permissions' => ['can_manage', 'module_dashboard', 'module_stock', 'module_products', 'module_po', 'module_logs', 'module_grades', 'module_locations']],
+            ['name' => 'Stock Manager', 'email' => 'stockmanager@pentapure.com', 'role' => 'STOCK_MANAGER', 'password' => 'stock@123', 'permissions' => ['can_manage', 'view_stock_manager_home', 'edit_stock_manager_home', 'stock_manager_home', 'view_stock_manager_action', 'edit_stock_manager_action', 'stock_manager_action', 'view_stock_manager_stock', 'edit_stock_manager_stock', 'stock_manager_stock', 'view_stock_manager_po', 'edit_stock_manager_po', 'stock_manager_po', 'view_stock_manager_history', 'edit_stock_manager_history', 'stock_manager_history']],
         ];
 
         foreach ($roles as $data) {

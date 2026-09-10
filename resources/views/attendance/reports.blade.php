@@ -37,7 +37,7 @@
             <th>Department</th>
             <th>Salary</th>
             <th class="no-print">Action</th>
-            <th>Present</th>
+            <th>Total Present</th>
             <th>Total OT Hrs</th>
             <th>Total Payable (₹)</th>
             <th style="min-width:220px;">Mark as Paid</th>
@@ -55,15 +55,28 @@
           @endphp
           
           @foreach($grouped as $deptName => $workers)
-            <tr style="background:rgba(255,255,255,0.05);">
-                <td colspan="9" style="font-weight:bold; color:var(--secondary);">📂 {{ strtoupper($deptName) }}</td>
+            @php
+              $deptTotalPresent = array_sum(array_column($workers, 'present'));
+              $deptTotalOt = array_sum(array_column($workers, 'total_ot'));
+              $deptTotalWage = array_sum(array_column($workers, 'total_wage'));
+              $deptWorkerCount = count($workers);
+            @endphp
+            <tr style="background:rgba(255,255,255,0.07); border-top:2px solid var(--border-soft, #e5e7eb);">
+              <td colspan="5" style="font-weight:bold; color:var(--secondary); font-size:0.92rem;">
+                📂 {{ strtoupper($deptName) }} <span style="font-size:0.8rem; font-weight:600; opacity:0.85; margin-left:0.4rem; color:var(--text-color);">(Total Workers: {{ $deptWorkerCount }})</span>
+              </td>
+              <td style="font-weight:bold; color:var(--secondary); font-size:0.95rem;">{{ $deptTotalPresent > 0 ? (floor($deptTotalPresent) == $deptTotalPresent ? number_format($deptTotalPresent, 0) : number_format($deptTotalPresent, 1)) : 0 }}</td>
+              <td style="font-weight:bold; font-size:0.9rem;">{{ number_format($deptTotalOt, 1) }}</td>
+              <td style="font-weight:bold; color:var(--primary-light); font-size:1.05rem;">₹{{ number_format($deptTotalWage, 2) }}</td>
+              <td></td>
             </tr>
             @foreach($workers as $data)
               @php 
                 $grandTotal += $data['total_wage']; 
                 $adj = $data['adjustment'] ?? null;
                 $isPaid = (bool)($adj?->is_paid ?? false);
-                $paidNote = $adj?->paid_note ?? '';
+                $rawDate = $adj?->paid_at ? \Carbon\Carbon::parse($adj->paid_at)->format('Y-m-d') : ($adj?->paid_note && preg_match('/^\d{4}-\d{2}-\d{2}$/', $adj->paid_note) ? $adj->paid_note : '');
+                $paidDate = $isPaid ? ($rawDate ?: now()->format('Y-m-d')) : $rawDate;
               @endphp
               <tr class="report-row" id="row-worker-{{ $data['worker']->id }}">
                 <td style="font-weight:bold; color:var(--text-muted);">{{ $data['worker_number'] ?? '-' }}</td>
@@ -100,15 +113,15 @@
                             title="Mark as Unpaid">
                       ✕
                     </button>
-                    <input type="text" 
-                           id="paid-note-{{ $data['worker']->id }}" 
-                           value="{{ $paidNote }}" 
-                           placeholder="Payment note..." 
-                           onchange="updatePaidNote({{ $data['worker']->id }})"
-                           style="padding:3px 8px; border:1px solid #ccc; border-radius:4px; font-size:0.75rem; width:110px; background:white; color:black; outline:none;">
+                    <input type="date" 
+                           id="paid-date-{{ $data['worker']->id }}" 
+                           value="{{ $paidDate }}" 
+                           onchange="updatePaidDate({{ $data['worker']->id }})"
+                           style="padding:3px 6px; border:1px solid #ccc; border-radius:4px; font-size:0.75rem; width:125px; background:white; color:black; outline:none;"
+                           title="Select Payment Date">
                   </div>
                   <div id="paid-badge-{{ $data['worker']->id }}" style="margin-top:3px; font-size:0.68rem; font-weight:bold; color:{{ $isPaid ? '#22c55e' : '#ef4444' }};">
-                    {{ $isPaid ? '✓ PAID' : '✕ UNPAID' }}
+                    {{ $isPaid ? '✓ PAID' . ($paidDate ? ' (' . \Carbon\Carbon::parse($paidDate)->format('d M Y') . ')' : '') : '✕ UNPAID' }}
                   </div>
                 </td>
               </tr>
@@ -133,27 +146,47 @@
 </div>
 
 <script>
-function togglePaidStatus(workerId, isPaid) {
-    const noteInput = document.getElementById('paid-note-' + workerId);
-    const paidNote = noteInput ? noteInput.value : '';
-    sendPaidStatusUpdate(workerId, isPaid, paidNote);
+function getTodayString() {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
-function updatePaidNote(workerId) {
+function formatDisplayDate(dateStr) {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function togglePaidStatus(workerId, isPaid) {
+    const dateInput = document.getElementById('paid-date-' + workerId);
+    if (isPaid && dateInput && !dateInput.value) {
+        dateInput.value = getTodayString();
+    }
+    const paidDate = dateInput ? dateInput.value : '';
+    sendPaidStatusUpdate(workerId, isPaid, paidDate);
+}
+
+function updatePaidDate(workerId) {
     const badge = document.getElementById('paid-badge-' + workerId);
     const isPaid = badge ? badge.innerText.includes('PAID') : false;
-    const noteInput = document.getElementById('paid-note-' + workerId);
-    const paidNote = noteInput ? noteInput.value : '';
-    sendPaidStatusUpdate(workerId, isPaid, paidNote);
+    const dateInput = document.getElementById('paid-date-' + workerId);
+    const paidDate = dateInput ? dateInput.value : '';
+    sendPaidStatusUpdate(workerId, isPaid, paidDate);
 }
 
-function sendPaidStatusUpdate(workerId, isPaid, paidNote) {
+function sendPaidStatusUpdate(workerId, isPaid, paidDate) {
     const postUrl = "{{ str_contains(request()->path(), 'admin') ? url(str_replace('reports', 'reports', request()->path()) . '/worker/') : url(request()->path() . '/worker/') }}/" + workerId + "/toggle-paid";
     const formData = new FormData();
     formData.append('_token', '{{ csrf_token() }}');
     formData.append('month', '{{ $month }}');
     formData.append('is_paid', isPaid ? 1 : 0);
-    formData.append('paid_note', paidNote || '');
+    formData.append('paid_date', paidDate || '');
+    formData.append('paid_note', paidDate || '');
 
     fetch(postUrl, {
         method: 'POST',
@@ -166,11 +199,20 @@ function sendPaidStatusUpdate(workerId, isPaid, paidNote) {
                 const btnCheck = row.querySelector('.btn-paid-check');
                 const btnCross = row.querySelector('.btn-paid-cross');
                 const badge = document.getElementById('paid-badge-' + workerId);
+                const dateInput = document.getElementById('paid-date-' + workerId);
+
+                if (data.paid_date && dateInput) {
+                    dateInput.value = data.paid_date;
+                }
 
                 if (data.is_paid) {
                     btnCheck.style.background = '#22c55e'; btnCheck.style.color = '#fff';
                     btnCross.style.background = '#e2e8f0'; btnCross.style.color = '#64748b';
-                    if (badge) { badge.innerText = '✓ PAID'; badge.style.color = '#22c55e'; }
+                    if (badge) { 
+                        const formatted = data.paid_date ? formatDisplayDate(data.paid_date) : '';
+                        badge.innerText = '✓ PAID' + (formatted ? ' (' + formatted + ')' : ''); 
+                        badge.style.color = '#22c55e'; 
+                    }
                 } else {
                     btnCheck.style.background = '#e2e8f0'; btnCheck.style.color = '#64748b';
                     btnCross.style.background = '#ef4444'; btnCross.style.color = '#fff';

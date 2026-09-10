@@ -19,21 +19,23 @@
 
   if ($statusFilter) {
     $timeline = $timeline->filter(function($item) use ($statusFilter) {
-      if ($statusFilter === 'CANCELLED') {
-        return ($item['status'] ?? '') === 'CANCELLED';
-      }
+      $oStatus = strtoupper($item['status'] ?? '');
       $dStatus = strtoupper($item['dispatchStatus'] ?? 'PENDING');
+      
+      if ($statusFilter === 'CANCELLED') {
+        return $oStatus === 'CANCELLED';
+      }
       if ($statusFilter === 'PENDING') {
-        return $dStatus === 'PENDING' || $dStatus === 'UNASSIGNED' || empty($dStatus);
+        return ($oStatus === 'CANCELLED') || ($dStatus === 'PENDING' || $dStatus === 'UNASSIGNED' || empty($dStatus));
       }
       if ($statusFilter === 'PARTIAL_PENDING') {
-        return $dStatus === 'PARTIAL_PENDING' || $dStatus === 'PARTIAL PENDING';
+        return ($oStatus !== 'CANCELLED') && ($dStatus === 'PARTIAL_PENDING' || $dStatus === 'PARTIAL PENDING');
       }
       if ($statusFilter === 'PARTIAL') {
-        return $dStatus === 'PARTIAL' || $dStatus === 'PARTIAL_DISPATCH' || $dStatus === 'PARTIAL DISPATCH' || $dStatus === 'PARTIALLY DISPATCHED';
+        return ($oStatus !== 'CANCELLED') && ($dStatus === 'PARTIAL' || $dStatus === 'PARTIAL_DISPATCH' || $dStatus === 'PARTIAL DISPATCH' || $dStatus === 'PARTIALLY DISPATCHED');
       }
       if ($statusFilter === 'DONE') {
-        return $dStatus === 'DONE' || $dStatus === 'COMPLETED' || $dStatus === 'FULLY DISPATCHED' || $dStatus === 'DISPATCHED';
+        return ($oStatus !== 'CANCELLED') && ($dStatus === 'DONE' || $dStatus === 'COMPLETED' || $dStatus === 'FULLY DISPATCHED' || $dStatus === 'DISPATCHED');
       }
       return $dStatus === $statusFilter;
     });
@@ -179,7 +181,7 @@
               <span class="badge badge-done" style="font-size:0.65rem; background:#16a34a; color:#fff; padding:2px 6px; border-radius:4px;">LR UPLOADED</span>
             @elseif(in_array(strtoupper(str_replace('_', ' ', $item['dispatchStatus'] ?? '')), ['DONE', 'PARTIAL', 'PARTIAL DISPATCH', 'FULLY DISPATCHED']))
               <span>•</span>
-              <span class="badge badge-pending" style="font-size:0.65rem; background:#f59e0b; color:#fff; padding:2px 6px; border-radius:4px;">LR PENDING</span>
+              <span class="badge badge-pending" style="font-size:0.65rem; background:#dc2626; color:#fff; padding:2px 6px; border-radius:4px; font-weight:700;">LR PENDING</span>
             @endif
           </div>
         </div>
@@ -300,11 +302,11 @@
             </div>
           </div>
         @elseif(in_array(strtoupper(str_replace('_', ' ', $item['dispatchStatus'] ?? '')), ['DONE', 'PARTIAL', 'PARTIAL DISPATCH', 'FULLY DISPATCHED']))
-          <div style="margin-bottom:1rem; padding:0.6rem 1rem; background:rgba(255,165,0,0.04); border-radius:8px; border:1px dashed rgba(255,165,0,0.3); display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-size:0.8rem; color:var(--warning, #FFA500); font-weight:600;">
+          <div style="margin-bottom:1rem; padding:0.6rem 1rem; background:rgba(220,38,38,0.04); border-radius:8px; border:1px dashed rgba(220,38,38,0.3); display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-size:0.8rem; color:#ef4444; font-weight:600;">
               📦 Lorry Receipt (LR) Copy Pending
             </div>
-            <span class="badge badge-pending" style="font-size:0.65rem; background:#f59e0b; color:#fff; padding:2px 8px; border-radius:10px;">LR PENDING</span>
+            <span class="badge badge-pending" style="font-size:0.65rem; background:#dc2626; color:#fff; padding:2px 8px; border-radius:10px; font-weight:700;">LR PENDING</span>
           </div>
         @endif
 

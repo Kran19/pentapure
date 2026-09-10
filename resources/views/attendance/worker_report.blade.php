@@ -23,10 +23,10 @@
           {{ strtoupper($worker->department->name ?? 'GENERAL') }}
         </div>
         <div style="font-weight:bold; font-size:0.95rem; text-align:center;">
-          NAME: {{ strtoupper($worker->name) }} 
           @if(!empty($workerNumber)) 
-            <span style="margin-left:10px; background:#eee; padding:2px 8px; border:1px solid #999; border-radius:3px;">EMP NO: {{ $workerNumber }}</span> 
+            <span style="margin-right:10px; background:#eee; padding:2px 8px; border:1px solid #999; border-radius:3px;">EMP NO: {{ $workerNumber }}</span> 
           @endif
+          NAME: {{ strtoupper($worker->name) }} 
         </div>
         <div style="font-weight:bold; font-size:1.1rem; text-align:right; display:flex; align-items:center; justify-content:flex-end; gap:12px;">
           <div style="display:flex; flex-direction:column; align-items:flex-end;">
@@ -40,7 +40,14 @@
               </span>
             @endif
             @if(!empty($adjustment->paid_note))
-              <small style="font-size:0.75rem; color:#444; font-weight:normal; margin-top:2px; font-style:italic;">Note: {{ $adjustment->paid_note }}</small>
+              @php
+                try {
+                  $formattedPaidNote = \Carbon\Carbon::parse($adjustment->paid_note)->format('d-m-Y');
+                } catch (\Throwable $e) {
+                  $formattedPaidNote = $adjustment->paid_note;
+                }
+              @endphp
+              <small style="font-size:0.75rem; color:#444; font-weight:normal; margin-top:2px; font-style:italic;">Note: {{ $formattedPaidNote }}</small>
             @endif
           </div>
           <span>{{ strtoupper(\Carbon\Carbon::parse($month)->format('Y F')) }}</span>
@@ -50,22 +57,22 @@
 
     <!-- Detailed Ledger Table -->
     <div class="table-scroll">
-      <table style="width: 100%; border-collapse: collapse;">
+      <table class="ledger-table" style="width: 100%; table-layout: fixed; border-collapse: collapse;">
         <thead>
           <tr style="background:#f0f0f0;">
-            <th rowspan="2" style="border:2px solid #000; padding:6px; font-size:0.78rem; width:80px;">DATE</th>
-            <th rowspan="2" style="border:2px solid #000; padding:6px; font-size:0.78rem; width:95px;">{{ $worker->salary_type === 'LABOUR_MUKADAM' ? 'PRESENT LABOUR' : 'STATUS' }}</th>
-            <th colspan="2" style="border:2px solid #000; padding:6px; font-size:0.78rem;">DAY SHIFT</th>
-            <th colspan="2" style="border:2px solid #000; padding:6px; font-size:0.78rem;">NIGHT SHIFT</th>
-            <th rowspan="2" style="border:2px solid #000; padding:6px; font-size:0.72rem; width:95px;">OVER TIME /<br>UNDER TIME</th>
-            <th rowspan="2" style="border:2px solid #000; padding:6px; font-size:0.78rem; width:90px;">ADVANCE</th>
-            <th rowspan="2" style="border:2px solid #000; padding:6px; font-size:0.78rem;">REMARK</th>
+            <th rowspan="2" style="border:2px solid #000; padding:6px; font-size:0.78rem; width:8%;">DATE</th>
+            <th rowspan="2" style="border:2px solid #000; padding:6px; font-size:0.78rem; width:10%;">{{ $worker->salary_type === 'LABOUR_MUKADAM' ? 'PRESENT LABOUR' : 'STATUS' }}</th>
+            <th colspan="2" style="border:2px solid #000; padding:6px; font-size:0.78rem; width:21%;">DAY SHIFT</th>
+            <th colspan="2" style="border:2px solid #000; padding:6px; font-size:0.78rem; width:21%;">NIGHT SHIFT</th>
+            <th rowspan="2" style="border:2px solid #000; padding:6px; font-size:0.72rem; width:10%;">OVER TIME /<br>UNDER TIME</th>
+            <th rowspan="2" style="border:2px solid #000; padding:6px; font-size:0.78rem; width:10%;">ADVANCE</th>
+            <th rowspan="2" style="border:2px solid #000; padding:6px; font-size:0.78rem; width:20%;">REMARK</th>
           </tr>
           <tr style="background:#f0f0f0;">
-            <th style="border:2px solid #000; border-top:1px solid #000; padding:6px; font-size:0.75rem; width:90px;">IN TIME</th>
-            <th style="border:2px solid #000; border-top:1px solid #000; padding:6px; font-size:0.75rem; width:90px;">OUT TIME</th>
-            <th style="border:2px solid #000; border-top:1px solid #000; padding:6px; font-size:0.75rem; width:90px;">IN TIME</th>
-            <th style="border:2px solid #000; border-top:1px solid #000; padding:6px; font-size:0.75rem; width:90px;">OUT TIME</th>
+            <th style="border:2px solid #000; border-top:1px solid #000; padding:6px; font-size:0.75rem; width:10.5%;">IN TIME</th>
+            <th style="border:2px solid #000; border-top:1px solid #000; padding:6px; font-size:0.75rem; width:10.5%;">OUT TIME</th>
+            <th style="border:2px solid #000; border-top:1px solid #000; padding:6px; font-size:0.75rem; width:10.5%;">IN TIME</th>
+            <th style="border:2px solid #000; border-top:1px solid #000; padding:6px; font-size:0.75rem; width:10.5%;">OUT TIME</th>
           </tr>
         </thead>
         <tbody>
@@ -81,8 +88,10 @@
             @endphp
             <tr style="border-bottom:1px solid #000; {{ $isSunday ? 'background:#fff8f8;' : '' }}">
               @if($worker->salary_type === 'LABOUR_MUKADAM')
-              <td style="border:1px solid #000; border-left:2px solid #000; padding:3px; text-align:center; font-size:0.8rem; font-weight:600;">
-                {{ $date->format('j') }} ({{ substr($date->format('D'), 0, 3) }})
+              <td style="border:1px solid #000; border-left:2px solid #000; padding:3px; text-align:center; font-size:0.8rem; font-weight:600; white-space:nowrap;">
+                <div style="display:inline-block; width:65px; text-align:right;">
+                  <span style="display:inline-block; width:16px; text-align:right;">{{ $date->format('j') }}</span> ({{ substr($date->format('D'), 0, 3) }})
+                </div>
               </td>
               <td style="border:1px solid #000; padding:3px; text-align:center; font-weight:bold; font-size:0.75rem; color:{{ $att?->status === 'ABSENT' ? '#d00' : '#000' }};">
                 {{ $att?->num_workers ?? '' }}
@@ -106,12 +115,14 @@
                 {{ $att?->advance ?? '' }}
               </td>
               <!-- REMARK -->
-              <td style="border:1px solid #000; border-right:2px solid #000; padding:3px; font-size:0.75rem; text-align:center;">
+              <td style="border:1px solid #000; border-right:2px solid #000; padding:3px; font-size:0.75rem; text-align:center; word-break:break-word;">
                 {{ $att?->remark ?? '' }}
               </td>
               @else
-              <td style="border:1px solid #000; border-left:2px solid #000; padding:3px 6px; text-align:left; font-size:0.8rem; font-weight:600; white-space:nowrap;">
-                <span style="display:inline-block; width:22px; text-align:right;">{{ $date->format('j') }}</span> ({{ substr($date->format('D'), 0, 3) }})
+              <td style="border:1px solid #000; border-left:2px solid #000; padding:3px 6px; text-align:center; font-size:0.8rem; font-weight:600; white-space:nowrap;">
+                <div style="display:inline-block; width:65px; text-align:right;">
+                  <span style="display:inline-block; width:16px; text-align:right;">{{ $date->format('j') }}</span> ({{ substr($date->format('D'), 0, 3) }})
+                </div>
               </td>
               <td style="border:1px solid #000; padding:3px; text-align:center; font-weight:bold; font-size:0.75rem; color:{{ $att?->status === 'PRESENT' ? '#000' : ($att?->status === 'ABSENT' ? '#d00' : '#000') }};">
                 {{ $att?->status ?? '' }}
@@ -136,7 +147,7 @@
                 {{ $att?->advance > 0 ? $att->advance : '' }}
               </td>
               <!-- REMARK -->
-              <td style="border:1px solid #000; border-right:2px solid #000; padding:3px 6px; font-size:0.75rem; text-align:left;">
+              <td style="border:1px solid #000; border-right:2px solid #000; padding:3px 6px; font-size:0.75rem; text-align:left; word-break:break-word;">
                 {{ $att?->remark ?? '' }}
               </td>
               @endif
@@ -158,29 +169,24 @@
           <td style="border:2px solid #000; padding:8px;">
             <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
                 <span style="color:#000;">OTHER</span>
-                <div style="display:inline-flex; align-items:center; gap:8px;">
-                    <span class="no-print">
-                        <input type="text" class="allowance-label-input" value="{{ $adjustment->other_allowance_label ?? 'PETROL / FOODS' }}" 
-                               oninput="syncAllowanceLabel(this.value)"
-                               onchange="quickSaveAllowance(this.value, null)"
-                               style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:3px 10px; font-weight:bold; font-size:0.85rem; text-align:right; text-transform:uppercase; width:160px; color:#0f172a; outline:none;"
-                               title="Click to edit allowance label">
-                    </span>
-                    <span class="allowance-label-display" style="text-transform:uppercase;">{{ strtoupper($adjustment->other_allowance_label ?? 'PETROL / FOODS') }}</span>
+                <div style="display:inline-flex; align-items:center; gap:6px;">
+                    <span class="pencil-icon">✏️</span>
+                    <input type="text" class="allowance-label-input" value="{{ $adjustment->other_allowance_label ?? 'PETROL / FOODS' }}" 
+                           oninput="syncAllowanceLabel(this.value)"
+                           onchange="quickSaveAllowance(this.value, null)"
+                           style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:3px 10px; font-weight:bold; font-size:0.85rem; text-align:right; text-transform:uppercase; width:170px; color:#0f172a; outline:none;"
+                           title="Click to edit allowance label">
                 </div>
             </div>
           </td>
           <td style="border:2px solid #000; padding:8px; text-align:right;">
-            <div style="display:inline-flex; align-items:center; justify-content:flex-end; gap:8px; width:100%;">
-                <span class="no-print">
-                    ✏️
-                    <input type="number" step="0.01" class="allowance-amount-input" value="{{ $adjustment->petrol_food_amount }}" 
-                           oninput="syncAllowanceAmount(this.value)"
-                           onchange="quickSaveAllowance(null, this.value)"
-                           style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:3px 10px; font-weight:bold; font-size:0.9rem; text-align:right; width:90px; color:#0f172a; outline:none;"
-                           title="Click to edit allowance amount">
-                </span>
-                <span class="allowance-amount-display">{{ number_format($adjustment->petrol_food_amount, 0) }}</span>
+            <div style="display:inline-flex; align-items:center; justify-content:flex-end; gap:6px; width:100%;">
+                <span class="pencil-icon">✏️</span>
+                <input type="number" step="0.01" class="allowance-amount-input" value="{{ $adjustment->petrol_food_amount }}" 
+                       oninput="syncAllowanceAmount(this.value)"
+                       onchange="quickSaveAllowance(null, this.value)"
+                       style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:3px 10px; font-weight:bold; font-size:0.9rem; text-align:right; width:100px; color:#0f172a; outline:none;"
+                       title="Click to edit allowance amount">
             </div>
           </td>
         </tr>
@@ -207,41 +213,36 @@
           <td style="border:2px solid #000; padding:8px; text-align:center; width:25%;">TOTAL LABOUR</td>
           <td style="border:2px solid #000; padding:8px; text-align:center; width:12.5%;">{{ number_format($presentDays, 1) }}</td>
           <td style="border:2px solid #000; padding:8px; text-align:center; width:20%;">PER LABOUR</td>
-          <td style="border:2px solid #000; padding:8px; text-align:center; width:17.5%; color:#d00;">{{ number_format($perDaySalary, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:center; width:17.5%;">{{ number_format($perDaySalary, 2) }}</td>
           <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($attendanceSalary, 0) }}</td>
         </tr>
         <tr>
           <td style="border:2px solid #000; padding:8px; text-align:center;">ADD OT / DEDUCT UT</td>
           <td style="border:2px solid #000; padding:8px; text-align:center;">{{ number_format($totalOT ?? 0, 1) }}</td>
           <td style="border:2px solid #000; padding:8px; text-align:center;">PER HOUR</td>
-          <td style="border:2px solid #000; padding:8px; text-align:center; color:#d00;">{{ number_format($hourlyRate, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:center;">{{ number_format($hourlyRate, 2) }}</td>
           <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($otUtAdjustment, 0) }}</td>
         </tr>
         <tr>
           <td style="border:2px solid #000; padding:6px 8px; text-align:center;">OTHER</td>
           <td colspan="3" style="border:2px solid #000; padding:6px 8px; text-align:right;">
-            <div style="display:inline-flex; align-items:center; justify-content:flex-end; gap:8px; width:100%;">
-                <span class="no-print">
-                    <input type="text" class="allowance-label-input" value="{{ $adjustment->other_allowance_label ?? 'PETROL / FOODS' }}" 
-                           oninput="syncAllowanceLabel(this.value)"
-                           onchange="quickSaveAllowance(this.value, null)"
-                           style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:3px 10px; font-weight:bold; font-size:0.85rem; text-align:right; text-transform:uppercase; width:160px; color:#0f172a; outline:none;"
-                           title="Click to edit allowance label">
-                </span>
-                <span class="allowance-label-display" style="text-transform:uppercase;">{{ strtoupper($adjustment->other_allowance_label ?? 'PETROL / FOODS') }}</span>
+            <div style="display:inline-flex; align-items:center; justify-content:flex-end; gap:6px; width:100%;">
+                <span class="pencil-icon">✏️</span>
+                <input type="text" class="allowance-label-input" value="{{ $adjustment->other_allowance_label ?? 'PETROL / FOODS' }}" 
+                       oninput="syncAllowanceLabel(this.value)"
+                       onchange="quickSaveAllowance(this.value, null)"
+                       style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:3px 10px; font-weight:bold; font-size:0.85rem; text-align:right; text-transform:uppercase; width:170px; color:#0f172a; outline:none;"
+                       title="Click to edit allowance label">
             </div>
           </td>
           <td style="border:2px solid #000; padding:6px 8px; text-align:right;">
-            <div style="display:inline-flex; align-items:center; justify-content:flex-end; gap:8px; width:100%;">
-                <span class="no-print">
-                    ✏️
-                    <input type="number" step="0.01" class="allowance-amount-input" value="{{ $adjustment->petrol_food_amount }}" 
-                           oninput="syncAllowanceAmount(this.value)"
-                           onchange="quickSaveAllowance(null, this.value)"
-                           style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:3px 10px; font-weight:bold; font-size:0.9rem; text-align:right; width:90px; color:#0f172a; outline:none;"
-                           title="Click to edit allowance amount">
-                </span>
-                <span class="allowance-amount-display">{{ number_format($adjustment->petrol_food_amount, 0) }}</span>
+            <div style="display:inline-flex; align-items:center; justify-content:flex-end; gap:6px; width:100%;">
+                <span class="pencil-icon">✏️</span>
+                <input type="number" step="0.01" class="allowance-amount-input" value="{{ $adjustment->petrol_food_amount }}" 
+                       oninput="syncAllowanceAmount(this.value)"
+                       onchange="quickSaveAllowance(null, this.value)"
+                       style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:3px 10px; font-weight:bold; font-size:0.9rem; text-align:right; width:100px; color:#0f172a; outline:none;"
+                       title="Click to edit allowance amount">
             </div>
           </td>
         </tr>
@@ -270,7 +271,7 @@
           <td style="border:2px solid #000; padding:8px; text-align:center; width:25%;">TOTAL ATTENDENCE</td>
           <td style="border:2px solid #000; padding:8px; text-align:center; width:12.5%;">{{ number_format($presentDays, 1) }}</td>
           <td style="border:2px solid #000; padding:8px; text-align:center; width:20%;">PER DAY</td>
-          <td style="border:2px solid #000; padding:8px; text-align:center; width:17.5%; color:#d00;">{{ number_format($perDaySalary, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:center; width:17.5%;">{{ number_format($perDaySalary, 2) }}</td>
           <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($attendanceSalary, 0) }}</td>
         </tr>
         <!-- Row 3 -->
@@ -278,35 +279,30 @@
           <td style="border:2px solid #000; padding:8px; text-align:center;">ADD OT / DEDUCT UT</td>
           <td style="border:2px solid #000; padding:8px; text-align:center;">{{ number_format($totalOT ?? 0, 1) }}</td>
           <td style="border:2px solid #000; padding:8px; text-align:center;">PER HOUR</td>
-          <td style="border:2px solid #000; padding:8px; text-align:center; color:#d00;">{{ number_format($hourlyRate, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:center;">{{ number_format($hourlyRate, 2) }}</td>
           <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($otUtAdjustment, 0) }}</td>
         </tr>
         <!-- Row 4 -->
         <tr>
           <td style="border:2px solid #000; padding:6px 8px; text-align:center;">OTHER</td>
           <td colspan="3" style="border:2px solid #000; padding:6px 8px; text-align:right;">
-            <div style="display:inline-flex; align-items:center; justify-content:flex-end; gap:8px; width:100%;">
-                <span class="no-print">
-                    <input type="text" class="allowance-label-input" value="{{ $adjustment->other_allowance_label ?? 'PETROL / FOODS' }}" 
-                           oninput="syncAllowanceLabel(this.value)"
-                           onchange="quickSaveAllowance(this.value, null)"
-                           style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:3px 10px; font-weight:bold; font-size:0.85rem; text-align:right; text-transform:uppercase; width:160px; color:#0f172a; outline:none;"
-                           title="Click to edit allowance label">
-                </span>
-                <span class="allowance-label-display" style="text-transform:uppercase;">{{ strtoupper($adjustment->other_allowance_label ?? 'PETROL / FOODS') }}</span>
+            <div style="display:inline-flex; align-items:center; justify-content:flex-end; gap:6px; width:100%;">
+                <span class="pencil-icon">✏️</span>
+                <input type="text" class="allowance-label-input" value="{{ $adjustment->other_allowance_label ?? 'PETROL / FOODS' }}" 
+                       oninput="syncAllowanceLabel(this.value)"
+                       onchange="quickSaveAllowance(this.value, null)"
+                       style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:3px 10px; font-weight:bold; font-size:0.85rem; text-align:right; text-transform:uppercase; width:170px; color:#0f172a; outline:none;"
+                       title="Click to edit allowance label">
             </div>
           </td>
           <td style="border:2px solid #000; padding:6px 8px; text-align:right;">
-            <div style="display:inline-flex; align-items:center; justify-content:flex-end; gap:8px; width:100%;">
-                <span class="no-print">
-                    ✏️
-                    <input type="number" step="0.01" class="allowance-amount-input" value="{{ $adjustment->petrol_food_amount }}" 
-                           oninput="syncAllowanceAmount(this.value)"
-                           onchange="quickSaveAllowance(null, this.value)"
-                           style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:3px 10px; font-weight:bold; font-size:0.9rem; text-align:right; width:90px; color:#0f172a; outline:none;"
-                           title="Click to edit allowance amount">
-                </span>
-                <span class="allowance-amount-display">{{ number_format($adjustment->petrol_food_amount, 0) }}</span>
+            <div style="display:inline-flex; align-items:center; justify-content:flex-end; gap:6px; width:100%;">
+                <span class="pencil-icon">✏️</span>
+                <input type="number" step="0.01" class="allowance-amount-input" value="{{ $adjustment->petrol_food_amount }}" 
+                       oninput="syncAllowanceAmount(this.value)"
+                       onchange="quickSaveAllowance(null, this.value)"
+                       style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:3px 10px; font-weight:bold; font-size:0.9rem; text-align:right; width:100px; color:#0f172a; outline:none;"
+                       title="Click to edit allowance amount">
             </div>
           </td>
         </tr>
@@ -480,10 +476,26 @@ function quickSaveAllowance(label, amount) {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
 }
-#printable-sheet table {
+#printable-sheet table.ledger-table {
     width: 100%; 
-    min-width: 800px;
+    table-layout: fixed;
     border-collapse: collapse;
+}
+#printable-sheet table:not(.ledger-table) {
+    width: 100%;
+    border-collapse: collapse;
+}
+@media print {
+    .pencil-icon {
+        display: none !important;
+    }
+    .allowance-label-input, .allowance-amount-input {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        text-align: right !important;
+    }
 }
 </style>
 @endsection

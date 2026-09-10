@@ -26,7 +26,16 @@ return new class extends Migration
             $admin = User::where('role', 'ADMIN')->first();
             $adminId = $admin ? $admin->id : null;
 
-            User::firstOrCreate(
+            $stockPerms = [
+                'can_manage',
+                'view_stock_manager_home', 'edit_stock_manager_home', 'stock_manager_home',
+                'view_stock_manager_action', 'edit_stock_manager_action', 'stock_manager_action',
+                'view_stock_manager_stock', 'edit_stock_manager_stock', 'stock_manager_stock',
+                'view_stock_manager_po', 'edit_stock_manager_po', 'stock_manager_po',
+                'view_stock_manager_history', 'edit_stock_manager_history', 'stock_manager_history'
+            ];
+
+            User::updateOrCreate(
                 ['email' => 'stockmanager@pentapure.com'],
                 [
                     'name'        => 'Stock Manager',
@@ -34,9 +43,17 @@ return new class extends Migration
                     'role'        => 'STOCK_MANAGER',
                     'parent_id'   => $adminId,
                     'status'      => 'ACTIVE',
-                    'permissions' => ['can_manage', 'module_dashboard', 'module_stock', 'module_products', 'module_po', 'module_logs', 'module_grades', 'module_locations'],
+                    'permissions' => $stockPerms,
                 ]
             );
+
+            // Ensure all STOCK_MANAGER users have full stock manager module permissions
+            $stockUsers = User::where('role', 'STOCK_MANAGER')->get();
+            foreach ($stockUsers as $su) {
+                $existing = is_array($su->permissions) ? $su->permissions : [];
+                $su->permissions = array_values(array_unique(array_merge($existing, $stockPerms)));
+                $su->save();
+            }
         } catch (\Exception $e) {
             // Ignore if error during seed
         }

@@ -149,7 +149,7 @@ html.dark-mode .info-preview-box .info-label {
       <div class="form-group">
         <label>Select Company *</label>
         <select id="order-company" onchange="app.onSalesCompanySelect(this.value)">
-          <option value="" disabled {{ empty($pageData['editOrder']) ? 'selected' : '' }}>Choose Registered Company</option>
+          <option value="" disabled {{ empty($pageData['editOrder']) ? 'selected' : '' }}>NA</option>
           @foreach($pageData['companies'] as $c)
             <option value="{{ $c['id'] }}" {{ (!empty($pageData['editOrder']) && $pageData['editOrder']->company_id == $c['id']) ? 'selected' : '' }}>
               {{ $c['name'] }} {{ $c['gst'] ? '('.$c['gst'].')' : '' }}
@@ -165,7 +165,7 @@ html.dark-mode .info-preview-box .info-label {
           <button type="button" class="btn btn-sm" onclick="app.openAddTransportModal()" style="padding:0.35rem 0.8rem; font-size:0.78rem; font-weight:700; width:auto; border-radius:6px; letter-spacing:0.3px;">+ ADD TRANSPORT</button>
         </div>
         <select id="order-transport" onchange="app.onSalesTransportSelect(this.value)">
-          <option value="" disabled {{ empty($pageData['editOrder']) ? 'selected' : '' }}>Choose Transporter</option>
+          <option value="" disabled {{ empty($pageData['editOrder']) ? 'selected' : '' }}>NA</option>
           @foreach($pageData['transportCompanies'] as $t)
             <option value="{{ $t['id'] }}" {{ (!empty($pageData['editOrder']) && $pageData['editOrder']->transporter_id == $t['id']) ? 'selected' : '' }}>
               {{ $t['name'] }}
@@ -187,7 +187,7 @@ html.dark-mode .info-preview-box .info-label {
 
       <div class="form-group" style="margin-top:1.5rem;">
         <label>Notes / Special Instructions</label>
-        <textarea id="order-notes" rows="2" placeholder="e.g. Deliver before 5 PM">{{ !empty($pageData['editOrder']) ? $pageData['editOrder']->notes : '' }}</textarea>
+        <textarea id="order-notes" rows="2">{{ !empty($pageData['editOrder']) ? $pageData['editOrder']->notes : '' }}</textarea>
       </div>
 
       <button class="btn" onclick="app.submitOrder()" style="padding:1rem; font-size:1.1rem; margin-top:1rem;">
@@ -198,66 +198,16 @@ html.dark-mode .info-preview-box .info-label {
 
   <!-- Tab 2: Company -->
   <div id="sales-tab-company" class="sales-tab-content animation-fadeIn" style="display:none;">
-    <div class="card" style="margin-bottom:1.5rem;">
-      @if(!empty($pageData['editCompany']))
-        <input type="hidden" id="edit-comp-id" value="{{ $pageData['editCompany']->id }}">
-        <div style="margin-bottom:1rem; padding:0.5rem 1rem; background:rgba(255,165,0,0.15); border-left:4px solid var(--warning); border-radius:4px; font-size:0.9rem;">
-          ✏️ Editing Company: <strong>{{ $pageData['editCompany']->name }}</strong>
-        </div>
-      @endif
-      <div class="form-group">
-        <label>Company Name *</label>
-        <input type="text" id="comp-name" value="{{ !empty($pageData['editCompany']) ? $pageData['editCompany']->name : '' }}" placeholder="e.g. ABC Chemical Industries" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
-      </div>
-      <div class="form-group">
-        <label>Company Type *</label>
-        <select id="comp-type" onchange="app.onCompanyTypeChange(this.value)" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
-          <option value="registered" {{ (!empty($pageData['editCompany']) && $pageData['editCompany']->gst && strtoupper($pageData['editCompany']->gst) !== 'N/A') ? 'selected' : (empty($pageData['editCompany']) ? 'selected' : '') }}>Registered Company</option>
-          <option value="unregistered" {{ (!empty($pageData['editCompany']) && (!$pageData['editCompany']->gst || strtoupper($pageData['editCompany']->gst) === 'N/A')) ? 'selected' : '' }}>Un-Registered Company</option>
-        </select>
-      </div>
-      <div class="form-group" id="comp-gst-group" style="{{ (!empty($pageData['editCompany']) && (!$pageData['editCompany']->gst || strtoupper($pageData['editCompany']->gst) === 'N/A')) ? 'display:none;' : 'display:block;' }}">
-        <label>GST No. *</label>
-        <input type="text" id="comp-gst" maxlength="15" value="{{ !empty($pageData['editCompany']) ? $pageData['editCompany']->gst : '' }}" placeholder="15-digit GST (e.g. 22AAAAA0000A1Z5)" style="text-transform:uppercase; padding:0.7rem; width:100%; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
-      </div>
-      <div class="form-group">
-        <label>Address</label>
-        <textarea id="comp-address" rows="2" placeholder="Full factory / office address" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">{{ !empty($pageData['editCompany']) ? $pageData['editCompany']->address : '' }}</textarea>
-      </div>
-      <div class="form-group">
-        <label>Pincode</label>
-        <input type="text" id="comp-pincode" maxlength="6" value="{{ !empty($pageData['editCompany']) ? $pageData['editCompany']->pincode : '' }}" placeholder="6-digit Pincode (e.g. 380001)" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
-      </div>
-      <div class="form-group">
-        <label>Contact / Mobile No</label>
-        <div style="display:flex; gap:8px;">
-          <select id="comp-country-code" onchange="app.onCountryCodeChange('comp')" style="width:68px; padding:0.7rem 0.2rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600; flex-shrink:0; text-align:center; cursor:pointer;">
-            <option value="+91" selected>+91</option>
-            <option value="+1">+1</option>
-            <option value="+44">+44</option>
-            <option value="+971">+971</option>
-            <option value="+966">+966</option>
-            <option value="+61">+61</option>
-            <option value="+65">+65</option>
-            <option value="+49">+49</option>
-            <option value="+33">+33</option>
-            <option value="+86">+86</option>
-            <option value="+81">+81</option>
-            <option value="other">+...</option>
-          </select>
-          <input type="text" id="comp-contact" value="{{ !empty($pageData['editCompany']) ? $pageData['editCompany']->contact : '' }}" oninput="app.handleContactInput(this, document.getElementById('comp-country-code'))" placeholder="10-digit mobile number" maxlength="10" style="flex:1; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
-        </div>
-      </div>
-      <button class="btn" onclick="app.submitCompany()" style="padding:1rem; font-size:1.1rem; margin-top:0.5rem;">{{ !empty($pageData['editCompany']) ? 'Update Company' : 'Save Company' }}</button>
-    </div>
-
-    <!-- Registered Companies List Table Below Form -->
-    <div class="card" style="padding:1.2rem;">
+    <!-- Registered Companies List Table -->
+    <div class="card" style="padding:1.2rem; margin-bottom:1.5rem;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
         <div class="card-title" style="margin:0; font-weight:600; font-size:1.1rem; color:var(--primary, #D88A00);">
           🏢 Registered Companies ({{ count($pageData['companies']) }})
         </div>
-        <input type="text" placeholder="Search company, GST, city..." oninput="filterActionCompaniesTable(this)" style="width:240px; padding:0.4rem 0.8rem; font-size:0.85rem; border-radius:6px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <input type="text" placeholder="Search company, GST, city..." oninput="filterActionCompaniesTable(this)" style="width:220px; padding:0.4rem 0.8rem; font-size:0.85rem; border-radius:6px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+          <button type="button" class="btn btn-sm" onclick="openCompanyModal()" style="width:auto; padding:0.45rem 0.9rem; font-size:0.85rem; font-weight:700; white-space:nowrap; border-radius:6px;">+ ADD COMPANY</button>
+        </div>
       </div>
       <div class="table-container" style="overflow-x:auto;">
         <table style="width:100%; font-size:0.85rem; border-collapse:collapse;">
@@ -282,9 +232,9 @@ html.dark-mode .info-preview-box .info-label {
                 <td style="padding:8px 6px;">{{ $comp['contact'] ?: '—' }}</td>
                 <td style="padding:8px 6px; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ $comp['address'] }}">{{ $comp['address'] ?: '—' }}</td>
                 <td style="padding:8px 6px; text-align:center;">
-                  <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action?editCompany=' . $comp['id']) }}" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; text-decoration:none; background:var(--warning, #FFA500); color:#000; font-weight:600; display:inline-block;">
+                  <button type="button" class="btn btn-sm" onclick="openCompanyModal({{ json_encode($comp) }})" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; background:var(--warning, #FFA500); color:#000; font-weight:600; border:none; border-radius:4px; cursor:pointer;">
                     ✏️ Edit
-                  </a>
+                  </button>
                 </td>
               </tr>
             @empty
@@ -300,49 +250,16 @@ html.dark-mode .info-preview-box .info-label {
 
   <!-- Tab 3: Transport -->
   <div id="sales-tab-transport" class="sales-tab-content animation-fadeIn" style="display:none;">
-    <div class="card" style="margin-bottom:1.5rem;">
-      <div class="form-group">
-        <label>Transporter Name *</label>
-        <input type="text" id="trans-name" value="NA" placeholder="e.g. National Logistics" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
-      </div>
-      <div class="form-group">
-        <label>GST No. *</label>
-        <input type="text" id="trans-gst" maxlength="15" placeholder="15-digit GST (e.g. 22AAAAA0000A1Z5)" style="text-transform:uppercase; padding:0.7rem; width:100%; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
-      </div>
-      <div class="form-group">
-        <label>Driver Contact / Mobile No</label>
-        <div style="display:flex; gap:8px;">
-          <select id="trans-country-code" onchange="app.onCountryCodeChange('trans')" style="width:68px; padding:0.7rem 0.2rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600; flex-shrink:0; text-align:center; cursor:pointer;">
-            <option value="+91" selected>+91</option>
-            <option value="+1">+1</option>
-            <option value="+44">+44</option>
-            <option value="+971">+971</option>
-            <option value="+966">+966</option>
-            <option value="+61">+61</option>
-            <option value="+65">+65</option>
-            <option value="+49">+49</option>
-            <option value="+33">+33</option>
-            <option value="+86">+86</option>
-            <option value="+81">+81</option>
-            <option value="other">+...</option>
-          </select>
-          <input type="text" id="trans-contact" oninput="app.handleContactInput(this, document.getElementById('trans-country-code'))" placeholder="10-digit mobile number" maxlength="10" style="flex:1; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
-        </div>
-      </div>
-      <div class="form-group">
-        <label>Vehicle No.</label>
-        <input type="text" id="trans-vehicles" placeholder="e.g. MH 12 AB 1234" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
-      </div>
-      <button class="btn" onclick="app.submitTransport()" style="padding:1rem; font-size:1.1rem; margin-top:0.5rem;">Save Transport</button>
-    </div>
-
-    <!-- Registered Transporters List Table Below Form -->
-    <div class="card" style="padding:1.2rem;">
+    <!-- Registered Transporters List Table -->
+    <div class="card" style="padding:1.2rem; margin-bottom:1.5rem;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
         <div class="card-title" style="margin:0; font-weight:600; font-size:1.1rem; color:var(--primary, #D88A00);">
           🚚 Registered Transporters ({{ count($pageData['transportCompanies']) }})
         </div>
-        <input type="text" placeholder="Search transporter, GST..." oninput="filterActionTransportersTable(this)" style="width:240px; padding:0.4rem 0.8rem; font-size:0.85rem; border-radius:6px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <input type="text" placeholder="Search transporter, GST..." oninput="filterActionTransportersTable(this)" style="width:220px; padding:0.4rem 0.8rem; font-size:0.85rem; border-radius:6px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+          <button type="button" class="btn btn-sm" onclick="app.openAddTransportModal()" style="width:auto; padding:0.45rem 0.9rem; font-size:0.85rem; font-weight:700; white-space:nowrap; border-radius:6px;">+ ADD TRANSPORT</button>
+        </div>
       </div>
       <div class="table-container" style="overflow-x:auto;">
         <table style="width:100%; font-size:0.85rem; border-collapse:collapse;">
@@ -412,6 +329,129 @@ html.dark-mode .info-preview-box .info-label {
     });
   }
 
+  function openCompanyModal(comp = null) {
+    const isEdit = comp && comp.id;
+    const title = isEdit ? '✏️ Edit Company' : '🏢 Add New Company';
+    const compName = comp ? (comp.name || '') : '';
+    const compGst = comp ? (comp.gst || '') : '';
+    const isUnregistered = comp && (!comp.gst || comp.gst.toUpperCase() === 'N/A');
+    const compAddress = comp ? (comp.address || '') : '';
+    const compPincode = comp ? (comp.pincode || '') : '';
+    
+    let rawContact = comp ? (comp.contact || '') : '';
+    let countryCode = '+91';
+    let phoneNum = rawContact;
+    if (rawContact) {
+      const match = rawContact.match(/^(\+\d{1,4})\s*(.*)$/);
+      if (match) {
+        countryCode = match[1];
+        phoneNum = match[2];
+      }
+    }
+
+    Swal.fire({
+      title: `<span style="font-size:1.2rem; font-weight:700; color:var(--text-main, #333);">${title}</span>`,
+      html: `
+        <div style="text-align:left; font-size:0.88rem; max-height:70vh; overflow-y:auto; padding:4px 2px;">
+          ${isEdit ? `<input type="hidden" id="swal-comp-id" value="${comp.id}">` : ''}
+          <div style="margin-bottom:12px;">
+            <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.8rem; text-transform:uppercase;">Company Name *</label>
+            <input id="swal-comp-name" class="swal2-input" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;" value="${compName}">
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.8rem; text-transform:uppercase;">Company Type *</label>
+            <select id="swal-comp-type" onchange="document.getElementById('swal-comp-gst-group').style.display = (this.value==='unregistered' ? 'none' : 'block')" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px; border:1px solid #d1d5db; background:#fff; color:#333;">
+              <option value="registered" ${!isUnregistered ? 'selected' : ''}>Registered Company</option>
+              <option value="unregistered" ${isUnregistered ? 'selected' : ''}>Un-Registered Company</option>
+            </select>
+          </div>
+          <div id="swal-comp-gst-group" style="margin-bottom:12px; display:${isUnregistered ? 'none' : 'block'};">
+            <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.8rem; text-transform:uppercase;">GST Number *</label>
+            <input id="swal-comp-gst" class="swal2-input" maxlength="15" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; text-transform:uppercase; box-sizing:border-radius:6px;" value="${compGst}">
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.8rem; text-transform:uppercase;">Address *</label>
+            <textarea id="swal-comp-address" class="swal2-textarea" rows="2" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;">${compAddress}</textarea>
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.8rem; text-transform:uppercase;">Pincode *</label>
+            <input id="swal-comp-pincode" class="swal2-input" maxlength="6" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;" value="${compPincode}">
+          </div>
+          <div style="margin-bottom:8px;">
+            <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.8rem; text-transform:uppercase;">Contact / Mobile No *</label>
+            <div style="display:flex; gap:8px;">
+              <input id="swal-comp-code" class="swal2-input" value="${countryCode}" oninput="if(this.value.trim()==='+91'){ document.getElementById('swal-comp-phone').setAttribute('maxlength','10'); document.getElementById('swal-comp-phone').value = document.getElementById('swal-comp-phone').value.replace(/\\D/g,'').slice(0,10); } else { document.getElementById('swal-comp-phone').removeAttribute('maxlength'); }" style="width:75px; margin:0; padding:0.6rem 0.4rem; font-size:0.9rem; font-weight:600; text-align:center; box-sizing:border-box; border-radius:6px; flex-shrink:0;">
+              <input id="swal-comp-phone" class="swal2-input" oninput="if(document.getElementById('swal-comp-code').value.trim()==='+91'){ this.value = this.value.replace(/\\D/g,'').slice(0,10); }" ${countryCode === '+91' ? 'maxlength="10"' : ''} style="flex:1; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;" value="${phoneNum}">
+            </div>
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: isEdit ? 'Update Company' : 'Save Company',
+      confirmButtonColor: '#f59e0b',
+      cancelButtonText: 'Cancel',
+      focusConfirm: false,
+      preConfirm: () => {
+        const name = (document.getElementById('swal-comp-name').value || '').trim();
+        const type = document.getElementById('swal-comp-type').value;
+        const gst = (document.getElementById('swal-comp-gst').value || '').trim().toUpperCase();
+        const address = (document.getElementById('swal-comp-address').value || '').trim();
+        const pincode = (document.getElementById('swal-comp-pincode').value || '').trim();
+        const code = (document.getElementById('swal-comp-code').value || '').trim();
+        const rawPhone = (document.getElementById('swal-comp-phone').value || '').trim();
+
+        if (!name) { Swal.showValidationMessage('Company Name is required'); return false; }
+        if (type === 'registered') {
+          if (!gst) { Swal.showValidationMessage('GST Number is mandatory for Registered Company'); return false; }
+          if (!/^[A-Za-z0-9]{15}$/.test(gst)) { Swal.showValidationMessage('GST must be exactly 15 alphanumeric characters'); return false; }
+        }
+        if (!address) { Swal.showValidationMessage('Address is required'); return false; }
+        if (!pincode || !/^[0-9]{6}$/.test(pincode)) { Swal.showValidationMessage('Pincode must be exactly 6 digits'); return false; }
+        if (!rawPhone) { Swal.showValidationMessage('Contact / Mobile number is required'); return false; }
+        if (code === '+91') {
+          const cleanDigits = rawPhone.replace(/\D/g, '');
+          const isLandline = /^0?79[\s\-]?[0-9]{6,8}$/.test(rawPhone);
+          if (!isLandline && cleanDigits.length !== 10) {
+            Swal.showValidationMessage('Contact number must be exactly 10 digits for +91');
+            return false;
+          }
+        }
+
+        const contact = code ? (code + ' ' + rawPhone) : rawPhone;
+        return { name, gst: type === 'unregistered' ? 'N/A' : gst, address, pincode, contact, isEdit };
+      }
+    }).then(result => {
+      if (result.isConfirmed && result.value) {
+        if (window.isReadOnly) return app.toast('You have View-Only permission. Saving company is disabled.', 'error');
+        
+        const payload = result.value;
+        const isEditId = payload.isEdit ? comp.id : null;
+        const url = isEditId ? `${app.getSalesPrefix()}/company/${isEditId}` : `${app.getSalesPrefix()}/company`;
+
+        fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': window.csrfToken || csrfToken
+          },
+          body: JSON.stringify(payload)
+        })
+        .then(r => r.json())
+        .then(d => {
+          if (d.success) {
+            app.toast(d.message || 'Company saved!');
+            sessionStorage.setItem('activeSalesTab', 'company');
+            setTimeout(() => location.reload(), 600);
+          } else {
+            app.toast(d.message || 'Failed to save company', 'error');
+          }
+        })
+        .catch(() => app.toast('Network error saving company', 'error'));
+      }
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     const savedTab = sessionStorage.getItem('activeSalesTab');
     if (savedTab) {
@@ -420,6 +460,12 @@ html.dark-mode .info-preview-box .info-label {
       if (savedTab === 'company' && tabBtns[1]) switchSalesTab('company', tabBtns[1]);
       if (savedTab === 'transport' && tabBtns[2]) switchSalesTab('transport', tabBtns[2]);
     }
+
+    @if(!empty($pageData['editCompany']))
+      const btn = document.querySelector('.tab-btn:nth-child(2)');
+      if (btn) switchSalesTab('company', btn);
+      openCompanyModal(@json($pageData['editCompany']));
+    @endif
 
     @if(empty($pageData['editOrder']))
       window.currentOrderType = 'ALL';
@@ -446,8 +492,6 @@ html.dark-mode .info-preview-box .info-label {
       app.onSalesTransportSelect(transVal);
     }
 
-
-
     const prodList = document.getElementById('order-products');
     if (prodList) {
       prodList.innerHTML = '';
@@ -456,39 +500,6 @@ html.dark-mode .info-preview-box .info-label {
         editOrder.items.forEach(item => {
           app.addOrderProductRow(item);
         });
-      }
-    }
-  });
-</script>
-@endif
-
-@if(!empty($pageData['editCompany']))
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const btn = document.querySelector('.tab-btn:nth-child(2)');
-    if (btn) switchSalesTab('company', btn);
-
-    const fullContact = "{{ $pageData['editCompany']->contact ?? '' }}".trim();
-    if (fullContact) {
-      const codeEl = document.getElementById('comp-country-code');
-      const inputEl = document.getElementById('comp-contact');
-      if (codeEl && inputEl) {
-        const match = fullContact.match(/^(\+\d{1,4})\s*(.*)$/);
-        if (match) {
-          const code = match[1];
-          const num = match[2];
-          const hasOption = Array.from(codeEl.options).some(o => o.value === code);
-          if (hasOption) {
-            codeEl.value = code;
-            inputEl.value = num;
-          } else {
-            codeEl.value = 'other';
-            inputEl.value = fullContact;
-          }
-        } else {
-          codeEl.value = '+91';
-          inputEl.value = fullContact;
-        }
       }
     }
   });

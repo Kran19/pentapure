@@ -539,6 +539,7 @@ class AttendanceController extends Controller
         $request->validate([
             'month' => 'required|date_format:Y-m',
             'is_paid' => 'required|boolean',
+            'paid_date' => 'nullable|string',
             'paid_note' => 'nullable|string'
         ]);
 
@@ -548,14 +549,27 @@ class AttendanceController extends Controller
         ]);
 
         $adj->is_paid = $request->is_paid;
-        $adj->paid_note = $request->paid_note;
-        $adj->paid_at = $request->is_paid ? now() : null;
+        $paidDate = $request->input('paid_date') ?: $request->input('paid_note');
+        if ($request->is_paid) {
+            if ($paidDate && strtotime($paidDate)) {
+                $parsed = \Carbon\Carbon::parse($paidDate);
+                $adj->paid_at = $parsed;
+                $adj->paid_note = $parsed->format('Y-m-d');
+            } else {
+                $adj->paid_at = now();
+                $adj->paid_note = now()->format('Y-m-d');
+            }
+        } else {
+            $adj->paid_at = null;
+            $adj->paid_note = null;
+        }
         $adj->save();
 
         return response()->json([
             'success' => true,
             'message' => 'Payment status updated successfully',
             'is_paid' => (bool)$adj->is_paid,
+            'paid_date' => $adj->paid_at ? $adj->paid_at->format('Y-m-d') : null,
             'paid_note' => $adj->paid_note
         ]);
     }
@@ -596,7 +610,11 @@ class AttendanceController extends Controller
         
         $pdf = Pdf::loadView('pdf.monthly-salary-sheet', $data)->setPaper('A4', 'portrait');
         
-        $filename = strtoupper(str_replace(' ', '_', $data['worker']->name)) . '_SALARY_' . str_replace('-', '', $data['month']) . '.pdf';
+        $name = strtoupper(str_replace(' ', '_', $data['worker']->name));
+        $salaryType = strtoupper(str_replace(' ', '_', $data['worker']->salary_type ?? 'SALARY'));
+        $dateStr = \Carbon\Carbon::parse($data['month'] . '-01')->format('d_m_y');
+        
+        $filename = $name . '_' . $salaryType . '_' . $dateStr . '.pdf';
         
         return $pdf->download($filename);
     }
@@ -625,7 +643,8 @@ class AttendanceController extends Controller
         $pdf = Pdf::loadView('pdf.all-monthly-salary-sheets', ['allData' => $allData, 'month' => $month])
                   ->setPaper('A4', 'portrait');
 
-        $filename = 'ALL_WORKERS_SALARY_' . str_replace('-', '', $month) . '.pdf';
+        $dateStr = \Carbon\Carbon::parse($month . '-01')->format('d_m_y');
+        $filename = 'ALL_WORKERS_SALARY_' . $dateStr . '.pdf';
         
         return $pdf->download($filename);
     }
@@ -734,7 +753,7 @@ class AttendanceController extends Controller
         if (in_array($role, ['ADMIN', 'SUB_ADMIN', 'STOCK_MANAGER']) || str_contains($request->path(), 'admin') || str_contains($request->path(), 'sub_admin')) {
             return 'layouts.admin';
         }
-        return 'layouts.app';
+        return 'layouts.attendance';
     }
 
     private function getPresentMultiplier($status) {

@@ -7,122 +7,8 @@
     <h2 style="margin:0;">📦 Live Stock Overview</h2>
     <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
       <button class="btn btn-secondary" onclick="adminExportStockPdf()" style="width:auto; padding:0.65rem 1.2rem; border-color:#DDCFAF !important;">📄 Generate PDF Report</button>
-      <button class="btn" onclick="toggleStockFormCard()" style="width:auto; padding:0.65rem 1.2rem;">+ Add Stock</button>
     </div>
   </div>
-
-  <!-- In-Page Add / Adjust Stock Card (Hidden by Default) -->
-  <div id="stock-form-card" class="card white-orange-card" style="display:none; margin-bottom:1.5rem; padding:1.2rem;">
-    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
-      <span>📦 Add Stock Entry</span>
-      <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('stock-form-card').style.display='none'" style="width:auto; padding:0.3rem 0.8rem;">✕ Close</button>
-    </div>
-
-    <div id="stock-rows-wrapper">
-        <div class="bulk-stock-row" id="single-stock-row" style="padding: 1rem; margin-bottom: 1rem; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;">
-        <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
-            
-            <div class="form-group" style="margin:0; flex: 1 1 90px;">
-                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Stock Type *</label>
-                <select class="form-control form-control-sm bs-stage" onchange="onBsStageChange(this)" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem;">
-                    <option value="RAW" selected>RAW</option>
-                    <option value="SEMI">SEMI</option>
-                    <option value="FINISHED">FINISHED</option>
-                </select>
-            </div>
-            
-            <div class="form-group" style="margin:0; flex: 2 1 160px;">
-                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Product *</label>
-                <select class="form-control form-control-sm bs-product">
-                    <option></option>
-                </select>
-            </div>
-            
-
-
-            <div class="bs-location-row" style="display:flex; gap:0.5rem; flex: 2 1 180px; margin:0; position:relative;">
-                <div class="form-group" style="margin:0; flex:2;">
-                    <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280; display:block;">Storage Location *</label>
-                    <div class="custom-location-dropdown" style="width: 100%; position: relative;">
-                        <button class="btn" type="button" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'block' ? 'none' : 'block'" style="width:100%; text-align:left; display:flex; justify-content:space-between; align-items:center; background:#fff; border: 1px solid #d1d5db; height:1.8rem; padding: 0.1rem 0.5rem; font-size:0.8rem; color:#333; cursor:pointer;">
-                            <span class="loc-dropdown-text">Main Warehouse</span>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                        </button>
-                        <ul class="dropdown-menu p-2 shadow" style="display:none; position:absolute; top:100%; left:0; z-index:1000; width: 220px; max-height:250px; overflow-y:auto; background:#fff; border:1px solid #d1d5db; border-radius:0.25rem; list-style:none; margin-top:0.125rem;">
-                            @php $allLocs = \App\Models\Location::orderBy('name')->get(); @endphp
-                            
-                            <li style="margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; font-weight:600; color:var(--primary-dark);">
-                                <span style="padding-left: 0.2rem;">MAIN WAREHOUSE</span>
-                                <input type="number" min="0" step="0.001" class="form-control form-control-sm loc-qty-input no-spinners" data-loc="Main Warehouse" style="width: 60px; text-align:center; padding: 0.1rem; height:1.6rem; font-size:0.8rem;" value="0">
-                            </li>
-                            
-                            @foreach($allLocs as $loc)
-                                @if($loc->name !== 'Main Warehouse')
-                                <li style="margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:#333;">
-                                    <span style="padding-left: 0.2rem;">{{ strtoupper($loc->name) }}</span>
-                                    <input type="number" min="0" step="0.001" class="form-control form-control-sm loc-qty-input no-spinners" data-loc="{{ $loc->name }}" style="width: 60px; text-align:center; padding: 0.1rem; height:1.6rem; font-size:0.8rem;" value="0">
-                                </li>
-                                @endif
-                            @endforeach
-                        </ul>
-                    </div>
-                </div>
-                <div class="form-group" style="margin:0; flex:1;">
-                    <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Qty *</label>
-                    <input type="number" min="0.001" step="0.001" class="form-control form-control-sm bs-loc-qty no-spinners" placeholder="0.00" readonly style="background-color: #f9fafb; height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem;">
-                </div>
-            </div>
-
-            <div class="form-group" style="margin:0; flex: 1 1 80px;">
-                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">MIN.QTY</label>
-                <input type="number" min="0" step="0.01" class="form-control form-control-sm bs-min-qty no-spinners" placeholder="0.00" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem;">
-            </div>
-
-            <div class="form-group" style="margin:0; flex: 1 1 80px;">
-                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Rate</label>
-                <input type="number" min="0" step="0.01" class="form-control form-control-sm bs-rate no-spinners" placeholder="0.00" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem;">
-            </div>
-
-            <div class="form-group" style="margin:0; flex: 1 1 100px;">
-                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Note</label>
-                <input type="text" class="form-control form-control-sm bs-note" placeholder="Optional" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem;">
-            </div>
-        </div>
-    </div>
-    </div> <!-- end wrapper -->
-
-    <div style="display:flex; gap:1rem; margin-top:1.5rem; justify-content: space-between; align-items: center;">
-      <div>
-        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addStockRow()" style="width:auto; padding:0.4rem 1rem; border: 1px solid var(--primary); color: var(--primary); background: transparent; font-weight: 600;">+ Add Another Product</button>
-      </div>
-      <div style="display:flex; gap:1rem;">
-        <button class="btn" id="btn-save-stock-card" onclick="adminSaveBulkStock()" style="width:auto; padding:0.6rem 1.8rem;">Save Stock</button>
-        <button class="btn btn-secondary" onclick="document.getElementById('stock-form-card').style.display='none'" style="width:auto; padding:0.6rem 1.5rem;">Cancel</button>
-      </div>
-    </div>
-  </div>
-
-  <template id="bulk-stock-location-template">
-    <div class="bs-location-row" style="display:flex; gap:0.5rem; align-items:flex-end; margin-bottom:0.5rem;">
-        <div class="form-group" style="flex:2; margin:0;">
-            <label style="font-size: 0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Location</label>
-            <select class="form-control form-control-sm bs-loc-name" style="width:100%; height: 1.8rem; padding: 0.1rem 0.5rem; font-size: 0.8rem;">
-                <option value="Main Warehouse" selected>Main Warehouse</option>
-                @php $allLocs = \App\Models\Location::orderBy('name')->get(); @endphp
-                @foreach($allLocs as $loc)
-                    @if($loc->name !== 'Main Warehouse')
-                        <option value="{{ $loc->name }}">{{ $loc->name }}</option>
-                    @endif
-                @endforeach
-            </select>
-        </div>
-        <div class="form-group" style="flex:1; margin:0;">
-            <label style="font-size: 0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Qty *</label>
-            <input type="number" min="0.001" step="0.001" class="form-control form-control-sm bs-loc-qty no-spinners" placeholder="0.00" oninput="recalcBsTotal(this)" style="height: 1.8rem; padding: 0.1rem 0.5rem; font-size: 0.8rem;">
-        </div>
-        <button type="button" class="btn btn-danger btn-sm" onclick="removeBsLocation(this)" style="padding:0.2rem 0.5rem; height: 1.8rem; background: #dc3545; color:#fff; border:none; font-size: 0.8rem;">X</button>
-    </div>
-  </template>
 
   @php
     $typeFilter = request('type') ? strtoupper(request('type')) : null;
@@ -202,7 +88,7 @@
     @else
     <div class="table-container">
       <table>
-        <thead><tr><th>Product</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>min_qty</th><th>Location</th><th>Action</th></tr></thead>
+        <thead><tr><th>Product</th><th>Qty</th><th>Unit</th><th>min_qty</th><th>Location</th></tr></thead>
         <tbody id="raw-stock-tbody">
           @foreach($rawItems as $s)
           @php 
@@ -216,12 +102,6 @@
             </td>
             <td style="font-weight:bold; color:var(--secondary);">{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
-            <td style="font-weight:bold;">
-              ₹{{ number_format($s->rate ?? 0, 2) }}
-              <button class="btn-icon edit" onclick="adminUpdateRate('{{ $s->productId }}', '{{ $s->rate ?? 0 }}', '{{ addslashes($s->name) }}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
-              </button>
-            </td>
             <td style="font-weight:bold; color:var(--text-color);">
               {{ number_format($s->alert_limit, 2) }}
               <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
@@ -229,14 +109,6 @@
               </button>
             </td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="RAW" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
-            <td>
-              <div style="display:flex; align-items:center; gap:0.4rem;">
-                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }})" title="Adjust Stock">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
-                </button>
-                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
-              </div>
-            </td>
           </tr>
           @endforeach
         </tbody>
@@ -255,7 +127,7 @@
     @else
     <div class="table-container">
       <table>
-        <thead><tr><th>Product</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>min_qty</th><th>Location</th><th>Action</th></tr></thead>
+        <thead><tr><th>Product</th><th>Qty</th><th>Unit</th><th>min_qty</th><th>Location</th></tr></thead>
         <tbody id="semi-stock-tbody">
           @foreach($semiItems as $s)
           @php 
@@ -269,12 +141,6 @@
             </td>
             <td style="font-weight:bold; color:var(--warning);">{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
-            <td style="font-weight:bold;">
-              ₹{{ number_format($s->rate ?? 0, 2) }}
-              <button class="btn-icon edit" onclick="adminUpdateRate('{{ $s->productId }}', '{{ $s->rate ?? 0 }}', '{{ addslashes($s->name) }}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
-              </button>
-            </td>
             <td style="font-weight:bold; color:var(--text-color);">
               {{ number_format($s->alert_limit, 2) }}
               <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
@@ -282,14 +148,6 @@
               </button>
             </td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="SEMI" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
-            <td>
-              <div style="display:flex; align-items:center; gap:0.4rem;">
-                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }})" title="Adjust Stock">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
-                </button>
-                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
-              </div>
-            </td>
           </tr>
           @endforeach
         </tbody>
@@ -308,7 +166,7 @@
     @else
     <div class="table-container">
       <table>
-        <thead><tr><th>Product</th><th>Total Qty</th><th>Unit</th><th>Rate (Ref)</th><th>min_qty</th><th>Location</th><th>Action</th></tr></thead>
+        <thead><tr><th>Product</th><th>Total Qty</th><th>Unit</th><th>min_qty</th><th>Location</th></tr></thead>
         <tbody id="finished-stock-tbody">
           @foreach($finishedItems as $s)
           @php 
@@ -322,12 +180,6 @@
             </td>
             <td style="font-weight:bold; color:var(--secondary);">{{ number_format($s->quantity, 2) }}</td>
             <td>{{ $s->unit }}</td>
-            <td style="font-weight:bold;">
-              ₹{{ number_format($s->rate ?? 0, 2) }}
-              <button class="btn-icon edit" onclick="adminUpdateRate('{{ $s->productId }}', '{{ $s->rate ?? 0 }}', '{{ addslashes($s->name) }}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
-              </button>
-            </td>
             <td style="font-weight:bold; color:var(--text-color);">
               {{ number_format($s->alert_limit, 2) }}
               <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
@@ -335,14 +187,6 @@
               </button>
             </td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="FINISHED" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
-            <td>
-              <div style="display:flex; align-items:center; gap:0.4rem;">
-                <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }})" title="Adjust Stock">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
-                </button>
-                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
-              </div>
-            </td>
           </tr>
           @endforeach
         </tbody>

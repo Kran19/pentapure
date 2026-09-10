@@ -123,11 +123,13 @@ class AuthMiddleware
                 elseif ($seg2 === 'history') $moduleKey = 'finished_history';
                 elseif ($seg2 === 'home') $moduleKey = 'finished_home';
             } elseif ($panel === 'stock_manager') {
-                if (in_array($seg2, ['outward', 'action'])) $moduleKey = 'stock_manager_action';
+                if ($seg2 === 'admin' && $seg3 === 'stock') $moduleKey = 'admin_stock';
+                elseif (in_array($seg2, ['outward', 'action'])) $moduleKey = 'stock_manager_action';
                 elseif (in_array($seg2, ['stock', 'note'])) $moduleKey = 'stock_manager_stock';
                 elseif ($seg2 === 'po') $moduleKey = 'stock_manager_po';
                 elseif ($seg2 === 'history') $moduleKey = 'stock_manager_history';
                 elseif ($seg2 === 'home') $moduleKey = 'stock_manager_home';
+                elseif ($seg2 === 'users') $moduleKey = 'admin_users';
             } elseif ($panel === 'attendance') {
                 if (in_array($seg2, ['home', 'dashboard'])) $moduleKey = 'attendance_dashboard';
                 elseif ($seg2 === 'departments') $moduleKey = 'attendance_departments';
@@ -156,9 +158,9 @@ class AuthMiddleware
             $hasView = in_array('view_' . $moduleKey, $userPermissions)
                 || in_array('edit_' . $moduleKey, $userPermissions)
                 || in_array('module_' . $moduleKey, $userPermissions)
-                || in_array('module_' . $shortKey, $userPermissions)
                 || in_array($moduleKey, $userPermissions)
-                || in_array($shortKey, $userPermissions);
+                || in_array('can_manage', $userPermissions)
+                || ($seg2 === 'users' && ($user['role'] === 'STOCK_MANAGER' || $user['role'] === 'SUB_ADMIN'));
 
             if (!$hasView) {
                 if (in_array($seg2, ['home', 'dashboard'])) {
@@ -211,7 +213,8 @@ class AuthMiddleware
             $hasEdit = in_array('edit_' . $moduleKey, $userPermissions)
                 || in_array('can_manage', $userPermissions)
                 || in_array('edit_module_' . $moduleKey, $userPermissions)
-                || in_array('edit_' . $shortKey, $userPermissions);
+                || in_array('edit_' . $shortKey, $userPermissions)
+                || ($seg2 === 'users' && ($user['role'] === 'STOCK_MANAGER' || $user['role'] === 'SUB_ADMIN'));
 
             $isReadOnly = !$hasEdit;
             view()->share('isReadOnly', $isReadOnly);

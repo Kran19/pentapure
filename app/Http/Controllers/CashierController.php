@@ -87,9 +87,11 @@ class CashierController extends Controller
     public function updateTransaction(Request $request, $id)
     {
         $request->validate([
-            'amount'   => 'required|numeric|min:0.01',
-            'category' => 'nullable|string',
-            'note'     => 'nullable|string',
+            'type'      => 'nullable|in:IN,OUT',
+            'amount'    => 'required|numeric|min:0.01',
+            'category'  => 'nullable|string',
+            'note'      => 'nullable|string',
+            'reference' => 'nullable|string',
         ]);
 
         $user = $this->authUser();
@@ -117,9 +119,11 @@ class CashierController extends Controller
 
         \DB::transaction(function() use ($request, $tx, $user, $oldData) {
             $tx->update([
-                'amount'   => $request->amount,
-                'category' => $request->has('category') ? $request->category : $tx->category,
-                'note'     => $request->note,
+                'type'      => $request->type ? $request->type : $tx->type,
+                'amount'    => $request->amount,
+                'category'  => $request->has('category') ? $request->category : $tx->category,
+                'note'      => $request->note,
+                'reference' => $request->reference,
             ]);
 
             \App\Models\TransactionLog::create([
@@ -580,14 +584,19 @@ class CashierController extends Controller
             'billPages'      => [], // no embedded blade bills, using FPDI
         ];
 
+        $userModel = \App\Models\User::find($userId);
+        $branchName = $userModel && $userModel->branch ? strtoupper(str_replace(' ', '_', $userModel->branch)) : 'ALL_BRANCHES';
+
         $formattedFromDate = $from ? $from->format('d-m-Y') : ($txs->first()?->created_at?->format('d-m-Y') ?? now()->format('d-m-Y'));
         $formattedToDate   = $to   ? $to->format('d-m-Y')   : now()->format('d-m-Y');
-        $randomSerial = rand(1000, 9999);
+        
         if ($from && $to && $from->format('Y-m-d') !== $to->format('Y-m-d')) {
-            $filename = 'pentapure_' . $formattedFromDate . 'to' . $formattedToDate . '_' . $randomSerial . '.pdf';
+            $dateRangeStr = $formattedFromDate . 'TO' . $formattedToDate;
         } else {
-            $filename = 'pentapure_' . $formattedFromDate . '_' . $randomSerial . '.pdf';
+            $dateRangeStr = $formattedFromDate;
         }
+
+        $filename = 'PENTAPURE_' . $branchName . '_' . $dateRangeStr . '.pdf';
 
         // 1. Generate the main statement HTML via DomPDF
         $mainPdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.cashier-statement', $data);
@@ -643,12 +652,12 @@ class CashierController extends Controller
         $fpdi = new \setasign\Fpdi\Fpdi();
         $fpdi->SetAutoPageBreak(false);
 
-        // Import all pages of the main PDF
+        // Import all pages of the main PDF (Landscape A4: 297mm x 210mm) with 10mm margin offset
         $mainPageCount = $fpdi->setSourceFile($tmpMain);
         for ($i = 1; $i <= $mainPageCount; $i++) {
             $tpl = $fpdi->importPage($i);
-            $fpdi->AddPage('P', 'A4');
-            $fpdi->useTemplate($tpl, 0, 0, 210, 297);
+            $fpdi->AddPage('L', 'A4');
+            $fpdi->useTemplate($tpl, 10, 10, 277, 190);
         }
 
         // Now add each bill as a new page

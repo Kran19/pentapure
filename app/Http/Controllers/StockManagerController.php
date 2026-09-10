@@ -301,6 +301,7 @@ class StockManagerController extends Controller
     {
         $user = $this->authUser();
         $pos = PurchaseOrder::with(['user', 'product'])
+            ->where('user_id', $user['id'])
             ->orderByDesc('created_at')
             ->paginate(15);
 
@@ -338,6 +339,44 @@ class StockManagerController extends Controller
         }
 
         return redirect()->back()->with('success', 'Purchase order request created successfully!');
+    }
+
+    // ── POST: Update Purchase Order Request ────────────────────────────────
+    public function updatePO(Request $request, $id)
+    {
+        $request->validate([
+            'quantity' => 'required|numeric|min:0.001',
+            'note'     => 'nullable|string',
+        ]);
+
+        $user = $this->authUser();
+        $po = PurchaseOrder::where('id', $id)
+            ->where('user_id', $user['id'])
+            ->firstOrFail();
+
+        $po->update([
+            'quantity' => $request->quantity,
+            'note'     => $request->note,
+        ]);
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Purchase order updated successfully!']);
+        }
+
+        return redirect()->back()->with('success', 'Purchase order updated successfully!');
+    }
+
+    // ── DELETE: Delete Purchase Order Request ──────────────────────────────
+    public function destroyPO($id)
+    {
+        $user = $this->authUser();
+        $po = PurchaseOrder::where('id', $id)
+            ->where('user_id', $user['id'])
+            ->firstOrFail();
+
+        $po->delete();
+
+        return response()->json(['success' => true, 'message' => 'Purchase order deleted successfully!']);
     }
 
     // ── HISTORY: Transaction History Logs ──────────────────────────────────

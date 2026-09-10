@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends(in_array(session('auth_user')['role'] ?? '', ['ADMIN', 'SUB_ADMIN', 'STOCK_MANAGER']) || str_contains(request()->path(), 'stock_manager') || str_contains(request()->path(), 'admin') ? 'layouts.admin' : 'layouts.app')
 
 @section('content')
 <div style="max-width: 600px; margin: 0 auto;">
