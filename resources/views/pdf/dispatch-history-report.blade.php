@@ -20,9 +20,9 @@
         .brand-tagline { font-size: 8px; color: #d88a00; font-weight: bold; letter-spacing: 1px; }
         
         /* Title */
-        .title-container { text-align: center; margin: 4px 0 8px 0; }
-        .title { display: inline-block; font-size: 13px; font-weight: 800; letter-spacing: 1px; color: #101828; padding: 0 10px; }
-        .title-line { height: 1px; background: #eaecf0; margin-top: 2px; }
+        .title-container { text-align: center; margin: 12px 0 16px 0; }
+        .title { display: inline-block; font-size: 18px; font-weight: 800; letter-spacing: 1.5px; color: #101828; padding: 4px 15px; }
+        .title-line { height: 2px; background: #f8c300; margin-top: 4px; }
         
         /* Metadata block */
         .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; background-color: #fcfcfd; border: 1px solid #eaecf0; border-radius: 3px; }
@@ -56,9 +56,9 @@
         .section-header { background: #f8c300; color: #101828; padding: 4px 6px; font-weight: bold; font-size: 9px; border-radius: 3px 3px 0 0; text-transform: uppercase; margin-top: 6px; }
         
         /* Data table */
-        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; border: 1px solid #344054; }
         .data-table th { background: #f8c300; color: #101828; padding: 6px 7px; font-weight: bold; text-align: left; font-size: 8.5px; border: 1px solid #344054; }
-        .data-table td { padding: 6px 7px; border: 1px solid #d0d5dd; font-size: 8px; vertical-align: middle; }
+        .data-table td { padding: 6px 7px; border: 1px solid #98a2b3; font-size: 8px; vertical-align: middle; }
         .data-table tr.total-row td { font-weight: bold; background: #f9fafb; border-top: 1.5px solid #111c31; }
         
         /* Badges */
@@ -126,7 +126,7 @@
     <!-- Title -->
     <div class="title-container">
         <div class="title-line"></div>
-        <div class="title">DISPATCH HISTORY REPORT</div>
+        <div class="title">{{ $reportTitle ?? 'DISPATCH HISTORY REPORT' }}</div>
         <div class="title-line"></div>
     </div>
 
@@ -141,48 +141,6 @@
             <td style="width: 50%; border-left: 2px solid #e4e7ec; padding-left: 15px;">
                 <div style="margin-bottom: 4px;"><span class="meta-label">From Date</span><span class="meta-value">: {{ $fromDate }}</span></div>
                 <div><span class="meta-label">To Date</span><span class="meta-value">: {{ $toDate }}</span></div>
-            </td>
-        </tr>
-    </table>
-
-    <!-- Stats Cards -->
-    <table class="stats-table">
-        <tr>
-            <td class="stats-card-cell">
-                <div class="stats-card stats-yellow">
-                    <div class="stats-label">Total Dispatches</div>
-                    <div class="stats-value">{{ $totalRecords }}</div>
-                </div>
-            </td>
-            <td class="stats-card-cell">
-                <div class="stats-card stats-green">
-                    <div class="stats-label">Fully Dispatched</div>
-                    <div class="stats-value">{{ $fullyDispatchedCount ?? 0 }}</div>
-                </div>
-            </td>
-            <td class="stats-card-cell">
-                <div class="stats-card stats-blue">
-                    <div class="stats-label">Partial Dispatch</div>
-                    <div class="stats-value">{{ $partialDispatchCount ?? 0 }}</div>
-                </div>
-            </td>
-            <td class="stats-card-cell">
-                <div class="stats-card stats-orange">
-                    <div class="stats-label">Pending</div>
-                    <div class="stats-value">{{ $pendingCount ?? 0 }}</div>
-                </div>
-            </td>
-            <td class="stats-card-cell">
-                <div class="stats-card stats-purple">
-                    <div class="stats-label">Total Value</div>
-                    <div class="stats-value">Rs. {{ number_format($totalValue) }}</div>
-                </div>
-            </td>
-            <td class="stats-card-cell">
-                <div class="stats-card stats-teal">
-                    <div class="stats-label">Total Quantity</div>
-                    <div class="stats-value">{{ number_format($totalQuantity) }} KG</div>
-                </div>
             </td>
         </tr>
     </table>
@@ -204,19 +162,19 @@
                 <th style="width: 6%;" class="text-center">Status</th>
             </tr>
         </thead>
-        <tbody>
-            @forelse($rows as $idx => $logRow)
-                @php
-                    $rawStatus = strtoupper(trim(str_replace('_', ' ', $logRow['status'] ?? 'PENDING')));
-                    $badgeClass = match($rawStatus) {
-                        'FULLY DISPATCHED', 'COMPLETED', 'DONE' => 'badge-fully-dispatched',
-                        'PARTIAL DISPATCH', 'PARTIAL' => 'badge-partial-dispatch',
-                        'PARTIAL PENDING' => 'badge-partial-pending',
-                        'CANCELLED' => 'badge-cancelled',
-                        default => 'badge-pending',
-                    };
-                    $itemCount = count($logRow['items'] ?? []);
-                @endphp
+        @forelse($rows as $idx => $logRow)
+            @php
+                $rawStatus = strtoupper(trim(str_replace('_', ' ', $logRow['status'] ?? 'PENDING')));
+                $badgeClass = match($rawStatus) {
+                    'FULLY DISPATCHED', 'COMPLETED', 'DONE' => 'badge-fully-dispatched',
+                    'PARTIAL DISPATCH', 'PARTIAL' => 'badge-partial-dispatch',
+                    'PARTIAL PENDING' => 'badge-partial-pending',
+                    'CANCELLED' => 'badge-cancelled',
+                    default => 'badge-pending',
+                };
+                $itemCount = count($logRow['items'] ?? []);
+            @endphp
+            <tbody class="page-break-avoid">
                 @foreach($logRow['items'] as $itemIdx => $item)
                     <tr>
                         @if($itemIdx === 0)
@@ -229,10 +187,6 @@
                         @endif
                         <td>
                             <div style="font-weight: bold; color: #101828;">{{ $item['product'] }}</div>
-                            <div style="color: #667085; font-size: 7.5px; margin-top: 2px;">
-                                <span style="color: #344054;">Grade:</span> {{ $item['grade'] }} | 
-                                <span style="color: #344054;">Loc:</span> {{ $item['locations'] }}
-                            </div>
                         </td>
                         <td class="text-right text-green"><strong>{{ $item['ordered_qty_formatted'] ?? number_format($item['ordered_qty'] ?? 0) . ' KG' }}</strong></td>
                         <td class="text-right" style="color: #b37400;"><strong>{{ $item['dispatch_qty_formatted'] ?? number_format($item['qty'] ?? 0) . ' KG' }}</strong></td>
@@ -247,11 +201,15 @@
                         @endif
                     </tr>
                 @endforeach
-            @empty
+            </tbody>
+        @empty
+            <tbody>
                 <tr>
                     <td colspan="10" class="text-center" style="padding: 15px; color: #667085;">No dispatch history found for the selected filters.</td>
                 </tr>
-            @endforelse
+            </tbody>
+        @endforelse
+        <tbody>
             @if(count($rows) > 0)
                 <tr class="total-row">
                     <td colspan="5">TOTAL</td>

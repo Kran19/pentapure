@@ -542,12 +542,17 @@ class AdminController extends Controller
             ];
         }
 
+        $authUser = session('auth_user');
+        $userRole = strtoupper($authUser['role'] ?? '');
+        $isStockManager = ($userRole === 'STOCK_MANAGER') || str_contains($request->path(), 'stock-manager') || str_contains($request->path(), 'stock_manager');
+
         $pdfData = [
             'items' => $items,
             'totalValuation' => $totalValuation,
             'generatedOn' => now()->format('d M Y, h:i A'),
             'stages' => $stages,
             'date' => $date,
+            'isStockManager' => $isStockManager,
         ];
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.live-stock', $pdfData)
@@ -1348,6 +1353,12 @@ class AdminController extends Controller
 
     public function getLocationsApi()
     {
+        if (Location::count() === 0) {
+            $defaults = ['Main Warehouse', 'Warehouse A', 'Warehouse B', 'Rack 1', 'Cold Room'];
+            foreach ($defaults as $d) {
+                Location::firstOrCreate(['name' => $d]);
+            }
+        }
         $locations = Location::orderBy('name')->get(['id', 'name', 'description']);
         return response()->json(['success' => true, 'locations' => $locations]);
     }
@@ -1387,27 +1398,56 @@ class AdminController extends Controller
     {
         $request->validate([
             'product_id' => 'required|exists:products,id',
-            'stage' => 'required|string',
-            'grade' => 'required|string',
+            'stage' => 'nullable|string',
+            'grade' => 'nullable|string',
         ]);
 
         $locations = Location::orderBy('name')->get();
+        $grade = (!empty($request->grade) && strtoupper($request->grade) !== 'ALL') ? $request->grade : null;
+        $stage = (!empty($request->stage) && strtoupper($request->stage) !== 'ALL') ? $request->stage : null;
 
-        $stockCounts = DB::table('stocks')
-            ->where('stocks.product_id', $request->product_id)
-            ->where('stocks.stage', $request->stage)
-            ->where('stocks.grade', $request->grade)
+        $stockCountsQuery = DB::table('stocks')
+            ->where('stocks.product_id', $request->product_id);
+            
+        if ($stage) {
+            $stockCountsQuery->where('stocks.stage', $stage);
+        }
+
+        if ($grade) {
+            $stockCountsQuery->where(function($q) use ($grade) {
+                if (strtoupper($grade) === 'NONE') {
+                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '');
+                } else {
+                    $q->where('grade', $grade);
+                }
+            });
+        }
+
+        $stockCounts = $stockCountsQuery
             ->whereNotNull('stocks.location_id')
             ->groupBy('stocks.location_id')
             ->selectRaw("stocks.location_id, SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity")
             ->pluck('quantity', 'location_id')
             ->toArray();
 
-        // Also check unassigned stock (null location_id) and map to Main Warehouse
-        $unassignedStock = (float) DB::table('stocks')
-            ->where('stocks.product_id', $request->product_id)
-            ->where('stocks.stage', $request->stage)
-            ->where('stocks.grade', $request->grade)
+        $unassignedStockQuery = DB::table('stocks')
+            ->where('stocks.product_id', $request->product_id);
+
+        if ($stage) {
+            $unassignedStockQuery->where('stocks.stage', $stage);
+        }
+
+        if ($grade) {
+            $unassignedStockQuery->where(function($q) use ($grade) {
+                if (strtoupper($grade) === 'NONE') {
+                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '');
+                } else {
+                    $q->where('grade', $grade);
+                }
+            });
+        }
+
+        $unassignedStock = (float) $unassignedStockQuery
             ->whereNull('stocks.location_id')
             ->selectRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity")
             ->value('quantity');

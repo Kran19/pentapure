@@ -34,12 +34,19 @@ class Stock extends Model
     public static function deductStock($productId, $stage, $grade, $quantity, $userId, $notes = '')
     {
         $remaining = $quantity;
+        $normGrade = (!empty($grade) && $grade !== 'NONE') ? $grade : 'NONE';
         
         $locations = \Illuminate\Support\Facades\DB::table('stocks')
             ->select('location_id', \Illuminate\Support\Facades\DB::raw('SUM(CASE WHEN transaction_type = "IN" THEN quantity ELSE -quantity END) as available'))
             ->where('product_id', $productId)
             ->where('stage', $stage)
-            ->where('grade', $grade)
+            ->where(function($q) use ($normGrade) {
+                if ($normGrade === 'NONE') {
+                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '');
+                } else {
+                    $q->where('grade', $normGrade);
+                }
+            })
             ->whereNotNull('location_id')
             ->groupBy('location_id')
             ->havingRaw('SUM(CASE WHEN transaction_type = "IN" THEN quantity ELSE -quantity END) > 0')
@@ -53,7 +60,7 @@ class Stock extends Model
                 'product_id' => $productId,
                 'user_id' => $userId,
                 'stage' => $stage,
-                'grade' => $grade,
+                'grade' => $normGrade,
                 'location_id' => $loc->location_id,
                 'quantity' => $deduct,
                 'transaction_type' => 'OUT',
@@ -69,7 +76,7 @@ class Stock extends Model
                 'product_id' => $productId,
                 'user_id' => $userId,
                 'stage' => $stage,
-                'grade' => $grade,
+                'grade' => $normGrade,
                 'location_id' => $defaultLocId,
                 'quantity' => $remaining,
                 'transaction_type' => 'OUT',

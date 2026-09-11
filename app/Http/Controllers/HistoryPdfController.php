@@ -44,6 +44,25 @@ class HistoryPdfController extends Controller
             } else {
                 $filename = 'PENTAPURE_SALES_HISTORY_' . $formattedFromDate . '.pdf';
             }
+        } elseif ($panel === 'DISPATCH') {
+            $companyName = 'ALL-CUSTOMERS';
+            if ($request->company_id) {
+                $comp = \App\Models\Company::find($request->company_id);
+                if ($comp) {
+                    $companyName = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $comp->name));
+                }
+            }
+
+            $statusStr = 'ALL-STATUS';
+            if ($request->status) {
+                $statusStr = strtoupper(trim(str_replace('_', '-', $request->status)));
+            }
+
+            $dateStr = ($from && $to && $from->format('Y-m-d') !== $to->format('Y-m-d')) 
+                ? ($formattedFromDate . 'TO' . $formattedToDate) 
+                : $formattedFromDate;
+
+            $filename = 'DISPATCH_' . $companyName . '_' . $statusStr . '_' . $dateStr . '.pdf';
         } else {
             $randomSerial = rand(1000, 9999);
             if ($from && $to && $from->format('Y-m-d') !== $to->format('Y-m-d')) {
@@ -383,6 +402,21 @@ class HistoryPdfController extends Controller
             $totalAmount += (float) ($item->price * $item->quantity);
         }
 
+        $rawSt = strtoupper(trim(str_replace('_', '-', (string)($order->dispatch_status ?? $order->status ?? 'PENDING'))));
+        if ($rawSt === 'DONE' || $rawSt === 'FULLY-DISPATCHED' || $rawSt === 'FULLY DISPATCHED') {
+            $statusTitle = 'FULLY DISPATCH ORDER';
+            $statusSlug = 'FULLY-DISPATCH';
+        } elseif ($rawSt === 'PARTIAL-PENDING' || $rawSt === 'PARTIAL PENDING') {
+            $statusTitle = 'PARTIAL PENDING ORDER';
+            $statusSlug = 'PARTIAL-PENDING';
+        } elseif ($rawSt === 'PARTIAL' || $rawSt === 'PARTIAL-DISPATCH' || $rawSt === 'PARTIAL DISPATCH') {
+            $statusTitle = 'PARTIAL DISPATCH ORDER';
+            $statusSlug = 'PARTIAL-DISPATCH';
+        } else {
+            $statusTitle = 'PENDING ORDER';
+            $statusSlug = 'PENDING';
+        }
+
         $data = [
             'order' => $order,
             'company' => $order->company,
@@ -392,7 +426,9 @@ class HistoryPdfController extends Controller
             'orderDate' => $order->created_at->format('d-M-Y'),
             'generatedOn' => now()->format('d-M-Y h:i A'),
             'generatedBy' => $this->authUser()['name'] ?? 'System',
+            'orderBy' => $order->creator?->name ?? 'N/A',
             'status' => $order->status,
+            'statusTitle' => $statusTitle,
             'remarks' => $order->notes ?? '',
             'totalOrderedQty' => $totalOrderedQty,
             'totalAmount' => $totalAmount,
@@ -400,8 +436,8 @@ class HistoryPdfController extends Controller
         ];
 
         $companyNameClean = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $order->company?->name ?? 'COMPANY'));
-        $createdDateStr = $order->created_at ? $order->created_at->format('d-m-y') : now()->format('d-m-y');
-        $pdfFilename = strtoupper($data['orderNo']) . '_SALES_' . $companyNameClean . '_' . $createdDateStr . '.pdf';
+        $createdDateStr = $order->created_at ? $order->created_at->format('d-m-Y') : now()->format('d-m-Y');
+        $pdfFilename = 'DISPATCH_' . strtoupper($data['orderNo']) . '_' . $companyNameClean . '_' . $statusSlug . '_' . $createdDateStr . '.pdf';
 
         $pdf = Pdf::loadView('pdf.sales-order', $data)->setPaper('A4', 'portrait');
         return $pdf->download($pdfFilename);
@@ -470,9 +506,14 @@ class HistoryPdfController extends Controller
             'dispatchType' => ($totalPendingQty <= 0) ? 'Full Dispatch' : 'Partial Dispatch',
         ];
 
+        $companyNameClean = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $order->company?->name ?? 'COMPANY'));
+        $dispatchDateStr = $log->created_at ? $log->created_at->format('d-m-Y') : now()->format('d-m-Y');
+        $rawSt = strtoupper(trim(str_replace('_', '-', (string)($order->dispatch_status ?? 'DISPATCHED'))));
+        $noteFilename = strtoupper($data['dispatchNo']) . '_' . strtoupper($data['orderNo']) . '_' . $companyNameClean . '_' . $rawSt . '_' . $dispatchDateStr . '.pdf';
+
         $pdf = Pdf::loadView('pdf.dispatch-note', $data)->setPaper('A4', 'portrait');
 
-        return $pdf->download($data['dispatchNo'] . '_Dispatch_Note_' . now()->format('Ymd_His') . '.pdf');
+        return $pdf->download($noteFilename);
     }
 
     private function buildDispatchReportData(Request $request): array
@@ -654,12 +695,28 @@ class HistoryPdfController extends Controller
             }
         }
 
+        $statusFilter = $request->status;
+        $reportTitle = 'ALL DISPATCH HISTORY REPORT';
+        if ($statusFilter) {
+            $target = strtoupper(trim(str_replace('_', ' ', $statusFilter)));
+            if ($target === 'PENDING') {
+                $reportTitle = 'PENDING DISPATCH HISTORY REPORT';
+            } elseif ($target === 'PARTIAL PENDING') {
+                $reportTitle = 'PARTIAL PENDING DISPATCH HISTORY REPORT';
+            } elseif ($target === 'PARTIAL DISPATCH' || $target === 'PARTIAL') {
+                $reportTitle = 'PARTIAL DISPATCH HISTORY REPORT';
+            } elseif ($target === 'FULLY DISPATCHED' || $target === 'DONE') {
+                $reportTitle = 'FULLY DISPATCH HISTORY REPORT';
+            }
+        }
+
         return [
             'reportId' => 'RPT-DISP-' . now()->format('Ymd') . '-' . rand(100, 999),
             'userName' => $user['name'] ?? 'Authorized User',
             'generatedOn' => now()->format('d M Y, h:i A'),
             'fromDate' => $from ? $from->format('d M Y') : 'All Time',
             'toDate' => $to ? $to->format('d M Y') : now()->format('d M Y'),
+            'reportTitle' => $reportTitle,
             'totalRecords' => count($rows),
             'completedCount' => $fullyDispatchedCount,
             'fullyDispatchedCount' => $fullyDispatchedCount,

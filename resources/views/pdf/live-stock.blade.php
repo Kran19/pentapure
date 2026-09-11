@@ -70,7 +70,9 @@
         </div>
     </div>
     <div class="title">
-        @if(!empty($date))
+        @if(!empty($isStockManager))
+            Live Stock Report
+        @elseif(!empty($date))
             Stock Valuation Report <br>
             <span style="font-size: 16px; font-weight: normal; color: #667085; text-transform: none;">
                 Up To {{ \Carbon\Carbon::parse($date)->format('d M Y') }}
@@ -82,28 +84,36 @@
 
     <div class="meta">
         <div class="meta-col">
-            <div class="meta-row"><span class="label">Report Type</span><span class="colon">:</span>{{ empty($date) ? 'Stock Valuation (Live)' : 'Stock Valuation (Historical)' }}</div>
+            <div class="meta-row"><span class="label">Report Type</span><span class="colon">:</span>{{ !empty($isStockManager) ? 'Live Stock Report' : (empty($date) ? 'Stock Valuation (Live)' : 'Stock Valuation (Historical)') }}</div>
             <div class="meta-row"><span class="label">Generated On</span><span class="colon">:</span>{{ $generatedOn }}</div>
         </div>
         <div class="meta-col">
             <div class="meta-row"><span class="label">Included Stages</span><span class="colon">:</span>{{ implode(', ', $stages) }}</div>
-            <div class="meta-row"><span class="label">Valuation Ref</span><span class="colon">:</span>Internal Reference</div>
+            @if(empty($isStockManager))
+                <div class="meta-row"><span class="label">Valuation Ref</span><span class="colon">:</span>Internal Reference</div>
+            @endif
         </div>
     </div>
 
-    <div class="section-label">Stock Valuation Details</div>
+    <div class="section-label">{{ !empty($isStockManager) ? 'Stock Details' : 'Stock Valuation Details' }}</div>
+    @if(empty($isStockManager))
     <div style="margin-top: 10px; margin-bottom: 20px;">
         <span style="font-size: 11px; color: #667085; font-style: italic;">Note: Rates and amounts listed below are for stock valuation reference only and are not linked to sales panels.</span>
     </div>
+    @else
+    <div style="margin-top: 10px; margin-bottom: 20px;"></div>
+    @endif
 
     <table>
         <thead>
             <tr>
-                <th style="width:42%; color:#111827;">Product Name</th>
-                <th style="width:23%; color:#111827;">Location</th>
-                <th style="width:15%; text-align: right; color:#111827;">Available Qty</th>
-                <th style="width:10%; text-align: right; color:#111827;">Rate / Unit</th>
-                <th style="width:10%; text-align: right; color:#111827;">Valuation (Rs.)</th>
+                <th style="width:{{ !empty($isStockManager) ? '55%' : '42%' }}; color:#111827;">Product Name</th>
+                <th style="width:{{ !empty($isStockManager) ? '30%' : '23%' }}; color:#111827;">Location</th>
+                <th style="width:{{ !empty($isStockManager) ? '15%' : '15%' }}; text-align: right; color:#111827;">Available Qty</th>
+                @if(empty($isStockManager))
+                    <th style="width:10%; text-align: right; color:#111827;">Rate / Unit</th>
+                    <th style="width:10%; text-align: right; color:#111827;">Valuation (Rs.)</th>
+                @endif
             </tr>
         </thead>
 
@@ -119,15 +129,17 @@
                     <td style="text-align: right; font-weight: 600;">
                         {{ number_format($item['quantity'], 2) }} <span style="font-size: 10px; font-weight: normal; color: #667085;">{{ $item['unit'] }}</span>
                     </td>
-                    <td style="text-align: right;">₹{{ number_format($item['rate'], 2) }}</td>
-                    <td class="amount">₹{{ number_format($item['amount'], 2) }}</td>
+                    @if(empty($isStockManager))
+                        <td style="text-align: right;">₹{{ number_format($item['rate'], 2) }}</td>
+                        <td class="amount">₹{{ number_format($item['amount'], 2) }}</td>
+                    @endif
                 </tr>
             @empty
                 <tr>
-                    <td colspan="5" class="center">No live stock records found matching filters.</td>
+                    <td colspan="{{ !empty($isStockManager) ? 3 : 5 }}" class="center">No live stock records found matching filters.</td>
                 </tr>
             @endforelse
-            @if(!empty($items))
+            @if(!empty($items) && empty($isStockManager))
                 <tr style="background-color: #fffdf5; font-weight: bold; font-size: 14px;">
                     <td colspan="4" style="text-align: right; border-top: 2px solid #f8c300; padding: 15px 10px;">Total Stock Valuation (Ref):</td>
                     <td class="amount" style="border-top: 2px solid #f8c300; padding: 15px 10px; color: #b37400;">₹{{ number_format($totalValuation, 2) }}</td>

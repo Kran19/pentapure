@@ -49,8 +49,8 @@ class AuthMiddleware
             $seg2 = strtolower($segments[1] ?? 'home');
             $seg3 = strtolower($segments[2] ?? '');
 
-            // Skip strict checks for profile, logout, notifications API
-            if (in_array($seg2, ['profile', 'logout']) || $seg1 === 'notifications' || $seg1 === 'logout' || str_starts_with($path, 'api/')) {
+            // Skip strict checks for profile, logout, notifications API, and all JSON API endpoints
+            if (in_array($seg2, ['profile', 'logout']) || $seg1 === 'notifications' || $seg1 === 'logout' || str_contains($path, 'api/')) {
                 view()->share('authUser', $user);
                 return $next($request);
             }

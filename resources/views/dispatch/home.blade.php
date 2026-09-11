@@ -87,10 +87,10 @@
     <input type="hidden" name="tab" value="{{ $tab }}">
     <select name="dispatch_filter" onchange="this.form.submit()" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:6px; border:1px solid rgba(255,255,255,0.2); background:#1f2937; color:#fff; cursor:pointer;">
       <option value="all" {{ request('dispatch_filter') === 'all' || !request('dispatch_filter') ? 'selected' : '' }}>All Scenarios</option>
-      <option value="done" {{ request('dispatch_filter') === 'done' ? 'selected' : '' }}>Fully Dispatched (DONE)</option>
-      <option value="partial_dispatch" {{ request('dispatch_filter') === 'partial_dispatch' ? 'selected' : '' }}>Partial Dispatched</option>
-      <option value="partial_pending" {{ request('dispatch_filter') === 'partial_pending' ? 'selected' : '' }}>Partial Pending</option>
-      <option value="pending" {{ request('dispatch_filter') === 'pending' ? 'selected' : '' }}>Fully Pending</option>
+      <option value="ready_dispatch" {{ request('dispatch_filter') === 'ready_dispatch' ? 'selected' : '' }}>Ready to Dispatch</option>
+      <option value="ready_partial" {{ request('dispatch_filter') === 'ready_partial' || request('dispatch_filter') === 'partial_dispatch' || request('dispatch_filter') === 'partial_pending' ? 'selected' : '' }}>Ready to Partial Dispatch</option>
+      <option value="not_ready" {{ request('dispatch_filter') === 'not_ready' ? 'selected' : '' }}>Not Ready</option>
+      <option value="done" {{ request('dispatch_filter') === 'done' ? 'selected' : '' }}>Fully Dispatched (Completed)</option>
     </select>
   </form>
 </div>
@@ -102,8 +102,14 @@
 
   if ($dispatchFilter === 'done') {
     $pendingOrdersList = collect([]);
-  } elseif ($dispatchFilter === 'partial_dispatch' || $dispatchFilter === 'partial_pending') {
-    $pendingOrdersList = $pendingOrdersList->filter(fn($o) => (float)$o['dispatchedQty'] > 0 && (float)$o['dispatchedQty'] < (float)$o['totalQty']);
+  } elseif ($dispatchFilter === 'ready_dispatch') {
+    $pendingOrdersList = $pendingOrdersList->filter(fn($o) => ($o['readiness'] ?? '') === 'READY_DISPATCH');
+    $completedOrdersList = collect([]);
+  } elseif ($dispatchFilter === 'ready_partial' || $dispatchFilter === 'partial_dispatch' || $dispatchFilter === 'partial_pending') {
+    $pendingOrdersList = $pendingOrdersList->filter(fn($o) => ($o['readiness'] ?? '') === 'READY_PARTIAL');
+    $completedOrdersList = collect([]);
+  } elseif ($dispatchFilter === 'not_ready') {
+    $pendingOrdersList = $pendingOrdersList->filter(fn($o) => ($o['readiness'] ?? '') === 'NOT_READY');
     $completedOrdersList = collect([]);
   } elseif ($dispatchFilter === 'pending') {
     $pendingOrdersList = $pendingOrdersList->filter(fn($o) => (float)$o['dispatchedQty'] == 0);
@@ -118,14 +124,50 @@
         $totalQty = (float)$o['totalQty'];
         $dispatchedQty = (float)$o['dispatchedQty'];
         $pct = $totalQty > 0 ? round(($dispatchedQty / $totalQty) * 100) : 0;
-        $progressColor = $pct === 0 ? 'var(--warning)' : 'var(--secondary)';
-        $isReadySection = true; // By default assume ready, though JS does checking
+        
+        $readiness = $o['readiness'] ?? 'NOT_READY';
+        $rawSt = strtoupper(trim((string)($o['dispatchStatus'] ?? 'PENDING')));
+
+        if ($readiness === 'READY_DISPATCH') {
+          $readinessLabel = 'READY TO DISPATCH';
+          $readinessBg = '#16a34a';
+          $readinessFg = '#ffffff';
+          $btnText = 'DISPATCH';
+          $progressColor = '#16a34a';
+        } elseif ($readiness === 'READY_PARTIAL') {
+          $readinessLabel = 'READY TO PARTIAL DISPATCH';
+          $readinessBg = '#f59e0b';
+          $readinessFg = '#ffffff';
+          $btnText = 'PARTIAL DISPATCH';
+          $progressColor = '#f59e0b';
+        } else {
+          $readinessLabel = 'NOT READY';
+          $readinessBg = '#dc2626';
+          $readinessFg = '#ffffff';
+          $btnText = 'NOT READY';
+          $progressColor = '#dc2626';
+        }
+
+        // Status badge next to Order # ID
+        if (in_array($rawSt, ['PARTIAL_PENDING', 'PARTIAL PENDING', 'PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH']) || ($dispatchedQty > 0 && $dispatchedQty < $totalQty)) {
+          $statusBadgeLabel = 'PARTIAL PENDING';
+          $statusBadgeBg = '#8b5cf6';
+          $statusBadgeFg = '#ffffff';
+        } else {
+          $statusBadgeLabel = 'PENDING';
+          $statusBadgeBg = '#eab308';
+          $statusBadgeFg = '#000000';
+        }
       @endphp
       <div class="card" style="border-left: 4px solid {{ $progressColor }}; background:rgba(255,255,255,0.02); transition: transform 0.2s; margin-bottom: 0;">
-        <div class="flex-between mb-1">
-          <span style="font-weight:bold; font-size:1.1rem; color:#fff;">Order #{{ strtoupper((string)$o['id']) }}</span>
-          <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action') }}" onclick="localStorage.setItem('auto_dispatch_id', '{{ $o['id'] }}');" style="width:auto; text-decoration:none; background:{{ $progressColor }};">
-            {{ $pct === 0 ? 'Dispatch' : 'Partial Dispatch' }}
+        <div class="flex-between mb-1" style="align-items:center;">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span style="font-weight:bold; font-size:1.1rem; color:#fff;">Order #{{ strtoupper((string)$o['id']) }}</span>
+            <span class="badge" style="font-size:0.65rem; background:{{ $statusBadgeBg }}; color:{{ $statusBadgeFg }}; padding:3px 8px; border-radius:4px; font-weight:700;">{{ $statusBadgeLabel }}</span>
+            <span class="badge" style="font-size:0.65rem; background:{{ $readinessBg }}; color:{{ $readinessFg }}; padding:3px 8px; border-radius:4px; font-weight:700;">{{ $readinessLabel }}</span>
+          </div>
+          <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action') }}" onclick="localStorage.setItem('auto_dispatch_id', '{{ $o['id'] }}');" style="width:auto; text-decoration:none; background:{{ $progressColor }}; font-weight:700;">
+            {{ $btnText }}
           </a>
         </div>
         <div style="font-size:0.85rem; color:var(--text-muted); line-height:1.5;">

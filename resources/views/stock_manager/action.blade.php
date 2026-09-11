@@ -118,6 +118,7 @@ input[type=number].no-spinners {
     <div class="form-group" style="margin-bottom:1.2rem;">
       <label>Grade *</label>
       <select id="sm-grade" name="grade" onchange="loadSmLocations()" style="padding:0.75rem; width:100%; font-weight:600; cursor:pointer;">
+        <option value="ALL">ALL GRADES</option>
         <option value="NONE">NONE</option>
       </select>
     </div>
@@ -207,9 +208,9 @@ function onStageChange(stage) {
   if (exists) {
     prodSelect.value = currentVal;
   } else {
-    document.getElementById('sm-grade').innerHTML = '<option value="NONE">NONE</option>';
+    document.getElementById('sm-grade').innerHTML = '<option value="ALL">ALL GRADES</option><option value="NONE">NONE</option>';
   }
-  renderLocationDropdownMenu();
+  loadSmLocations(true);
 }
 
 function onProductChange(prodId) {
@@ -217,55 +218,101 @@ function onProductChange(prodId) {
   const gradeSelect = document.getElementById('sm-grade');
   if (gradeSelect) {
     if (p && p.grades && p.grades.length > 0) {
-      gradeSelect.innerHTML = p.grades.map(g => `<option value="${g}">${g}</option>`).join('');
+      let opts = '<option value="ALL">ALL GRADES</option>';
+      opts += p.grades.map(g => `<option value="${g}">${g}</option>`).join('');
+      gradeSelect.innerHTML = opts;
     } else {
-      gradeSelect.innerHTML = '<option value="NONE">NONE</option>';
+      gradeSelect.innerHTML = '<option value="ALL">ALL GRADES</option><option value="NONE">NONE</option>';
     }
   }
-  loadSmLocations();
+  loadSmLocations(true);
 }
 
-function loadSmLocations() {
+function loadSmLocations(resetInputs = false) {
   const prodId = document.getElementById('sm-prod-id').value;
   const stageSelect = document.getElementById('sm-stage').value;
-  const p = allMasterProducts.find(item => item.id == prodId);
-  const stage = stageSelect !== 'ALL' ? stageSelect : (p ? p.type : 'RAW');
-  const grade = document.getElementById('sm-grade').value;
+  const stage = stageSelect || 'ALL';
+  const grade = document.getElementById('sm-grade') ? document.getElementById('sm-grade').value : 'ALL';
 
   if (!prodId) {
     window.currentLocBreakdown = [];
-    renderLocationDropdownMenu();
+    renderLocationDropdownMenu(resetInputs);
     return;
   }
 
-  fetch(`/api/stock/locations?product_id=${prodId}&stage=${stage}&grade=${encodeURIComponent(grade)}`)
-    .then(r => r.json())
-    .then(data => {
-      window.currentLocBreakdown = (data.success && data.breakdown) ? data.breakdown : [];
-      renderLocationDropdownMenu();
-    })
-    .catch(() => {
+  const query = `product_id=${prodId}&stage=${stage}&grade=${encodeURIComponent(grade)}`;
+  const userSlug = window.userSlug || 'stock_manager';
+
+  const fetchStock = fetch(`/api/stock/locations?${query}`)
+    .then(r => r.ok ? r.json() : fetch(`${window.location.origin}/${userSlug}/api/stock/locations?${query}`).then(r2 => r2.json()))
+    .catch(() => fetch(`${window.location.origin}/${userSlug}/api/stock/locations?${query}`).then(r2 => r2.json()).catch(() => ({ success: false })));
+
+  const fetchLocs = fetch(`/api/locations`)
+    .then(r => r.ok ? r.json() : fetch(`${window.location.origin}/${userSlug}/api/locations`).then(r2 => r2.json()))
+    .catch(() => fetch(`${window.location.origin}/${userSlug}/api/locations`).then(r2 => r2.json()).catch(() => ({ success: false })));
+
+  Promise.all([fetchStock, fetchLocs])
+  .then(([stockData, locData]) => {
+    if (stockData && stockData.success && stockData.breakdown) {
+      window.currentLocBreakdown = stockData.breakdown;
+    } else {
       window.currentLocBreakdown = [];
-      renderLocationDropdownMenu();
-    });
+    }
+
+    if (locData && locData.success && locData.locations && locData.locations.length > 0) {
+      window.liveMasterLocations = locData.locations.map(l => l.name);
+    }
+    renderLocationDropdownMenu(resetInputs);
+  })
+  .catch(() => {
+    window.currentLocBreakdown = [];
+    renderLocationDropdownMenu(resetInputs);
+  });
 }
 
-function renderLocationDropdownMenu() {
+function renderLocationDropdownMenu(resetInputs = false) {
   const dropdownMenu = document.querySelector('#sm-custom-location-dropdown .dropdown-menu');
   if (!dropdownMenu) return;
 
+  // Save current user typed input values before re-rendering unless resetting
+  const existingValues = {};
+  if (!resetInputs) {
+    document.querySelectorAll('#sm-custom-location-dropdown .inner-qty-input').forEach(inp => {
+      const loc = inp.getAttribute('data-loc');
+      if (loc && inp.value !== '') {
+        existingValues[loc.trim().toLowerCase()] = inp.value;
+      }
+    });
+  } else {
+    const mainQtyInp = document.getElementById('sm-total-qty-input');
+    if (mainQtyInp) mainQtyInp.value = 0;
+  }
+
   const locMap = {};
   (window.currentLocBreakdown || []).forEach(l => { locMap[l.name.trim().toLowerCase()] = l.quantity; });
-  const locs = masterLocations.length ? masterLocations : ['Main Warehouse', 'Warehouse A', 'Warehouse B', 'Rack 1', 'Cold Room'];
+
+  const defaultLocs = ['Main Warehouse', 'Warehouse A', 'Warehouse B', 'Rack 1', 'Cold Room'];
+  const baseLocs = (window.liveMasterLocations && window.liveMasterLocations.length)
+    ? window.liveMasterLocations
+    : (masterLocations.length ? masterLocations : defaultLocs);
+
+  // Combine with any extra locations returned in currentLocBreakdown
+  const allLocNames = new Set(baseLocs);
+  (window.currentLocBreakdown || []).forEach(l => {
+    if (l.name) allLocNames.add(l.name.trim());
+  });
 
   let html = '';
-  locs.forEach(locName => {
+  allLocNames.forEach(locName => {
     const key = locName.trim().toLowerCase();
-    const avail = locMap[key] !== undefined ? locMap[key] : 0;
+    const avail = locMap[key] !== undefined ? parseFloat(locMap[key]) : 0;
+    const formattedAvail = avail.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const preservedVal = existingValues[key] !== undefined ? existingValues[key] : '0';
+    
     html += `
-      <li style="margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:#333; gap:8px;">
-        <span style="padding-left:0.2rem; font-weight:600;">${locName.toUpperCase()} (AVAIL: ${avail} KG)</span>
-        <input type="number" min="0" step="0.001" class="form-control form-control-sm inner-qty-input no-spinners" data-loc="${locName}" data-avail="${avail}" oninput="recalcDropdownTotals()" style="width: 70px; text-align:center; padding: 0.2rem; height:1.8rem; font-size:0.8rem; border:1px solid #d1d5db; border-radius:4px;" value="0">
+      <li style="margin-bottom:0.55rem; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:#333; gap:8px;">
+        <span style="padding-left:0.2rem; font-weight:700; color:#1f2937;">${locName.toUpperCase()} <small style="color:${avail > 0 ? '#16a34a' : '#9ca3af'}; font-weight:800;">(AVAIL: ${formattedAvail} KG)</small></span>
+        <input type="number" min="0" step="0.001" class="form-control form-control-sm inner-qty-input no-spinners" data-loc="${escapeHtml(locName)}" data-avail="${avail}" oninput="recalcDropdownTotals()" style="width: 75px; text-align:center; padding: 0.25rem; height:1.8rem; font-size:0.82rem; border:1px solid #d1d5db; border-radius:4px; font-weight:700;" value="${preservedVal}">
       </li>
     `;
   });
@@ -280,7 +327,6 @@ function recalcDropdownTotals() {
   const activeLocSummary = [];
   const actionType = document.getElementById('sm-action-type').value;
 
-  // Calculate sum of currently available stock across all locations for selected product+grade
   const totalExistingAvail = (window.currentLocBreakdown || []).reduce((sum, l) => sum + (parseFloat(l.quantity) || 0), 0);
 
   inputs.forEach(inp => {
@@ -288,14 +334,21 @@ function recalcDropdownTotals() {
     const locName = inp.getAttribute('data-loc');
     const avail = parseFloat(inp.getAttribute('data-avail') || 0);
 
+    if (actionType === 'OUTWARD' && qty > avail) {
+      inp.style.border = '2px solid #ef4444';
+      inp.style.backgroundColor = '#fef2f2';
+    } else {
+      inp.style.border = '1px solid #d1d5db';
+      inp.style.backgroundColor = '#ffffff';
+    }
+
     if (qty > 0) {
       sumEnteredQty += qty;
       const previewQty = actionType === 'INWARD' ? (avail + qty) : Math.max(0, avail - qty);
-      activeLocSummary.push(`${locName.toUpperCase()} (${previewQty} KG)`);
+      activeLocSummary.push(`${locName.toUpperCase()} (${previewQty.toFixed(2)} KG)`);
     }
   });
 
-  // Update button text with preview of selected locations
   const btnText = document.querySelector('#sm-custom-location-dropdown .loc-dropdown-text');
   if (btnText) {
     if (activeLocSummary.length > 0) {
@@ -305,21 +358,22 @@ function recalcDropdownTotals() {
     }
   }
 
-  // Update main QTY * field with sum of newly entered location quantities
   const totalQtyInput = document.getElementById('sm-total-qty-input');
-  if (totalQtyInput) {
-    totalQtyInput.value = sumEnteredQty > 0 ? sumEnteredQty : 0;
+  if (totalQtyInput && sumEnteredQty > 0) {
+    totalQtyInput.value = sumEnteredQty;
   }
 
-  // Calculate overall net TOTAL: existing stock + newly entered stock (or - if outward)
   let grandTotal = actionType === 'INWARD'
     ? (totalExistingAvail + sumEnteredQty)
     : Math.max(0, totalExistingAvail - sumEnteredQty);
 
-  // Update TOTAL header to show overall stock calculation
   const badge = document.getElementById('sm-action-total-qty');
   if (badge) {
-    badge.innerText = `(TOTAL: ${grandTotal.toLocaleString('en-IN', { maximumFractionDigits: 3 })} KG)`;
+    if (sumEnteredQty > 0) {
+      badge.innerText = `(TOTAL AVAIL: ${totalExistingAvail.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KG → NEW TOTAL: ${grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KG)`;
+    } else {
+      badge.innerText = `(TOTAL AVAIL: ${totalExistingAvail.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KG)`;
+    }
   }
 }
 
@@ -334,7 +388,11 @@ function onDirectTotalQtyInput(mainInput) {
 
   const badge = document.getElementById('sm-action-total-qty');
   if (badge) {
-    badge.innerText = `(TOTAL: ${grandTotal.toLocaleString('en-IN', { maximumFractionDigits: 3 })} KG)`;
+    if (mainVal > 0) {
+      badge.innerText = `(TOTAL AVAIL: ${totalExistingAvail.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KG → NEW TOTAL: ${grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KG)`;
+    } else {
+      badge.innerText = `(TOTAL AVAIL: ${totalExistingAvail.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KG)`;
+    }
   }
 }
 
@@ -466,5 +524,13 @@ function submitSmAction(e) {
     onActionTypeChange(actionType);
   });
 }
+document.addEventListener('DOMContentLoaded', function() {
+  const prodSelect = document.getElementById('sm-prod-id');
+  if (prodSelect && prodSelect.value) {
+    onProductChange(prodSelect.value);
+  } else {
+    loadSmLocations();
+  }
+});
 </script>
 @endsection

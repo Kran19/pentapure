@@ -174,6 +174,17 @@
     @php
       $lrUploaded = !empty($d['lrImage']);
       $lrStatus = $lrUploaded ? '<span class="badge badge-done" style="font-size:0.65rem;">LR UPLOADED</span>' : '<span class="badge" style="font-size:0.65rem; background:#dc2626 !important; color:#ffffff !important; font-weight:700; padding:3px 8px; border-radius:4px;">LR PENDING</span>';
+
+      $rawSt = strtoupper(trim((string)($d['dispatchStatus'] ?? $d['status'] ?? 'PENDING')));
+      if (in_array($rawSt, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED'])) {
+        $statusBadge = '<span class="badge badge-done" style="font-size:0.65rem; background:#16a34a; color:#fff; padding:3px 8px; border-radius:4px; font-weight:700;">FULLY DISPATCHED</span>';
+      } elseif (in_array($rawSt, ['PARTIAL', 'PARTIAL DISPATCH'])) {
+        $statusBadge = '<span class="badge" style="font-size:0.65rem; background:#f59e0b; color:#fff; padding:3px 8px; border-radius:4px; font-weight:700;">PARTIAL DISPATCH</span>';
+      } elseif ($rawSt === 'PARTIAL PENDING') {
+        $statusBadge = '<span class="badge" style="font-size:0.65rem; background:#8b5cf6; color:#fff; padding:3px 8px; border-radius:4px; font-weight:700;">PARTIAL PENDING</span>';
+      } else {
+        $statusBadge = '<span class="badge badge-pending" style="font-size:0.65rem; background:#eab308; color:#000; padding:3px 8px; border-radius:4px; font-weight:700;">PENDING</span>';
+      }
     @endphp
     <div class="card dispatch-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--glass-border, rgba(255,255,255,0.06)); background:var(--card-bg, rgba(255,255,255,0.03)); transition:all 0.2s ease;">
       <!-- Clickable Header Row -->
@@ -183,6 +194,8 @@
             Order #{{ strtoupper((string)$d['orderId']) }} - {{ $d['companyName'] ?? 'N/A' }}
           </div>
           <div style="margin-top:6px; font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            {!! $statusBadge !!}
+            <span>•</span>
             {!! $lrStatus !!}
             <span>•</span>
             <span>Transporter: {{ $d['transportName'] ?? 'N/A' }}</span>

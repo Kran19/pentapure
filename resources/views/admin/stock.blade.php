@@ -1155,16 +1155,20 @@ async function showLocationBreakdown(el) {
   try {
     const locRes = await fetch(window.baseUrl + '/' + window.userSlug + '/api/locations');
     const locData = await locRes.json();
-    if (locData.success) {
+    if (locData.success && locData.locations) {
       allLocations = locData.locations;
     }
   } catch (e) {
     console.error('Failed to load locations', e);
   }
 
-  if (allLocations.length === 0) {
-    allLocations = [{ id: null, name: 'No locations available' }];
-  }
+  const defaultLocNames = ['Main Warehouse', 'Warehouse A', 'Warehouse B', 'Rack 1', 'Cold Room'];
+  const existingNames = new Set((allLocations || []).map(l => (l.name || '').trim().toLowerCase()));
+  defaultLocNames.forEach((name, idx) => {
+    if (!existingNames.has(name.toLowerCase())) {
+      allLocations.push({ id: 1000 + idx, name });
+    }
+  });
   
   const mappings = getStoredLocationMappings();
   const totalStockQty = getAvailableStockForLocationCell(el);

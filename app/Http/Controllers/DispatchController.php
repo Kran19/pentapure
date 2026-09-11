@@ -17,8 +17,14 @@ class DispatchController extends Controller
 
     public function home()
     {
-        $pending   = Order::with(['company', 'transporter', 'items.product'])->whereIn('dispatch_status', ['PENDING', 'PARTIAL'])->orderByDesc('created_at')->get();
-        $completed = Order::with(['company', 'transporter'])->where('dispatch_status', 'DONE')->orderByDesc('created_at')->get();
+        $pending   = Order::with(['company', 'transporter', 'items.product'])
+            ->where(function($q) {
+                $q->whereNotIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY DISPATCHED'])
+                  ->orWhereNull('dispatch_status');
+            })
+            ->orderByDesc('created_at')
+            ->get();
+        $completed = Order::with(['company', 'transporter'])->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY DISPATCHED'])->orderByDesc('created_at')->get();
 
         $rawStock = DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
@@ -44,34 +50,87 @@ class DispatchController extends Controller
             ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
             ->get();
 
+        $liveStocks = DB::table('stocks')
+            ->selectRaw("product_id, grade, SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as net_qty")
+            ->groupBy('product_id', 'grade')
+            ->get();
+
+        $stockMap = [];
+        foreach ($liveStocks as $ls) {
+            $g = $ls->grade ?: 'NONE';
+            $key = $ls->product_id . '_' . $g;
+            $stockMap[$key] = ($stockMap[$key] ?? 0) + max(0, (float)$ls->net_qty);
+
+            $allKey = $ls->product_id . '_ALL';
+            $stockMap[$allKey] = ($stockMap[$allKey] ?? 0) + max(0, (float)$ls->net_qty);
+        }
+
         $pageData = [
             'rawStock'        => $rawStock,
             'semiStock'       => $semiStock,
             'finishedStock'   => $finishedStock,
-            'pendingOrders'   => $pending->map(fn($o) => [
-                'id'           => $o->id,
-                'companyId'    => $o->company_id,
-                'companyName'  => $o->company?->name,
-                'transportId'  => $o->transporter_id,
-                'transporterName' => $o->transporter?->name,
-                'total'        => $o->total,
-                'date'         => $o->created_at->toISOString(),
-                'totalQty'     => $o->items->sum('quantity'),
-                'dispatchedQty'=> $o->items->sum('dispatched_qty'),
-                'notes'        => $o->notes,
-                'items'        => $o->items->map(fn($i) => [
-                    'id'            => $i->id,
-                    'productId'     => $i->product_id,
-                    'rawProductName'=> $i->product?->name ?? 'Unknown',
-                    'productName'   => $i->product?->name ?? 'Unknown',
-                    'formattedName' => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
-                    'productType'   => $i->product?->type,
-                    'quantity'      => (float) $i->quantity,
-                    'dispatchedQty' => (float) $i->dispatched_qty,
-                    'remainingQty'  => $i->remainingQty(),
-                    'grade'         => $i->grade,
-                ]),
-            ]),
+            'pendingOrders'   => $pending->map(function($o) use ($stockMap) {
+                $items = $o->items->map(function($i) use ($stockMap) {
+                    $needed = max(0, (float)$i->quantity - (float)$i->dispatched_qty);
+                    $g = $i->grade ?: 'NONE';
+                    $key = $i->product_id . '_' . $g;
+                    $avail = $stockMap[$key] ?? $stockMap[$i->product_id . '_ALL'] ?? 0;
+                    return [
+                        'id'            => $i->id,
+                        'productId'     => $i->product_id,
+                        'rawProductName'=> $i->product?->name ?? 'Unknown',
+                        'productName'   => $i->product?->name ?? 'Unknown',
+                        'formattedName' => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
+                        'productType'   => $i->product?->type,
+                        'quantity'      => (float) $i->quantity,
+                        'dispatchedQty' => (float) $i->dispatched_qty,
+                        'remainingQty'  => $needed,
+                        'availStock'    => $avail,
+                        'grade'         => $i->grade,
+                    ];
+                });
+
+                $remainingItems = $items->filter(fn($i) => $i['remainingQty'] > 0);
+                $totalRemainingItems = $remainingItems->count();
+
+                $fullCount = 0;
+                $partialCount = 0;
+
+                foreach ($remainingItems as $ri) {
+                    if ($ri['availStock'] >= $ri['remainingQty']) {
+                        $fullCount++;
+                        $partialCount++;
+                    } elseif ($ri['availStock'] > 0) {
+                        $partialCount++;
+                    }
+                }
+
+                if ($totalRemainingItems == 0) {
+                    $readiness = 'DONE';
+                } elseif ($fullCount === $totalRemainingItems) {
+                    $readiness = 'READY_DISPATCH';
+                } elseif ($partialCount > 0) {
+                    $readiness = 'READY_PARTIAL';
+                } else {
+                    $readiness = 'NOT_READY';
+                }
+
+                return [
+                    'id'           => $o->id,
+                    'companyId'    => $o->company_id,
+                    'companyName'  => $o->company?->name,
+                    'transportId'  => $o->transporter_id,
+                    'transporterName' => $o->transporter?->name,
+                    'total'        => $o->total,
+                    'date'         => $o->created_at->toISOString(),
+                    'totalQty'     => $o->items->sum('quantity'),
+                    'dispatchedQty'=> $o->items->sum('dispatched_qty'),
+                    'dispatchStatus' => $o->dispatch_status,
+                    'readiness'    => $readiness,
+                    'notes'        => $o->notes,
+                    'items'        => $items,
+                ];
+            }),
             'completedOrders' => $completed->map(fn($o) => [
                 'id'           => $o->id,
                 'companyId'    => $o->company_id,
@@ -90,7 +149,10 @@ class DispatchController extends Controller
     public function action()
     {
         $pendingOrders = Order::with(['company', 'transporter', 'items.product'])
-            ->whereIn('dispatch_status', ['PENDING', 'PARTIAL'])
+            ->where(function($q) {
+                $q->whereNotIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY DISPATCHED'])
+                  ->orWhereNull('dispatch_status');
+            })
             ->orderByDesc('created_at')
             ->get();
 
@@ -168,6 +230,8 @@ class DispatchController extends Controller
 
                 $dispatchQty = (float) $dispatchItem['quantity'];
                 $remaining   = $orderItem->remainingQty();
+                $itemGrade   = (!empty($orderItem->grade) && $orderItem->grade !== 'NONE') ? $orderItem->grade : 'NONE';
+                $itemStage   = !empty($orderItem->product?->type) ? $orderItem->product->type : 'RAW';
 
                 if ($dispatchQty > $remaining) {
                     $response = response()->json([
@@ -194,8 +258,14 @@ class DispatchController extends Controller
 
                         $availableAtLocation = DB::table('stocks')
                             ->where('product_id', $orderItem->product_id)
-                            ->where('stage', $orderItem->product->type)
-                            ->where('grade', $orderItem->grade)
+                            ->where('stage', $itemStage)
+                            ->where(function($q) use ($itemGrade) {
+                                if ($itemGrade === 'NONE') {
+                                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '');
+                                } else {
+                                    $q->where('grade', $itemGrade);
+                                }
+                            })
                             ->where('location_id', $locationId)
                             ->lockForUpdate()
                             ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
@@ -212,8 +282,14 @@ class DispatchController extends Controller
                 } else {
                     $available = DB::table('stocks')
                         ->where('product_id', $orderItem->product_id)
-                        ->where('stage', $orderItem->product->type)
-                        ->where('grade', $orderItem->grade)
+                        ->where('stage', $itemStage)
+                        ->where(function($q) use ($itemGrade) {
+                            if ($itemGrade === 'NONE') {
+                                $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '');
+                            } else {
+                                $q->where('grade', $itemGrade);
+                            }
+                        })
                         ->lockForUpdate()
                         ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
                         ->value('net') ?? 0;
@@ -251,6 +327,8 @@ class DispatchController extends Controller
             foreach ($request->items as $dispatchItem) {
                 $orderItem   = $order->items->firstWhere('id', $dispatchItem['order_item_id']);
                 $dispatchQty = (float) $dispatchItem['quantity'];
+                $itemGrade   = (!empty($orderItem->grade) && $orderItem->grade !== 'NONE') ? $orderItem->grade : 'NONE';
+                $itemStage   = !empty($orderItem->product?->type) ? $orderItem->product->type : 'RAW';
 
                 // Record what was dispatched in this round
                 $dispatchLogItem = \App\Models\DispatchLogItem::create([
@@ -273,8 +351,8 @@ class DispatchController extends Controller
                         $stock = Stock::create([
                             'product_id'       => $orderItem->product_id,
                             'user_id'          => $user['id'],
-                            'stage'            => $orderItem->product->type,
-                            'grade'            => $orderItem->grade,
+                            'stage'            => $itemStage,
+                            'grade'            => $itemGrade,
                             'location_id'      => $locationId,
                             'quantity'         => $allocQty,
                             'transaction_type' => 'OUT',
@@ -297,8 +375,8 @@ class DispatchController extends Controller
                     // Deduct from total stock without location tracking
                     Stock::deductStock(
                         $orderItem->product_id,
-                        $orderItem->product->type,
-                        $orderItem->grade,
+                        $itemStage,
+                        $itemGrade,
                         $dispatchQty,
                         $user['id'],
                         "Dispatched: Order #{$order->id} (Partial round #{$dispatchLog->id}){$locNotes}"
@@ -317,8 +395,8 @@ class DispatchController extends Controller
                 $order->update(['status' => 'CLOSED', 'dispatch_status' => 'DONE']);
                 $message = 'Order fully dispatched! All items delivered.';
             } else {
-                $order->update(['dispatch_status' => 'PARTIAL']);
-                $message = 'Partial dispatch recorded. Remaining items can be dispatched in the next round.';
+                $order->update(['dispatch_status' => 'PARTIAL PENDING']);
+                $message = 'Partial dispatch recorded. Remaining items are saved under Partial Pending.';
             }
         });
 
@@ -437,7 +515,7 @@ class DispatchController extends Controller
                 $anyDispatched = $order->items->filter(fn($item) => $item->dispatched_qty > 0)->isNotEmpty();
                 $order->update([
                     'status' => 'OPEN',
-                    'dispatch_status' => $anyDispatched ? 'PARTIAL' : 'PENDING'
+                    'dispatch_status' => $anyDispatched ? 'PARTIAL PENDING' : 'PENDING'
                 ]);
             }
         });

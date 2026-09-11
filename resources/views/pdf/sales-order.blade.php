@@ -16,7 +16,7 @@
         .brand-title { font-size: 22px; font-weight: 800; color: #101828; line-height: 1.1; }
         .brand-tagline { font-size: 10px; color: #f8c300; font-weight: bold; margin-top: 1px; }
         
-        .title { text-align: center; margin: 8px 0; font-size: 18px; font-weight: 800; letter-spacing: 2px; color: #101828; }
+        .title { text-align: center; margin: 16px 0 18px 0; font-size: 22px; font-weight: 800; letter-spacing: 2px; color: #101828; }
         
         /* Top Metadata Grid */
         .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; border: 1px solid #d0d5dd; }
@@ -102,13 +102,14 @@
         </tr>
     </table>
 
-    <div class="title">SALES ORDER</div>
+    <div class="title">{{ $statusTitle ?? 'SALES ORDER' }}</div>
 
     <!-- Top Metadata Grid -->
     <table class="meta-table">
         <tr>
             <td>
                 <div style="margin-bottom: 4px;"><span class="meta-label">Order No.</span><span class="meta-value">: <strong>{{ $orderNo }}</strong></span></div>
+                <div><span class="meta-label">Order By</span><span class="meta-value">: {{ $orderBy ?? 'N/A' }}</span></div>
             </td>
             <td>
                 <div style="margin-bottom: 4px;"><span class="meta-label">Order Date</span><span class="meta-value">: {{ $orderDate }}</span></div>
@@ -132,7 +133,7 @@
                         <tr><td class="lbl">Address</td><td class="val">: {{ $company->address ?? 'N/A' }}</td></tr>
                         <tr><td class="lbl">Pincode</td><td class="val">: {{ $company->pincode ?? 'N/A' }}</td></tr>
                         <tr><td class="lbl">GST Number</td><td class="val">: {{ $company->gst ?? 'N/A' }}</td></tr>
-                        <tr><td class="lbl">Customer Number</td><td class="val">: {{ $company->contact ?? 'N/A' }}</td></tr>
+                        <tr><td class="lbl">Contact Number</td><td class="val">: {{ $company->contact ?? 'N/A' }}</td></tr>
                     </table>
                 </div>
             </td>
