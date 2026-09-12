@@ -64,7 +64,7 @@
         /* Badges */
         .badge { display: inline-block; padding: 3px 6px; border-radius: 3px; font-weight: bold; font-size: 7px; text-transform: uppercase; white-space: nowrap; }
         .badge-fully-dispatched, .badge-completed { background: #ecfdf3; color: #027a48; border: 1px solid #abefc6; }
-        .badge-partial-dispatch, .badge-partial { background: #fffaeb; color: #b54708; border: 1px solid #fedf89; }
+        .badge-partial-dispatch, .badge-partial { background: #eff8ff; color: #175cd3; border: 1px solid #b2ddff; }
         .badge-partial-pending { background: #fff8eb; color: #b45309; border: 1px solid #fef08a; }
         .badge-pending { background: #fef3f2; color: #b42318; border: 1px solid #fecdca; }
         .badge-cancelled { background: #fef3f2; color: #b42318; border: 1px solid #fecdca; }
