@@ -574,10 +574,12 @@ class DispatchController extends Controller
                 'dispatchNotes' => $d->notes,
                 'orderNotes'    => $d->order?->notes,
                 'items'         => $d->dispatchItems->filter(fn($di) => $di->orderItem && $di->orderItem->order_id == $d->order_id)->map(fn($di) => [
-                    'productName' => $di->orderItem?->product ? $di->orderItem->product->formatName($di->orderItem->grade) : 'Unknown',
-                    'grade'       => $di->orderItem?->grade,
-                    'productType' => $di->orderItem?->product?->type,
-                    'quantity'    => (float) $di->quantity,
+                    'productName'   => $di->orderItem?->product ? $di->orderItem->product->formatName($di->orderItem->grade) : 'Unknown',
+                    'grade'         => $di->orderItem?->grade,
+                    'productType'   => $di->orderItem?->product?->type,
+                    'totalQty'      => (float) ($di->orderItem?->quantity ?? 0),
+                    'dispatchedQty' => (float) $di->quantity,
+                    'remainingQty'  => (float) max(0, ($di->orderItem?->quantity ?? 0) - ($di->orderItem?->dispatched_qty ?? 0)),
                 ])->values(),
             ]);
 
@@ -596,33 +598,49 @@ class DispatchController extends Controller
     public function report()
     {
         $orders = Order::with(['company', 'transporter', 'items.product', 'dispatchLogs'])
+            ->where('status', '!=', 'CANCELLED')
             ->orderByDesc('created_at')
             ->get();
 
-        $reportOrders = $orders->map(fn($o) => [
-            'id'             => $o->id,
-            'orderId'        => $o->id,
-            'companyId'      => $o->company_id,
-            'companyName'    => $o->company?->name,
-            'transportName'  => $o->transporter?->name,
-            'orderTotal'     => $o->total,
-            'status'         => $o->status,
-            'dispatchStatus' => $o->dispatch_status,
-            'date'           => $o->created_at->toISOString(),
-            'notes'          => $o->notes,
-            'totalQty'       => (float) $o->items->sum('quantity'),
-            'dispatchedQty'  => (float) $o->items->sum('dispatched_qty'),
-            'remainingQty'   => (float) $o->items->sum(fn($i) => $i->remainingQty()),
-            'items'          => $o->items->map(fn($i) => [
-                'id'            => $i->id,
-                'productName'   => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
-                'grade'         => $i->grade,
-                'productType'   => $i->product?->type,
-                'quantity'      => (float) $i->quantity,
-                'dispatchedQty' => (float) $i->dispatched_qty,
-                'remainingQty'  => (float) $i->remainingQty(),
-            ])->values(),
-        ]);
+        $reportOrders = collect();
+
+        foreach ($orders as $o) {
+            $totalQty = (float) $o->items->sum('quantity');
+            $dispatchedQty = (float) $o->items->sum('dispatched_qty');
+            $remainingQty = (float) $o->items->sum(fn($i) => $i->remainingQty());
+
+            $isPartial = ($dispatchedQty > 0 && $remainingQty > 0);
+
+            $dispatchStatus = $o->dispatch_status;
+            if ($isPartial) {
+                $dispatchStatus = 'PARTIAL';
+            }
+
+            $reportOrders->push([
+                'id'             => $o->id,
+                'orderId'        => $o->id,
+                'companyId'      => $o->company_id,
+                'companyName'    => $o->company?->name,
+                'transportName'  => $o->transporter?->name,
+                'orderTotal'     => $o->total,
+                'status'         => $o->status,
+                'dispatchStatus' => $dispatchStatus,
+                'date'           => $o->created_at->toISOString(),
+                'notes'          => $o->notes,
+                'totalQty'       => $totalQty,
+                'dispatchedQty'  => $dispatchedQty,
+                'remainingQty'   => $remainingQty,
+                'items'          => $o->items->map(fn($i) => [
+                    'id'            => $i->id,
+                    'productName'   => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
+                    'grade'         => $i->grade,
+                    'productType'   => $i->product?->type,
+                    'quantity'      => (float) $i->quantity,
+                    'dispatchedQty' => (float) $i->dispatched_qty,
+                    'remainingQty'  => (float) $i->remainingQty(),
+                ])->values(),
+            ]);
+        }
 
         $companies = Company::orderBy('name')->get()->map(fn($c) => [
             'id'   => $c->id,

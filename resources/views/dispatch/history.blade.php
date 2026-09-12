@@ -28,14 +28,11 @@
       if ($target === 'FULLY DISPATCHED' || $target === 'DONE') {
         return in_array($st, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED']);
       }
-      if ($target === 'PARTIAL PENDING') {
-        return in_array($st, ['PARTIAL PENDING', 'PARTIAL']);
-      }
-      if ($target === 'PARTIAL DISPATCH' || $target === 'PARTIAL') {
+      if ($target === 'PARTIAL') {
         return in_array($st, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIAL PENDING']);
       }
       if ($target === 'PENDING') {
-        return in_array($st, ['PENDING', 'OPEN', 'UNASSIGNED']);
+        return in_array($st, ['PENDING', 'OPEN', 'UNASSIGNED', 'PARTIAL', 'PARTIAL DISPATCH', 'PARTIAL PENDING']);
       }
       return str_contains($st, $target);
     });
@@ -147,8 +144,7 @@
       <select name="status" onchange="this.form.submit()" style="width:100%; padding:0.65rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600;">
         <option value="">ALL STATUS</option>
         <option value="PENDING" {{ $statusFilter === 'PENDING' ? 'selected' : '' }}>PENDING</option>
-        <option value="PARTIAL_PENDING" {{ $statusFilter === 'PARTIAL_PENDING' ? 'selected' : '' }}>PARTIAL PENDING</option>
-        <option value="PARTIAL" {{ $statusFilter === 'PARTIAL' ? 'selected' : '' }}>PARTIAL DISPATCH</option>
+        <option value="PARTIAL" {{ $statusFilter === 'PARTIAL' ? 'selected' : '' }}>PARTIAL</option>
         <option value="DONE" {{ $statusFilter === 'DONE' ? 'selected' : '' }}>FULLY DISPATCHED</option>
       </select>
     </div>
@@ -178,12 +174,10 @@
       $rawSt = strtoupper(trim((string)($d['dispatchStatus'] ?? $d['status'] ?? 'PENDING')));
       if (in_array($rawSt, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED'])) {
         $statusBadge = '<span class="badge badge-done" style="font-size:0.65rem; background:#16a34a; color:#fff; padding:3px 8px; border-radius:4px; font-weight:700;">FULLY DISPATCHED</span>';
-      } elseif (in_array($rawSt, ['PARTIAL', 'PARTIAL DISPATCH'])) {
-        $statusBadge = '<span class="badge" style="font-size:0.65rem; background:#f59e0b; color:#fff; padding:3px 8px; border-radius:4px; font-weight:700;">PARTIAL DISPATCH</span>';
-      } elseif ($rawSt === 'PARTIAL PENDING') {
-        $statusBadge = '<span class="badge" style="font-size:0.65rem; background:#8b5cf6; color:#fff; padding:3px 8px; border-radius:4px; font-weight:700;">PARTIAL PENDING</span>';
+      } elseif (in_array($rawSt, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIAL PENDING'])) {
+        $statusBadge = '<span class="badge" style="font-size:0.65rem; background:#f59e0b; color:#fff; padding:3px 8px; border-radius:4px; font-weight:700;">PARTIAL</span>';
       } else {
-        $statusBadge = '<span class="badge badge-pending" style="font-size:0.65rem; background:#eab308; color:#000; padding:3px 8px; border-radius:4px; font-weight:700;">PENDING</span>';
+        $statusBadge = '<span class="badge badge-pending" style="font-size:0.65rem; background:#ef4444; color:#fff; padding:3px 8px; border-radius:4px; font-weight:700;">PENDING</span>';
       }
     @endphp
     <div class="card dispatch-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--glass-border, rgba(255,255,255,0.06)); background:var(--card-bg, rgba(255,255,255,0.03)); transition:all 0.2s ease;">
@@ -262,10 +256,17 @@
                 $pName = preg_replace('/\s*\((fg|raw|semi)\)$/i', '', $pName);
                 $gName = ($item['grade'] && $item['grade'] !== 'NONE' && $item['grade'] !== 'N/A') ? $item['grade'] : '';
                 $tName = ($item['productType'] === 'FINISHED') ? 'FG' : ($item['productType'] ? strtoupper($item['productType']) : 'N/A');
+                $tot = $item['totalQty'] ?? 0;
+                $disp = $item['dispatchedQty'] ?? 0;
+                $rem = $item['remainingQty'] ?? 0;
               @endphp
-              <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.88rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.88rem; flex-wrap:wrap; gap:8px;">
                 <span>{{ $pName }} @if($gName)<strong style="font-weight:800; color:var(--primary, #D88A00);">{{ $gName }}</strong> @endif({{ $tName }})</span>
-                <span style="font-weight:bold; color:var(--primary, #D88A00);">{{ $item['quantity'] }} kg</span>
+                <span style="font-size:0.8rem; color:var(--text-muted);">
+                  Total: <strong style="color:var(--text-main);">{{ $tot }} kg</strong> | 
+                  Dispatched: <strong style="color:#16a34a;">{{ $disp }} kg</strong> | 
+                  Pending: <strong style="color:#ef4444;">{{ $rem }} kg</strong>
+                </span>
               </div>
             @endforeach
           </div>

@@ -27,8 +27,8 @@
         /* Metadata block */
         .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; background-color: #fcfcfd; border: 1px solid #eaecf0; border-radius: 3px; }
         .meta-table td { padding: 4px 8px; font-size: 8px; vertical-align: middle; }
-        .meta-label { font-weight: bold; color: #475467; display: inline-block; width: 75px; }
-        .meta-value { color: #101828; }
+        .meta-label { font-weight: bold; color: #475467; display: inline-block; width: 85px; vertical-align: top; }
+        .meta-value { color: #101828; display: inline-block; vertical-align: top; }
         
         /* Stats cards */
         .stats-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
@@ -64,9 +64,9 @@
         /* Badges */
         .badge { display: inline-block; padding: 3px 6px; border-radius: 3px; font-weight: bold; font-size: 7px; text-transform: uppercase; white-space: nowrap; }
         .badge-fully-dispatched, .badge-completed { background: #ecfdf3; color: #027a48; border: 1px solid #abefc6; }
-        .badge-partial-dispatch, .badge-partial { background: #eff8ff; color: #175cd3; border: 1px solid #b2ddff; }
+        .badge-partial-dispatch, .badge-partial { background: #fffaeb; color: #b54708; border: 1px solid #fedf89; }
         .badge-partial-pending { background: #fff8eb; color: #b45309; border: 1px solid #fef08a; }
-        .badge-pending { background: #fffaeb; color: #b54708; border: 1px solid #fedf89; }
+        .badge-pending { background: #fef3f2; color: #b42318; border: 1px solid #fecdca; }
         .badge-cancelled { background: #fef3f2; color: #b42318; border: 1px solid #fecdca; }
         
         /* Side by Side Summaries */
@@ -139,8 +139,12 @@
                 <div><span class="meta-label">Generated On</span><span class="meta-value">: {{ $generatedOn }}</span></div>
             </td>
             <td style="width: 50%; border-left: 2px solid #e4e7ec; padding-left: 15px;">
-                <div style="margin-bottom: 4px;"><span class="meta-label">From Date</span><span class="meta-value">: {{ $fromDate }}</span></div>
-                <div><span class="meta-label">To Date</span><span class="meta-value">: {{ $toDate }}</span></div>
+                @if($fromDate === 'UP TO DATE' || ($isAllRange ?? false))
+                    <div><span class="meta-label">Up To Date</span><span class="meta-value">: {{ $toDate }}</span></div>
+                @else
+                    <div style="margin-bottom: 4px;"><span class="meta-label">From Date</span><span class="meta-value">: {{ $fromDate }}</span></div>
+                    <div><span class="meta-label">To Date</span><span class="meta-value">: {{ $toDate }}</span></div>
+                @endif
             </td>
         </tr>
     </table>
@@ -150,76 +154,110 @@
     <table class="data-table">
         <thead>
             <tr>
-                <th style="width: 9%;">Dispatch ID</th>
-                <th style="width: 10%;">Order Date</th>
-                <th style="width: 8%;" class="text-center">Due By Days</th>
+                <th style="width: 7%;">Dispatch ID</th>
+                <th style="width: 9%;">Order Date</th>
+                @if($statusFilter !== 'FULLY_DISPATCHED' && $statusFilter !== 'FULLY DISPATCHED' && $statusFilter !== 'DONE')
+                    <th style="width: 8%;" class="text-center">Due Days</th>
+                @endif
+                @if($statusFilter !== 'PENDING')
+                    <th style="width: 9%;">Dispatched Date</th>
+                @endif
                 <th style="width: 14%;">Customer</th>
-                <th style="width: 24%;">Product Details</th>
+                <th style="width: 22%;">Product Details</th>
                 <th style="width: 7%; color: #027a48;" class="text-right">Ord. Qty</th>
                 <th style="width: 7%; color: #b37400;" class="text-right">Disp. Qty</th>
-                <th style="width: 7%; color: #b42318;" class="text-right">Pend. Qty</th>
-                <th style="width: 8%;" class="text-right">Revenue</th>
-                <th style="width: 6%;" class="text-center">Status</th>
+                <th style="width: 6%; color: #b42318;" class="text-right">Pend. Qty</th>
+                <th style="width: 6%;" class="text-right">Revenue</th>
+                <th style="width: 5%;" class="text-center">Status</th>
             </tr>
         </thead>
+        <tbody>
         @forelse($rows as $idx => $logRow)
             @php
                 $rawStatus = strtoupper(trim(str_replace('_', ' ', $logRow['status'] ?? 'PENDING')));
-                $badgeClass = match($rawStatus) {
-                    'FULLY DISPATCHED', 'COMPLETED', 'DONE' => 'badge-fully-dispatched',
-                    'PARTIAL DISPATCH', 'PARTIAL' => 'badge-partial-dispatch',
-                    'PARTIAL PENDING' => 'badge-partial-pending',
+                $displayStatus = match($rawStatus) {
+                    'FULLY DISPATCHED', 'COMPLETED', 'DONE' => 'FULLY DISPATCHED',
+                    'PARTIAL DISPATCH', 'PARTIAL PENDING', 'PARTIAL' => 'PARTIAL',
+                    'CANCELLED' => 'CANCELLED',
+                    default => 'PENDING',
+                };
+                $badgeClass = match($displayStatus) {
+                    'FULLY DISPATCHED' => 'badge-fully-dispatched',
+                    'PARTIAL' => 'badge-partial-dispatch',
                     'CANCELLED' => 'badge-cancelled',
                     default => 'badge-pending',
                 };
                 $itemCount = count($logRow['items'] ?? []);
+                $isRowFullyDispatched = in_array($rawStatus, ['FULLY DISPATCHED', 'COMPLETED', 'DONE']);
             @endphp
-            <tbody class="page-break-avoid">
-                @foreach($logRow['items'] as $itemIdx => $item)
-                    <tr>
-                        @if($itemIdx === 0)
-                            <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle;"><strong>{{ $logRow['dispatch_id'] }}</strong></td>
-                            <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle;">{{ $logRow['order_date'] }}</td>
-                            <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle; font-weight: bold; color: #344054;">
-                                {{ $logRow['due_days_text'] ?? '0 Days' }}
-                            </td>
-                            <td rowspan="{{ $itemCount }}" style="vertical-align: middle;"><strong>{{ $logRow['customer'] }}</strong></td>
-                        @endif
-                        <td>
-                            <div style="font-weight: bold; color: #101828;">{{ $item['product'] }}</div>
-                        </td>
-                        <td class="text-right text-green"><strong>{{ $item['ordered_qty_formatted'] ?? number_format($item['ordered_qty'] ?? 0) . ' KG' }}</strong></td>
-                        <td class="text-right" style="color: #b37400;"><strong>{{ $item['dispatch_qty_formatted'] ?? number_format($item['qty'] ?? 0) . ' KG' }}</strong></td>
-                        <td class="text-right" style="color: {{ ($item['pending_qty'] ?? 0) > 0 ? '#b42318' : 'inherit' }};"><strong>{{ $item['pending_qty_formatted'] ?? number_format($item['pending_qty'] ?? 0) . ' KG' }}</strong></td>
-                        <td class="text-right"><strong>Rs. {{ number_format($item['amount'], 2) }}</strong></td>
-                        @if($itemIdx === 0)
-                            <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle;">
-                                <span class="badge {{ $badgeClass }}">
-                                    {{ $rawStatus }}
-                                </span>
-                            </td>
-                        @endif
-                    </tr>
-                @endforeach
-            </tbody>
-        @empty
-            <tbody>
+            @foreach($logRow['items'] as $itemIdx => $item)
                 <tr>
-                    <td colspan="10" class="text-center" style="padding: 15px; color: #667085;">No dispatch history found for the selected filters.</td>
+                    @if($itemIdx === 0)
+                        <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle;"><strong>{{ $logRow['dispatch_id'] }}</strong></td>
+                        <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle;">{{ $logRow['order_date'] }}</td>
+                        @if($statusFilter !== 'FULLY_DISPATCHED' && $statusFilter !== 'FULLY DISPATCHED' && $statusFilter !== 'DONE')
+                            <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle; font-weight: bold; color: #344054;">
+                                @if(!$isRowFullyDispatched)
+                                    {{ $logRow['due_days_text'] ?? '0 Days' }}
+                                @else
+                                    -
+                                @endif
+                            </td>
+                        @endif
+                        @if($statusFilter !== 'PENDING')
+                            <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle; font-size: 8px;">
+                                @if($rawStatus !== 'PENDING')
+                                    {{ $logRow['dispatch_date'] ?? '-' }}
+                                @else
+                                    -
+                                @endif
+                            </td>
+                        @endif
+                        <td rowspan="{{ $itemCount }}" style="vertical-align: middle;"><strong>{{ $logRow['customer'] }}</strong></td>
+                    @endif
+                    <td>
+                        <div style="font-weight: bold; color: #101828;">{{ $item['product'] }}</div>
+                    </td>
+                    <td class="text-right text-green"><strong>{{ $item['ordered_qty_formatted'] ?? number_format($item['ordered_qty'] ?? 0) . ' KG' }}</strong></td>
+                    <td class="text-right" style="color: #b37400;"><strong>{{ $item['dispatch_qty_formatted'] ?? number_format($item['qty'] ?? 0) . ' KG' }}</strong></td>
+                    <td class="text-right" style="color: #b42318;"><strong>{{ $item['pending_qty_formatted'] ?? number_format($item['pending_qty'] ?? 0) . ' KG' }}</strong></td>
+                    <td class="text-right"><strong>Rs. {{ number_format($item['amount'], 2) }}</strong></td>
+                    @if($itemIdx === 0)
+                        <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle;">
+                            <span class="badge {{ $badgeClass }}">
+                                {{ $displayStatus }}
+                            </span>
+                        </td>
+                    @endif
                 </tr>
-            </tbody>
+            @endforeach
+        @empty
+            @php
+                $colSpanCount = 11;
+                if ($statusFilter === 'PENDING' || in_array($statusFilter, ['FULLY_DISPATCHED', 'FULLY DISPATCHED', 'DONE'])) {
+                    $colSpanCount = 10;
+                }
+            @endphp
+            <tr>
+                <td colspan="{{ $colSpanCount }}" class="text-center" style="padding: 15px; color: #667085;">No dispatch history found for the selected filters.</td>
+            </tr>
         @endforelse
-        <tbody>
-            @if(count($rows) > 0)
-                <tr class="total-row">
-                    <td colspan="5">TOTAL</td>
-                    <td class="text-right text-green">{{ number_format($totalOrderedQty ?? 0) }} KG</td>
-                    <td class="text-right" style="color: #b37400;">{{ number_format($totalQuantity) }} KG</td>
-                    <td class="text-right" style="color: {{ ($totalPendingQty ?? 0) > 0 ? '#b42318' : 'inherit' }};">{{ number_format($totalPendingQty ?? 0) }} KG</td>
-                    <td class="text-right">Rs. {{ number_format($totalValue, 2) }}</td>
-                    <td></td>
-                </tr>
-            @endif
+        @if(count($rows) > 0)
+            @php
+                $labelColSpan = 6;
+                if ($statusFilter === 'PENDING' || in_array($statusFilter, ['FULLY_DISPATCHED', 'FULLY DISPATCHED', 'DONE'])) {
+                    $labelColSpan = 5;
+                }
+            @endphp
+            <tr class="total-row">
+                <td colspan="{{ $labelColSpan }}">TOTAL</td>
+                <td class="text-right text-green">{{ number_format($totalOrderedQty ?? 0) }} KG</td>
+                <td class="text-right" style="color: #b37400;">{{ number_format($totalQuantity) }} KG</td>
+                <td class="text-right" style="color: {{ ($totalPendingQty ?? 0) > 0 ? '#b42318' : 'inherit' }};">{{ number_format($totalPendingQty ?? 0) }} KG</td>
+                <td class="text-right">Rs. {{ number_format($totalValue, 2) }}</td>
+                <td></td>
+            </tr>
+        @endif
         </tbody>
     </table>
 

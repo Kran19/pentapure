@@ -527,7 +527,7 @@ class HistoryPdfController extends Controller
             'creator',
             'items.product',
             'dispatchLogs.dispatchItems.locationAllocations.location'
-        ])->whereBetween('created_at', [$from, $to]);
+        ])->where('status', '!=', 'CANCELLED')->whereBetween('created_at', [$from, $to]);
 
         $q = $request->q;
         if ($q) {
@@ -549,17 +549,11 @@ class HistoryPdfController extends Controller
             $target = strtoupper(trim(str_replace('_', ' ', $statusFilter)));
             $query->where(function($qo) use ($target) {
                 if ($target === 'FULLY DISPATCHED' || $target === 'DONE') {
-                    $qo->where('status', '!=', 'CANCELLED')
-                       ->whereIn('dispatch_status', ['DONE', 'FULLY_DISPATCHED', 'FULLY DISPATCHED']);
-                } elseif ($target === 'PARTIAL PENDING') {
-                    $qo->where('status', '!=', 'CANCELLED')
-                       ->whereIn('dispatch_status', ['PARTIAL_PENDING', 'PARTIAL PENDING']);
+                    $qo->whereIn('dispatch_status', ['DONE', 'FULLY_DISPATCHED', 'FULLY DISPATCHED']);
                 } elseif ($target === 'PARTIAL DISPATCH' || $target === 'PARTIAL') {
-                    $qo->where('status', '!=', 'CANCELLED')
-                       ->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH']);
+                    $qo->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIAL_PENDING', 'PARTIAL PENDING']);
                 } elseif ($target === 'PENDING') {
-                    $qo->where('status', 'CANCELLED')
-                       ->orWhereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED'])
+                    $qo->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED', 'PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIAL_PENDING', 'PARTIAL PENDING'])
                        ->orWhereNull('dispatch_status');
                 } else {
                     $qo->where('dispatch_status', 'like', "%{$target}%");
@@ -567,7 +561,7 @@ class HistoryPdfController extends Controller
             });
         }
 
-        $orders = $query->latest()->get();
+        $orders = $query->orderBy('created_at', 'asc')->get();
         
         $rows = [];
         $totalQuantity = 0;
@@ -667,6 +661,9 @@ class HistoryPdfController extends Controller
 
             if (!empty($orderItems)) {
                 $orderDate = $order->created_at;
+                $latestDispatchLog = $order->dispatchLogs->sortByDesc('created_at')->first();
+                $dispatchDateStr = $latestDispatchLog ? $latestDispatchLog->created_at->format('d M Y') : '-';
+
                 $nowDate = now();
                 $diffDays = (int) $orderDate->copy()->startOfDay()->diffInDays($nowDate->copy()->startOfDay());
                 $dueDaysText = $diffDays === 0 ? '0 Days' : $diffDays . ($diffDays === 1 ? ' Day' : ' Days');
@@ -677,7 +674,7 @@ class HistoryPdfController extends Controller
                     'dispatch_id' => 'ORD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT),
                     'order_id' => 'ORD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT),
                     'order_date' => $orderDate->format('d M Y'),
-                    'dispatch_date' => $orderDate->format('d M Y'),
+                    'dispatch_date' => $dispatchDateStr,
                     'due_days' => $diffDays,
                     'due_days_text' => $dueDaysText,
                     'customer' => $custName,
@@ -700,23 +697,25 @@ class HistoryPdfController extends Controller
         if ($statusFilter) {
             $target = strtoupper(trim(str_replace('_', ' ', $statusFilter)));
             if ($target === 'PENDING') {
-                $reportTitle = 'PENDING DISPATCH HISTORY REPORT';
-            } elseif ($target === 'PARTIAL PENDING') {
-                $reportTitle = 'PARTIAL PENDING DISPATCH HISTORY REPORT';
+                $reportTitle = 'PENDING ORDERS HISTORY REPORT';
             } elseif ($target === 'PARTIAL DISPATCH' || $target === 'PARTIAL') {
-                $reportTitle = 'PARTIAL DISPATCH HISTORY REPORT';
+                $reportTitle = 'PARTIAL ORDERS HISTORY REPORT';
             } elseif ($target === 'FULLY DISPATCHED' || $target === 'DONE') {
                 $reportTitle = 'FULLY DISPATCH HISTORY REPORT';
             }
         }
 
+        $isAllRange = ($request->range === 'all' || !$request->range) && !$request->from && !$request->start;
+
         return [
             'reportId' => 'RPT-DISP-' . now()->format('Ymd') . '-' . rand(100, 999),
             'userName' => $user['name'] ?? 'Authorized User',
             'generatedOn' => now()->format('d M Y, h:i A'),
-            'fromDate' => $from ? $from->format('d M Y') : 'All Time',
+            'isAllRange' => $isAllRange,
+            'fromDate' => $isAllRange ? 'UP TO DATE' : ($from ? $from->format('d M Y') : 'UP TO DATE'),
             'toDate' => $to ? $to->format('d M Y') : now()->format('d M Y'),
             'reportTitle' => $reportTitle,
+            'statusFilter' => strtoupper(trim(str_replace('_', ' ', (string)($statusFilter ?? '')))),
             'totalRecords' => count($rows),
             'completedCount' => $fullyDispatchedCount,
             'fullyDispatchedCount' => $fullyDispatchedCount,

@@ -28,14 +28,11 @@
       if ($target === 'FULLY DISPATCHED' || $target === 'DONE') {
         return in_array($st, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED']);
       }
-      if ($target === 'PARTIAL PENDING') {
-        return in_array($st, ['PARTIAL PENDING', 'PARTIAL']);
-      }
-      if ($target === 'PARTIAL DISPATCH' || $target === 'PARTIAL') {
+      if ($target === 'PARTIAL') {
         return in_array($st, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIAL PENDING']);
       }
       if ($target === 'PENDING') {
-        return in_array($st, ['PENDING', 'OPEN', 'UNASSIGNED']);
+        return in_array($st, ['PENDING', 'OPEN', 'UNASSIGNED', 'PARTIAL', 'PARTIAL DISPATCH', 'PARTIAL PENDING']);
       }
       return str_contains($st, $target);
     });
@@ -148,8 +145,7 @@
       <select name="status" onchange="this.form.submit()" style="width:100%; padding:0.65rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600;">
         <option value="">ALL STATUS</option>
         <option value="PENDING" {{ $statusFilter === 'PENDING' ? 'selected' : '' }}>PENDING</option>
-        <option value="PARTIAL_PENDING" {{ $statusFilter === 'PARTIAL_PENDING' ? 'selected' : '' }}>PARTIAL PENDING</option>
-        <option value="PARTIAL" {{ $statusFilter === 'PARTIAL' ? 'selected' : '' }}>PARTIAL DISPATCH</option>
+        <option value="PARTIAL" {{ $statusFilter === 'PARTIAL' ? 'selected' : '' }}>PARTIAL</option>
         <option value="DONE" {{ $statusFilter === 'DONE' ? 'selected' : '' }}>FULLY DISPATCHED</option>
       </select>
     </div>
@@ -177,12 +173,10 @@
       $statusBadge = '';
       if (in_array($rawSt, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED'])) {
         $statusBadge = '<span class="badge badge-done" style="font-size:0.65rem; background:#16a34a; color:#fff; padding:2px 6px; border-radius:4px; font-weight:700;">FULLY DISPATCHED</span>';
-      } elseif (in_array($rawSt, ['PARTIAL', 'PARTIAL DISPATCH'])) {
-        $statusBadge = '<span class="badge" style="font-size:0.65rem; background:#f59e0b; color:#fff; padding:2px 6px; border-radius:4px; font-weight:700;">PARTIAL DISPATCH</span>';
-      } elseif ($rawSt === 'PARTIAL PENDING') {
-        $statusBadge = '<span class="badge" style="font-size:0.65rem; background:#8b5cf6; color:#fff; padding:2px 6px; border-radius:4px; font-weight:700;">PARTIAL PENDING</span>';
+      } elseif (in_array($rawSt, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIAL PENDING'])) {
+        $statusBadge = '<span class="badge" style="font-size:0.65rem; background:#f59e0b; color:#fff; padding:2px 6px; border-radius:4px; font-weight:700;">PARTIAL</span>';
       } else {
-        $statusBadge = '<span class="badge badge-pending" style="font-size:0.65rem; background:#eab308; color:#000; padding:2px 6px; border-radius:4px; font-weight:700;">PENDING</span>';
+        $statusBadge = '<span class="badge badge-pending" style="font-size:0.65rem; background:#ef4444; color:#fff; padding:2px 6px; border-radius:4px; font-weight:700;">PENDING</span>';
       }
     @endphp
     <div class="card dispatch-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--glass-border, rgba(255,255,255,0.06)); background:var(--card-bg, rgba(255,255,255,0.03)); transition:all 0.2s ease;">
@@ -190,7 +184,7 @@
       <div onclick="toggleReportAccordion('rep-acc-{{ $d['id'] }}', this)" style="cursor:pointer; padding:1.1rem; display:flex; justify-content:space-between; align-items:center; user-select:none;">
         <div style="flex:1; padding-right:15px;">
           <div style="font-weight:600; font-size:1rem; color:var(--text-main); line-height:1.3;">
-            Order #{{ strtoupper((string)$d['id']) }} - {{ $d['companyName'] ?? 'N/A' }}
+            Order #{{ strtoupper((string)($d['orderId'] ?? $d['id'])) }} - {{ $d['companyName'] ?? 'N/A' }}
           </div>
           <div style="margin-top:6px; font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
             {!! $statusBadge !!}
@@ -203,7 +197,7 @@
         <div style="display:flex; align-items:center; gap:10px; text-align:right; flex-wrap:nowrap;">
           <div style="display:flex; flex-direction:column; gap:5px; align-items:flex-end;">
             <div style="font-weight:700; font-size:1.1rem; color:var(--primary, #D88A00);">₹{{ number_format($d['orderTotal'] ?? 0, 2) }}</div>
-            <a href="{{ url(request()->segment(1) . '/sales/order/pdf/' . $d['id']) }}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm" style="width:auto; padding:0.3rem 0.75rem; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-weight:600; background:var(--primary, #D88A00); color:#000; white-space:nowrap;">
+            <a href="{{ url(request()->segment(1) . '/sales/order/pdf/' . ($d['orderId'] ?? $d['id'])) }}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm" style="width:auto; padding:0.3rem 0.75rem; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-weight:600; background:var(--primary, #D88A00); color:#000; white-space:nowrap;">
               📄 Order PDF
             </a>
           </div>
@@ -220,7 +214,7 @@
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:1rem; margin-bottom:1rem;">
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Order ID</div>
-            <div style="font-weight:700;">#{{ strtoupper((string)$d['id']) }}</div>
+            <div style="font-weight:700;">#{{ strtoupper((string)($d['orderId'] ?? $d['id'])) }}</div>
           </div>
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Date & Time</div>

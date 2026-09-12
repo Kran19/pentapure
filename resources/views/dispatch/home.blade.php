@@ -150,13 +150,13 @@
 
         // Status badge next to Order # ID
         if (in_array($rawSt, ['PARTIAL_PENDING', 'PARTIAL PENDING', 'PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH']) || ($dispatchedQty > 0 && $dispatchedQty < $totalQty)) {
-          $statusBadgeLabel = 'PARTIAL PENDING';
-          $statusBadgeBg = '#8b5cf6';
+          $statusBadgeLabel = 'PARTIAL';
+          $statusBadgeBg = '#f59e0b';
           $statusBadgeFg = '#ffffff';
         } else {
           $statusBadgeLabel = 'PENDING';
-          $statusBadgeBg = '#eab308';
-          $statusBadgeFg = '#000000';
+          $statusBadgeBg = '#ef4444';
+          $statusBadgeFg = '#ffffff';
         }
       @endphp
       <div class="card" style="border-left: 4px solid {{ $progressColor }}; background:rgba(255,255,255,0.02); transition: transform 0.2s; margin-bottom: 0;">
@@ -164,11 +164,12 @@
           <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
             <span style="font-weight:bold; font-size:1.1rem; color:#fff;">Order #{{ strtoupper((string)$o['id']) }}</span>
             <span class="badge" style="font-size:0.65rem; background:{{ $statusBadgeBg }}; color:{{ $statusBadgeFg }}; padding:3px 8px; border-radius:4px; font-weight:700;">{{ $statusBadgeLabel }}</span>
-            <span class="badge" style="font-size:0.65rem; background:{{ $readinessBg }}; color:{{ $readinessFg }}; padding:3px 8px; border-radius:4px; font-weight:700;">{{ $readinessLabel }}</span>
           </div>
-          <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action') }}" onclick="localStorage.setItem('auto_dispatch_id', '{{ $o['id'] }}');" style="width:auto; text-decoration:none; background:{{ $progressColor }}; font-weight:700;">
-            {{ $btnText }}
-          </a>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action') }}" onclick="localStorage.setItem('auto_dispatch_id', '{{ $o['id'] }}');" style="width:auto; text-decoration:none; background:{{ $readinessBg }}; color:{{ $readinessFg }}; font-weight:700; padding:4px 12px; border-radius:6px; font-size:0.8rem;">
+              {{ $readinessLabel }}
+            </a>
+          </div>
         </div>
         <div style="font-size:0.85rem; color:var(--text-muted); line-height:1.5;">
           <strong>Customer:</strong> {{ $o['companyName'] }} <br>
