@@ -246,19 +246,31 @@ const app = {
     if (overlay) overlay.classList.remove('active');
   },
 
+  getBaseUrl() {
+    return '';
+  },
+
   fetchNotifications() {
-    fetch('/api/notifications')
+    const url = `/api/notifications`;
+    fetch(url)
       .then(r => r.json())
       .then(d => {
-        const oldLen = (this.notifications || []).length;
-        const newNotifs = d.notifications || [];
+        const oldUnread = this.unreadCount || 0;
+        const newUnread = d.unread_count || 0;
         
-        this.notifications = newNotifs;
+        this.notifications = d.notifications || [];
+        this.unreadCount = newUnread;
         this.updateNotifBadge();
         
-        if (oldLen !== undefined && newNotifs.length > oldLen) {
-          const diff = newNotifs.length - oldLen;
+        if (oldUnread !== undefined && newUnread > oldUnread) {
+          const diff = newUnread - oldUnread;
           this.toast(`You have ${diff} new notification${diff > 1 ? 's' : ''}`, 'info');
+        }
+
+        const container = document.getElementById('drawer-content');
+        const overlay = document.getElementById('bottom-drawer-overlay');
+        if (container && overlay && overlay.classList.contains('active') && overlay.dataset.view === 'notifications') {
+          this.renderNotifications(container);
         }
       })
       .catch(() => {});
@@ -267,7 +279,7 @@ const app = {
   updateNotifBadge() {
     const badge = document.getElementById('notif-badge');
     const adminBadge = document.getElementById('nav-notif-count');
-    const count = (this.notifications || []).length;
+    const count = this.unreadCount !== undefined ? this.unreadCount : (this.notifications || []).filter(n => !n.is_read).length;
     
     [badge, adminBadge].forEach(el => {
       if (!el) return;
@@ -283,39 +295,45 @@ const app = {
   toggleNotifications() {
     this.notifications = this.notifications || [];
     if (this.notifications.length === 0) {
-      this.toast('No new notifications', 'info');
+      this.toast('No notifications', 'info');
       return;
     }
     this.openDrawer('notifications');
   },
 
   renderNotifications(container) {
+    const overlay = document.getElementById('bottom-drawer-overlay');
+    if (overlay) overlay.dataset.view = 'notifications';
+
     if ((this.notifications || []).length === 0) {
-      container.innerHTML = `<div style="padding:2.5rem 1rem; text-align:center; color:var(--text-muted);">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom:1rem; opacity:0.5;">
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-        </svg>
-        <p>No new notifications</p>
-      </div>`;
+      container.innerHTML = `
+        <div style="padding:1.5rem; text-align:center; color:var(--text-muted);">
+          <p>No notifications</p>
+        </div>
+      `;
       return;
     }
-    
+
+    const typeColors = {
+      info: 'var(--primary)',
+      warning: 'var(--warning)',
+      success: 'var(--success)',
+      danger: 'var(--danger)'
+    };
+
     container.innerHTML = `
       <div style="padding:1rem;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-          <h3 style="margin:0; font-size:1.3rem;">Notifications</h3>
-          <button class="btn btn-secondary" onclick="app.markAllNotificationsRead()" style="width:auto; padding:0.4rem 0.8rem; font-size:0.8rem;">Mark all as read</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <h3 style="margin:0;">Notifications</h3>
         </div>
-        <div style="display:grid; gap:0.85rem;">
+        <div style="display:flex; flex-direction:column; gap:0.8rem;">
           ${this.notifications.map(n => `
-            <div class="card" style="padding:1rem; border-left:4px solid var(--${n.type || 'info'}); position:relative; background:var(--card-bg);">
-              <div style="font-weight:bold; margin-bottom:6px; display:flex; justify-content:space-between; padding-right:20px; font-size:1rem;">
-                ${n.title}
-                <span style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;">${n.created_at}</span>
+            <div class="card" style="padding:0.8rem; margin:0; border-left:4px solid ${typeColors[n.type] || typeColors.info};">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.3rem;">
+                <strong style="font-size:0.9rem;">${n.title}</strong>
+                <span style="font-size:0.75rem; color:var(--text-muted);">${n.created_at}</span>
               </div>
-              <div style="font-size:0.9rem; color:var(--text-main); line-height:1.4;">${n.message}</div>
-              <button onclick="app.markNotificationRead('${n.id}')" style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.05); border:none; color:var(--text-muted); cursor:pointer; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">&times;</button>
+              <p style="margin:0; font-size:0.85rem; color:var(--text-main);">${n.message}</p>
             </div>
           `).join('')}
         </div>
@@ -324,30 +342,48 @@ const app = {
   },
 
   markNotificationRead(id) {
-    fetch(`/api/notifications/${id}/read`, { method: 'POST', headers: { 'X-CSRF-TOKEN': window.csrfToken } })
-      .then(r => r.json())
-      .then(d => {
-        if (d.success) {
-          this.notifications = this.notifications.filter(n => n.id !== id);
-          this.updateNotifBadge();
-          const container = document.getElementById('drawer-content');
-          const overlay = document.getElementById('bottom-drawer-overlay');
-          if (container && overlay && overlay.classList.contains('active')) {
-            this.renderNotifications(container);
-          }
-          if (this.notifications.length === 0) this.closeDrawer();
-        }
-      });
+    const target = (this.notifications || []).find(n => n.id === id);
+    if (target) {
+      target.is_read = true;
+      target.read_at = 'just now';
+    }
+    this.unreadCount = Math.max(0, (this.unreadCount || 1) - 1);
+    this.updateNotifBadge();
+
+    const container = document.getElementById('drawer-content');
+    const overlay = document.getElementById('bottom-drawer-overlay');
+    if (container && overlay && overlay.classList.contains('active')) {
+      this.renderNotifications(container);
+    }
+
+    const token = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const url = `/api/notifications/${id}/read`;
+    fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': token } }).then(() => {
+      this.fetchNotifications();
+    }).catch(() => {});
   },
 
   markAllNotificationsRead() {
-    fetch('/api/notifications/read-all', { method: 'POST', headers: { 'X-CSRF-TOKEN': window.csrfToken } })
+    (this.notifications || []).forEach(n => {
+      n.is_read = true;
+      n.read_at = 'just now';
+    });
+    this.unreadCount = 0;
+    this.updateNotifBadge();
+
+    const container = document.getElementById('drawer-content');
+    const overlay = document.getElementById('bottom-drawer-overlay');
+    if (container && overlay && overlay.classList.contains('active')) {
+      this.renderNotifications(container);
+    }
+
+    const token = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const url = `/api/notifications/read-all`;
+    fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': token } })
       .then(r => r.json())
       .then(d => {
         if (d.success) {
-          this.notifications = [];
-          this.updateNotifBadge();
-          this.closeDrawer();
+          this.fetchNotifications();
         }
       });
   },

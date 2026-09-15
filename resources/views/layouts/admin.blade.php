@@ -429,6 +429,7 @@
         role: 'ADMIN'
       };
       app.currentLang = localStorage.getItem('pentapure_lang') || 'en';
+      app.init();
     });
     function toggleAttMenu() {
       const menu = document.getElementById('att-submenu');

@@ -14,23 +14,45 @@ class NotificationController extends Controller
     {
         $user = Auth::user();
         if (!$user) {
-            // Fallback for session-based auth if Auth::user() is null
             $sessionUser = session('auth_user');
-            if (!$sessionUser) return response()->json(['notifications' => []]);
-            $user = \App\Models\User::find($sessionUser['id']);
+            if ($sessionUser) {
+                $user = \App\Models\User::find($sessionUser['id']);
+            }
         }
 
-        $notifications = $user->unreadNotifications->map(function($n) {
+        if (!$user) {
+            return response()->json(['unread_count' => 0, 'notifications' => []]);
+        }
+
+        $rawNotifs = \Illuminate\Support\Facades\DB::table('notifications')
+            ->where(function($q) use ($user) {
+                $q->where('notifiable_id', (string)$user->id)
+                  ->orWhere('notifiable_id', (int)$user->id);
+            })
+            ->orderByDesc('created_at')
+            ->limit(30)
+            ->get();
+
+        $unreadCount = 0;
+        $notifications = $rawNotifs->map(function($n) use (&$unreadCount) {
+            $data = json_decode($n->data ?? '{}', true) ?: [];
+            $isRead = !is_null($n->read_at);
+            if (!$isRead) {
+                $unreadCount++;
+            }
             return [
-                'id' => $n->id,
-                'title' => $n->data['title'] ?? 'Notification',
-                'message' => $n->data['message'] ?? '',
-                'type' => $n->data['type'] ?? 'info',
-                'created_at' => $n->created_at->diffForHumans(),
+                'id'         => (string)$n->id,
+                'title'      => $data['title'] ?? 'Notification',
+                'message'    => $data['message'] ?? '',
+                'type'       => $data['type'] ?? 'info',
+                'is_read'    => $isRead,
+                'read_at'    => $isRead ? \Carbon\Carbon::parse($n->read_at)->diffForHumans() : null,
+                'created_at' => \Carbon\Carbon::parse($n->created_at)->diffForHumans(),
             ];
         });
 
         return response()->json([
+            'unread_count'  => $unreadCount,
             'notifications' => $notifications
         ]);
     }
@@ -43,16 +65,18 @@ class NotificationController extends Controller
         $user = Auth::user();
         if (!$user) {
             $sessionUser = session('auth_user');
-            if ($sessionUser) $user = \App\Models\User::find($sessionUser['id']);
+            if ($sessionUser) {
+                $user = \App\Models\User::find($sessionUser['id']);
+            }
         }
 
-        if ($user) {
-            $notification = $user->notifications()->findOrFail($id);
-            $notification->markAsRead();
-            return response()->json(['success' => true]);
-        }
+        $nowStr = \Carbon\Carbon::now()->toDateTimeString();
+        
+        \Illuminate\Support\Facades\DB::table('notifications')
+            ->where('id', (string)$id)
+            ->update(['read_at' => $nowStr]);
 
-        return response()->json(['success' => false], 401);
+        return response()->json(['success' => true]);
     }
 
     /**
@@ -66,11 +90,18 @@ class NotificationController extends Controller
             if ($sessionUser) $user = \App\Models\User::find($sessionUser['id']);
         }
 
+        $nowStr = \Carbon\Carbon::now()->toDateTimeString();
         if ($user) {
-            $user->unreadNotifications->markAsRead();
-            return response()->json(['success' => true]);
+            \Illuminate\Support\Facades\DB::table('notifications')
+                ->where('notifiable_id', $user->id)
+                ->whereNull('read_at')
+                ->update(['read_at' => $nowStr]);
+        } else {
+            \Illuminate\Support\Facades\DB::table('notifications')
+                ->whereNull('read_at')
+                ->update(['read_at' => $nowStr]);
         }
 
-        return response()->json(['success' => false], 401);
+        return response()->json(['success' => true]);
     }
 }

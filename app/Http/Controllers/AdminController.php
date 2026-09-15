@@ -16,6 +16,7 @@ use App\Models\Worker;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Carbon\Carbon;
 
 
 class AdminController extends Controller
@@ -1305,27 +1306,54 @@ class AdminController extends Controller
     // ── NOTIFICATION HISTORY ───────────────────────────────────────────────
     public function notificationHistory()
     {
-        $sessionUser = session('auth_user');
-        $user = $sessionUser ? User::find($sessionUser['id']) : null;
+        $user = \Illuminate\Support\Facades\Auth::user();
+        if (!$user) {
+            $sessionUser = session('auth_user');
+            if ($sessionUser) $user = User::find($sessionUser['id']);
+        }
 
         $notifications = collect();
         if ($user) {
-            $notifications = $user->notifications()
-                ->orderByDesc('created_at')
-                ->get()
-                ->map(function ($n) {
+            if (in_array($user->role, ['ADMIN', 'SUB_ADMIN'])) {
+                // Admin views all system notification records in DB
+                $rawNotifs = \Illuminate\Support\Facades\DB::table('notifications')
+                    ->orderByDesc('created_at')
+                    ->get();
+
+                $notifications = $rawNotifs->map(function ($n) {
+                    $data = json_decode($n->data ?? '{}', true) ?: [];
+                    $notifiableUser = User::find($n->notifiable_id);
+                    $targetName = $notifiableUser ? $notifiableUser->name : 'User #' . $n->notifiable_id;
                     return (object)[
-                        'id'         => $n->id,
-                        'title'      => $n->data['title'] ?? 'Notification',
-                        'message'    => $n->data['message'] ?? '',
-                        'type'       => $n->data['type'] ?? 'info',
-                        'url'        => $n->data['url'] ?? null,
-                        'is_read'    => !is_null($n->read_at),
-                        'read_at'    => $n->read_at,
-                        'created_at' => $n->created_at,
-                        'notif_class' => class_basename($n->type),
+                        'id'          => $n->id,
+                        'title'       => ($data['title'] ?? 'Notification') . ' → (' . $targetName . ')',
+                        'message'     => $data['message'] ?? '',
+                        'type'        => $data['type'] ?? 'info',
+                        'url'         => $data['url'] ?? null,
+                        'is_read'     => !is_null($n->read_at),
+                        'read_at'     => $n->read_at ? Carbon::parse($n->read_at) : null,
+                        'created_at'  => Carbon::parse($n->created_at),
+                        'notif_class' => 'Sent to ' . $targetName,
                     ];
                 });
+            } else {
+                $notifications = $user->notifications()
+                    ->orderByDesc('created_at')
+                    ->get()
+                    ->map(function ($n) {
+                        return (object)[
+                            'id'         => $n->id,
+                            'title'      => $n->data['title'] ?? 'Notification',
+                            'message'    => $n->data['message'] ?? '',
+                            'type'       => $n->data['type'] ?? 'info',
+                            'url'        => $n->data['url'] ?? null,
+                            'is_read'    => !is_null($n->read_at),
+                            'read_at'    => $n->read_at,
+                            'created_at' => $n->created_at,
+                            'notif_class' => class_basename($n->type),
+                        ];
+                    });
+            }
         }
 
         $pageData = [

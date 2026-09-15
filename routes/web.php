@@ -61,15 +61,9 @@ if (!$users->isEmpty()) {
     }
 }
 
-// Global push notifications route (maps to all slugs for backward compatibility or just use a generic route)
-Route::post('/notifications/subscribe', [\App\Http\Controllers\PushSubscriptionController::class, 'subscribe']);
-Route::post('/notifications/unsubscribe', [\App\Http\Controllers\PushSubscriptionController::class, 'unsubscribe']);
-Route::get('/notifications/test', function() {
-    $user = session('auth_user') ? \App\Models\User::find(session('auth_user')['id']) : auth()->user();
-    if (!$user) return 'Not logged in';
-    \Log::info('Triggering Test Notification for: ' . $user->name);
-    return 'Notification sent to ' . $user->name . ' (Role: ' . $user->role . ')';
-});
+Route::match(['get', 'post'], '/api/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
+Route::match(['get', 'post'], '/api/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
+Route::match(['get', 'post'], '/api/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);
 
 // ── Shared Routes (Under {user_slug} prefix) ──────────────────────────────
 
@@ -84,6 +78,9 @@ Route::middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CA
     Route::get('/cashier/history/pdf', [\App\Http\Controllers\CashierController::class, 'downloadPdf']);
     Route::get('/cashier/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill'])->name('cashier.bill.view');
     Route::get('/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill'])->name('bill.view');
+    Route::get('/api/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
+    Route::post('/api/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
+    Route::post('/api/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);
 });
 Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE,STOCK_MANAGER')->group(function() {
     Route::get('/api/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
