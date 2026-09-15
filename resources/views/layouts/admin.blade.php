@@ -28,6 +28,12 @@
             window.scrollTo(0, parseInt(scrollPos));
         }
     });
+    // Prevent mouse scroll wheel from changing number input values globally
+    document.addEventListener('wheel', function(e) {
+        if (document.activeElement && document.activeElement.type === 'number') {
+            document.activeElement.blur();
+        }
+    }, { passive: false });
   </script>
   <!-- Select2 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />

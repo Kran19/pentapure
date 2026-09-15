@@ -16,7 +16,12 @@ class SalesController extends Controller
 
     public function home()
     {
-        $orders       = Order::with(['company', 'transporter', 'items.product'])->orderByDesc('created_at')->get();
+        $user = $this->authUser();
+        $query = Order::with(['company', 'transporter', 'items.product']);
+        if ($user && isset($user['role']) && $user['role'] === 'SALES') {
+            $query->where('created_by', $user['id']);
+        }
+        $orders = $query->orderByDesc('created_at')->get();
         $totalOrders      = $orders->count();
         $pendingOrders    = $orders->whereIn('status', ['OPEN', 'PENDING'])->where('dispatch_status', '!=', 'DONE')->count();
         $dispatchedOrders = $orders->where('dispatch_status', 'DONE')->count();
@@ -354,13 +359,19 @@ class SalesController extends Controller
 
     public function history()
     {
-        $orders = Order::with(['company', 'transporter', 'items.product', 'dispatchLogs'])->orderByDesc('created_at')->get();
+        $user = $this->authUser();
+        $query = Order::with(['company', 'transporter', 'items.product', 'dispatchLogs', 'creator']);
+        if ($user && isset($user['role']) && $user['role'] === 'SALES') {
+            $query->where('created_by', $user['id']);
+        }
+        $orders = $query->orderByDesc('created_at')->get();
         $companies = Company::orderBy('name')->get();
         $transporters = Transporter::orderBy('name')->get();
 
         $pageData = [
             'orders'             => $orders->map(fn($o)=>[
                 'id'             => $o->id,
+                'createdBy'      => $o->creator?->name ?? 'System',
                 'companyId'      => $o->company_id,
                 'companyName'    => strtoupper($o->company?->name ?? ''),
                 'transportId'    => $o->transporter_id,

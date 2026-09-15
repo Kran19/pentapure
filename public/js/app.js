@@ -1753,23 +1753,31 @@ const app = {
           : '';
 
         return `
-        <div style="display:flex; flex-direction:column; gap:6px; padding:10px 0;">
+        <div style="display:flex; flex-direction:column; gap:8px; padding:12px 0;">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-            <span style="font-weight:600; font-size:0.95rem;">
+            <span style="font-weight:600; font-size:0.95rem; color:#fff;">
               ${baseName} ${displayGrade ? `<strong style="font-weight:800; color:var(--primary-light, #F4B400);">${displayGrade}</strong> ` : ''}(${displayType})
             </span>
-            <span style="color:var(--text-muted); font-size:0.8rem;">
-              Total Order Qty: ${i.quantity} kg • Pending Order: ${remaining} kg
-            </span>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <span style="background:rgba(216,138,0,0.2); border:1px solid rgba(216,138,0,0.5); color:#F4B400; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.8rem;">
+                Total Order Qty: <span style="color:#fff;">${i.quantity} kg</span>
+              </span>
+              <span style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.5); color:#f87171; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.8rem;">
+                Pending Order: <span style="color:#fff;">${remaining} kg</span>
+              </span>
+            </div>
           </div>
-          <div style="display:flex; align-items:center; gap:10px; margin-bottom: 8px;">
-            <label style="font-size:0.75rem; color:var(--secondary); white-space:nowrap; margin:0;">Dispatch Qty:</label>
-            <input type="number" class="dispatch-item-qty" data-item-id="${i.id}" data-max="${remaining}" 
-                   value="" placeholder="Enter quantity..." max="${remaining}" min="0.001" step="0.001"
-                   style="flex:1; padding:0.6rem; font-size:1rem; font-weight:bold; color:var(--secondary); background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); border-radius:8px;">
-          </div>
-          <div id="loc-splits-${i.id}" data-item-id="${i.id}" data-max="${remaining}" style="margin-top:4px;">
-            <div style="font-size:0.75rem; color:var(--text-muted);">⏳ Loading stock locations...</div>
+          
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; align-items:end; margin-top:6px;">
+            <div>
+              <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted, #9ca3af); text-transform:uppercase; display:block; margin-bottom:4px;">Dispatch Qty *</label>
+              <input type="number" class="dispatch-item-qty no-spinners" data-item-id="${i.id}" data-max="${remaining}" 
+                     value="" placeholder="Enter quantity..." max="${remaining}" min="0.001" step="0.001"
+                     style="width:100%; padding:0.65rem 0.75rem; font-size:0.95rem; font-weight:bold; color:var(--secondary, #16a34a); background:rgba(0,0,0,0.2); border:1px solid var(--glass-border, rgba(255,255,255,0.15)); border-radius:8px; box-sizing:border-box;">
+            </div>
+            <div id="loc-splits-${i.id}" data-item-id="${i.id}" data-max="${remaining}">
+              <div style="font-size:0.75rem; color:var(--text-muted);">⏳ Loading stock locations...</div>
+            </div>
           </div>
         </div>
         ${hrDivider}
@@ -1856,22 +1864,20 @@ const app = {
               });
 
               container.innerHTML = `
-                <div style="margin-top:8px; padding:10px; background:rgba(0,0,0,0.15); border-radius:8px; border:1px solid var(--border-soft, #DDCFAF);">
-                  <div style="margin-bottom:6px;">
-                    <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted, #9ca3af); text-transform:uppercase; display:block; margin-bottom:4px;">STORAGE LOCATION *</label>
-                    <div class="custom-location-dropdown" id="dispatch-custom-location-dropdown-${i.id}">
-                      <button type="button" onclick="app.toggleDispatchLocationDropdown(this)" style="width:100%; text-align:left; display:flex; justify-content:space-between; align-items:center; background:#ffffff; border:1px solid #d1d5db; padding:0.65rem 0.75rem; font-size:0.88rem; font-weight:600; color:#111827; border-radius:8px; cursor:pointer;">
-                        <span class="loc-dropdown-text">Select Storage Location</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                      </button>
-                      <ul class="dropdown-menu shadow" style="display:none; position:absolute; top:100%; left:0; z-index:1000; width:100%; max-height:260px; overflow-y:auto; background:#ffffff; border:1px solid #d1d5db; border-radius:8px; list-style:none; margin-top:0.25rem; padding:0.5rem; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
-                        ${dropdownItemsHtml}
-                      </ul>
-                    </div>
+                <div>
+                  <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted, #9ca3af); text-transform:uppercase; display:block; margin-bottom:4px;">STORAGE LOCATION *</label>
+                  <div class="custom-location-dropdown" id="dispatch-custom-location-dropdown-${i.id}">
+                    <button type="button" onclick="app.toggleDispatchLocationDropdown(this)" style="width:100%; text-align:left; display:flex; justify-content:space-between; align-items:center; background:#ffffff; border:1px solid #d1d5db; padding:0.65rem 0.75rem; font-size:0.88rem; font-weight:600; color:#111827; border-radius:8px; cursor:pointer;">
+                      <span class="loc-dropdown-text">Select Storage Location</span>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <ul class="dropdown-menu shadow" style="display:none; position:absolute; top:100%; left:0; z-index:1000; width:100%; max-height:260px; overflow-y:auto; background:#ffffff; border:1px solid #d1d5db; border-radius:8px; list-style:none; margin-top:0.25rem; padding:0.5rem; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+                      ${dropdownItemsHtml}
+                    </ul>
                   </div>
                   ${!hasAnyStock ? `
                     <div style="margin-top:6px; padding:6px; background:rgba(239,68,68,0.1); color:#f87171; border-radius:6px; font-size:0.75rem; text-align:center;">
-                      ⚠️ No stock currently available in any location for this product & grade!
+                      ⚠️ No stock currently available in any location!
                     </div>
                   ` : ''}
                 </div>

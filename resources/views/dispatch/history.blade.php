@@ -122,7 +122,7 @@
     <!-- 1st: Date Range Filter -->
     <div>
       <select name="range" onchange="this.form.submit()" style="width:100%; padding:0.65rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600;">
-        <option value="all" {{ $dateRange==='all'?'selected':'' }}>ALL TIME</option>
+        <option value="all" {{ $dateRange==='all'?'selected':'' }}>UP TO DATE</option>
         <option value="custom" {{ $dateRange==='custom'?'selected':'' }}>CUSTOM RANGE</option>
       </select>
     </div>
@@ -262,11 +262,17 @@
               @endphp
               <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.88rem; flex-wrap:wrap; gap:8px;">
                 <span>{{ $pName }} @if($gName)<strong style="font-weight:800; color:var(--primary, #D88A00);">{{ $gName }}</strong> @endif({{ $tName }})</span>
-                <span style="font-size:0.8rem; color:var(--text-muted);">
-                  Total: <strong style="color:var(--text-main);">{{ $tot }} kg</strong> | 
-                  Dispatched: <strong style="color:#16a34a;">{{ $disp }} kg</strong> | 
-                  Pending: <strong style="color:#ef4444;">{{ $rem }} kg</strong>
-                </span>
+                <div style="display:flex; align-items:center; gap:6px; font-size:0.8rem;">
+                  <span style="background:rgba(255,255,255,0.08); padding:3px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.15); font-weight:600; color:var(--text-main);">
+                    Total: <strong style="color:var(--primary, #D88A00);">{{ $tot }} kg</strong>
+                  </span>
+                  <span style="background:rgba(22,163,74,0.15); padding:3px 8px; border-radius:6px; border:1px solid rgba(22,163,74,0.3); font-weight:700; color:#16a34a;">
+                    Dispatched: <strong>{{ $disp }} kg</strong>
+                  </span>
+                  <span style="background:rgba(239,68,68,0.15); padding:3px 8px; border-radius:6px; border:1px solid rgba(239,68,68,0.3); font-weight:700; color:#ef4444;">
+                    Pending: <strong>{{ $rem }} kg</strong>
+                  </span>
+                </div>
               </div>
             @endforeach
           </div>

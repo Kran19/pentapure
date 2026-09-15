@@ -213,6 +213,7 @@ foreach ($roleSlugs['SALES'] ?? [] as $slug) {
 
     Route::get('/home',          'home')->name($slug.'.home');
     Route::get('/action',        'action')->name($slug.'.action');
+    Route::post('/action',       'storeOrder')->name($slug.'.action.store');
     Route::post('/order',        'storeOrder');
     Route::post('/sales/order',  'storeOrder');
     Route::post('/order/{id}',   'updateOrder');

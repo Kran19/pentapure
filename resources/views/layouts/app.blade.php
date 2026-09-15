@@ -26,6 +26,12 @@
             window.scrollTo(0, parseInt(scrollPos));
         }
     });
+    // Prevent mouse scroll wheel from changing number input values globally
+    document.addEventListener('wheel', function(e) {
+        if (document.activeElement && document.activeElement.type === 'number') {
+            document.activeElement.blur();
+        }
+    }, { passive: false });
   </script>
 </head>
 <body class="{{ str_contains(request()->path(), 'attendance') ? 'admin-mode attendance-mode' : '' }}">

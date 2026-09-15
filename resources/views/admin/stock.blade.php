@@ -176,20 +176,35 @@
       -moz-appearance: textfield;
     }
     
-    /* Fix Select2 visibility inside white-orange-card and make it compact */
-    .select2-container .select2-selection--single .select2-selection__rendered {
-        color: #333333 !important;
-        font-weight: 600;
-        font-size: 0.8rem;
-        line-height: 1.6rem !important;
+    /* Stock Table Uniform Column Alignment */
+    .table-container table.stock-table {
+      width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
     }
-    .select2-container--default .select2-selection--single {
-        background-color: #f9fafb !important;
-        border: 1px solid #d1d5db !important;
-        height: 1.8rem !important;
+    .table-container table.stock-table th,
+    .table-container table.stock-table td {
+      padding: 0.65rem 0.5rem !important;
+      vertical-align: middle !important;
+      box-sizing: border-box !important;
     }
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 1.6rem !important;
+    .table-container table.stock-table th:nth-child(1),
+    .table-container table.stock-table td:nth-child(1) { width: 32% !important; text-align: left !important; }
+    .table-container table.stock-table th:nth-child(2),
+    .table-container table.stock-table td:nth-child(2) { width: 11% !important; text-align: right !important; }
+    .table-container table.stock-table th:nth-child(3),
+    .table-container table.stock-table td:nth-child(3) { width: 7% !important; text-align: center !important; }
+    .table-container table.stock-table th:nth-child(4),
+    .table-container table.stock-table td:nth-child(4) { width: 14% !important; text-align: right !important; }
+    .table-container table.stock-table th:nth-child(5),
+    .table-container table.stock-table td:nth-child(5) { width: 11% !important; text-align: right !important; }
+    .table-container table.stock-table th:nth-child(6),
+    .table-container table.stock-table td:nth-child(6) { width: 15% !important; text-align: center !important; }
+    .table-container table.stock-table th:nth-child(7),
+    .table-container table.stock-table td:nth-child(7) { width: 10% !important; text-align: right !important; }
+
+    .table-container table.stock-table td:nth-child(7) > div {
+      justify-content: flex-end !important;
     }
   </style>
 
@@ -201,7 +216,7 @@
       <p class="text-muted text-center">No raw stock recorded yet.</p>
     @else
     <div class="table-container">
-      <table>
+      <table class="stock-table">
         <thead><tr><th>Product</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>min_qty</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="raw-stock-tbody">
 @foreach($rawItems as $s)
@@ -234,7 +249,6 @@
                 <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }})" title="Adjust Stock">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
-                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
                 <button class="btn-icon delete" onclick="adminDeleteStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}')" title="Delete Stock Entry">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                 </button>
@@ -257,7 +271,7 @@
       <p class="text-muted text-center">No semi stock recorded yet.</p>
     @else
     <div class="table-container">
-      <table>
+      <table class="stock-table">
         <thead><tr><th>Product</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>min_qty</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="semi-stock-tbody">
           @foreach($semiItems as $s)
@@ -290,7 +304,6 @@
                 <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }})" title="Adjust Stock">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
-                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
                 <button class="btn-icon delete" onclick="adminDeleteStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}')" title="Delete Stock Entry">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                 </button>
@@ -313,7 +326,7 @@
       <p class="text-muted text-center">No finished stock recorded yet.</p>
     @else
     <div class="table-container">
-      <table>
+      <table class="stock-table">
         <thead><tr><th>Product</th><th>Total Qty</th><th>Unit</th><th>Rate (Ref)</th><th>min_qty</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="finished-stock-tbody">
           @foreach($finishedItems as $s)
@@ -346,7 +359,6 @@
                 <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }})" title="Adjust Stock">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
-                <button class="btn btn-sm" onclick="window.location.href='{{ route('product.stock.history', ['productId' => $s->productId, 'stage' => $s->stage, 'grade' => $s->grade]) }}'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
                 <button class="btn-icon delete" onclick="adminDeleteStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}')" title="Delete Stock Entry">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                 </button>
@@ -1065,7 +1077,9 @@ function updateStockTables(stockData) {
               <button class="btn-icon edit" onclick="adminAdjustStock('${s.productId}', '${s.stage}', '${s.grade}', '${escapeHtml(s.name)}', ${s.quantity})" title="Adjust Stock">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
-              <button class="btn btn-sm" onclick="window.location.href='{{ url(request()->segment(1) . '/product') }}/' + s.productId + '/' + s.stage + '/' + s.grade + '/history'" style="width:auto; padding:0.35rem 0.55rem; font-size:0.75rem;">Details</button>
+              <button class="btn-icon delete" onclick="adminDeleteStock('${s.productId}', '${s.stage}', '${s.grade}', '${escapeHtml(s.name)}')" title="Delete Stock Entry">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+              </button>
             </div>
           </td>
         </tr>

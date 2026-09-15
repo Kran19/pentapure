@@ -26,7 +26,7 @@
         return $oStatus === 'CANCELLED';
       }
       if ($statusFilter === 'PENDING') {
-        return ($oStatus === 'CANCELLED') || ($dStatus === 'PENDING' || $dStatus === 'UNASSIGNED' || empty($dStatus));
+        return ($oStatus !== 'CANCELLED') && ($dStatus === 'PENDING' || $dStatus === 'UNASSIGNED' || empty($dStatus));
       }
       if ($statusFilter === 'PARTIAL_PENDING') {
         return ($oStatus !== 'CANCELLED') && ($dStatus === 'PARTIAL_PENDING' || $dStatus === 'PARTIAL PENDING');
@@ -115,7 +115,7 @@
     <!-- 1st: Date Range Filter -->
     <div>
       <select name="range" onchange="this.form.submit()" style="width:100%; padding:0.65rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600;">
-        <option value="all" {{ $dateRange==='all'?'selected':'' }}>ALL TIME</option>
+        <option value="all" {{ $dateRange==='all'?'selected':'' }}>UP TO DATE</option>
         <option value="custom" {{ $dateRange==='custom'?'selected':'' }}>CUSTOM RANGE</option>
       </select>
     </div>
@@ -140,6 +140,7 @@
         <option value="PARTIAL_PENDING" {{ $statusFilter === 'PARTIAL_PENDING' ? 'selected' : '' }}>PARTIAL PENDING</option>
         <option value="PARTIAL" {{ $statusFilter === 'PARTIAL' ? 'selected' : '' }}>PARTIAL DISPATCH</option>
         <option value="DONE" {{ $statusFilter === 'DONE' ? 'selected' : '' }}>FULLY DISPATCHED</option>
+        <option value="CANCELLED" {{ $statusFilter === 'CANCELLED' ? 'selected' : '' }}>CANCELLED</option>
       </select>
     </div>
   </div>
@@ -166,10 +167,36 @@
       $canEdit = ($item['status'] ?? '') === 'OPEN' && (($item['dispatchStatus'] ?? '') === 'PENDING' || ($item['dispatchStatus'] ?? '') === 'UNASSIGNED' || empty($item['dispatchStatus']));
     @endphp
     <div class="card sales-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--glass-border, rgba(255,255,255,0.06)); background:var(--card-bg, rgba(255,255,255,0.03)); transition:all 0.2s ease;">
+      @php
+        $oStatus = strtoupper(str_replace('_', ' ', $item['status'] ?? ''));
+        $ds = strtoupper(str_replace('_', ' ', $item['dispatchStatus'] ?? 'PENDING'));
+        if ($oStatus === 'CANCELLED') {
+          $statusText = 'CANCELLED';
+          $badgeClass = 'badge-danger';
+          $customBadgeStyle = 'background:#dc2626; color:#fff;';
+        } elseif ($ds === 'DONE' || $ds === 'COMPLETED' || $ds === 'FULLY DISPATCHED' || $ds === 'DISPATCHED') {
+          $statusText = 'FULLY DISPATCHED';
+          $badgeClass = 'badge-done';
+          $customBadgeStyle = 'background:#16a34a; color:#fff;';
+        } elseif ($ds === 'PARTIAL' || $ds === 'PARTIAL DISPATCH' || $ds === 'PARTIALLY DISPATCHED') {
+          $statusText = 'PARTIAL DISPATCH';
+          $badgeClass = 'badge-pending';
+          $customBadgeStyle = 'background:#f59e0b; color:#fff;';
+        } elseif ($ds === 'PARTIAL PENDING') {
+          $statusText = 'PARTIAL PENDING';
+          $badgeClass = 'badge-pending';
+          $customBadgeStyle = 'background:#f59e0b; color:#fff;';
+        } else {
+          $statusText = 'PENDING';
+          $badgeClass = 'badge-pending';
+          $customBadgeStyle = 'background:#3b82f6; color:#fff;';
+        }
+      @endphp
+
       <!-- Header -->
-      <div onclick="toggleHistoryAccordion('sales-acc-{{ $item['id'] }}', this)" style="cursor:pointer; padding:1.1rem; display:flex; justify-content:space-between; align-items:center; user-select:none;">
-        <div style="flex:1; padding-right:15px;">
-          <div style="font-weight:600; font-size:1rem; color:var(--text-main); line-height:1.3;">
+      <div onclick="toggleHistoryAccordion('sales-acc-{{ $item['id'] }}', this)" style="cursor:pointer; padding:1.1rem; display:flex; justify-content:space-between; align-items:center; user-select:none; gap:10px;">
+        <div style="flex:1; min-width:0;">
+          <div style="font-weight:600; font-size:1rem; color:var(--text-main); line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
             #{{ strtoupper((string)$item['id']) }} — {{ $item['companyName'] ?? 'N/A' }}
           </div>
           <div style="margin-top:6px; font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
@@ -178,17 +205,26 @@
             <span>{{ \Carbon\Carbon::parse($item['date'])->format('d M Y') }}</span>
             @if(!empty($item['lrCopies']) && count($item['lrCopies']) > 0)
               <span>•</span>
-              <span class="badge badge-done" style="font-size:0.65rem; background:#16a34a; color:#fff; padding:2px 6px; border-radius:4px;">LR UPLOADED</span>
+              <span class="badge badge-done" style="font-size:0.65rem; background:#16a34a; color:#ffffff !important; padding:2px 6px; border-radius:4px; font-weight:700;">LR UPLOADED</span>
             @elseif(in_array(strtoupper(str_replace('_', ' ', $item['dispatchStatus'] ?? '')), ['DONE', 'PARTIAL', 'PARTIAL DISPATCH', 'FULLY DISPATCHED']))
               <span>•</span>
-              <span class="badge badge-pending" style="font-size:0.65rem; background:#dc2626; color:#fff; padding:2px 6px; border-radius:4px; font-weight:700;">LR PENDING</span>
+              <span class="badge badge-pending" style="font-size:0.65rem; background:#dc2626; color:#ffffff !important; padding:2px 6px; border-radius:4px; font-weight:700;">LR PENDING</span>
             @endif
           </div>
         </div>
-        <div style="display:flex; align-items:center; gap:12px; text-align:right;">
+
+        <!-- Dispatch Status in True Center -->
+        <div style="flex:1; display:flex; justify-content:center; align-items:center;">
+          <span class="badge {{ $badgeClass }}" style="{{ $customBadgeStyle }} font-size:0.75rem; padding:4px 12px; border-radius:12px; font-weight:700; white-space:nowrap;">
+            {{ $statusText }}
+          </span>
+        </div>
+
+        <!-- Right Side: Total Amount + Edit Order + Chevron -->
+        <div style="flex:1; display:flex; align-items:center; justify-content:flex-end; gap:12px; text-align:right;">
           <div style="font-weight:bold; color:var(--primary, #D88A00); font-size:1.15rem; white-space:nowrap;">₹{{ number_format($item['total'], 2) }}</div>
-          @if($canCancel)
-            <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); app.cancelSalesOrder({{ $item['id'] }})" style="background:var(--danger, #ef4444); color:#fff; padding:0.35rem 0.8rem; font-weight:bold; font-size:0.75rem; border-radius:6px; width:auto;">🚫 Cancel</button>
+          @if($canEdit)
+            <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action?edit=' . $item['id']) }}" onclick="event.stopPropagation()" style="background:var(--warning, #FFA500); color:#000; padding:0.35rem 0.8rem; font-weight:bold; font-size:0.75rem; border-radius:6px; width:auto; text-decoration:none; display:inline-flex; align-items:center; gap:4px; white-space:nowrap;">✏️ Edit Order</a>
           @endif
           <div class="acc-chevron" style="transition:transform 0.25s ease; color:var(--text-muted); display:flex; align-items:center;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -208,6 +244,10 @@
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Transport</div>
             <div style="font-weight:600; font-size:0.9rem;">{{ $item['transporter']['name'] ?? ($item['transportName'] ?? 'N/A') }}</div>
+          </div>
+          <div>
+            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Sales By</div>
+            <div style="font-weight:600; font-size:0.9rem; color:var(--primary-light, #F4B400);">{{ $item['createdBy'] ?? 'System' }}</div>
           </div>
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Dispatch Status</div>
@@ -265,20 +305,29 @@
               <tr style="border-bottom:1px solid var(--glass-border, rgba(255,255,255,0.08)); text-align:left;">
                 <th style="padding:6px;">Product</th>
                 <th style="padding:6px;">Grade</th>
-                <th style="padding:6px;">Qty</th>
+                <th style="padding:6px;">Total QTY</th>
+                <th style="padding:6px;">Dispatched QTY</th>
+                <th style="padding:6px;">Pending QTY</th>
                 <th style="padding:6px; text-align:right;">Price</th>
               </tr>
             </thead>
             <tbody>
               @forelse($item['items'] ?? [] as $prod)
+                @php
+                  $totQ = $prod['quantity'] ?? 0;
+                  $dispQ = $prod['dispatchedQty'] ?? $prod['dispatched_qty'] ?? 0;
+                  $pendQ = max(0, $totQ - $dispQ);
+                @endphp
                 <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
                   <td style="padding:6px; font-weight:600;">{{ $prod['productName'] ?? 'Unknown' }}</td>
                   <td style="padding:6px;">{{ $prod['grade'] ?: '—' }}</td>
-                  <td style="padding:6px;">{{ $prod['quantity'] }} kg</td>
+                  <td style="padding:6px; font-weight:600;">{{ $totQ }} kg</td>
+                  <td style="padding:6px; color:#16a34a; font-weight:700;">{{ $dispQ }} kg</td>
+                  <td style="padding:6px; color:#ef4444; font-weight:700;">{{ $pendQ }} kg</td>
                   <td style="padding:6px; text-align:right; font-weight:600;">₹{{ number_format($prod['price'] ?? 0, 2) }}</td>
                 </tr>
               @empty
-                <tr><td colspan="4" style="text-align:center; padding:8px; color:var(--text-muted);">No products</td></tr>
+                <tr><td colspan="6" style="text-align:center; padding:8px; color:var(--text-muted);">No products</td></tr>
               @endforelse
             </tbody>
           </table>
@@ -288,7 +337,7 @@
           <div style="margin-bottom:1rem; padding:0.8rem 1rem; background:rgba(0,128,0,0.04); border-radius:10px; border:1px solid rgba(46,204,113,0.3); box-sizing:border-box;">
             <div style="color:#2ecc71; font-size:0.78rem; text-transform:uppercase; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
               <span>📦 Dispatched Lorry Receipt (LR) Copies</span>
-              <span class="badge badge-done" style="font-size:0.65rem; background:#16a34a; color:#fff; padding:2px 8px; border-radius:10px;">LR UPLOADED</span>
+              <span class="badge badge-done" style="font-size:0.65rem; background:#16a34a; color:#ffffff !important; padding:2px 8px; border-radius:10px; font-weight:700;">LR UPLOADED</span>
             </div>
             <div style="display:flex; gap:12px; flex-wrap:wrap;">
               @foreach($item['lrCopies'] as $lr)
@@ -306,7 +355,7 @@
             <div style="font-size:0.8rem; color:#ef4444; font-weight:600;">
               📦 Lorry Receipt (LR) Copy Pending
             </div>
-            <span class="badge badge-pending" style="font-size:0.65rem; background:#dc2626; color:#fff; padding:2px 8px; border-radius:10px; font-weight:700;">LR PENDING</span>
+            <span class="badge badge-pending" style="font-size:0.65rem; background:#dc2626; color:#ffffff !important; padding:2px 8px; border-radius:10px; font-weight:700;">LR PENDING</span>
           </div>
         @endif
 
