@@ -9,7 +9,9 @@
     window.baseUrl = '{{ url('') }}';
     window.userSlug = '{{ request()->segment(1) }}';
   </script>
-  <title>Pentapure Factory - Attendance Management</title>
+  <link rel="icon" type="image/png" href="{{ asset('logo.png') }}?v=1">
+  <link rel="shortcut icon" type="image/png" href="{{ asset('logo.png') }}?v=1">
+  <link rel="apple-touch-icon" href="{{ asset('logo.png') }}?v=1">
   <link rel="stylesheet" href="{{ asset('css/style.css') }}?v={{ filemtime(public_path('css/style.css')) }}">
   <link rel="stylesheet" href="{{ asset('css/tabulator-custom.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

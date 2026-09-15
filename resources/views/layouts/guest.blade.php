@@ -6,7 +6,9 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <meta name="base-url" content="{{ url(request()->segment(1) . '/') }}">
   <script>window.userSlug = '{{ request()->segment(1) }}';</script>
-  <title>Pentapure Factory Operations - Login</title>
+  <link rel="icon" type="image/png" href="{{ asset('logo.png') }}?v=1">
+  <link rel="shortcut icon" type="image/png" href="{{ asset('logo.png') }}?v=1">
+  <link rel="apple-touch-icon" href="{{ asset('logo.png') }}?v=1">
   <link rel="stylesheet" href="{{ asset('css/style.css') }}">
   <link rel="stylesheet" href="{{ asset('css/tabulator-custom.css') }}">
   <!-- SweetAlert2 -->
