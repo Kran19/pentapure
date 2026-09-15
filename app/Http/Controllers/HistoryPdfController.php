@@ -26,6 +26,10 @@ class HistoryPdfController extends Controller
         $user = $this->authUser();
         abort_unless(($user['role'] ?? null) === 'ADMIN' || in_array($panel, ['RAW', 'SEMI', 'FINISHED', 'SALES', 'DISPATCH', 'CASHIER', 'ATTENDANCE'], true), 403);
 
+        if ($panel === 'CASHIER') {
+            return app(\App\Http\Controllers\CashierController::class)->downloadPdf($request);
+        }
+
         if ($panel === 'DISPATCH') {
             $data = $this->buildDispatchReportData($request);
             $pdf = Pdf::loadView('pdf.dispatch-history-report', $data)->setPaper('A4', 'portrait');

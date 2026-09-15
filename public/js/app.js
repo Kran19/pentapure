@@ -2382,6 +2382,8 @@ const app = {
         };
       }
     }).then(result => {
+      if (!result.isConfirmed) return;
+      const p = result.value;
       const segments = window.location.pathname.split('/').filter(Boolean);
       let currentSlug = 'cashier';
       if (segments.length > 0) {
