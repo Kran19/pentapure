@@ -38,15 +38,15 @@ try {
 
 $defaultRoleSlugs = [
     'ADMIN' => ['admin'],
-    'RAW' => ['raw', 'raw2'],
-    'SEMI' => ['semi', 'semi2'],
-    'FINISHED' => ['finished', 'finished2'],
-    'CASHIER' => ['cashier', 'cashier2'],
-    'SALES' => ['sales', 'sales2'],
-    'DISPATCH' => ['dispatch', 'dispatch2'],
-    'ATTENDANCE' => ['attendance', 'attendance2'],
+    'RAW' => array_merge(['raw'], array_map(fn($i) => "raw{$i}", range(2, 10))),
+    'SEMI' => array_merge(['semi'], array_map(fn($i) => "semi{$i}", range(2, 10))),
+    'FINISHED' => array_merge(['finished'], array_map(fn($i) => "finished{$i}", range(2, 10))),
+    'CASHIER' => array_merge(['cashier'], array_map(fn($i) => "cashier{$i}", range(2, 10))),
+    'SALES' => array_merge(['sales'], array_map(fn($i) => "sales{$i}", range(2, 10))),
+    'DISPATCH' => array_merge(['dispatch'], array_map(fn($i) => "dispatch{$i}", range(2, 10))),
+    'ATTENDANCE' => array_merge(['attendance'], array_map(fn($i) => "attendance{$i}", range(2, 10))),
     'SUB_ADMIN' => ['sub_admin'],
-    'STOCK_MANAGER' => ['stock_manager', 'stock_manager2'],
+    'STOCK_MANAGER' => array_merge(['stock_manager'], array_map(fn($i) => "stock_manager{$i}", range(2, 10))),
 ];
 
 $roleSlugs = $defaultRoleSlugs;
