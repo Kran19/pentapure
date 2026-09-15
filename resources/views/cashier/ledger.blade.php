@@ -31,7 +31,8 @@
 
   if ($specificDate) {
     $filtered = $filtered->filter(function($t) use ($specificDate) {
-      return str_starts_with($t['date'], $specificDate);
+      $localDate = \Carbon\Carbon::parse($t['date'])->timezone(config('app.timezone', 'Asia/Kolkata'))->format('Y-m-d');
+      return $localDate === $specificDate;
     });
   }
 
@@ -389,7 +390,15 @@
 
     // 3. Specific Date filter
     if (specificDate) {
-      filtered = filtered.filter(t => (t.date || '').startsWith(specificDate));
+      filtered = filtered.filter(t => {
+        if (!t.date) return false;
+        const d = new Date(t.date);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const localDateStr = `${yyyy}-${mm}-${dd}`;
+        return localDateStr === specificDate;
+      });
     }
 
     // 4. Date Range filter
