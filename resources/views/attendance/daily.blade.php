@@ -125,8 +125,15 @@
             </div>
           </div>
 
-          <!-- Row 1: Status | Shift -->
+          <!-- Row 1: Status (or No. of Workers for Mukadam) | Shift -->
           <div style="display:flex; gap:10px; margin-bottom:0.75rem;">
+            @if(strtolower($deptName) === 'mukadam' || $w->salary_type === 'LABOUR_MUKADAM')
+            <input type="hidden" name="attendances[{{$index}}][status]" class="status-select" value="PRESENT">
+            <div style="flex:1;">
+              <label style="font-size:0.8rem; color:var(--text-muted); display:block;">No. of Workers *</label>
+              <input type="number" name="attendances[{{$index}}][num_workers]" value="{{ ($att && $att->num_workers > 0) ? $att->num_workers : '' }}" min="0" step="1" class="num-workers-input" placeholder="Enter count" onwheel="this.blur()" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
+            </div>
+            @else
             <div style="flex:1;">
               <label style="font-size:0.8rem; color:var(--text-muted); display:block;">Status</label>
               <select name="attendances[{{$index}}][status]" class="status-select" onchange="handleStatusChange(this)" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
@@ -144,6 +151,7 @@
                   <option value="PAID LEAVE" {{ $status=='PAID LEAVE'?'selected':'' }}>PAID LEAVE (1)</option>
               </select>
             </div>
+            @endif
             <div style="flex:1; display:{{ in_array($status, ['ABSENT', 'HOLIDAY']) ? 'none' : 'block' }};" class="extra-field-block">
               <label style="font-size:0.8rem; color:var(--text-muted); display:block;">Shift</label>
               <select name="attendances[{{$index}}][shift_type]" class="shift-select" onchange="handleShiftChange(this)" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
@@ -209,17 +217,14 @@
             </div>
           </div>
 
-          <!-- Row 5: Advance & Num Workers -->
+          <!-- Row 5: Advance -->
           <div class="extra-field-flex" style="display:{{ in_array($status, ['ABSENT', 'HOLIDAY']) ? 'none' : 'flex' }}; gap:10px; margin-bottom:0.5rem;">
             <div style="flex:1;">
               <label style="font-size:0.8rem; color:var(--text-muted); display:block;">Advance (₹)</label>
               <input type="number" name="attendances[{{$index}}][advance]" value="{{ $advance }}" min="0" step="1" class="advance-input" onwheel="this.blur()" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
             </div>
-            @if($w->salary_type === 'LABOUR_MUKADAM')
-            <div style="flex:1;">
-              <label style="font-size:0.8rem; color:var(--text-muted); display:block;">No. of Workers</label>
-              <input type="number" name="attendances[{{$index}}][num_workers]" value="{{ ($att && $att->num_workers > 0) ? $att->num_workers : '' }}" min="0" step="1" class="num-workers-input" onwheel="this.blur()" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
-            </div>
+            @if(strtolower($deptName) !== 'mukadam' && $w->salary_type !== 'LABOUR_MUKADAM')
+            <div style="flex:1; display:none;"></div>
             @endif
           </div>
 

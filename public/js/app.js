@@ -1114,17 +1114,18 @@ const app = {
     // Extract individual product grades from Product Master
     let allowedGrades = (prod && Array.isArray(prod.grades) && prod.grades.length > 0) 
       ? prod.grades 
-      : ['NONE'];
+      : ['NA'];
 
     let html = '';
     allowedGrades.forEach(g => {
-      const gName = (g || 'NONE').toUpperCase();
+      let gName = (g || 'NA').toUpperCase();
+      if (gName === 'NONE') gName = 'NA';
       const isSel = (gName === (selectedGrade || '').toUpperCase() || (!selectedGrade && allowedGrades.length === 1)) ? 'selected' : '';
       html += `<option value="${gName}" ${isSel}>${gName}</option>`;
     });
 
     if (allowedGrades.length === 0) {
-      html = `<option value="NONE" selected>NONE</option>`;
+      html = `<option value="NA" selected>NA</option>`;
     }
 
     gradeSelect.innerHTML = html;
@@ -1149,7 +1150,8 @@ const app = {
     div.style.cssText = 'background:transparent; border:none; padding:0; display:flex; flex-direction:column; gap:10px; margin-bottom:0;';
 
     const selectedProdId = prefillData ? prefillData.product_id : '';
-    const selectedGrade = prefillData ? (prefillData.grade || 'NONE') : '';
+    let selectedGrade = prefillData ? (prefillData.grade || 'NA') : '';
+    if (selectedGrade === 'NONE') selectedGrade = 'NA';
     const qty = prefillData ? prefillData.quantity : '';
     const price = prefillData ? prefillData.price : '';
     const itemId = prefillData ? prefillData.id : '';
@@ -1185,7 +1187,7 @@ const app = {
         <div style="flex:1.2; min-width:110px;">
           <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">GRADE</label>
           <select class="o-prod-grade" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem;">
-            <option value="NONE" selected>NONE</option>
+            <option value="NA" selected>NA</option>
           </select>
         </div>
         <div style="flex:1; min-width:80px;">
@@ -1211,7 +1213,7 @@ const app = {
       this.onOrderProductChange(selEl, selectedGrade);
     } else {
       const gradeSelect = div.querySelector('.o-prod-grade');
-      if (gradeSelect) gradeSelect.innerHTML = '<option value="NONE" selected>NONE</option>';
+      if (gradeSelect) gradeSelect.innerHTML = '<option value="NA" selected>NA</option>';
     }
   },
 
