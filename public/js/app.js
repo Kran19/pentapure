@@ -2382,9 +2382,16 @@ const app = {
         };
       }
     }).then(result => {
-      if (!result.isConfirmed) return;
-      const p = result.value;
-      let url = `/cashier/history/pdf?from=${p.from}&to=${p.to}&include_bills=${p.include_bills}&category=${p.category}&site=${p.site}`;
+      const segments = window.location.pathname.split('/').filter(Boolean);
+      let currentSlug = 'cashier';
+      if (segments.length > 0) {
+        if (segments[0] === 'penta-pure' && segments.length > 1) {
+          currentSlug = segments[1];
+        } else if (segments[0] !== 'penta-pure') {
+          currentSlug = segments[0];
+        }
+      }
+      let url = `${this.getBaseUrl()}/${currentSlug}/history/pdf?from=${p.from}&to=${p.to}&include_bills=${p.include_bills}&category=${p.category}&site=${p.site}`;
       if (p.opening_balance) url += `&opening_balance=${p.opening_balance}`;
       if (p.tab) url += `&tab=${p.tab}`;
       if (p.cashier_id) url += `&cashier_id=${p.cashier_id}`;
