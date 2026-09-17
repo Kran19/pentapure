@@ -37,16 +37,16 @@ try {
 }
 
 $defaultRoleSlugs = [
-    'ADMIN' => ['admin'],
-    'RAW' => array_merge(['raw'], array_map(fn($i) => "raw{$i}", range(2, 10))),
-    'SEMI' => array_merge(['semi'], array_map(fn($i) => "semi{$i}", range(2, 10))),
-    'FINISHED' => array_merge(['finished'], array_map(fn($i) => "finished{$i}", range(2, 10))),
-    'CASHIER' => array_merge(['cashier'], array_map(fn($i) => "cashier{$i}", range(2, 10))),
-    'SALES' => array_merge(['sales'], array_map(fn($i) => "sales{$i}", range(2, 10))),
-    'DISPATCH' => array_merge(['dispatch'], array_map(fn($i) => "dispatch{$i}", range(2, 10))),
-    'ATTENDANCE' => array_merge(['attendance'], array_map(fn($i) => "attendance{$i}", range(2, 10))),
-    'SUB_ADMIN' => ['sub_admin'],
-    'STOCK_MANAGER' => array_merge(['stock_manager'], array_map(fn($i) => "stock_manager{$i}", range(2, 10))),
+    'ADMIN' => array_merge(['admin'], array_map(fn($i) => "admin{$i}", range(2, 50))),
+    'RAW' => array_merge(['raw'], array_map(fn($i) => "raw{$i}", range(2, 50))),
+    'SEMI' => array_merge(['semi'], array_map(fn($i) => "semi{$i}", range(2, 50))),
+    'FINISHED' => array_merge(['finished'], array_map(fn($i) => "finished{$i}", range(2, 50))),
+    'CASHIER' => array_merge(['cashier'], array_map(fn($i) => "cashier{$i}", range(2, 50))),
+    'SALES' => array_merge(['sales'], array_map(fn($i) => "sales{$i}", range(2, 50))),
+    'DISPATCH' => array_merge(['dispatch'], array_map(fn($i) => "dispatch{$i}", range(2, 50))),
+    'ATTENDANCE' => array_merge(['attendance'], array_map(fn($i) => "attendance{$i}", range(2, 50))),
+    'SUB_ADMIN' => array_merge(['sub_admin'], array_map(fn($i) => "sub_admin{$i}", range(2, 50))),
+    'STOCK_MANAGER' => array_merge(['stock_manager'], array_map(fn($i) => "stock_manager{$i}", range(2, 50))),
 ];
 
 $roleSlugs = $defaultRoleSlugs;
