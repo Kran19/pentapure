@@ -997,7 +997,7 @@ const app = {
         .then(r => r.json())
         .then(d => {
           if (d.success) {
-            this.toast(d.message || 'Transporter saved!');
+            this.toast(d.message || 'Transporter saved!', 'success');
             
             // Add new transporter to the select dropdown and select it
             const selectEl = document.getElementById('order-transport');
@@ -1015,6 +1015,43 @@ const app = {
               }
 
               this.onSalesTransportSelect(d.transporter.id);
+            }
+
+            const transportTab = document.getElementById('sales-tab-transport');
+            const isTransportTabActive = transportTab && transportTab.style.display !== 'none';
+            if (isTransportTabActive) {
+              sessionStorage.setItem('activeSalesTab', 'transport');
+              setTimeout(() => location.reload(), 600);
+            } else {
+              // Update transport table dynamically if present
+              const tbody = document.getElementById('action-transporters-tbody');
+              if (tbody && d.transporter) {
+                const emptyRow = tbody.querySelector('td[colspan]');
+                if (emptyRow) emptyRow.closest('tr').remove();
+                const newIdx = tbody.querySelectorAll('tr').length + 1;
+                const tr = document.createElement('tr');
+                tr.style.cssText = 'border-bottom:1px solid rgba(255,255,255,0.04);';
+                const safeName = (d.transporter.name || '').replace(/'/g, "\\'");
+                const jsonStr = JSON.stringify(d.transporter).replace(/"/g, '&quot;');
+                tr.innerHTML = `
+                  <td style="padding:8px 6px; color:var(--text-muted);">${newIdx}</td>
+                  <td class="action-trans-name" style="padding:8px 6px; font-weight:600; color:var(--text-main);">${d.transporter.name}</td>
+                  <td style="padding:8px 6px; font-family:monospace; color:var(--primary-light, #f59e0b);">${d.transporter.gst || 'N/A'}</td>
+                  <td style="padding:8px 6px;">${d.transporter.contact || '—'}</td>
+                  <td style="padding:8px 6px;">${d.transporter.vehicles || '—'}</td>
+                  <td style="padding:8px 6px; text-align:center;">
+                    <div style="display:flex; justify-content:center; gap:6px;">
+                      <button type="button" class="btn btn-sm" onclick="app.editTransporterPrompt(${jsonStr})" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; background:var(--warning, #FFA500); color:#000; font-weight:600; border:none; border-radius:4px; cursor:pointer;">
+                        ✏️ Edit
+                      </button>
+                      <button type="button" class="btn btn-sm btn-danger" onclick="deleteTransporter(${d.transporter.id}, '${safeName}')" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; font-weight:600; border:none; border-radius:4px; cursor:pointer;">
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </td>
+                `;
+                tbody.appendChild(tr);
+              }
             }
           } else {
             this.toast(d.message || 'Failed to save transporter', 'error');
