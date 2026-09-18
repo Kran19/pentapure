@@ -572,15 +572,7 @@ const app = {
       }))
     };
 
-    const segments = window.location.pathname.split('/').filter(Boolean);
-    let currentSlug = 'finished';
-    if (segments.length > 0) {
-      if (segments[0] === 'penta-pure' && segments.length > 1) {
-        currentSlug = segments[1];
-      } else if (segments[0] !== 'penta-pure') {
-        currentSlug = segments[0];
-      }
-    }
+    const currentSlug = this.getCurrentSlug('finished');
     const postUrl = `${this.getBaseUrl()}/${currentSlug}/action`;
 
     fetch(postUrl, {
@@ -2072,15 +2064,7 @@ const app = {
     const imageData = window.tempLRData;
     if (!imageData) return this.toast('No image data found', 'error');
     
-    const segments = window.location.pathname.split('/').filter(Boolean);
-    let currentSlug = 'dispatch';
-    if (segments.length > 0) {
-      if (segments[0] === 'penta-pure' && segments.length > 1) {
-        currentSlug = segments[1];
-      } else if (segments[0] !== 'penta-pure') {
-        currentSlug = segments[0];
-      }
-    }
+    const currentSlug = this.getCurrentSlug('dispatch');
     const endpoint = `${this.getBaseUrl()}/${currentSlug}/update-lr`;
 
     this.toast('Uploading LR...', 'info');
@@ -2115,15 +2099,7 @@ const app = {
 
     const reader = new FileReader();
     reader.onload = () => {
-      const segments = window.location.pathname.split('/').filter(Boolean);
-      let currentSlug = 'dispatch';
-      if (segments.length > 0) {
-        if (segments[0] === 'penta-pure' && segments.length > 1) {
-          currentSlug = segments[1];
-        } else if (segments[0] !== 'penta-pure') {
-          currentSlug = segments[0];
-        }
-      }
+      const currentSlug = this.getCurrentSlug('dispatch');
       const endpoint = `${this.getBaseUrl()}/${currentSlug}/update-lr`;
 
       fetch(endpoint, {
@@ -2185,15 +2161,7 @@ const app = {
     const name = nameInput.value.trim();
     if (!name) return this.toast('Enter a category name', 'error');
     
-    const segments = window.location.pathname.split('/').filter(Boolean);
-    let currentSlug = 'cashier';
-    if (segments.length > 0) {
-      if (segments[0] === 'penta-pure' && segments.length > 1) {
-        currentSlug = segments[1];
-      } else if (segments[0] !== 'penta-pure') {
-        currentSlug = segments[0];
-      }
-    }
+    const currentSlug = this.getCurrentSlug('cashier');
     const catUrl = `${this.getBaseUrl()}/${currentSlug}/category`;
 
     fetch(catUrl, {
@@ -2225,15 +2193,7 @@ const app = {
   deleteExpenseCategory(id, name) {
     if (!confirm(`Are you sure you want to delete the category "${name}"?`)) return;
     
-    const segments = window.location.pathname.split('/').filter(Boolean);
-    let currentSlug = 'cashier';
-    if (segments.length > 0) {
-      if (segments[0] === 'penta-pure' && segments.length > 1) {
-        currentSlug = segments[1];
-      } else if (segments[0] !== 'penta-pure') {
-        currentSlug = segments[0];
-      }
-    }
+    const currentSlug = this.getCurrentSlug('cashier');
     const catUrl = `${this.getBaseUrl()}/${currentSlug}/category/${id}`;
 
     fetch(catUrl, {
@@ -2275,15 +2235,7 @@ const app = {
     formData.append('reference', ref);
     if (billFile) formData.append('bill_file', billFile);
 
-    const segments = window.location.pathname.split('/').filter(Boolean);
-    let currentSlug = 'cashier';
-    if (segments.length > 0) {
-      if (segments[0] === 'penta-pure' && segments.length > 1) {
-        currentSlug = segments[1];
-      } else if (segments[0] !== 'penta-pure') {
-        currentSlug = segments[0];
-      }
-    }
+    const currentSlug = this.getCurrentSlug('cashier');
     const postUrl = `${this.getBaseUrl()}/${currentSlug}/action`;
 
     fetch(postUrl, {
@@ -2422,15 +2374,7 @@ const app = {
     }).then(result => {
       if (!result.isConfirmed) return;
       const p = result.value;
-      const segments = window.location.pathname.split('/').filter(Boolean);
-      let currentSlug = 'cashier';
-      if (segments.length > 0) {
-        if (segments[0] === 'penta-pure' && segments.length > 1) {
-          currentSlug = segments[1];
-        } else if (segments[0] !== 'penta-pure') {
-          currentSlug = segments[0];
-        }
-      }
+      const currentSlug = this.getCurrentSlug('cashier');
       let url = `${this.getBaseUrl()}/${currentSlug}/history/pdf?from=${p.from}&to=${p.to}&include_bills=${p.include_bills}&category=${p.category}&site=${p.site}`;
       if (p.opening_balance) url += `&opening_balance=${p.opening_balance}`;
       if (p.tab) url += `&tab=${p.tab}`;
@@ -2507,15 +2451,7 @@ const app = {
     
     if (!amount || amount <= 0) return this.toast('Invalid amount', 'error');
 
-    const segments = window.location.pathname.split('/').filter(Boolean);
-    let currentSlug = 'cashier';
-    if (segments.length > 0) {
-      if (segments[0] === 'penta-pure' && segments.length > 1) {
-        currentSlug = segments[1];
-      } else {
-        currentSlug = segments[0];
-      }
-    }
+    const currentSlug = this.getCurrentSlug('cashier');
     const updateUrl = `${this.getBaseUrl()}/${currentSlug}/action/${id}`;
 
     fetch(updateUrl, {
@@ -2549,15 +2485,7 @@ const app = {
       cancelButtonColor: '#30363d',
     }).then(result => {
       if (!result.isConfirmed) return;
-      const segments = window.location.pathname.split('/').filter(Boolean);
-      let currentSlug = 'cashier';
-      if (segments.length > 0) {
-        if (segments[0] === 'penta-pure' && segments.length > 1) {
-          currentSlug = segments[1];
-        } else if (segments[0] !== 'penta-pure') {
-          currentSlug = segments[0];
-        }
-      }
+      const currentSlug = this.getCurrentSlug('cashier');
       fetch(`${this.getBaseUrl()}/${currentSlug}/action/${id}`, {
         method: 'DELETE',
         headers: { 'X-CSRF-TOKEN': window.csrfToken || csrfToken }
@@ -2576,10 +2504,22 @@ const app = {
 
   getBaseUrl() {
     const segments = window.location.pathname.split('/').filter(Boolean);
-    if (segments.length > 0 && segments[0] === 'penta-pure') {
-      return '/penta-pure';
+    let base = '';
+    let i = 0;
+    if (segments[i] === 'penta-pure') {
+      base += '/penta-pure';
+      i++;
     }
-    return '';
+    if (segments[i] === 'public') {
+      base += '/public';
+      i++;
+    }
+    return base;
+  },
+
+  getCurrentSlug(fallback = '') {
+    const segments = window.location.pathname.split('/').filter(s => s && s !== 'penta-pure' && s !== 'public');
+    return segments.length > 0 ? segments[0] : fallback;
   },
 
   getSalesPrefix() {
@@ -2598,22 +2538,8 @@ const app = {
   },
 
   viewBill(billId, fileType) {
-    const segments = window.location.pathname.split('/').filter(Boolean);
-    let appBase = '';
-    let slug = 'cashier';
-
-    if (segments.length > 0) {
-      if (segments[0] === 'penta-pure') {
-        appBase = '/penta-pure';
-        if (segments.length > 1) {
-          slug = segments[1];
-        }
-      } else {
-        slug = segments[0];
-      }
-    }
-
-    const targetUrl = `${appBase}/${slug}/bill/${billId}/view`;
+    const currentSlug = this.getCurrentSlug('cashier');
+    const targetUrl = `${this.getBaseUrl()}/${currentSlug}/bill/${billId}/view`;
     const isPdf = String(fileType).toLowerCase().includes('pdf');
 
     let htmlContent = '';
@@ -2702,15 +2628,7 @@ const app = {
       formData.append('bill_file', result.value);
       formData.append('_token', window.csrfToken || csrfToken);
 
-      const segments = window.location.pathname.split('/').filter(Boolean);
-      let currentSlug = 'cashier';
-      if (segments.length > 0) {
-        if (segments[0] === 'penta-pure' && segments.length > 1) {
-          currentSlug = segments[1];
-        } else {
-          currentSlug = segments[0];
-        }
-      }
+      const currentSlug = this.getCurrentSlug('cashier');
       const uploadUrl = `${this.getBaseUrl()}/${currentSlug}/bill/upload`;
 
       fetch(uploadUrl, { method: 'POST', body: formData })
@@ -2740,15 +2658,7 @@ const app = {
       cancelButtonColor: '#30363d',
     }).then(result => {
       if (!result.isConfirmed) return;
-      const segments = window.location.pathname.split('/').filter(Boolean);
-      let currentSlug = 'cashier';
-      if (segments.length > 0) {
-        if (segments[0] === 'penta-pure' && segments.length > 1) {
-          currentSlug = segments[1];
-        } else {
-          currentSlug = segments[0];
-        }
-      }
+      const currentSlug = this.getCurrentSlug('cashier');
       const deleteUrl = `${this.getBaseUrl()}/${currentSlug}/bill/${billId}`;
 
       fetch(deleteUrl, {
@@ -2822,15 +2732,7 @@ const app = {
     const category = document.getElementById('edit-tx-category').value;
     const note = document.getElementById('edit-tx-note').value;
 
-    const segments = window.location.pathname.split('/').filter(Boolean);
-    let currentSlug = 'cashier';
-    if (segments.length > 0) {
-      if (segments[0] === 'penta-pure' && segments.length > 1) {
-        currentSlug = segments[1];
-      } else if (segments[0] !== 'penta-pure') {
-        currentSlug = segments[0];
-      }
-    }
+    const currentSlug = this.getCurrentSlug('cashier');
     const updateUrl = `${this.getBaseUrl()}/${currentSlug}/action/${id}`;
 
     fetch(updateUrl, {
@@ -2945,15 +2847,7 @@ const app = {
       confirmButtonColor: '#dc2626'
     }).then(result => {
       if (result.isConfirmed) {
-        const segments = window.location.pathname.split('/').filter(Boolean);
-        let currentSlug = 'sales';
-        if (segments.length > 0) {
-          if (segments[0] === 'penta-pure' && segments.length > 1) {
-            currentSlug = segments[1];
-          } else if (segments[0] !== 'penta-pure') {
-            currentSlug = segments[0];
-          }
-        }
+        const currentSlug = this.getCurrentSlug('sales');
         const cancelUrl = `${this.getBaseUrl()}/${currentSlug}/order/${id}/cancel`;
 
         fetch(cancelUrl, {
@@ -3083,15 +2977,7 @@ const app = {
       confirmButtonColor: '#dc2626'
     }).then(result => {
       if (result.isConfirmed) {
-        const segments = window.location.pathname.split('/').filter(Boolean);
-        let currentSlug = 'dispatch';
-        if (segments.length > 0) {
-          if (segments[0] === 'penta-pure' && segments.length > 1) {
-            currentSlug = segments[1];
-          } else if (segments[0] !== 'penta-pure') {
-            currentSlug = segments[0];
-          }
-        }
+        const currentSlug = this.getCurrentSlug('dispatch');
         const revertUrl = `${this.getBaseUrl()}/${currentSlug}/revert/${id}`;
 
         fetch(revertUrl, {

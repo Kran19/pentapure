@@ -76,6 +76,8 @@ Route::middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CA
     Route::get('/order/{id}/pdf', [\App\Http\Controllers\HistoryPdfController::class, 'salesOrderPdf']);
     Route::get('/sales/order/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'salesOrderPdf']);
     Route::get('/cashier/history/pdf', [\App\Http\Controllers\CashierController::class, 'downloadPdf']);
+    Route::get('/history/pdf', [\App\Http\Controllers\CashierController::class, 'downloadPdf']);
+    Route::get('/history/cashier/pdf', [\App\Http\Controllers\CashierController::class, 'downloadPdf']);
     Route::get('/cashier/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill'])->name('cashier.bill.view');
     Route::get('/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill'])->name('bill.view');
     Route::get('/api/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);

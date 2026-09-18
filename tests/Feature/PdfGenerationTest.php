@@ -158,4 +158,30 @@ class PdfGenerationTest extends TestCase
         $response->assertHeader('Content-Type', 'application/pdf');
         $this->assertNotEmpty($response->getContent());
     }
+
+    public function test_direct_history_pdf_fallback_download(): void
+    {
+        $response = $this->withSession(['auth_user' => [
+            'id' => $this->cashierUser->id,
+            'name' => $this->cashierUser->name,
+            'role' => 'CASHIER',
+        ]])->get('/history/pdf?from=2026-09-18&to=2026-09-18&include_bills=yes&category=all&site=all&tab=personal');
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $this->assertNotEmpty($response->getContent());
+    }
+
+    public function test_direct_history_cashier_pdf_fallback_download(): void
+    {
+        $response = $this->withSession(['auth_user' => [
+            'id' => $this->cashierUser->id,
+            'name' => $this->cashierUser->name,
+            'role' => 'CASHIER',
+        ]])->get('/history/cashier/pdf');
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $this->assertNotEmpty($response->getContent());
+    }
 }

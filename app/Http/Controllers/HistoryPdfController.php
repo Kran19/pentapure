@@ -22,6 +22,9 @@ class HistoryPdfController extends Controller
     public function download(Request $request, string $panel)
     {
         $panel = strtoupper($panel);
+        if ($panel === 'PDF') {
+            $panel = 'CASHIER';
+        }
         abort_unless(in_array($panel, ['RAW', 'SEMI', 'FINISHED', 'SALES', 'DISPATCH', 'CASHIER', 'ATTENDANCE'], true), 404);
         $user = $this->authUser();
         abort_unless(($user['role'] ?? null) === 'ADMIN' || in_array($panel, ['RAW', 'SEMI', 'FINISHED', 'SALES', 'DISPATCH', 'CASHIER', 'ATTENDANCE'], true), 403);

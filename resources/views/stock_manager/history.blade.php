@@ -90,7 +90,8 @@ function filterHistoryTable(q) {
 }
 
 function editStockNote(id, currentNote) {
-  const currentUrlPrefix = window.location.pathname.split('/')[1] || 'stock_manager';
+  const segments = window.location.pathname.split('/').filter(s => s && s !== 'penta-pure' && s !== 'public');
+  const currentUrlPrefix = segments.length > 0 ? segments[0] : 'stock_manager';
   
   if (typeof Swal !== 'undefined') {
     Swal.fire({
@@ -122,7 +123,8 @@ function editStockNote(id, currentNote) {
 
 function saveStockNote(id, newNote, prefix) {
   const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-  fetch(`/${prefix}/stock/note/${id}`, {
+  const baseUrl = (typeof app !== 'undefined' && typeof app.getBaseUrl === 'function') ? app.getBaseUrl() : '';
+  fetch(`${baseUrl}/${prefix}/stock/note/${id}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

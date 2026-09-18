@@ -695,15 +695,8 @@ function openNotifyModal(userId, userName) {
         }
     }).then((result) => {
         if (result.isConfirmed) {
-            const segments = window.location.pathname.split('/').filter(Boolean);
-            let currentSlug = window.userSlug || 'admin';
-            if (segments.length > 0) {
-              if (segments[0] === 'penta-pure' && segments.length > 1) {
-                currentSlug = segments[1];
-              } else if (segments[0] !== 'penta-pure') {
-                currentSlug = segments[0];
-              }
-            }
+            const segments = window.location.pathname.split('/').filter(s => s && s !== 'penta-pure' && s !== 'public');
+            let currentSlug = segments.length > 0 ? segments[0] : (window.userSlug || 'admin');
             fetch(app.getBaseUrl() + '/' + currentSlug + '/admin/notifications/send', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
