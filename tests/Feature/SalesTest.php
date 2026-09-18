@@ -233,4 +233,36 @@ class SalesTest extends TestCase
         $delTrans->assertJson(['success' => true]);
         $this->assertDatabaseMissing('transporters', ['id' => $tempTrans->id]);
     }
+
+    public function test_sales_order_pdf_download_routes(): void
+    {
+        $session = ['auth_user' => [
+            'id' => $this->salesUser->id,
+            'name' => $this->salesUser->name,
+            'role' => 'SALES',
+        ]];
+
+        $order = Order::create([
+            'created_by' => $this->salesUser->id,
+            'company_id' => $this->company->id,
+            'transporter_id' => $this->transporter->id,
+            'total' => 1000,
+            'status' => 'OPEN',
+            'dispatch_status' => 'PENDING',
+        ]);
+
+        OrderItem::create([
+            'order_id' => $order->id,
+            'product_id' => $this->product->id,
+            'grade' => 'GRADE-A',
+            'quantity' => 10,
+            'price' => 100,
+        ]);
+
+        $response1 = $this->withSession($session)->get("/sales/order/pdf/{$order->id}");
+        $response1->assertStatus(200);
+
+        $response2 = $this->withSession($session)->get("/sales/sales/order/pdf/{$order->id}");
+        $response2->assertStatus(200);
+    }
 }

@@ -232,6 +232,7 @@ foreach ($roleSlugs['SALES'] ?? [] as $slug) {
     Route::get('/history',       'history')->name($slug.'.history');
     Route::get('/profile',       'profile')->name($slug.'.profile');
     Route::get('/order/pdf/{id}', [HistoryPdfController::class, 'salesOrderPdf'])->name($slug.'.order.pdf');
+    Route::get('/sales/order/pdf/{id}', [HistoryPdfController::class, 'salesOrderPdf']);
     Route::get('/pdf/{id}', [HistoryPdfController::class, 'salesOrderPdf']);
     Route::get('/dispatch/pdf/{id}', [HistoryPdfController::class, 'dispatchNotePdf']);
     });

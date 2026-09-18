@@ -370,7 +370,7 @@
               🚫 Cancel Order
             </button>
           @endif
-          <a class="btn btn-sm btn-secondary" href="{{ url(request()->segment(1) . '/sales/order/pdf/' . $item['id']) }}" target="_blank" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
+          <a class="btn btn-sm btn-secondary" href="{{ url((request()->segment(1) === 'sales' ? 'sales' : request()->segment(1) . '/sales') . '/order/pdf/' . $item['id']) }}" target="_blank" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
             📄 Download PDF
           </a>
         </div>
