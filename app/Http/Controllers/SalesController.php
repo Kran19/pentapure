@@ -264,6 +264,34 @@ class SalesController extends Controller
         return response()->json(['success' => true, 'message' => 'Company updated!']);
     }
 
+    public function destroyCompany($id)
+    {
+        $company = Company::findOrFail($id);
+        if ($company->orders()->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete company "' . $company->name . '" because it has associated sales orders.'
+            ], 422);
+        }
+
+        $company->delete();
+        return response()->json(['success' => true, 'message' => 'Company deleted successfully!']);
+    }
+
+    public function destroyTransporter($id)
+    {
+        $transporter = Transporter::findOrFail($id);
+        if ($transporter->orders()->exists() || $transporter->dispatchLogs()->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete transporter "' . $transporter->name . '" because it has associated sales orders or dispatch logs.'
+            ], 422);
+        }
+
+        $transporter->delete();
+        return response()->json(['success' => true, 'message' => 'Transporter deleted successfully!']);
+    }
+
     public function storeTransporter(Request $request)
     {
         $request->merge(['name' => strtoupper($request->name)]);

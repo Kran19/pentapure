@@ -213,4 +213,24 @@ class SalesTest extends TestCase
         $response = $this->withSession($session)->postJson("/sales/order/{$order->id}/cancel");
         $response->assertStatus(422);
     }
+
+    public function test_sales_user_can_delete_unused_company_and_transporter(): void
+    {
+        $session = ['auth_user' => [
+            'id' => $this->salesUser->id,
+            'name' => $this->salesUser->name,
+            'role' => 'SALES',
+        ]];
+
+        $tempComp = Company::create(['name' => 'TEMP COMP']);
+        $tempTrans = Transporter::create(['name' => 'TEMP TRANS']);
+
+        $delComp = $this->withSession($session)->deleteJson("/sales/company/{$tempComp->id}");
+        $delComp->assertJson(['success' => true]);
+        $this->assertDatabaseMissing('companies', ['id' => $tempComp->id]);
+
+        $delTrans = $this->withSession($session)->deleteJson("/sales/transport/{$tempTrans->id}");
+        $delTrans->assertJson(['success' => true]);
+        $this->assertDatabaseMissing('transporters', ['id' => $tempTrans->id]);
+    }
 }

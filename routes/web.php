@@ -221,10 +221,14 @@ foreach ($roleSlugs['SALES'] ?? [] as $slug) {
     Route::post('/sales/company', 'storeCompany');
     Route::post('/company/{id}', 'updateCompany');
     Route::post('/sales/company/{id}', 'updateCompany');
+    Route::delete('/company/{id}', 'destroyCompany');
+    Route::delete('/sales/company/{id}', 'destroyCompany');
     Route::post('/transport',    'storeTransporter');
     Route::post('/sales/transport', 'storeTransporter');
     Route::post('/transport/{id}', 'updateTransporter');
     Route::post('/sales/transport/{id}', 'updateTransporter');
+    Route::delete('/transport/{id}', 'destroyTransporter');
+    Route::delete('/sales/transport/{id}', 'destroyTransporter');
     Route::get('/history',       'history')->name($slug.'.history');
     Route::get('/profile',       'profile')->name($slug.'.profile');
     Route::get('/order/pdf/{id}', [HistoryPdfController::class, 'salesOrderPdf'])->name($slug.'.order.pdf');
@@ -411,8 +415,12 @@ foreach ($adminSlugs as $slug) {
     Route::post('/sales/order',          [SalesController::class, 'storeOrder']);
     Route::post('/sales/company',        [SalesController::class, 'storeCompany']);
     Route::post('/sales/company/{id}',   [SalesController::class, 'updateCompany']);
+    Route::delete('/sales/company/{id}', [SalesController::class, 'destroyCompany']);
+    Route::delete('/company/{id}',       [SalesController::class, 'destroyCompany']);
     Route::post('/sales/transport',      [SalesController::class, 'storeTransporter']);
     Route::post('/sales/transport/{id}', [SalesController::class, 'updateTransporter']);
+    Route::delete('/sales/transport/{id}', [SalesController::class, 'destroyTransporter']);
+    Route::delete('/transport/{id}',     [SalesController::class, 'destroyTransporter']);
     Route::get('/sales/history',         [SalesController::class, 'history'])->name($slug.'.sales.history');
     Route::get('/sales/order/pdf/{id}',  [HistoryPdfController::class, 'salesOrderPdf'])->name($slug.'.sales.order.pdf');
     Route::get('/order/pdf/{id}',        [HistoryPdfController::class, 'salesOrderPdf']);

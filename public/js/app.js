@@ -2523,11 +2523,7 @@ const app = {
   },
 
   getSalesPrefix() {
-    const pathname = window.location.pathname;
-    const segments = pathname.split('/').filter(Boolean);
-    if (segments.length > 0 && segments[0] === 'penta-pure') {
-      segments.shift();
-    }
+    const segments = window.location.pathname.split('/').filter(s => s && s !== 'penta-pure' && s !== 'public');
     if (segments.length >= 2 && ['admin', 'sub_admin'].includes(segments[0])) {
       return `${this.getBaseUrl()}/${segments[0]}/sales`;
     }

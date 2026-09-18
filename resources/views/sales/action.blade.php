@@ -232,9 +232,14 @@ html.dark-mode .info-preview-box .info-label {
                 <td style="padding:8px 6px;">{{ $comp['contact'] ?: '—' }}</td>
                 <td style="padding:8px 6px; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ $comp['address'] }}">{{ $comp['address'] ?: '—' }}</td>
                 <td style="padding:8px 6px; text-align:center;">
-                  <button type="button" class="btn btn-sm" onclick="openCompanyModal({{ json_encode($comp) }})" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; background:var(--warning, #FFA500); color:#000; font-weight:600; border:none; border-radius:4px; cursor:pointer;">
-                    ✏️ Edit
-                  </button>
+                  <div style="display:flex; justify-content:center; gap:6px;">
+                    <button type="button" class="btn btn-sm" onclick="openCompanyModal({{ json_encode($comp) }})" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; background:var(--warning, #FFA500); color:#000; font-weight:600; border:none; border-radius:4px; cursor:pointer;">
+                      ✏️ Edit
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="deleteCompany({{ $comp['id'] }}, '{{ addslashes($comp['name']) }}')" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; font-weight:600; border:none; border-radius:4px; cursor:pointer;">
+                      🗑️ Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             @empty
@@ -282,9 +287,14 @@ html.dark-mode .info-preview-box .info-label {
                 <td style="padding:8px 6px;">{{ $trans['contact'] ?: '—' }}</td>
                 <td style="padding:8px 6px;">{{ $trans['vehicles'] ?: '—' }}</td>
                 <td style="padding:8px 6px; text-align:center;">
-                  <button type="button" class="btn btn-sm" onclick="app.editTransporterPrompt({{ json_encode($trans) }})" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; background:var(--warning, #FFA500); color:#000; font-weight:600; border:none; border-radius:4px; cursor:pointer;">
-                    ✏️ Edit
-                  </button>
+                  <div style="display:flex; justify-content:center; gap:6px;">
+                    <button type="button" class="btn btn-sm" onclick="app.editTransporterPrompt({{ json_encode($trans) }})" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; background:var(--warning, #FFA500); color:#000; font-weight:600; border:none; border-radius:4px; cursor:pointer;">
+                      ✏️ Edit
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="deleteTransporter({{ $trans['id'] }}, '{{ addslashes($trans['name']) }}')" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; font-weight:600; border:none; border-radius:4px; cursor:pointer;">
+                      🗑️ Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             @empty
@@ -449,6 +459,84 @@ html.dark-mode .info-preview-box .info-label {
         })
         .catch(() => app.toast('Network error saving company', 'error'));
       }
+    });
+  }
+
+  function deleteCompany(id, name) {
+    if (window.isReadOnly) return app.toast('You have View-Only permission. Deleting company is disabled.', 'error');
+
+    Swal.fire({
+      title: 'Delete Company?',
+      text: `Are you sure you want to delete company "${name}"?`,
+      icon: 'warning',
+      background: 'var(--dark-panel, #1e293b)',
+      color: 'var(--text-main, #fff)',
+      showCancelButton: true,
+      confirmButtonText: 'Delete',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#30363d',
+    }).then(result => {
+      if (!result.isConfirmed) return;
+
+      const url = `${app.getSalesPrefix()}/company/${id}`;
+      fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRF-TOKEN': window.csrfToken || csrfToken
+        }
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          app.toast(d.message || 'Company deleted!');
+          sessionStorage.setItem('activeSalesTab', 'company');
+          setTimeout(() => location.reload(), 600);
+        } else {
+          app.toast(d.message || 'Failed to delete company', 'error');
+        }
+      })
+      .catch(() => app.toast('Network error deleting company', 'error'));
+    });
+  }
+
+  function deleteTransporter(id, name) {
+    if (window.isReadOnly) return app.toast('You have View-Only permission. Deleting transporter is disabled.', 'error');
+
+    Swal.fire({
+      title: 'Delete Transporter?',
+      text: `Are you sure you want to delete transporter "${name}"?`,
+      icon: 'warning',
+      background: 'var(--dark-panel, #1e293b)',
+      color: 'var(--text-main, #fff)',
+      showCancelButton: true,
+      confirmButtonText: 'Delete',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#30363d',
+    }).then(result => {
+      if (!result.isConfirmed) return;
+
+      const url = `${app.getSalesPrefix()}/transport/${id}`;
+      fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRF-TOKEN': window.csrfToken || csrfToken
+        }
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          app.toast(d.message || 'Transporter deleted!');
+          sessionStorage.setItem('activeSalesTab', 'transport');
+          setTimeout(() => location.reload(), 600);
+        } else {
+          app.toast(d.message || 'Failed to delete transporter', 'error');
+        }
+      })
+      .catch(() => app.toast('Network error deleting transporter', 'error'));
     });
   }
 
