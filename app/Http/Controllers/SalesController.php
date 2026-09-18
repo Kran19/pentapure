@@ -128,7 +128,8 @@ class SalesController extends Controller
             $product = Product::with('grades')->find($item['product_id']);
             if ($product && $product->grades->isNotEmpty()) {
                 $allowedGrades = $product->grades->pluck('name')->map('strtoupper')->toArray();
-                if (!in_array(strtoupper($item['grade']), $allowedGrades)) {
+                $itemGrade = strtoupper(trim((string)$item['grade']));
+                if (!in_array($itemGrade, $allowedGrades, true) && !in_array($itemGrade, ['NA', 'N/A', 'NONE'], true)) {
                     return response()->json([
                         'success' => false,
                         'message' => "Grade '{$item['grade']}' is invalid for product '{$product->name}'."
@@ -475,7 +476,8 @@ class SalesController extends Controller
             $product = Product::with('grades')->find($item['product_id']);
             if ($product && $product->grades->isNotEmpty()) {
                 $allowedGrades = $product->grades->pluck('name')->map('strtoupper')->toArray();
-                if (!in_array(strtoupper($item['grade']), $allowedGrades)) {
+                $itemGrade = strtoupper(trim((string)$item['grade']));
+                if (!in_array($itemGrade, $allowedGrades, true) && !in_array($itemGrade, ['NA', 'N/A', 'NONE'], true)) {
                     return response()->json([
                         'success' => false,
                         'message' => "Grade '{$item['grade']}' is invalid for product '{$product->name}'."

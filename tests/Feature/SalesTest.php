@@ -265,4 +265,33 @@ class SalesTest extends TestCase
         $response2 = $this->withSession($session)->get("/sales/sales/order/pdf/{$order->id}");
         $response2->assertStatus(200);
     }
+
+    public function test_na_grade_is_valid_for_product_with_assigned_grades(): void
+    {
+        $session = ['auth_user' => [
+            'id' => $this->salesUser->id,
+            'name' => $this->salesUser->name,
+            'role' => 'SALES',
+        ]];
+
+        // Attach specific grades to product
+        $this->product->grades()->sync([$this->gradeA->id, $this->gradeB->id]);
+
+        $response = $this->withSession($session)->postJson('/sales/action', [
+            'company_id' => $this->company->id,
+            'transporter_id' => $this->transporter->id,
+            'notes' => 'Test order with NA grade',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'grade' => 'NA',
+                    'quantity' => 10,
+                    'price' => 50,
+                ]
+            ]
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true]);
+    }
 }

@@ -1147,7 +1147,8 @@ const app = {
 
     let html = '';
     allowedGrades.forEach(g => {
-      let gName = (g || 'NA').toUpperCase();
+      let rawName = typeof g === 'string' ? g : (g?.name || g?.grade || 'NA');
+      let gName = (rawName || 'NA').toUpperCase();
       if (gName === 'NONE') gName = 'NA';
       const isSel = (gName === (selectedGrade || '').toUpperCase() || (!selectedGrade && allowedGrades.length === 1)) ? 'selected' : '';
       html += `<option value="${gName}" ${isSel}>${gName}</option>`;
