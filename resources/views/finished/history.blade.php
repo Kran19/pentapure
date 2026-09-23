@@ -111,7 +111,7 @@
           @endif
         </div>
         <div class="list-item-meta" style="margin-top:6px;">
-          <div style="color:var(--secondary); font-size:0.8rem; margin-bottom:4px;">{{ \Carbon\Carbon::parse($l['date'])->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}</div>
+          <div style="color:var(--secondary); font-size:0.8rem; margin-bottom:4px;">{{ \Carbon\Carbon::parse($l['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }}</div>
           <div style="font-size:0.75rem; color:var(--text-muted); line-height:1.3;">Using: {!! $inputList !!}</div>
         </div>
       </div>
@@ -156,7 +156,7 @@
                 {{ $po->status === 'DONE' ? 'READ' : $po->status }}
              </span>
           </td>
-          <td style="font-size:0.8rem;">{{ \Carbon\Carbon::parse($po->created_at)->format('d M Y') }}</td>
+          <td style="font-size:0.8rem;">{{ \Carbon\Carbon::parse($po->created_at)->format('d-m-Y') }}</td>
         </tr>
       @empty
         <tr><td colspan="4" class="text-center text-muted">No purchase requests found.</td></tr>

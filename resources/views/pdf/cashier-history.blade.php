@@ -351,7 +351,7 @@
                             <span class="badge-out">Expense</span>
                         @endif
                     </td>
-                    <td>{{ \Carbon\Carbon::parse($tx['date'])->format('d M Y') }}</td>
+                    <td>{{ \Carbon\Carbon::parse($tx['date'])->format('d-m-Y') }}</td>
                     <td>{{ ucwords(str_replace('_', ' ', $tx['category'] ?? 'General')) }}</td>
                     <td class="{{ $tx['type'] === 'IN' ? 'amount-in' : 'amount-out' }}">
                         {{ $tx['type'] === 'OUT' ? '−' : '+' }}{{ number_format($tx['amount'], 2) }}

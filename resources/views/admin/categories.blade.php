@@ -47,7 +47,7 @@
                 <span class="slider"></span>
               </label>
             </td>
-            <td>{{ date('d M Y', strtotime($c->created_at)) }}</td>
+            <td>{{ date('d-m-Y', strtotime($c->created_at)) }}</td>
             <td>
               <div class="action-btns">
                 <button class="btn-icon edit" onclick="adminEditCategory({{ json_encode($c) }})" title="Edit">

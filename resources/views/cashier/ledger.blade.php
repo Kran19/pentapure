@@ -146,9 +146,11 @@
     <select id="team-member-select" name="team_member" onchange="applyLedgerFilters()" style="display:{{ $activeTab === 'team' ? 'block' : 'none' }}; width:auto; flex:1; min-width:160px; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600;">
       <option value="all" {{ $teamMember === 'all' ? 'selected' : '' }}>ALL TEAM MEMBERS</option>
       @foreach($pageData['teamMembers'] ?? [] as $tm)
-        <option value="{{ $tm['id'] }}" {{ ((string)$teamMember === (string)$tm['id'] || strtolower($teamMember) === strtolower($tm['name'])) ? 'selected' : '' }}>
-          {{ strtoupper($tm['name']) }}
-        </option>
+        @if((int)$tm['id'] !== (int)($authUser['id'] ?? session('auth_user')['id'] ?? 0))
+          <option value="{{ $tm['id'] }}" {{ ((string)$teamMember === (string)$tm['id'] || strtolower($teamMember) === strtolower($tm['name'])) ? 'selected' : '' }}>
+            {{ strtoupper($tm['name']) }}
+          </option>
+        @endif
       @endforeach
     </select>
 
@@ -219,7 +221,7 @@
         @forelse($paginated as $t)
           <tr style="border-bottom:1px solid var(--border-soft, #DDCFAF);">
             <td style="padding:12px; font-size:0.75rem; white-space:nowrap;">
-              {{ \Carbon\Carbon::parse($t['date'])->format('d/m/Y') }}<br>
+              {{ \Carbon\Carbon::parse($t['date'])->format('d-m-Y') }}<br>
               <span style="color:var(--text-muted);">{{ \Carbon\Carbon::parse($t['date'])->format('h:i A') }}</span>
             </td>
             <td style="padding:12px;">
@@ -293,7 +295,7 @@
       <tbody>
         @forelse($pageData['dailyData'] ?? [] as $d)
           <tr style="border-bottom:1px solid var(--border-soft, #DDCFAF);">
-            <td style="padding:12px; font-weight:600;">{{ \Carbon\Carbon::parse($d['date'])->format('d M Y') }}</td>
+            <td style="padding:12px; font-weight:600;">{{ \Carbon\Carbon::parse($d['date'])->format('d-m-Y') }}</td>
             <td style="padding:12px; text-align:right; color:#16a34a; font-weight:600;">+₹{{ number_format($d['in'], 2) }}</td>
             <td style="padding:12px; text-align:right; color:#dc2626; font-weight:600;">-₹{{ number_format($d['out'], 2) }}</td>
             <td style="padding:12px; text-align:right; font-weight:bold; color:{{ $d['balance'] >= 0 ? '#16a34a' : '#dc2626' }}">
@@ -314,7 +316,35 @@
   window.serverPageData = @json($pageData);
 
   function toggleCustomDates(val) {
-    document.getElementById('custom-dates-container').style.display = (val === 'custom') ? 'flex' : 'none';
+    const container = document.getElementById('custom-dates-container');
+    if (container) {
+      container.style.display = (val === 'custom') ? 'flex' : 'none';
+    }
+    if (val === 'custom') {
+      const startEl = document.getElementById('ledger-start-date');
+      if (startEl && !startEl.value) {
+        let eDate = window.serverPageData?.earliestDate;
+        if (!eDate) {
+          const tabVal = document.getElementById('ledger-tab-select')?.value || 'personal';
+          const txs = (tabVal === 'team')
+            ? (window.serverPageData?.teamTransactions || [])
+            : (window.serverPageData?.transactions || []);
+          if (txs && txs.length > 0) {
+            const validDates = txs.map(t => {
+              const dStr = t.date || t.created_at;
+              return dStr ? dStr.split('T')[0] : null;
+            }).filter(Boolean);
+            if (validDates.length > 0) {
+              validDates.sort();
+              eDate = validDates[0];
+            }
+          }
+        }
+        if (eDate) {
+          startEl.value = eDate;
+        }
+      }
+    }
   }
 
   function onLedgerTabChange(tabVal) {

@@ -47,7 +47,7 @@
             <td>{{ $loop->iteration }}</td>
             <td style="font-weight:600; color:var(--dark-brand);">{{ $loc->name }}</td>
             <td style="color:var(--text-muted);">{{ $loc->description ?: '—' }}</td>
-            <td>{{ date('d M Y, h:i A', strtotime($loc->created_at)) }}</td>
+            <td>{{ date('d-m-Y, h:i A', strtotime($loc->created_at)) }}</td>
             <td>
               <div class="action-btns">
                 <button class="btn-icon edit" onclick="adminEditLocation({{ json_encode($loc) }})" title="Edit">

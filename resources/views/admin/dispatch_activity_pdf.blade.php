@@ -41,7 +41,7 @@
             </tr>
         </table>
         <div class="report-title">Dispatch Order Activity Report</div>
-        <p>Generated on: {{ now()->format('d M Y, h:i A') }}</p>
+        <p>Generated on: {{ now()->format('d-m-Y, h:i A') }}</p>
     </div>
 
     <table>

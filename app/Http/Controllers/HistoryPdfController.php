@@ -107,7 +107,7 @@ class HistoryPdfController extends Controller
                 ->get()
                 ->map(fn($po) => [
                     'id' => 'PO-' . str_pad($po->id, 4, '0', STR_PAD_LEFT),
-                    'date' => $po->created_at->format('d M Y'),
+                    'date' => $po->created_at->format('d-m-Y'),
                     'material' => $po->product?->name ?? '-',
                     'quantity' => $po->quantity,
                     'status' => $po->status === 'DONE' ? 'READ BY ADMIN' : $po->status,
@@ -122,9 +122,9 @@ class HistoryPdfController extends Controller
             'isAttendance' => $panel === 'ATTENDANCE',
             'panel' => ucfirst(strtolower($panel)),
             'reportId' => 'HIS-' . now()->format('His'),
-            'generatedOn' => now()->format('d M Y'),
-            'fromDate' => $panel === 'ATTENDANCE' ? Carbon::parse($request->month ?? now())->startOfMonth()->format('d M Y') : $from->format('d M Y'),
-            'toDate' => $panel === 'ATTENDANCE' ? Carbon::parse($request->month ?? now())->endOfMonth()->format('d M Y') : $to->format('d M Y'),
+            'generatedOn' => now()->format('d-m-Y'),
+            'fromDate' => $panel === 'ATTENDANCE' ? Carbon::parse($request->month ?? now())->startOfMonth()->format('d-m-Y') : $from->format('d-m-Y'),
+            'toDate' => $panel === 'ATTENDANCE' ? Carbon::parse($request->month ?? now())->endOfMonth()->format('d-m-Y') : $to->format('d-m-Y'),
             'userName' => $user['name'] ?? 'User',
             'userRole' => $user['role'] ?? $panel,
             'rows' => $rows,
@@ -192,7 +192,7 @@ class HistoryPdfController extends Controller
             ->map(fn ($s) => [
                 'id' => 'RAW-' . str_pad($s->id, 4, '0', STR_PAD_LEFT),
                 'type' => $s->transaction_type === 'IN' ? 'IN' : 'OUT',
-                'date' => $s->created_at->format('d M Y, h:i A'),
+                'date' => $s->created_at->format('d-m-Y, h:i A'),
                 'status' => 'COMPLETED',
                 'amount' => 0,
                 'product_name' => $s->product ? $s->product->formatName($s->grade) : '-',
@@ -220,7 +220,7 @@ class HistoryPdfController extends Controller
             ->map(fn ($l) => [
                 'id' => $type . '-' . str_pad($l->id, 4, '0', STR_PAD_LEFT),
                 'type' => ucfirst(strtolower($type)) . ' Production',
-                'date' => $l->created_at->format('d M Y'),
+                'date' => $l->created_at->format('d-m-Y'),
                 'status' => 'COMPLETED',
                 'amount' => 0,
                 'output_product' => $l->outputProduct ? $l->outputProduct->formatName($l->output_grade) : '-',
@@ -290,7 +290,7 @@ class HistoryPdfController extends Controller
                 return [
                     'id' => 'ORD-' . str_pad($o->id, 4, '0', STR_PAD_LEFT),
                     'type' => 'Order',
-                    'date' => $o->created_at->format('d M Y'),
+                    'date' => $o->created_at->format('d-m-Y'),
                     'status' => $o->status,
                     'dispatch_status' => $dispStatusFormatted,
                     'amount' => (float) $o->total,
@@ -338,7 +338,7 @@ class HistoryPdfController extends Controller
             ->map(fn ($d) => [
                 'id' => 'DSP-' . str_pad($d->id, 4, '0', STR_PAD_LEFT),
                 'type' => 'Dispatch',
-                'date' => $d->created_at->format('d M Y'),
+                'date' => $d->created_at->format('d-m-Y'),
                 'status' => $d->lr_image_path ? 'DONE' : 'PENDING',
                 'amount' => (float) ($d->order?->total ?? 0),
                 'description' => 'Order #' . $d->order_id . ' - ' . ($d->order?->company?->name ?? 'Company') . ' - ' . $d->dispatchItems->sum('quantity') . ' kg',
@@ -352,7 +352,7 @@ class HistoryPdfController extends Controller
             ->map(fn ($t) => [
                 'id' => 'TXN-' . str_pad($t->id, 4, '0', STR_PAD_LEFT),
                 'type' => $t->type === 'IN' ? 'Income' : 'Expense',
-                'date' => $t->created_at->format('d M Y'),
+                'date' => $t->created_at->format('d-m-Y'),
                 'status' => 'COMPLETED',
                 'amount' => $t->type === 'OUT' ? -1 * (float) $t->amount : (float) $t->amount,
                 'category' => $t->category ?? 'General',
@@ -375,7 +375,7 @@ class HistoryPdfController extends Controller
                 return [
                     'id' => 'WRK-' . str_pad($w->id, 4, '0', STR_PAD_LEFT),
                     'type' => $w->department?->name ?? 'Attendance',
-                    'date' => now()->format('d M Y'),
+                    'date' => now()->format('d-m-Y'),
                     'status' => $absent > 0 ? 'PENDING' : 'COMPLETED',
                     'amount' => (float) $w->attendances->sum('calculated_wage'),
                     'employee' => $w->name,
@@ -430,8 +430,8 @@ class HistoryPdfController extends Controller
             'transporter' => $order->transporter ?? (object)[],
             'items' => $order->items,
             'orderNo' => 'ORD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT),
-            'orderDate' => $order->created_at->format('d-M-Y'),
-            'generatedOn' => now()->format('d-M-Y h:i A'),
+            'orderDate' => $order->created_at->format('d-m-Y'),
+            'generatedOn' => now()->format('d-m-Y h:i A'),
             'generatedBy' => $this->authUser()['name'] ?? 'System',
             'orderBy' => $order->creator?->name ?? 'N/A',
             'status' => $order->status,
@@ -497,9 +497,9 @@ class HistoryPdfController extends Controller
             'dispatchHistory' => $dispatchHistory,
             'dispatchNo' => 'DSP-' . str_pad($log->id, 4, '0', STR_PAD_LEFT),
             'orderNo' => 'ORD-' . str_pad($log->order_id, 4, '0', STR_PAD_LEFT),
-            'orderDate' => $order->created_at->format('d-M-Y'),
-            'dispatchDate' => $log->created_at->format('d-M-Y'),
-            'generatedOn' => $log->created_at->format('d-M-Y h:i A'),
+            'orderDate' => $order->created_at->format('d-m-Y'),
+            'dispatchDate' => $log->created_at->format('d-m-Y'),
+            'generatedOn' => $log->created_at->format('d-m-Y h:i A'),
             'generatedBy' => $log->user?->name ?? 'System',
             'orderGeneratedBy' => $order->creator?->name ?? 'N/A',
             'status' => 'DISPATCHED',
@@ -669,7 +669,7 @@ class HistoryPdfController extends Controller
             if (!empty($orderItems)) {
                 $orderDate = $order->created_at;
                 $latestDispatchLog = $order->dispatchLogs->sortByDesc('created_at')->first();
-                $dispatchDateStr = $latestDispatchLog ? $latestDispatchLog->created_at->format('d M Y') : '-';
+                $dispatchDateStr = $latestDispatchLog ? $latestDispatchLog->created_at->format('d-m-Y') : '-';
 
                 $nowDate = now();
                 $diffDays = (int) $orderDate->copy()->startOfDay()->diffInDays($nowDate->copy()->startOfDay());
@@ -680,7 +680,7 @@ class HistoryPdfController extends Controller
                 $rows[] = [
                     'dispatch_id' => 'ORD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT),
                     'order_id' => 'ORD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT),
-                    'order_date' => $orderDate->format('d M Y'),
+                    'order_date' => $orderDate->format('d-m-Y'),
                     'dispatch_date' => $dispatchDateStr,
                     'due_days' => $diffDays,
                     'due_days_text' => $dueDaysText,
@@ -717,10 +717,10 @@ class HistoryPdfController extends Controller
         return [
             'reportId' => 'RPT-DISP-' . now()->format('Ymd') . '-' . rand(100, 999),
             'userName' => $user['name'] ?? 'Authorized User',
-            'generatedOn' => now()->format('d M Y, h:i A'),
+            'generatedOn' => now()->format('d-m-Y, h:i A'),
             'isAllRange' => $isAllRange,
-            'fromDate' => $isAllRange ? 'UP TO DATE' : ($from ? $from->format('d M Y') : 'UP TO DATE'),
-            'toDate' => $to ? $to->format('d M Y') : now()->format('d M Y'),
+            'fromDate' => $isAllRange ? 'UP TO DATE' : ($from ? $from->format('d-m-Y') : 'UP TO DATE'),
+            'toDate' => $to ? $to->format('d-m-Y') : now()->format('d-m-Y'),
             'reportTitle' => $reportTitle,
             'statusFilter' => strtoupper(trim(str_replace('_', ' ', (string)($statusFilter ?? '')))),
             'totalRecords' => count($rows),

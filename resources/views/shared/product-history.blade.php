@@ -51,7 +51,7 @@
         <tbody>
             @forelse($stockLogs as $log)
                 <tr>
-                    <td style="font-size:0.85rem;">{{ $log->created_at->format('d M Y, h:i A') }}</td>
+                    <td style="font-size:0.85rem;">{{ $log->created_at->format('d-m-Y, h:i A') }}</td>
                     <td>{{ $log->user->name ?? 'System' }}</td>
                     <td>
                         @if($log->transaction_type === 'IN')

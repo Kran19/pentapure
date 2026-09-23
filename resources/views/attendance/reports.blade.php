@@ -4,6 +4,10 @@
     $allSheetsPdfUrl = request()->segment(1) === 'attendance'
         ? url('attendance/history/all-sheets/pdf?month=' . $month)
         : url(request()->segment(1) . '/attendance/reports/all-sheets/pdf?month=' . $month);
+
+    $summaryPdfUrl = request()->segment(1) === 'attendance'
+        ? url('attendance/reports/summary/pdf?month=' . $month)
+        : url(request()->segment(1) . '/attendance/reports/summary/pdf?month=' . $month);
 @endphp
 
 @section('content')
@@ -14,11 +18,11 @@
     <div style="display:flex; gap:10px; align-items:center;">
       <form method="GET" action="{{ url()->current() }}" style="display:flex; gap:10px; align-items:center;">
         <label style="font-weight:bold;">Month:</label>
-        <input type="month" name="month" value="{{ $month }}" onchange="this.form.submit()" style="padding:0.4rem; border-radius:4px; border:1px solid #ccc;">
+        <input type="month" name="month" value="{{ $month }}" onchange="this.form.submit()" onclick="if(typeof this.showPicker === 'function'){ try{ this.showPicker(); }catch(e){} }" style="padding:0.4rem 0.6rem; border-radius:6px; border:1px solid #cbd5e1; cursor:pointer; font-weight:500;">
       </form>
       <button class="btn btn-sm" onclick="exportToExcel()" style="width:auto; padding:0.4rem 1rem; background:#27ae60; color:white;">📗 Export to Excel</button>
       <a class="btn btn-sm" href="{{ $allSheetsPdfUrl }}" target="_blank" style="width:auto; padding:0.4rem 1rem; background:#3498db; color:white; border:none; text-decoration:none; display:inline-flex; align-items:center; font-weight:600;">📄 Download All Sheets</a>
-      <button class="btn btn-sm" onclick="window.print()" style="width:auto; padding:0.4rem 1rem; background:var(--secondary); color:white; border:none; cursor:pointer;">Print Summary</button>
+      <a class="btn btn-sm" href="{{ $summaryPdfUrl }}" target="_blank" style="width:auto; padding:0.4rem 1rem; background:#e74c3c; color:white; border:none; text-decoration:none; display:inline-flex; align-items:center; font-weight:600;">📄 Download Summary PDF</a>
     </div>
   </div>
 
@@ -29,7 +33,7 @@
     </div>
 
     <div class="table-container">
-      <table>
+      <table data-filterable="false">
         <thead>
           <tr>
             <th style="width:45px;">#</th>
@@ -117,11 +121,12 @@
                            id="paid-date-{{ $data['worker']->id }}" 
                            value="{{ $paidDate }}" 
                            onchange="updatePaidDate({{ $data['worker']->id }})"
-                           style="padding:3px 6px; border:1px solid #ccc; border-radius:4px; font-size:0.75rem; width:125px; background:white; color:black; outline:none;"
-                           title="Select Payment Date">
+                           onclick="if(typeof this.showPicker === 'function'){ try{ this.showPicker(); }catch(e){} }"
+                           style="padding:4px 8px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.78rem; width:135px; background:white; color:#0f172a; outline:none; cursor:pointer; font-weight:500;"
+                           title="Click to open calendar and select payment date">
                   </div>
                   <div id="paid-badge-{{ $data['worker']->id }}" style="margin-top:3px; font-size:0.68rem; font-weight:bold; color:{{ $isPaid ? '#22c55e' : '#ef4444' }};">
-                    {{ $isPaid ? '✓ PAID' . ($paidDate ? ' (' . \Carbon\Carbon::parse($paidDate)->format('d M Y') . ')' : '') : '✕ UNPAID' }}
+                    {{ $isPaid ? '✓ PAID' . ($paidDate ? ' (' . \Carbon\Carbon::parse($paidDate)->format('d-m-Y') . ')' : '') : '✕ UNPAID' }}
                   </div>
                 </td>
               </tr>
@@ -273,11 +278,27 @@ function downloadAllIndividualSheets() {
 
 <style>
 @media print {
-  body * { visibility: hidden; }
-  #printable-report, #printable-report * { visibility: visible; }
-  #printable-report { position: absolute; left: 0; top: 0; width: 100%; box-shadow:none; }
-  .admin-sidebar { display: none; }
-  .admin-mobile-header { display: none; }
+  @page { margin: 10mm; size: auto; }
+  body * { visibility: hidden !important; }
+  #printable-report, #printable-report * { visibility: visible !important; }
+  #printable-report { 
+    position: static !important; 
+    width: 100% !important; 
+    box-shadow: none !important; 
+    border: none !important;
+    padding: 0 !important;
+    background: white !important;
+    color: black !important;
+  }
+  #printable-report table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+  #printable-report tr {
+    page-break-inside: avoid;
+  }
+  .no-print, .filter-bar, .table-pagination-footer { display: none !important; }
+  .admin-sidebar, .admin-mobile-header { display: none !important; }
 }
 </style>
 @endsection

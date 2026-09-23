@@ -117,7 +117,7 @@
             </tr>
         </table>
         <div class="report-title">Cashier Overview Statement</div>
-        <p>Generated on: {{ now()->format('d M Y, h:i A') }}</p>
+        <p>Generated on: {{ now()->format('d-m-Y, h:i A') }}</p>
     </div>
 
     <table class="summary-box">
@@ -176,7 +176,7 @@
         <tbody>
             @foreach($pageData['transactions'] as $t)
             <tr>
-                <td>{{ $t->created_at->format('d M Y') }}<br><span style="color:#666;font-size:10px;">{{ $t->created_at->format('h:i A') }}</span></td>
+                <td>{{ $t->created_at->format('d-m-Y') }}<br><span style="color:#666;font-size:10px;">{{ $t->created_at->format('h:i A') }}</span></td>
                 <td><strong>{{ $t->user->name ?? 'Unknown' }}</strong></td>
                 <td>{{ strtoupper($t->category) }}</td>
                 <td>

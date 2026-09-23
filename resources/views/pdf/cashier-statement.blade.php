@@ -140,7 +140,7 @@ body {
     <tr>
         <td colspan="2" style="border-bottom: 1px solid #cbd5e1; background: #f1f5f9; padding: 8px 10px;">
             <span class="meta-title">
-                DURATION: {{ \Carbon\Carbon::parse($fromDate)->format('d-M-Y') }} - {{ \Carbon\Carbon::parse($toDate)->format('d-M-Y') }}
+                DURATION: {{ \Carbon\Carbon::parse($fromDate)->format('d-m-Y') }} - {{ \Carbon\Carbon::parse($toDate)->format('d-m-Y') }}
             </span>
         </td>
     </tr>
@@ -169,7 +169,7 @@ body {
         <tbody>
             @forelse($rows as $idx => $row)
             <tr>
-                <td>{{ \Carbon\Carbon::parse($row['date'])->format('d-M-Y') }}</td>
+                <td>{{ \Carbon\Carbon::parse($row['date'])->format('d-m-Y') }}</td>
                 <td>
                     {{ $row['note'] ?: ($row['description'] ?: '—') }}
                     @if($row['reference'])

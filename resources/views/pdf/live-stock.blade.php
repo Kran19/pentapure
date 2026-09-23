@@ -75,7 +75,7 @@
         @elseif(!empty($date))
             Stock Valuation Report <br>
             <span style="font-size: 16px; font-weight: normal; color: #667085; text-transform: none;">
-                Up To {{ \Carbon\Carbon::parse($date)->format('d M Y') }}
+                Up To {{ \Carbon\Carbon::parse($date)->format('d-m-Y') }}
             </span>
         @else
             Live Stock Valuation Report

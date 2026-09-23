@@ -226,8 +226,14 @@
   }
 
   function attachFilterBar(table) {
-    if (!table.tHead || !table.tBodies.length) return;
-    if (table.dataset.filterable === 'false') return;
+    if (
+      table.dataset.filterable === 'false' ||
+      table.classList.contains('ledger-table') ||
+      table.classList.contains('no-filter') ||
+      table.closest('#printable-sheet') ||
+      table.closest('#printable-report') ||
+      table.closest('.no-pagination')
+    ) return;
     if (hasExistingFilterBar(table)) return;
     if (table.dataset.filterAttached === 'true') return;
 
@@ -248,7 +254,9 @@
     filterBar.style.justifyContent = 'flex-end';
 
     const pageSizeSelect = createPageSizeSelect();
+    const resetButton = createResetButton();
     filterBar.appendChild(pageSizeSelect);
+    filterBar.appendChild(resetButton);
 
     const paginationState = {
       currentPage: 1,

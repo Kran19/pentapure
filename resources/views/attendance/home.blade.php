@@ -58,7 +58,7 @@
         <tbody>
           @foreach($recentSubmissions as $sub)
           <tr style="border-bottom:1px solid #eee;">
-            <td style="padding:0.75rem; font-weight:bold;">{{ $sub->attendance_date->format('d M Y') }}</td>
+            <td style="padding:0.75rem; font-weight:bold;">{{ $sub->attendance_date->format('d-m-Y') }}</td>
             <td style="padding:0.75rem;">{{ $sub->attendance_date->format('l') }}</td>
             <td style="padding:0.75rem;">
               @if($sub->status === 'SUBMITTED')
@@ -72,7 +72,7 @@
             <td style="padding:0.75rem;">{{ $sub->createdBy->name ?? '—' }}</td>
             <td style="padding:0.75rem;">
               @if($sub->submittedBy)
-                {{ $sub->submittedBy->name }} <br><small style="color:#7f8c8d;">{{ $sub->submitted_at->format('d M, H:i') }}</small>
+                {{ $sub->submittedBy->name }} <br><small style="color:#7f8c8d;">{{ $sub->submitted_at->format('d-m-Y, H:i') }}</small>
               @else
                 —
               @endif

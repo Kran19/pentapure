@@ -152,7 +152,7 @@
               </select>
             </div>
             @endif
-            <div style="flex:1; display:{{ in_array($status, ['ABSENT', 'HOLIDAY']) ? 'none' : 'block' }};" class="extra-field-block">
+            <div style="flex:1; display:{{ in_array($status, ['ABSENT', 'HOLIDAY', 'SUNDAY']) ? 'none' : 'block' }};" class="extra-field-block">
               <label style="font-size:0.8rem; color:var(--text-muted); display:block;">Shift</label>
               <select name="attendances[{{$index}}][shift_type]" class="shift-select" onchange="handleShiftChange(this)" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
                   <option value="DAY" {{ $shift=='DAY'?'selected':'' }}>Day Shift</option>
@@ -163,7 +163,7 @@
           </div>
 
           <!-- Row 2: In Time | Out Time -->
-          <div class="extra-field-flex" style="display:{{ in_array($status, ['ABSENT', 'HOLIDAY']) ? 'none' : 'flex' }}; gap:10px; margin-bottom:0.75rem;">
+          <div class="extra-field-flex" style="display:{{ in_array($status, ['ABSENT', 'HOLIDAY', 'SUNDAY']) ? 'none' : 'flex' }}; gap:10px; margin-bottom:0.75rem;">
             <div style="flex:1;">
               <label class="label-in" style="font-size:0.8rem; color:var(--text-muted); display:block;">In Time</label>
               <div style="position:relative; display:flex; align-items:center;">
@@ -181,7 +181,7 @@
           </div>
 
           <!-- Row 3: Break / Night Shift -->
-          <div class="row-3 extra-field-flex" style="display:{{ (!in_array($status, ['ABSENT', 'HOLIDAY']) && $shift === 'CUSTOM') ? 'flex' : 'none' }}; gap:10px; margin-bottom:0.75rem;">
+          <div class="row-3 extra-field-flex" style="display:{{ (!in_array($status, ['ABSENT', 'HOLIDAY', 'SUNDAY']) && $shift === 'CUSTOM') ? 'flex' : 'none' }}; gap:10px; margin-bottom:0.75rem;">
             <div style="flex:1;">
               <label class="label-bin" style="font-size:0.8rem; color:var(--text-muted); display:block;">Night In Time</label>
               <div style="position:relative; display:flex; align-items:center;">
@@ -199,7 +199,7 @@
           </div>
 
           <!-- Row 4: OT/UT | OT/UT Hours -->
-          <div class="extra-field-flex" style="display:{{ in_array($status, ['ABSENT', 'HOLIDAY']) ? 'none' : 'flex' }}; gap:10px; margin-bottom:0.75rem;">
+          <div class="extra-field-flex" style="display:{{ in_array($status, ['ABSENT', 'HOLIDAY', 'SUNDAY']) ? 'none' : 'flex' }}; gap:10px; margin-bottom:0.75rem;">
             <div style="flex:1;">
               <label style="font-size:0.8rem; color:var(--text-muted); display:block;">OT / UT</label>
               <select name="attendances[{{$index}}][ot_ut]" class="ot-select" onchange="handleOTUTChange(this)" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
@@ -218,7 +218,7 @@
           </div>
 
           <!-- Row 5: Advance -->
-          <div class="extra-field-flex" style="display:{{ in_array($status, ['ABSENT', 'HOLIDAY']) ? 'none' : 'flex' }}; gap:10px; margin-bottom:0.5rem;">
+          <div class="extra-field-flex" style="display:{{ in_array($status, ['ABSENT', 'HOLIDAY', 'SUNDAY']) ? 'none' : 'flex' }}; gap:10px; margin-bottom:0.5rem;">
             <div style="flex:1;">
               <label style="font-size:0.8rem; color:var(--text-muted); display:block;">Advance (₹)</label>
               <input type="number" name="attendances[{{$index}}][advance]" value="{{ $advance }}" min="0" step="1" class="advance-input" onwheel="this.blur()" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
@@ -229,7 +229,7 @@
           </div>
 
           <!-- Row 6: Remark -->
-          <div class="extra-field-block" style="display:{{ $status === 'ABSENT' ? 'none' : 'block' }}; margin-bottom:0.5rem;">
+          <div class="extra-field-block" style="display:{{ in_array($status, ['ABSENT', 'HOLIDAY', 'SUNDAY']) ? 'none' : 'block' }}; margin-bottom:0.5rem;">
             <label style="font-size:0.8rem; color:var(--text-muted); display:block;">Remark</label>
             <input type="text" name="attendances[{{$index}}][remark]" value="{{ $att->remark ?? '' }}" class="remark-input" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
           </div>
@@ -289,7 +289,7 @@ function handleStatusChange(selectEl) {
     const extraBlocks = card.querySelectorAll('.extra-field-block');
     const extraFlexes = card.querySelectorAll('.extra-field-flex');
 
-    if (val === 'ABSENT' || val === 'HOLIDAY') {
+    if (val === 'ABSENT' || val === 'HOLIDAY' || val === 'SUNDAY') {
         extraBlocks.forEach(f => f.style.display = 'none');
         extraFlexes.forEach(f => f.style.display = 'none');
         inputs.forEach(i => { i.value = ''; i.disabled = true; });

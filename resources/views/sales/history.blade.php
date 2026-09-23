@@ -202,7 +202,7 @@
           <div style="margin-top:6px; font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
             <span class="badge badge-open" style="font-size:0.6rem;">ORDER</span>
             <span>•</span>
-            <span>{{ \Carbon\Carbon::parse($item['date'])->format('d M Y') }}</span>
+            <span>{{ \Carbon\Carbon::parse($item['date'])->format('d-m-Y') }}</span>
             @if(!empty($item['lrCopies']) && count($item['lrCopies']) > 0)
               <span>•</span>
               <span class="badge badge-done" style="font-size:0.65rem; background:#16a34a; color:#ffffff !important; padding:2px 6px; border-radius:4px; font-weight:700;">LR UPLOADED</span>
@@ -284,7 +284,7 @@
           </div>
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Date & Time</div>
-            <div style="font-size:0.85rem; font-weight:500;">{{ \Carbon\Carbon::parse($item['date'])->format('d M Y, h:i A') }}</div>
+            <div style="font-size:0.85rem; font-weight:500;">{{ \Carbon\Carbon::parse($item['date'])->format('d-m-Y, h:i A') }}</div>
           </div>
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Total Amount</div>

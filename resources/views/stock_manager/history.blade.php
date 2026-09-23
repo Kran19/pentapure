@@ -31,7 +31,7 @@
           <tr class="history-row" data-name="{{ strtolower(($s->product?->name ?? '') . ' ' . ($s->notes ?? '') . ' ' . ($s->location?->name ?? '') . ' ' . ($s->stage ?? '') . ' ' . ($s->grade ?? '')) }}">
             <td style="white-space: nowrap;">{{ $loop->iteration }}</td>
             <td style="font-size:0.85rem; color:var(--text-muted); white-space: nowrap;">
-              {{ $s->created_at ? $s->created_at->format('d M Y, h:i A') : '-' }}
+              {{ $s->created_at ? $s->created_at->format('d-m-Y, h:i A') : '-' }}
             </td>
             <td style="font-weight:600; color:var(--text-main); white-space: nowrap;">{{ $s->product?->name ?? 'Unknown' }}</td>
             <td style="white-space: nowrap;">

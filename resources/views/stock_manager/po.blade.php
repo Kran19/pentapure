@@ -43,7 +43,7 @@
               <span class="badge badge-pending">{{ $po->status }}</span>
             @endif
           </td>
-          <td style="font-size:0.8rem; color:var(--text-muted);">{{ $po->created_at->format('d M Y') }}</td>
+          <td style="font-size:0.8rem; color:var(--text-muted);">{{ $po->created_at->format('d-m-Y') }}</td>
           <td>
             <div style="display:flex; align-items:center; gap:0.4rem;">
               @if($po->status === 'ORDERED')

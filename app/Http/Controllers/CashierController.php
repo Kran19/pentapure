@@ -229,8 +229,14 @@ class CashierController extends Controller
     }
 
     // ── VIEW / STREAM BILL ─────────────────────────────────────────────────
-    public function viewBill($id)
+    public function viewBill($param1, $param2 = null)
     {
+        // Handle optional route parameter prefix like {user_slug}
+        $id = ($param2 !== null && !is_object($param2)) ? $param2 : $param1;
+        if (is_object($param1)) {
+            $id = $param2;
+        }
+
         // 1. Try finding bill by TransactionBill ID first, then fallback to Transaction ID
         $bill = TransactionBill::with('transaction')->find($id);
 
@@ -352,17 +358,16 @@ class CashierController extends Controller
         $teamMembers = [];
         $addedUserIds = [];
 
-        // Always include current logged-in user in team members & allowed IDs
+        // Always include current logged-in user in allowed IDs for team ledger calculation
         if ($userModel) {
             $allowedCashiers[] = $userModel->name;
-            $teamMembers[] = [
-                'id'   => $userModel->id,
-                'name' => strtoupper($userModel->name),
-            ];
             $addedUserIds[] = $userModel->id;
         }
 
         foreach ($allCashiers as $c) {
+            if ($userModel && (int)$c->id === (int)$userModel->id) {
+                continue;
+            }
             if (in_array($c->id, $addedUserIds)) {
                 continue;
             }
@@ -428,6 +433,9 @@ class CashierController extends Controller
             'value' => str_replace(' ', '_', strtolower($c)),
         ])->values()->toArray();
 
+        $minDate = Transaction::min('created_at');
+        $earliestDate = $minDate ? Carbon::parse($minDate)->format('Y-m-d') : now()->subMonth()->format('Y-m-d');
+
         $pageData = [
             'transactions' => $txs->map(fn($t) => $this->txToArray($t))->values()->toArray(),
             'summary'      => $summary,
@@ -438,6 +446,7 @@ class CashierController extends Controller
             'allowedCashiers' => $allowedCashiers,
             'disallowedCashiers' => $disallowedCashiers,
             'categories'   => $categories,
+            'earliestDate' => $earliestDate,
         ];
 
         $req = $request ?: request();

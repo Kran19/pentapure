@@ -257,7 +257,7 @@
                                 <br><span style="color:#027a48; font-size: 8px;">(Current)</span>
                             @endif
                         </td>
-                        <td>{{ $historyLog->created_at->format('d-M-Y h:i A') }}</td>
+                        <td>{{ $historyLog->created_at->format('d-m-Y h:i A') }}</td>
                         <td><strong>DSP-{{ str_pad($historyLog->id, 4, '0', STR_PAD_LEFT) }}</strong></td>
                         <td>
                             @foreach($historyLog->dispatchItems as $hItem)

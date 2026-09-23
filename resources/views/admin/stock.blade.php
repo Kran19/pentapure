@@ -189,19 +189,19 @@
       box-sizing: border-box !important;
     }
     .table-container table.stock-table th:nth-child(1),
-    .table-container table.stock-table td:nth-child(1) { width: 32% !important; text-align: left !important; }
+    .table-container table.stock-table td:nth-child(1) { width: 46% !important; text-align: left !important; }
     .table-container table.stock-table th:nth-child(2),
-    .table-container table.stock-table td:nth-child(2) { width: 11% !important; text-align: right !important; }
+    .table-container table.stock-table td:nth-child(2) { width: 10% !important; text-align: right !important; }
     .table-container table.stock-table th:nth-child(3),
-    .table-container table.stock-table td:nth-child(3) { width: 7% !important; text-align: center !important; }
+    .table-container table.stock-table td:nth-child(3) { width: 5% !important; text-align: left !important; }
     .table-container table.stock-table th:nth-child(4),
-    .table-container table.stock-table td:nth-child(4) { width: 14% !important; text-align: right !important; }
+    .table-container table.stock-table td:nth-child(4) { width: 12% !important; text-align: right !important; }
     .table-container table.stock-table th:nth-child(5),
-    .table-container table.stock-table td:nth-child(5) { width: 11% !important; text-align: right !important; }
+    .table-container table.stock-table td:nth-child(5) { width: 10% !important; text-align: right !important; }
     .table-container table.stock-table th:nth-child(6),
-    .table-container table.stock-table td:nth-child(6) { width: 15% !important; text-align: center !important; }
+    .table-container table.stock-table td:nth-child(6) { width: 11% !important; text-align: center !important; }
     .table-container table.stock-table th:nth-child(7),
-    .table-container table.stock-table td:nth-child(7) { width: 10% !important; text-align: right !important; }
+    .table-container table.stock-table td:nth-child(7) { width: 6% !important; text-align: right !important; }
 
     .table-container table.stock-table td:nth-child(7) > div {
       justify-content: flex-end !important;
@@ -217,7 +217,7 @@
     @else
     <div class="table-container">
       <table class="stock-table">
-        <thead><tr><th>Product</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>min_qty</th><th>Location</th><th>Action</th></tr></thead>
+        <thead><tr><th>Product</th><th>Total Qty</th><th>Unit</th><th>Rate (Ref)</th><th>min_qty</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="raw-stock-tbody">
 @foreach($rawItems as $s)
           @php 
@@ -272,7 +272,7 @@
     @else
     <div class="table-container">
       <table class="stock-table">
-        <thead><tr><th>Product</th><th>Qty</th><th>Unit</th><th>Rate (Ref)</th><th>min_qty</th><th>Location</th><th>Action</th></tr></thead>
+        <thead><tr><th>Product</th><th>Total Qty</th><th>Unit</th><th>Rate (Ref)</th><th>min_qty</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="semi-stock-tbody">
           @foreach($semiItems as $s)
           @php 

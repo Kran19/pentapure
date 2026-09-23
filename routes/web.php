@@ -85,6 +85,8 @@ Route::middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CA
     Route::post('/api/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);
 });
 Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE,STOCK_MANAGER')->group(function() {
+    Route::get('/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill']);
+    Route::get('/cashier/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill']);
     Route::get('/api/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
     Route::post('/api/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
     Route::post('/api/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);
@@ -399,6 +401,13 @@ foreach ($adminSlugs as $slug) {
     Route::post('/attendance/daily',      [AttendanceController::class, 'storeDailyAttendance']);
     Route::get('/attendance/daily/pdf',   [AttendanceController::class, 'downloadDailyPdf'])->name($slug.'.attendance.daily.pdf');
     Route::get('/attendance/reports',     [AttendanceController::class, 'reports'])->name($slug.'.attendance.reports');
+    Route::get('/attendance/reports/summary/pdf', [AttendanceController::class, 'monthlySummaryPdf'])->name($slug.'.attendance.reports.summary.pdf');
+    Route::get('/attendance/reports/all-sheets/pdf', [AttendanceController::class, 'allWorkerMonthlySalaryPdf'])->name($slug.'.attendance.reports.all-sheets.pdf');
+    Route::get('/attendance/reports/worker/{id}', [AttendanceController::class, 'workerReport'])->name($slug.'.attendance.reports.worker');
+    Route::post('/attendance/reports/worker/{id}/adjust', [AttendanceController::class, 'updateMonthlyAdjustment'])->name($slug.'.attendance.reports.worker.adjust');
+    Route::post('/attendance/reports/worker/{id}/toggle-paid', [AttendanceController::class, 'togglePaymentStatus'])->name($slug.'.attendance.reports.worker.toggle-paid');
+    Route::get('/attendance/reports/worker/{id}/pdf', [AttendanceController::class, 'workerMonthlySalaryPdf'])->name($slug.'.attendance.reports.worker.pdf');
+
     Route::get('/attendance/history',     [AttendanceController::class, 'reports'])->name($slug.'.attendance.history');
     Route::get('/attendance/history/all-sheets/pdf', [AttendanceController::class, 'allWorkerMonthlySalaryPdf'])->name($slug.'.attendance.history.all-sheets.pdf');
     Route::get('/attendance/history/worker/{id}', [AttendanceController::class, 'workerReport'])->name($slug.'.attendance.history.worker');
@@ -450,8 +459,11 @@ foreach ($adminSlugs as $slug) {
 
     // Shared Bill View (Admin & Cashier)
     Route::get("/{$slug}/cashier/bill/{id}/view", [CashierController::class, 'viewBill'])
-        ->middleware('auth.role:ADMIN,CASHIER')
+        ->middleware('auth.role:ADMIN,CASHIER,SUB_ADMIN')
         ->name($slug.'.cashier.bill.view');
+    Route::get("/{$slug}/bill/{id}/view", [CashierController::class, 'viewBill'])
+        ->middleware('auth.role:ADMIN,CASHIER,SUB_ADMIN')
+        ->name($slug.'.bill.view');
 }
 
 // === ATTENDANCE ROUTES ===
@@ -484,6 +496,7 @@ foreach ($roleSlugs['ATTENDANCE'] ?? [] as $slug) {
     Route::get('/api/daily',          'dailyJson');
 
     Route::get('/reports',            'reports')->name($slug.'.reports');
+    Route::get('/reports/summary/pdf', 'monthlySummaryPdf');
     Route::get('/reports/all-sheets/pdf',    'allWorkerMonthlySalaryPdf');
     Route::get('/reports/worker/{id}','workerReport');
     Route::post('/reports/worker/{id}/adjust','updateMonthlyAdjustment');

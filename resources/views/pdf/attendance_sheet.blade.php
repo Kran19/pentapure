@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Attendance Sheet - {{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}</title>
+    <title>Attendance Sheet - {{ \Carbon\Carbon::parse($date)->format('d-m-Y') }}</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -13,17 +13,26 @@
         }
         .header {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #f8c300;
+            padding-bottom: 10px;
         }
-        .header h1 {
-            font-size: 16px;
+        .header .brand-title {
+            font-size: 22px;
+            font-weight: bold;
+            color: #101828;
             margin: 0;
-            padding: 0;
-            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .header .tagline {
+            font-size: 13px;
+            font-weight: bold;
+            color: #101828;
+            margin-top: 2px;
         }
         .subheader {
             margin-top: 10px;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
             display: table;
             width: 100%;
@@ -69,10 +78,27 @@
 <body>
 
     <div class="header">
-        <h1>{{ $companyName }}</h1>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 0; margin-bottom: 8px; border: none;">
+            <tr>
+                <td style="width: 20%; text-align: left; vertical-align: middle; border: none; background: transparent; padding: 0;">
+                    @if(file_exists(public_path('logo.png')))
+                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 48px; height: 48px; object-fit: contain;">
+                    @endif
+                </td>
+                <td style="width: 60%; text-align: center; vertical-align: middle; border: none; background: transparent; padding: 0;">
+                    <div class="brand-title">PentaPure</div>
+                    <div class="tagline">FOOD &amp; SPICES PVT.LTD.</div>
+                </td>
+                <td style="width: 20%; text-align: right; vertical-align: middle; border: none; background: transparent; padding: 0;">
+                    @if(file_exists(public_path('logo.png')))
+                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 48px; height: 48px; object-fit: contain;">
+                    @endif
+                </td>
+            </tr>
+        </table>
         <div class="subheader">
             <div class="text-left">ATTENDANCE SHEET</div>
-            <div class="date-section">DATE: {{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}</div>
+            <div class="date-section">DATE: {{ \Carbon\Carbon::parse($date)->format('d-m-Y') }}</div>
         </div>
     </div>
 

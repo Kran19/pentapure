@@ -57,7 +57,7 @@
 
     <!-- Detailed Ledger Table -->
     <div class="table-scroll">
-      <table class="ledger-table" style="width: 100%; table-layout: fixed; border-collapse: collapse;">
+      <table class="ledger-table" data-filterable="false" style="width: 100%; table-layout: fixed; border-collapse: collapse;">
         <thead>
           <tr style="background:#f0f0f0;">
             <th rowspan="2" style="border:2px solid #000; padding:6px; font-size:0.78rem; width:8%;">DATE</th>
@@ -160,7 +160,7 @@
     <!-- Salary Summary -->
     <div style="margin-top:20px; width:100%;">
       @if($worker->salary_type === 'FIXED_MONTHLY')
-      <table style="width:100%; border:2px solid #000; border-collapse:collapse; font-size:0.95rem; font-weight:bold;">
+      <table data-filterable="false" style="width:100%; border:2px solid #000; border-collapse:collapse; font-size:0.95rem; font-weight:bold;">
         <tr>
           <td style="border:2px solid #000; padding:8px; width:75%;">FIX MONTHLY SALARY</td>
           <td style="border:2px solid #000; padding:8px; text-align:right; width:25%;">{{ number_format($worker->salary_amount, 0) }}</td>
@@ -204,7 +204,7 @@
         </tr>
       </table>
       @elseif($worker->salary_type === 'LABOUR_MUKADAM')
-      <table style="width:100%; border:2px solid #000; border-collapse:collapse; font-size:0.95rem; font-weight:bold;">
+      <table data-filterable="false" style="width:100%; border:2px solid #000; border-collapse:collapse; font-size:0.95rem; font-weight:bold;">
         <tr>
           <td colspan="4" style="border:2px solid #000; padding:8px; text-align:center;">PER LABOUR SALARY</td>
           <td style="border:2px solid #000; padding:8px; text-align:right; width:25%;">{{ number_format($worker->salary_amount, 2) }}</td>
@@ -260,7 +260,7 @@
         </tr>
       </table>
       @else
-      <table style="width:100%; border:2px solid #000; border-collapse:collapse; font-size:0.95rem; font-weight:bold;">
+      <table data-filterable="false" style="width:100%; border:2px solid #000; border-collapse:collapse; font-size:0.95rem; font-weight:bold;">
         <!-- Row 1 -->
         <tr>
           <td colspan="4" style="border:2px solid #000; padding:8px; text-align:center;">{{ $worker->salary_type === 'DAILY' ? 'PER DAY SALARY' : 'MONTHLY SALARY' }}</td>

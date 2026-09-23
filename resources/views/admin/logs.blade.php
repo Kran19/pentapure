@@ -40,7 +40,7 @@
           @foreach($pageData['logs'] as $log)
           <tr class="log-row" data-category="{{ $log['category'] }}" data-user="{{ $log['by'] }}" data-date="{{ explode(' ', $log['date'])[0] }}">
             <td style="font-size:0.85rem; font-family:monospace; color:var(--text-muted);">
-              {{ \Carbon\Carbon::parse($log['date'])->format('d M Y, H:i') }}
+              {{ \Carbon\Carbon::parse($log['date'])->format('d-m-Y, H:i') }}
             </td>
             <td>
               <span class="badge {{ $log['category'] === 'Production' ? 'badge-pending' : ($log['category'] === 'Sales' ? 'badge-open' : ($log['category'] === 'Inventory' ? 'badge-closed' : ($log['category'] === 'Cashier' ? 'badge-open' : 'badge-done'))) }}" style="font-size:0.7rem;">

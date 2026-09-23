@@ -252,7 +252,7 @@
           <div style="font-size:0.85rem; color:var(--text-muted); line-height:1.5;">
             <strong>Customer:</strong> {{ $o['companyName'] ?? 'N/A' }} <br>
             <strong>Transport:</strong> {{ $o['transporterName'] ?? 'N/A' }} <br>
-            <strong>Date Closed:</strong> {{ \Carbon\Carbon::parse($o['date'])->format('d M Y, h:i A') }} <br>
+            <strong>Date Closed:</strong> {{ \Carbon\Carbon::parse($o['date'])->format('d-m-Y, h:i A') }} <br>
             @if($o['notes'])
               <div style="margin-top:8px; font-style:italic;">Notes: {{ $o['notes'] }}</div>
             @endif

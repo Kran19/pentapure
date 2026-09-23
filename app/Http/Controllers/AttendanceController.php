@@ -56,6 +56,7 @@ class AttendanceController extends Controller
     // --- DEPARTMENTS ---
     public function departments(Request $request)
     {
+        Department::firstOrCreate(['name' => 'MUKADAM'], ['is_active' => true]);
         $departments = Department::withCount('workers')->get();
         return view('attendance.departments', [
             'departments' => $departments,
@@ -67,7 +68,11 @@ class AttendanceController extends Controller
     {
         $request->validate(['name' => 'required|string|max:255']);
         if ($request->department_id) {
-            Department::findOrFail($request->department_id)->update($request->only('name'));
+            $dept = Department::findOrFail($request->department_id);
+            if (strtoupper(trim($dept->name)) === 'MUKADAM' && strtoupper(trim($request->name)) !== 'MUKADAM') {
+                return response()->json(['success' => false, 'message' => 'MUKADAM is a fixed system department name.'], 422);
+            }
+            $dept->update($request->only('name'));
             return response()->json(['success' => true, 'message' => 'Department updated']);
         }
         Department::create($request->only('name'));
@@ -76,6 +81,10 @@ class AttendanceController extends Controller
 
     public function destroyDepartment($id)
     {
+        $dept = Department::find($id);
+        if ($dept && strtoupper(trim($dept->name)) === 'MUKADAM') {
+            return response()->json(['success' => false, 'message' => 'MUKADAM is a fixed system department and cannot be deleted.'], 422);
+        }
         Department::destroy($id);
         return response()->json(['success' => true, 'message' => 'Department deleted']);
     }
@@ -646,6 +655,83 @@ class AttendanceController extends Controller
         $dateStr = \Carbon\Carbon::parse($month . '-01')->format('d_m_y');
         $filename = 'ALL_WORKERS_SALARY_' . $dateStr . '.pdf';
         
+        return $pdf->download($filename);
+    }
+
+    public function monthlySummaryPdf(Request $request)
+    {
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(180);
+
+        $month     = $request->query('month', date('Y-m'));
+        $startDate = Carbon::parse($month)->startOfMonth()->toDateString();
+        $endDate   = Carbon::parse($month)->endOfMonth()->toDateString();
+
+        $allWorkersOrder = Worker::orderBy('id')->pluck('id')->toArray();
+        $workerNumberMap = [];
+        foreach ($allWorkersOrder as $idx => $wId) {
+            $workerNumberMap[$wId] = $idx + 1;
+        }
+
+        $workers = Worker::with(['department', 'attendances' => function($q) use ($startDate, $endDate) {
+            $q->whereBetween('date', [$startDate, $endDate]);
+        }])->where(function($q) use ($startDate, $endDate) {
+            $q->where('status', 'ACTIVE')
+              ->orWhereHas('attendances', function($aq) use ($startDate, $endDate) {
+                  $aq->whereBetween('date', [$startDate, $endDate]);
+              });
+        })->orderBy('name')->get();
+
+        $adjustments = WorkerMonthlyAdjustment::where('month', $month)->get()->keyBy('worker_id');
+
+        $reportData = [];
+        foreach ($workers as $w) {
+            $present = 0; $absent = 0; $half = 0;
+            $totalOT = 0; $totalWage = 0;
+
+            foreach ($w->attendances as $att) {
+                if ($att->status == 'ABSENT') {
+                    $absent++;
+                } else {
+                    $present += $this->getPresentMultiplier($att->status);
+                }
+                $totalOT += $att->overtime_hours;
+
+                if ($w->salary_type === 'DAILY' || $w->salary_type === 'LABOUR_MUKADAM') {
+                    $totalWage += $att->calculated_wage;
+                } else {
+                    $hourly = ($w->daily_salary ?? 0) / 9;
+                    $otPay = $att->overtime_hours * ($hourly * 1.5);
+                    $totalWage += $otPay;
+                }
+            }
+
+            if ($w->salary_type === 'MONTHLY') {
+                $totalWage += $w->salary_amount;
+            }
+
+            $adj = $adjustments->get($w->id);
+
+            $reportData[$w->id] = [
+                'worker'        => $w,
+                'worker_number' => $workerNumberMap[$w->id] ?? null,
+                'present'       => $present,
+                'absent'        => $absent,
+                'half'          => $half,
+                'total_ot'      => $totalOT,
+                'total_wage'    => $totalWage,
+                'adjustment'    => $adj
+            ];
+        }
+
+        $pdf = Pdf::loadView('pdf.monthly-payroll-summary', [
+            'reportData' => $reportData,
+            'month'      => $month,
+        ])->setPaper('A4', 'landscape');
+
+        $dateStr = Carbon::parse($month . '-01')->format('d_m_Y');
+        $filename = 'PAYROLL_SUMMARY_' . $dateStr . '.pdf';
+
         return $pdf->download($filename);
     }
 

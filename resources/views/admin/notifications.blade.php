@@ -71,7 +71,7 @@
             <div style="font-size:0.78rem; color:var(--text-muted); white-space:nowrap;">
               {{ $n->created_at->diffForHumans() }}
               &nbsp;·&nbsp;
-              {{ $n->created_at->format('d M Y, H:i') }}
+              {{ $n->created_at->format('d-m-Y, H:i') }}
             </div>
           </div>
 

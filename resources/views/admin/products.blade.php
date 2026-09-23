@@ -10,6 +10,14 @@
     </div>
   </div>
 
+  <!-- Common Product Instant Search Bar -->
+  <div class="card" style="padding:0.85rem 1.2rem; margin-bottom:1.5rem; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:10px;">
+    <div style="display:flex; align-items:center; gap:0.75rem;">
+      <span style="font-size:1.1rem; color:var(--text-muted);">🔍</span>
+      <input type="text" id="global-product-search" placeholder="Search product name across RAW, SEMI, and FINISHED stock types..." oninput="onGlobalProductSearch(this.value)" style="width:100%; padding:0.6rem 0.9rem; border-radius:8px; font-size:0.9rem; border:1px solid var(--border-soft); background:var(--bg-hover); color:var(--text-main); outline:none;">
+    </div>
+  </div>
+
   <!-- Add Form -->
   <style>
     /* Products Master Uniform Column Alignment */
@@ -322,10 +330,10 @@ function initTablePagination(tbodyId, paginationId, pageSize = 10) {
 
       const prevBtn = document.createElement('button');
       prevBtn.className = 'btn btn-sm btn-secondary';
-      prevBtn.style.cssText = 'width:auto; padding:0.35rem 0.75rem; font-size:0.8rem; cursor:pointer;';
-      prevBtn.innerHTML = '&laquo; Prev';
+      prevBtn.style.cssText = 'width:auto; padding:0.35rem 0.9rem; font-size:0.8rem; font-weight:600; cursor:pointer; border-radius:20px; border:1px solid var(--border-soft, #d1d5db); background:#fff; color:#64748b;';
+      prevBtn.innerHTML = '&laquo; PREV';
       prevBtn.disabled = currentPage === 1;
-      if (currentPage === 1) prevBtn.style.opacity = '0.5';
+      if (currentPage === 1) prevBtn.style.opacity = '0.4';
       prevBtn.onclick = () => refresh(currentPage - 1);
       controlsEl.appendChild(prevBtn);
 
@@ -335,7 +343,7 @@ function initTablePagination(tbodyId, paginationId, pageSize = 10) {
       if (startPage > 1) {
         const firstBtn = document.createElement('button');
         firstBtn.className = 'btn btn-sm btn-secondary';
-        firstBtn.style.cssText = 'width:auto; padding:0.35rem 0.75rem; font-size:0.8rem; cursor:pointer;';
+        firstBtn.style.cssText = 'width:auto; min-width:32px; padding:0.35rem 0.75rem; font-size:0.8rem; font-weight:600; cursor:pointer; border-radius:20px; border:1px solid var(--border-soft, #d1d5db); background:#fff; color:#334155;';
         firstBtn.textContent = '1';
         firstBtn.onclick = () => refresh(1);
         controlsEl.appendChild(firstBtn);
@@ -352,7 +360,7 @@ function initTablePagination(tbodyId, paginationId, pageSize = 10) {
         const pageBtn = document.createElement('button');
         const isActive = p === currentPage;
         pageBtn.className = isActive ? 'btn btn-sm' : 'btn btn-sm btn-secondary';
-        pageBtn.style.cssText = `width:auto; padding:0.35rem 0.75rem; font-size:0.8rem; cursor:pointer; ${isActive ? 'background:var(--primary, #D88A00); color:#fff; font-weight:bold;' : ''}`;
+        pageBtn.style.cssText = `width:auto; min-width:32px; padding:0.35rem 0.75rem; font-size:0.8rem; cursor:pointer; border-radius:20px; ${isActive ? 'background:#f59e0b; color:#fff; font-weight:bold; border:1px solid #f59e0b; box-shadow:0 2px 4px rgba(245,158,11,0.25);' : 'border:1px solid var(--border-soft, #d1d5db); background:#fff; color:#334155; font-weight:600;'}`;
         pageBtn.textContent = p;
         pageBtn.onclick = () => refresh(p);
         controlsEl.appendChild(pageBtn);
@@ -368,7 +376,7 @@ function initTablePagination(tbodyId, paginationId, pageSize = 10) {
 
         const lastBtn = document.createElement('button');
         lastBtn.className = 'btn btn-sm btn-secondary';
-        lastBtn.style.cssText = 'width:auto; padding:0.35rem 0.75rem; font-size:0.8rem; cursor:pointer;';
+        lastBtn.style.cssText = 'width:auto; min-width:32px; padding:0.35rem 0.75rem; font-size:0.8rem; font-weight:600; cursor:pointer; border-radius:20px; border:1px solid var(--border-soft, #d1d5db); background:#fff; color:#334155;';
         lastBtn.textContent = totalPages;
         lastBtn.onclick = () => refresh(totalPages);
         controlsEl.appendChild(lastBtn);
@@ -376,10 +384,10 @@ function initTablePagination(tbodyId, paginationId, pageSize = 10) {
 
       const nextBtn = document.createElement('button');
       nextBtn.className = 'btn btn-sm btn-secondary';
-      nextBtn.style.cssText = 'width:auto; padding:0.35rem 0.75rem; font-size:0.8rem; cursor:pointer;';
-      nextBtn.innerHTML = 'Next &raquo;';
+      nextBtn.style.cssText = 'width:auto; padding:0.35rem 0.9rem; font-size:0.8rem; font-weight:700; cursor:pointer; border-radius:20px; border:1px solid var(--border-soft, #d1d5db); background:#fff; color:#0284c7;';
+      nextBtn.innerHTML = 'NEXT &raquo;';
       nextBtn.disabled = currentPage === totalPages;
-      if (currentPage === totalPages) nextBtn.style.opacity = '0.5';
+      if (currentPage === totalPages) nextBtn.style.opacity = '0.4';
       nextBtn.onclick = () => refresh(currentPage + 1);
       controlsEl.appendChild(nextBtn);
     }
@@ -400,6 +408,12 @@ function initTablePagination(tbodyId, paginationId, pageSize = 10) {
 
   paginationInstances[tbodyId] = { refresh, filter };
   refresh(1);
+}
+
+function onGlobalProductSearch(val) {
+  if (paginationInstances['raw-tbody']) paginationInstances['raw-tbody'].filter(val);
+  if (paginationInstances['semi-tbody']) paginationInstances['semi-tbody'].filter(val);
+  if (paginationInstances['fin-tbody']) paginationInstances['fin-tbody'].filter(val);
 }
 
 function filterTable(input, tbodyId) {

@@ -112,7 +112,7 @@
           <td style="font-weight:bold; color:{{ $s['transaction_type'] === 'IN' ? '#2ecc71' : 'red' }}; white-space: nowrap;">
             {{ $s['transaction_type'] === 'IN' ? '+' : '-' }}{{ number_format($s['quantity'], 2) }} {{ $s['unit'] }}
           </td>
-          <td style="font-size:0.8rem; white-space: nowrap;">{{ \Carbon\Carbon::parse($s['date'])->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}</td>
+          <td style="font-size:0.8rem; white-space: nowrap;">{{ \Carbon\Carbon::parse($s['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }}</td>
           <td style="font-size:0.9rem; min-width: 300px; max-width: 500px; overflow-wrap: break-word; white-space: normal; word-break: break-word; vertical-align: middle;">{{ $s['notes'] ?? '—' }}</td>
         </tr>
       @empty
@@ -155,7 +155,7 @@
                 {{ $po->status === 'DONE' ? 'READ' : $po->status }}
              </span>
           </td>
-          <td style="font-size:0.8rem;">{{ \Carbon\Carbon::parse($po->created_at)->format('d M Y') }}</td>
+          <td style="font-size:0.8rem;">{{ \Carbon\Carbon::parse($po->created_at)->format('d-m-Y') }}</td>
         </tr>
       @empty
         <tr><td colspan="4" class="text-center text-muted">No purchase requests found.</td></tr>

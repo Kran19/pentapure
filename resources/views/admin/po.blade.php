@@ -27,7 +27,7 @@
         <tbody>
           @foreach($pageData['purchaseOrders'] as $po)
           <tr id="po-row-{{ $po->id }}">
-            <td style="font-size:0.8rem; white-space:nowrap;">{{ $po->created_at->format('d M Y') }}</td>
+            <td style="font-size:0.8rem; white-space:nowrap;">{{ $po->created_at->format('d-m-Y') }}</td>
             <td>
               <div style="font-weight:600;">{{ $po->user?->name }}</div>
               <div style="font-size:0.75rem; color:var(--text-muted);">{{ $po->user?->role }}</div>

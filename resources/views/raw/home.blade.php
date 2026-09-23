@@ -136,7 +136,7 @@
             <td style="font-weight:bold; color:{{ $s['quantity'] > 0 ? 'var(--secondary)' : 'var(--danger)' }}; white-space: nowrap;">
               {{ $s['quantity'] > 0 ? '+' : '' }}{{ number_format($s['quantity'], 2) }} kg
             </td>
-            <td style="font-size:0.8rem; white-space: nowrap;">{{ \Carbon\Carbon::parse($s['date'])->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}</td>
+            <td style="font-size:0.8rem; white-space: nowrap;">{{ \Carbon\Carbon::parse($s['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }}</td>
             <td style="font-size:0.9rem; min-width: 300px; max-width: 500px; overflow-wrap: break-word; white-space: normal; word-break: break-word; vertical-align: middle;">{{ $s['notes'] ?? '—' }}</td>
           </tr>
         @empty

@@ -2304,7 +2304,18 @@ const app = {
     const sites = [...new Set(txs.map(t => t.site).filter(Boolean))].sort();
 
     const today = new Date().toISOString().split('T')[0];
-    const oneMonthAgo = new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
+    let earliestDate = window.serverPageData?.earliestDate;
+    if (!earliestDate && txs && txs.length > 0) {
+      const validDates = txs.map(t => {
+        const dStr = t.date || t.created_at;
+        return dStr ? dStr.split('T')[0] : null;
+      }).filter(Boolean);
+      if (validDates.length > 0) {
+        validDates.sort();
+        earliestDate = validDates[0];
+      }
+    }
+    const defaultFromDate = earliestDate || new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
 
     const isTeam = (activeTab === 'team');
 
@@ -2338,7 +2349,7 @@ const app = {
           <div id="sp-custom-date-grid" style="display:none; grid-template-columns:1fr 1fr; gap:0.8rem; margin-bottom:0.8rem;">
             <div>
               <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">From Date</label>
-              <input id="sp-from" type="date" value="${oneMonthAgo}" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+              <input id="sp-from" type="date" value="${defaultFromDate}" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
             </div>
             <div>
               <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">To Date</label>
@@ -2572,17 +2583,40 @@ const app = {
   },
 
   viewBill(billId, fileType) {
-    const currentSlug = this.getCurrentSlug('cashier');
-    const targetUrl = `${this.getBaseUrl()}/${currentSlug}/bill/${billId}/view`;
-    const isPdf = String(fileType).toLowerCase().includes('pdf');
+    let targetUrl = '';
+    const billStr = String(billId || '');
+    if (billStr.startsWith('http://') || billStr.startsWith('https://') || billStr.startsWith('/')) {
+      targetUrl = billStr;
+    } else {
+      const currentSlug = this.getCurrentSlug('cashier');
+      targetUrl = `${this.getBaseUrl()}/${currentSlug}/bill/${billId}/view`;
+    }
+
+    const ft = String(fileType || '').toLowerCase();
+    const isExplicitImage = (ft.includes('image') || ft.includes('jpg') || ft.includes('jpeg') || ft.includes('png') || ft.includes('webp') || ft.includes('gif')) ||
+                            ['.jpg', '.jpeg', '.png', '.webp', '.gif'].some(ext => targetUrl.toLowerCase().endsWith(ext));
+
+    const loaderId = 'bill-loader-' + Math.floor(Math.random() * 10000);
+    const loaderHtml = `
+      <div id="${loaderId}" style="position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center; align-items:center; background:#161b22; z-index:10;">
+        <div style="width:36px; height:36px; border:3px solid #3b82f6; border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+        <div style="margin-top:12px; font-size:0.85rem; color:#94a3b8; font-weight:500;">Loading bill preview...</div>
+      </div>
+    `;
 
     let htmlContent = '';
-    if (isPdf) {
-      htmlContent = `<iframe src="${targetUrl}" style="width:100%; height:550px; border:none; border-radius:8px;"></iframe>`;
+    if (isExplicitImage) {
+      htmlContent = `
+        <div style="position:relative; width:100%; max-height:550px; min-height:250px; display:flex; justify-content:center; align-items:center; overflow:auto; background:#161b22; border-radius:8px;">
+          ${loaderHtml}
+          <img src="${targetUrl}" onload="const el=document.getElementById('${loaderId}'); if(el) el.style.display='none';" onerror="const el=document.getElementById('${loaderId}'); if(el) el.innerHTML='<div style=color:#ef4444;padding:20px;>Failed to load bill image</div>';" style="max-width:100%; max-height:500px; object-fit:contain; border-radius:8px; display:block; margin:0 auto;" alt="Bill Image" />
+        </div>
+      `;
     } else {
       htmlContent = `
-        <div style="display:flex; justify-center:center; align-items:center; width:100%; max-height:550px; overflow:auto;">
-          <img src="${targetUrl}" style="max-width:100%; max-height:500px; object-fit:contain; border-radius:8px; display:block; margin:0 auto;" alt="Bill Image" />
+        <div style="position:relative; width:100%; height:550px; background:#161b22; border-radius:8px; overflow:hidden;">
+          ${loaderHtml}
+          <iframe src="${targetUrl}" onload="const el=document.getElementById('${loaderId}'); if(el) el.style.display='none';" style="width:100%; height:550px; border:none; border-radius:8px;"></iframe>
         </div>
       `;
     }
@@ -2590,7 +2624,7 @@ const app = {
     Swal.fire({
       title: '📄 View Bill',
       html: htmlContent,
-      width: '650px',
+      width: '700px',
       showCloseButton: true,
       showConfirmButton: false,
       background: '#161b22',
@@ -2623,7 +2657,7 @@ const app = {
                   <div style="display:flex; align-items:center; justify-content:space-between; background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px; padding:0.5rem 0.7rem;">
                     <span style="font-size:0.82rem; color:#111;">${b.file_type==='pdf'?'📄':'🖼️'} ${b.original_name}</span>
                     <div style="display:flex; gap:0.4rem;">
-                      <button onclick="app.viewBill(${b.id})" style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); color:#2563eb; border-radius:4px; padding:3px 8px; font-size:0.75rem; cursor:pointer;">View</button>
+                      <button onclick="app.viewBill(${b.id}, '${b.file_type || ''}')" style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); color:#2563eb; border-radius:4px; padding:3px 8px; font-size:0.75rem; cursor:pointer;">View</button>
                       <button onclick="app.deleteBill(${b.id}, ${txId})" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); color:#dc2626; border-radius:4px; padding:3px 8px; font-size:0.75rem; cursor:pointer;">Delete</button>
                     </div>
                   </div>

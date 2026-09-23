@@ -99,7 +99,7 @@
               <span style="text-transform:uppercase; font-weight:600; background:rgba(0,0,0,0.06); padding:2px 8px; border-radius:6px;">{{ str_replace('_', ' ', $t['category']) }}</span>
               <span>•</span>
             @endif
-            <span>{{ \Carbon\Carbon::parse($t['date'])->format('d M Y, h:i A') }}</span>
+            <span>{{ \Carbon\Carbon::parse($t['date'])->format('d-m-Y, h:i A') }}</span>
           </div>
         </div>
         <div style="display:flex; align-items:center; gap:12px; text-align:right;">
@@ -140,7 +140,7 @@
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Date & Time</div>
             <div style="font-size:0.85rem; font-weight:500;">
-              {{ \Carbon\Carbon::parse($t['date'])->format('d M Y, h:i:s A') }}
+              {{ \Carbon\Carbon::parse($t['date'])->format('d-m-Y, h:i:s A') }}
             </div>
           </div>
           @if(!empty($t['reference']))

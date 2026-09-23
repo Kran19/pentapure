@@ -22,7 +22,7 @@
           <td style="font-weight:600;">{{ $po->product ? $po->product->formatName() : 'Unknown' }}</td>
           <td>{{ $po->quantity }} kg</td>
           <td><span class="badge {{ $po->status === 'DONE' ? 'badge-done' : 'badge-pending' }}">{{ $po->status === 'DONE' ? 'READ' : $po->status }}</span></td>
-          <td style="font-size:0.8rem;">{{ \Carbon\Carbon::parse($po->created_at)->format('d M Y') }}</td>
+          <td style="font-size:0.8rem;">{{ \Carbon\Carbon::parse($po->created_at)->format('d-m-Y') }}</td>
         </tr>
       @empty
         <tr><td colspan="4" class="text-center text-muted">No purchase requests found.</td></tr>

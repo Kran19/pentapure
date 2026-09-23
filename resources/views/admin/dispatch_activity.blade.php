@@ -59,7 +59,7 @@
             @foreach($pageData['orders'] as $order)
             <tr>
               <td style="font-weight:bold; color:var(--primary-light);">#{{ $order->id }}</td>
-              <td style="font-size:0.85rem; white-space:nowrap;">{{ $order->created_at->format('d M Y, h:i A') }}</td>
+              <td style="font-size:0.85rem; white-space:nowrap;">{{ $order->created_at->format('d-m-Y, h:i A') }}</td>
               <td>
                 <div style="font-weight:600;">{{ $order->company?->name ?? 'N/A' }}</div>
                 <div style="font-size:0.75rem; color:var(--text-muted);">By: {{ $order->creator?->name ?? 'System' }}</div>

@@ -78,7 +78,7 @@
                 <tbody>
                     @foreach($pageData['transactions'] as $tx)
                     <tr>
-                        <td style="font-size:0.85rem;">{{ $tx->created_at->format('d M Y, h:i A') }}</td>
+                        <td style="font-size:0.85rem;">{{ $tx->created_at->format('d-m-Y, h:i A') }}</td>
                         <td><strong>{{ $tx->user->name }}</strong></td>
                         <td>
                             <span style="display:inline-block; min-width:55px; text-align:center; padding:4px 8px; border-radius:4px; font-weight:bold; background: #d3d3d3de; color:{{ $tx->type === 'IN' ? '#2ecc71' : 'red' }};">
@@ -96,18 +96,11 @@
                                 <div style="display:flex; flex-direction:column; gap:8px;">
                                 @foreach($tx->bills as $bill)
                                     <div style="display:flex; gap:10px; align-items:center;">
-                                        @if(in_array($bill->file_type, ['image', 'jpg', 'jpeg', 'png']))
-                                            <a href="javascript:void(0)" onclick="app.viewImage('{{ url('/cashier/bill/' . $bill->id . '/view') }}')" style="color:var(--primary-light); text-decoration:underline; font-size:0.85rem; display:flex; align-items:center; gap:4px;">
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                                Preview
-                                            </a>
-                                        @else
-                                            <a href="{{ url('/cashier/bill/' . $bill->id . '/view') }}" target="_blank" style="color:var(--primary-light); text-decoration:underline; font-size:0.85rem; display:flex; align-items:center; gap:4px;">
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                                View PDF
-                                            </a>
-                                        @endif
-                                        <a href="{{ url('/cashier/bill/' . $bill->id . '/view') }}?download=1" download="{{ $bill->original_name }}" title="Download Bill" style="color:var(--secondary); font-size:1.1rem; text-decoration:none;">
+                                        <a href="javascript:void(0)" onclick="app.viewBill({{ $bill->id }}, '{{ $bill->file_type }}')" style="color:var(--primary-light); text-decoration:underline; font-size:0.85rem; display:flex; align-items:center; gap:4px;">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                            Preview Bill
+                                        </a>
+                                        <a href="{{ url(request()->segment(1) . '/cashier/bill/' . $bill->id . '/view') }}?download=1" download="{{ $bill->original_name }}" title="Download Bill" style="color:var(--secondary); font-size:1.1rem; text-decoration:none;">
                                             📥
                                         </a>
                                     </div>
@@ -147,33 +140,4 @@
     </div>
 </div>
 
-@push('scripts')
-  <script>
-      window.app = window.app || {};
-      window.app.viewImage = function(url) {
-          Swal.fire({
-              imageUrl: url,
-              imageAlt: 'Bill Preview',
-              width: 'auto',
-              padding: '0',
-              background: 'transparent',
-              backdrop: 'rgba(0,0,0,0.8)',
-              showConfirmButton: false,
-              showCloseButton: true,
-              customClass: {
-                  popup: 'swal2-popup-custom',
-                  image: 'swal2-image-custom'
-              }
-          });
-      };
-      
-      // Custom style for image preview to not overflow
-      const style = document.createElement('style');
-      style.innerHTML = `
-          .swal2-popup-custom { width: auto !important; max-width: 95vw !important; padding: 0 !important; background: transparent !important; }
-          .swal2-image-custom { max-height: 90vh !important; max-width: 95vw !important; object-fit: contain; margin: 0 auto; display: block; border-radius: 8px; }
-      `;
-    document.head.appendChild(style);
-</script>
-@endpush
 @endsection
