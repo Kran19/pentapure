@@ -52,6 +52,7 @@ class AuthTest extends TestCase
             'email' => 'cashier@example.com',
             'password' => 'cashier123',
             'role' => 'CASHIER',
+            'branch' => 'Main Branch',
         ]);
 
         $response->assertJson(['success' => true]);

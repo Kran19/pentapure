@@ -17,6 +17,7 @@ class RouteSmokeTest extends TestCase
             'email' => strtolower($role) . '@example.com',
             'password' => 'password123',
             'role' => $role,
+            'branch' => 'Main Branch',
             'status' => 'ACTIVE',
         ]);
     }

@@ -137,9 +137,9 @@ class DispatchTest extends TestCase
         $this->orderItem->refresh();
         $this->assertEquals(200, (float) $this->orderItem->dispatched_qty);
 
-        // Order dispatch status updated to PARTIAL
+        // Order dispatch status updated to PARTIAL PENDING
         $this->order->refresh();
-        $this->assertEquals('PARTIAL', $this->order->dispatch_status);
+        $this->assertEquals('PARTIAL PENDING', $this->order->dispatch_status);
 
         // Stock OUT entry created
         $this->assertDatabaseHas('stocks', [

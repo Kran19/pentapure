@@ -277,6 +277,7 @@ foreach ($roleSlugs['CASHIER'] ?? [] as $slug) {
     Route::get('/home',                'home')->name($slug.'.home');
     Route::get('/action',              'action')->name($slug.'.action');
     Route::post('/action',             'storeTransaction');
+    Route::get('/history',             'history')->name($slug.'.history');
     Route::get('/history/pdf',         'downloadPdf')->name($slug.'.pdf');
     Route::get('/ledger',              'ledger')->name($slug.'.ledger');
     Route::get('/profile',             'profile')->name($slug.'.profile');

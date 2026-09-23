@@ -77,7 +77,7 @@
         <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:8px;">
             @foreach($pageData['allGrades'] as $g)
             <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; background:var(--bg-hover); border:1px solid var(--border-soft); padding:6px 10px; border-radius:6px; cursor:pointer;">
-                <input type="checkbox" name="p-grades" value="{{ $g->id }}" {{ $g->name === 'NONE' ? 'checked' : '' }} style="width:auto;"> {{ $g->name }}
+                <input type="checkbox" name="p-grades" value="{{ $g->id }}" {{ in_array(strtoupper(trim($g->name)), ['N/A', 'NONE', 'NA', 'N / A']) ? 'checked' : '' }} style="width:auto;"> {{ $g->name }}
             </label>
             @endforeach
         </div>
@@ -86,13 +86,12 @@
     <div style="margin-top:1rem; border-top:1px solid var(--glass-border); padding-top:1rem;">
         <label style="font-size:0.9rem; color:var(--primary-light); margin-bottom:0.5rem; display:block;">Visible To / Allowed User Types</label>
         <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px;">
-            @foreach(['ADMIN', 'RAW', 'SEMI', 'FINISHED', 'SALES', 'DISPATCH'] as $role)
+            @foreach(['ADMIN', 'STOCK_MANAGER', 'SALES', 'DISPATCH'] as $role)
             <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; background:var(--bg-hover); border:1px solid var(--border-soft); padding:6px 10px; border-radius:6px; cursor:pointer;">
-                <input type="checkbox" name="p-roles" value="{{ $role }}" checked style="width:auto;"> {{ $role }}
+                <input type="checkbox" name="p-roles" value="{{ $role }}" checked style="width:auto;"> {{ $role === 'STOCK_MANAGER' ? 'STOCK MANAGER' : $role }}
             </label>
             @endforeach
         </div>
-
     </div>
 
     <div style="display:flex; gap:1rem; margin-top:1.5rem;">
@@ -461,12 +460,13 @@ function adminEditProduct(prod) {
 
   // Build the roles HTML
   let rolesHtml = '';
-  const allRoles = ['ADMIN', 'RAW', 'SEMI', 'FINISHED', 'SALES', 'DISPATCH'];
+  const allRoles = ['ADMIN', 'STOCK_MANAGER', 'SALES', 'DISPATCH'];
   // Default to all roles if none are explicitly set
   const prodRoles = (prod.allowed_roles && prod.allowed_roles.length > 0) ? prod.allowed_roles : allRoles;
   allRoles.forEach(r => {
     const isChecked = prodRoles.includes(r) ? 'checked' : '';
-    rolesHtml += `<label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; background:var(--bg-hover); border:1px solid var(--border-soft); padding:6px 10px; border-radius:6px; cursor:pointer;"><input type="checkbox" id="swal-role-${r}" value="${r}" ${isChecked} style="width:auto;"> ${r}</label>`;
+    const labelText = r === 'STOCK_MANAGER' ? 'STOCK MANAGER' : r;
+    rolesHtml += `<label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; background:var(--bg-hover); border:1px solid var(--border-soft); padding:6px 10px; border-radius:6px; cursor:pointer;"><input type="checkbox" id="swal-role-${r}" value="${r}" ${isChecked} style="width:auto;"> ${labelText}</label>`;
   });
 
   // Build the Unit logic

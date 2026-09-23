@@ -28,6 +28,7 @@ class CashierTest extends TestCase
             'email' => 'cashierb@example.com',
             'password' => 'password123',
             'role' => 'CASHIER',
+            'branch' => 'Main Branch',
             'status' => 'ACTIVE',
         ]);
 
@@ -36,6 +37,7 @@ class CashierTest extends TestCase
             'email' => 'cashierc@example.com',
             'password' => 'password123',
             'role' => 'CASHIER',
+            'branch' => 'Main Branch',
             'status' => 'ACTIVE',
         ]);
 
@@ -45,6 +47,7 @@ class CashierTest extends TestCase
             'email' => 'cashiera@example.com',
             'password' => 'password123',
             'role' => 'CASHIER',
+            'branch' => 'Main Branch',
             'status' => 'ACTIVE',
             'visible_cashiers' => [$this->cashierB->id],
         ]);
@@ -97,8 +100,8 @@ class CashierTest extends TestCase
 
     public function test_cashier_cannot_edit_another_cashiers_transaction(): void
     {
-        $txB = Transaction::create([
-            'user_id' => $this->cashierB->id,
+        $txC = Transaction::create([
+            'user_id' => $this->cashierC->id,
             'type' => 'IN',
             'amount' => 500.00,
             'category' => 'sales',
@@ -110,12 +113,12 @@ class CashierTest extends TestCase
             'role' => 'CASHIER',
         ]];
 
-        $response = $this->withSession($sessionA)->putJson("/cashier/action/{$txB->id}", [
+        $response = $this->withSession($sessionA)->putJson("/cashier/action/{$txC->id}", [
             'amount' => 1000.00,
             'category' => 'sales',
         ]);
 
-        $response->assertStatus(404);
+        $response->assertStatus(403);
     }
 
     public function test_team_ledger_respects_visible_cashiers_permissions(): void

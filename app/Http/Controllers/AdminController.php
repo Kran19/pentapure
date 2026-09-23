@@ -189,6 +189,10 @@ class AdminController extends Controller
         if($id == session('auth_user')['id']) {
             return response()->json(['success' => false, 'message' => 'Cannot delete yourself!']);
         }
+        $targetUser = User::find($id);
+        if ($targetUser && ($targetUser->role === 'ADMIN' || strtoupper($targetUser->role) === 'SUPER_ADMIN' || strtolower($targetUser->name) === 'super admin')) {
+            return response()->json(['success' => false, 'message' => 'Super Admin cannot be deleted!']);
+        }
         User::destroy($id);
         return response()->json(['success' => true, 'message' => 'User deleted!']);
     }
