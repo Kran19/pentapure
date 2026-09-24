@@ -256,15 +256,14 @@ class HistoryPdfController extends Controller
         if ($statusFilter) {
             $query->where(function($sub) use ($statusFilter) {
                 if ($statusFilter === 'PENDING') {
-                    $sub->where('status', 'CANCELLED')
-                        ->orWhereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED'])
-                        ->orWhereNull('dispatch_status');
-                } elseif ($statusFilter === 'PARTIAL_PENDING') {
                     $sub->where('status', '!=', 'CANCELLED')
-                        ->whereIn('dispatch_status', ['PARTIAL_PENDING', 'PARTIAL PENDING']);
-                } elseif ($statusFilter === 'PARTIAL') {
+                        ->where(function($q) {
+                            $q->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED', 'PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL_PENDING', 'PARTIAL PENDING'])
+                              ->orWhereNull('dispatch_status');
+                        });
+                } elseif ($statusFilter === 'PARTIAL' || $statusFilter === 'PARTIAL_PENDING' || $statusFilter === 'PARTIAL_DISPATCH') {
                     $sub->where('status', '!=', 'CANCELLED')
-                        ->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED']);
+                        ->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL_PENDING', 'PARTIAL PENDING']);
                 } elseif ($statusFilter === 'DONE') {
                     $sub->where('status', '!=', 'CANCELLED')
                         ->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'DISPATCHED']);
@@ -279,10 +278,8 @@ class HistoryPdfController extends Controller
 
                 if ($oStatus === 'CANCELLED' || $dStatus === 'PENDING' || $dStatus === 'UNASSIGNED' || empty($dStatus)) {
                     $dispStatusFormatted = 'PENDING';
-                } elseif ($dStatus === 'PARTIAL PENDING') {
-                    $dispStatusFormatted = 'PARTIAL PENDING';
-                } elseif ($dStatus === 'PARTIAL' || $dStatus === 'PARTIAL DISPATCH' || $dStatus === 'PARTIALLY DISPATCHED') {
-                    $dispStatusFormatted = 'PARTIAL DISPATCH';
+                } elseif (in_array($dStatus, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL PENDING', 'PARTIAL_PENDING', 'PARTIAL_DISPATCH'])) {
+                    $dispStatusFormatted = 'PARTIAL';
                 } else {
                     $dispStatusFormatted = 'FULLY DISPATCHED';
                 }

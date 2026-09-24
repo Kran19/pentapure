@@ -1837,14 +1837,14 @@ const app = {
           </div>
           
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; align-items:end; margin-top:6px;">
+            <div id="loc-splits-${i.id}" data-item-id="${i.id}" data-max="${remaining}">
+              <div style="font-size:0.75rem; color:var(--text-muted);">⏳ Loading stock locations...</div>
+            </div>
             <div>
               <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted, #9ca3af); text-transform:uppercase; display:block; margin-bottom:4px;">Dispatch Qty *</label>
               <input type="number" class="dispatch-item-qty no-spinners" data-item-id="${i.id}" data-max="${remaining}" 
                      value="" placeholder="Enter quantity..." max="${remaining}" min="0.001" step="0.001"
                      style="width:100%; padding:0.65rem 0.75rem; font-size:0.95rem; font-weight:bold; color:var(--secondary, #16a34a); background:rgba(0,0,0,0.2); border:1px solid var(--glass-border, rgba(255,255,255,0.15)); border-radius:8px; box-sizing:border-box;">
-            </div>
-            <div id="loc-splits-${i.id}" data-item-id="${i.id}" data-max="${remaining}">
-              <div style="font-size:0.75rem; color:var(--text-muted);">⏳ Loading stock locations...</div>
             </div>
           </div>
         </div>

@@ -26,13 +26,10 @@
         return $oStatus === 'CANCELLED';
       }
       if ($statusFilter === 'PENDING') {
-        return ($oStatus !== 'CANCELLED') && ($dStatus === 'PENDING' || $dStatus === 'UNASSIGNED' || empty($dStatus));
+        return ($oStatus !== 'CANCELLED') && (in_array($dStatus, ['PENDING', 'OPEN', 'UNASSIGNED', 'PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL_PENDING', 'PARTIAL PENDING']) || empty($dStatus));
       }
-      if ($statusFilter === 'PARTIAL_PENDING') {
-        return ($oStatus !== 'CANCELLED') && ($dStatus === 'PARTIAL_PENDING' || $dStatus === 'PARTIAL PENDING');
-      }
-      if ($statusFilter === 'PARTIAL') {
-        return ($oStatus !== 'CANCELLED') && ($dStatus === 'PARTIAL' || $dStatus === 'PARTIAL_DISPATCH' || $dStatus === 'PARTIAL DISPATCH' || $dStatus === 'PARTIALLY DISPATCHED');
+      if ($statusFilter === 'PARTIAL' || $statusFilter === 'PARTIAL_PENDING' || $statusFilter === 'PARTIAL_DISPATCH') {
+        return ($oStatus !== 'CANCELLED') && in_array($dStatus, ['PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL_PENDING', 'PARTIAL PENDING']);
       }
       if ($statusFilter === 'DONE') {
         return ($oStatus !== 'CANCELLED') && ($dStatus === 'DONE' || $dStatus === 'COMPLETED' || $dStatus === 'FULLY DISPATCHED' || $dStatus === 'DISPATCHED');
@@ -69,11 +66,8 @@
     if ($dispatchStatus === 'PENDING' || $dispatchStatus === 'UNASSIGNED' || empty($dispatchStatus)) {
       return 1;
     }
-    if ($dispatchStatus === 'PARTIAL PENDING') {
+    if (in_array($dispatchStatus, ['PARTIAL', 'PARTIAL PENDING', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL_PENDING', 'PARTIAL_DISPATCH'])) {
       return 2;
-    }
-    if ($dispatchStatus === 'PARTIAL' || $dispatchStatus === 'PARTIAL DISPATCH' || $dispatchStatus === 'PARTIALLY DISPATCHED') {
-      return 3;
     }
     if ($dispatchStatus === 'DONE' || $dispatchStatus === 'COMPLETED' || $dispatchStatus === 'FULLY DISPATCHED' || $dispatchStatus === 'DISPATCHED') {
       return 4;
@@ -137,8 +131,7 @@
       <select name="status" onchange="this.form.submit()" style="width:100%; padding:0.65rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600;">
         <option value="">ALL STATUS</option>
         <option value="PENDING" {{ $statusFilter === 'PENDING' ? 'selected' : '' }}>PENDING</option>
-        <option value="PARTIAL_PENDING" {{ $statusFilter === 'PARTIAL_PENDING' ? 'selected' : '' }}>PARTIAL PENDING</option>
-        <option value="PARTIAL" {{ $statusFilter === 'PARTIAL' ? 'selected' : '' }}>PARTIAL DISPATCH</option>
+        <option value="PARTIAL" {{ $statusFilter === 'PARTIAL' || $statusFilter === 'PARTIAL_PENDING' || $statusFilter === 'PARTIAL_DISPATCH' ? 'selected' : '' }}>PARTIAL</option>
         <option value="DONE" {{ $statusFilter === 'DONE' ? 'selected' : '' }}>FULLY DISPATCHED</option>
         <option value="CANCELLED" {{ $statusFilter === 'CANCELLED' ? 'selected' : '' }}>CANCELLED</option>
       </select>
@@ -178,12 +171,8 @@
           $statusText = 'FULLY DISPATCHED';
           $badgeClass = 'badge-done';
           $customBadgeStyle = 'background:#16a34a; color:#fff;';
-        } elseif ($ds === 'PARTIAL' || $ds === 'PARTIAL DISPATCH' || $ds === 'PARTIALLY DISPATCHED') {
-          $statusText = 'PARTIAL DISPATCH';
-          $badgeClass = 'badge-pending';
-          $customBadgeStyle = 'background:#f59e0b; color:#fff;';
-        } elseif ($ds === 'PARTIAL PENDING') {
-          $statusText = 'PARTIAL PENDING';
+        } elseif (in_array($ds, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL PENDING', 'PARTIAL_PENDING', 'PARTIAL_DISPATCH'])) {
+          $statusText = 'PARTIAL';
           $badgeClass = 'badge-pending';
           $customBadgeStyle = 'background:#f59e0b; color:#fff;';
         } else {
@@ -206,7 +195,7 @@
             @if(!empty($item['lrCopies']) && count($item['lrCopies']) > 0)
               <span>•</span>
               <span class="badge badge-done" style="font-size:0.65rem; background:#16a34a; color:#ffffff !important; padding:2px 6px; border-radius:4px; font-weight:700;">LR UPLOADED</span>
-            @elseif(in_array(strtoupper(str_replace('_', ' ', $item['dispatchStatus'] ?? '')), ['DONE', 'PARTIAL', 'PARTIAL DISPATCH', 'FULLY DISPATCHED']))
+            @elseif(in_array(strtoupper(str_replace('_', ' ', $item['dispatchStatus'] ?? '')), ['DONE', 'PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL PENDING', 'PARTIAL_PENDING', 'FULLY DISPATCHED']))
               <span>•</span>
               <span class="badge badge-pending" style="font-size:0.65rem; background:#dc2626; color:#ffffff !important; padding:2px 6px; border-radius:4px; font-weight:700;">LR PENDING</span>
             @endif
@@ -248,39 +237,6 @@
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Sales By</div>
             <div style="font-weight:600; font-size:0.9rem; color:var(--primary-light, #F4B400);">{{ $item['createdBy'] ?? 'System' }}</div>
-          </div>
-          <div>
-            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Dispatch Status</div>
-            <div>
-              @php
-                $oStatus = strtoupper(str_replace('_', ' ', $item['status'] ?? ''));
-                $ds = strtoupper(str_replace('_', ' ', $item['dispatchStatus'] ?? 'PENDING'));
-                if ($oStatus === 'CANCELLED') {
-                  $statusText = 'CANCELLED';
-                  $badgeClass = 'badge-danger';
-                  $customBadgeStyle = 'background:#dc2626; color:#fff;';
-                } elseif ($ds === 'DONE' || $ds === 'COMPLETED' || $ds === 'FULLY DISPATCHED' || $ds === 'DISPATCHED') {
-                  $statusText = 'FULLY DISPATCHED';
-                  $badgeClass = 'badge-done';
-                  $customBadgeStyle = 'background:#16a34a; color:#fff;';
-                } elseif ($ds === 'PARTIAL' || $ds === 'PARTIAL DISPATCH' || $ds === 'PARTIALLY DISPATCHED') {
-                  $statusText = 'PARTIAL DISPATCH';
-                  $badgeClass = 'badge-pending';
-                  $customBadgeStyle = 'background:#f59e0b; color:#fff;';
-                } elseif ($ds === 'PARTIAL PENDING') {
-                  $statusText = 'PARTIAL PENDING';
-                  $badgeClass = 'badge-pending';
-                  $customBadgeStyle = 'background:#f59e0b; color:#fff;';
-                } else {
-                  $statusText = 'PENDING';
-                  $badgeClass = 'badge-pending';
-                  $customBadgeStyle = 'background:#3b82f6; color:#fff;';
-                }
-              @endphp
-              <span class="badge {{ $badgeClass }}" style="{{ $customBadgeStyle }} font-size:0.75rem; padding:3px 8px; border-radius:12px; font-weight:700;">
-                {{ $statusText }}
-              </span>
-            </div>
           </div>
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Date & Time</div>
