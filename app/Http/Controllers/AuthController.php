@@ -13,10 +13,12 @@ class AuthController extends Controller
         if (session('auth_user')) {
             return $this->authenticatedRedirect();
         }
-        $users = User::where('status', 'ACTIVE')->orderBy('role')->orderBy('id')->get(['id', 'name', 'role']);
+        // Exclude disabled panels: RAW, SEMI, FINISHED
+        $disabledPanels = ['RAW', 'SEMI', 'FINISHED'];
+        $users = User::where('status', 'ACTIVE')->whereNotIn('role', $disabledPanels)->orderBy('role')->orderBy('id')->get(['id', 'name', 'role']);
         $slug = $request->segment(1);
 
-        // Calculate role-based slugs for each user (e.g., raw, raw2, raw3)
+        // Calculate role-based slugs for each user
         $roleCounts = [];
         foreach ($users as $u) {
             $r = strtolower($u->role);
@@ -43,6 +45,11 @@ class AuthController extends Controller
 
         $user = User::find($request->user_id);
 
+        $disabledPanels = ['RAW', 'SEMI', 'FINISHED'];
+        if ($user && in_array($user->role, $disabledPanels, true)) {
+            return back()->with('error', 'This panel has been disabled.')->withInput();
+        }
+
         if (!$user || !(Hash::check($request->password, $user->password) || Hash::check(strtolower($request->password), $user->password) || Hash::check(strtoupper($request->password), $user->password))) {
             return back()->with('error', 'Invalid password. Please try again.')->withInput();
         }
@@ -52,7 +59,7 @@ class AuthController extends Controller
         }
 
         // Calculate login_slug to store in session
-        $allUsers = User::where('status', 'ACTIVE')->orderBy('role')->orderBy('id')->get();
+        $allUsers = User::where('status', 'ACTIVE')->whereNotIn('role', $disabledPanels)->orderBy('role')->orderBy('id')->get();
         $roleCounts = [];
         $login_slug = strtolower($user->role);
         foreach ($allUsers as $u) {

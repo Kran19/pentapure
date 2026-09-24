@@ -20,7 +20,7 @@ Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::
 Route::match(['get', 'post'], '/global/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name('global.logout');
 
 try {
-    $users = \App\Models\User::where('status', 'ACTIVE')->orderBy('role')->orderBy('id')->get();
+    $users = \App\Models\User::where('status', 'ACTIVE')->whereNotIn('role', ['RAW', 'SEMI', 'FINISHED'])->orderBy('role')->orderBy('id')->get();
     $roleCounts = [];
     foreach ($users as $u) {
         $r = strtolower($u->role);
@@ -172,7 +172,7 @@ foreach ($roleSlugs['SEMI'] ?? [] as $slug) {
     Route::get('/home',    'home')->name($slug.'.home');
     Route::get('/action',  'action')->name($slug.'.action');
     Route::get('/po',      'po')->name($slug.'.po');
-    Route::post('/po',     [RawController::class, 'storePO']); // Shared logic from RawController
+    Route::post('/po',     [RawController::class, 'storePO']);
     Route::post('/action', 'storeProduction');
     Route::post('/transfer-to-semi', [RawController::class, 'transferToSemi'])->name($slug.'.transfer_to_semi');
     Route::get('/history', 'history')->name($slug.'.history');
@@ -193,7 +193,7 @@ foreach ($roleSlugs['FINISHED'] ?? [] as $slug) {
     Route::get('/home',    'home')->name($slug.'.home');
     Route::get('/action',  'action')->name($slug.'.action');
     Route::get('/po',      'po')->name($slug.'.po');
-    Route::post('/po',     [RawController::class, 'storePO']); // Shared logic from RawController
+    Route::post('/po',     [RawController::class, 'storePO']);
     Route::post('/action', 'storeProduction');
     Route::post('/quick-product', [AdminController::class, 'storeProduct']);
     Route::post('/transfer-to-semi', [RawController::class, 'transferToSemi'])->name($slug.'.transfer_to_semi');

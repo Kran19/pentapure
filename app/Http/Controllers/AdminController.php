@@ -96,7 +96,7 @@ class AdminController extends Controller
     {
         $rules = [
             'name'   => 'required|string|max:100',
-            'role'   => 'required|in:ADMIN,SUB_ADMIN,STOCK_MANAGER,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE',
+            'role'   => 'required|in:ADMIN,SUB_ADMIN,STOCK_MANAGER,CASHIER,SALES,DISPATCH,ATTENDANCE', // RAW, SEMI, FINISHED disabled
             'branch' => 'required_if:role,CASHIER|nullable|string|max:100',
             'phone'  => 'nullable|string|max:20',
             'permissions' => 'nullable',

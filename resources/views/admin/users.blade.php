@@ -74,7 +74,7 @@
         <label>Role <span class="required-star" style="color:#dc2626 !important; font-weight:700;">*</span></label>
         <select id="u-role" onchange="toggleRoleFields(this.value)">
           <option value="">-- Select Role --</option>
-          @foreach(['RAW','SEMI','FINISHED','CASHIER','SALES','DISPATCH','ATTENDANCE','ADMIN','SUB_ADMIN','STOCK_MANAGER'] as $r)
+          @foreach([/*'RAW','SEMI','FINISHED',*/'CASHIER','SALES','DISPATCH','ATTENDANCE','ADMIN','SUB_ADMIN','STOCK_MANAGER'] as $r)
             <option value="{{ $r }}">{{ $r }}</option>
           @endforeach
         </select>

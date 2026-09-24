@@ -140,9 +140,9 @@
           <div class="user-info">
               @php
                 $segments = [
-                  'raw' => ['Raw', 'RAW MATERIAL'],
-                  'semi' => ['Semi', 'SEMI PRODUCT'],
-                  'finished' => ['Finished', 'FINISHED GOODS'],
+                  // 'raw' => ['Raw', 'RAW MATERIAL'],
+                  // 'semi' => ['Semi', 'SEMI PRODUCT'],
+                  // 'finished' => ['Finished', 'FINISHED GOODS'],
                   'cashier' => ['Cashier', 'FINANCE'],
                   'sales' => ['Sales', 'SALES'],
                   'dispatch' => ['Dispatch', 'DISPATCH'],
