@@ -119,4 +119,41 @@ class RouteSmokeTest extends TestCase
             $response->assertStatus(200);
         }
     }
+
+    public function test_stock_manager_permissioned_routes_return_200(): void
+    {
+        $sm = $this->createUser('STOCK_MANAGER');
+        $session = [
+            'auth_user' => [
+                'id' => $sm->id,
+                'name' => $sm->name,
+                'role' => 'STOCK_MANAGER',
+                'permissions' => [
+                    'view_stock_manager_home',
+                    'view_stock_manager_action',
+                    'view_stock_manager_stock',
+                    'view_stock_manager_po',
+                    'view_stock_manager_history',
+                    'view_stock_manager_products',
+                    'view_stock_manager_grades',
+                    'view_stock_manager_locations',
+                ],
+            ]
+        ];
+
+        $routes = [
+            '/stock_manager/home',
+            '/stock_manager/action',
+            '/stock_manager/stock',
+            '/stock_manager/po',
+            '/stock_manager/history',
+            '/stock_manager/products',
+            '/stock_manager/grades',
+            '/stock_manager/locations',
+        ];
+        foreach ($routes as $uri) {
+            $response = $this->withSession($session)->get($uri);
+            $response->assertStatus(200);
+        }
+    }
 }

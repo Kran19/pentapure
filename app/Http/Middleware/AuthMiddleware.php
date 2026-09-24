@@ -168,7 +168,17 @@ class AuthMiddleware
                 || ($moduleKey === 'stock_manager_products' && (in_array('admin_products', $userPermissions) || in_array('view_admin_products', $userPermissions) || in_array('edit_admin_products', $userPermissions)))
                 || ($moduleKey === 'stock_manager_grades' && (in_array('admin_grades', $userPermissions) || in_array('view_admin_grades', $userPermissions) || in_array('edit_admin_grades', $userPermissions)))
                 || ($moduleKey === 'stock_manager_locations' && (in_array('admin_locations', $userPermissions) || in_array('view_admin_locations', $userPermissions) || in_array('edit_admin_locations', $userPermissions)))
-                || ($moduleKey === 'cashier_categories' && (in_array('admin_categories', $userPermissions) || in_array('view_admin_categories', $userPermissions) || in_array('edit_admin_categories', $userPermissions)));
+                || ($moduleKey === 'cashier_categories' && (in_array('admin_categories', $userPermissions) || in_array('view_admin_categories', $userPermissions) || in_array('edit_admin_categories', $userPermissions)))
+                || (empty($userPermissions) && (
+                    ($user['role'] === 'STOCK_MANAGER' && str_starts_with($moduleKey, 'stock_manager_')) ||
+                    ($user['role'] === 'CASHIER' && str_starts_with($moduleKey, 'cashier_')) ||
+                    ($user['role'] === 'SALES' && str_starts_with($moduleKey, 'sales_')) ||
+                    ($user['role'] === 'DISPATCH' && str_starts_with($moduleKey, 'dispatch_')) ||
+                    ($user['role'] === 'ATTENDANCE' && str_starts_with($moduleKey, 'attendance_')) ||
+                    ($user['role'] === 'RAW' && str_starts_with($moduleKey, 'raw_')) ||
+                    ($user['role'] === 'SEMI' && str_starts_with($moduleKey, 'semi_')) ||
+                    ($user['role'] === 'FINISHED' && str_starts_with($moduleKey, 'finished_'))
+                ));
 
             if (!$hasView) {
                 if (in_array($seg2, ['home', 'dashboard'])) {
@@ -226,7 +236,21 @@ class AuthMiddleware
                 || in_array('can_manage', $userPermissions)
                 || in_array('edit_module_' . $moduleKey, $userPermissions)
                 || in_array('edit_' . $shortKey, $userPermissions)
-                || ($seg2 === 'users' && ($user['role'] === 'STOCK_MANAGER' || $user['role'] === 'SUB_ADMIN'));
+                || ($seg2 === 'users' && ($user['role'] === 'STOCK_MANAGER' || $user['role'] === 'SUB_ADMIN'))
+                || ($moduleKey === 'stock_manager_products' && (in_array('edit_admin_products', $userPermissions) || in_array('admin_products', $userPermissions)))
+                || ($moduleKey === 'stock_manager_grades' && (in_array('edit_admin_grades', $userPermissions) || in_array('admin_grades', $userPermissions)))
+                || ($moduleKey === 'stock_manager_locations' && (in_array('edit_admin_locations', $userPermissions) || in_array('admin_locations', $userPermissions)))
+                || ($moduleKey === 'cashier_categories' && (in_array('edit_admin_categories', $userPermissions) || in_array('admin_categories', $userPermissions)))
+                || (empty($userPermissions) && (
+                    ($user['role'] === 'STOCK_MANAGER' && str_starts_with($moduleKey, 'stock_manager_')) ||
+                    ($user['role'] === 'CASHIER' && str_starts_with($moduleKey, 'cashier_')) ||
+                    ($user['role'] === 'SALES' && str_starts_with($moduleKey, 'sales_')) ||
+                    ($user['role'] === 'DISPATCH' && str_starts_with($moduleKey, 'dispatch_')) ||
+                    ($user['role'] === 'ATTENDANCE' && str_starts_with($moduleKey, 'attendance_')) ||
+                    ($user['role'] === 'RAW' && str_starts_with($moduleKey, 'raw_')) ||
+                    ($user['role'] === 'SEMI' && str_starts_with($moduleKey, 'semi_')) ||
+                    ($user['role'] === 'FINISHED' && str_starts_with($moduleKey, 'finished_'))
+                ));
 
             $isReadOnly = !$hasEdit;
             view()->share('isReadOnly', $isReadOnly);

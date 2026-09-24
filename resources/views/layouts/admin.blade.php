@@ -111,7 +111,7 @@
 
           {{-- Admin Panel Links --}}
           @if($role === 'STOCK_MANAGER')
-            {{-- Core Stock Manager Pages (Only shown if permitted or if perms array is empty/default) --}}
+            {{-- Core Stock Manager Pages (Only shown if permitted) --}}
             @if($can('stock_manager_home'))
             <a href="{{ url(request()->segment(1) . '/home') }}" class="nav-item {{ $seg=='home' || $seg=='dashboard'?'active':'' }}">
               Stock Manager Home
@@ -137,6 +137,21 @@
               Stock Manager History
             </a>
             @endif
+            @if($can('stock_manager_products') || $can('admin_products'))
+            <a href="{{ url(request()->segment(1) . '/products') }}" class="nav-item {{ $seg=='products'?'active':'' }}">
+              Products Master
+            </a>
+            @endif
+            @if($can('stock_manager_grades') || $can('admin_grades'))
+            <a href="{{ url(request()->segment(1) . '/grades') }}" class="nav-item {{ $seg=='grades'?'active':'' }}">
+              Grades Master
+            </a>
+            @endif
+            @if($can('stock_manager_locations') || $can('admin_locations'))
+            <a href="{{ url(request()->segment(1) . '/locations') }}" class="nav-item {{ $seg=='locations'?'active':'' }}">
+              Storage Location
+            </a>
+            @endif
             <a href="{{ url(request()->segment(1) . '/profile') }}" class="nav-item {{ $seg=='profile'?'active':'' }}">
               Profile
             </a>
@@ -147,24 +162,9 @@
               Users &amp; Hierarchy
             </a>
             @endif
-            @if($can('admin_products'))
-            <a href="{{ url(request()->segment(1) . '/products') }}" class="nav-item {{ $seg=='products'?'active':'' }}">
-              Products Master
-            </a>
-            @endif
             @if($can('admin_stock'))
             <a href="{{ url(request()->segment(1) . '/admin/stock') }}" class="nav-item {{ request()->segment(2)=='admin' && request()->segment(3)=='stock' ? 'active' : '' }}">
               Admin Live Stock
-            </a>
-            @endif
-            @if($can('admin_grades'))
-            <a href="{{ url(request()->segment(1) . '/grades') }}" class="nav-item {{ $seg=='grades'?'active':'' }}">
-              Grades Master
-            </a>
-            @endif
-            @if($can('admin_locations'))
-            <a href="{{ url(request()->segment(1) . '/locations') }}" class="nav-item {{ $seg=='locations'?'active':'' }}">
-              Storage Location
             </a>
             @endif
             @if($can('admin_dispatch_activity'))

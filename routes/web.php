@@ -294,6 +294,18 @@ foreach ($roleSlugs['CASHIER'] ?? [] as $slug) {
     // Transaction management
     Route::put('/action/{id}',         'updateTransaction')->name($slug.'.action.update');
     Route::delete('/action/{id}',      'destroyTransaction')->name($slug.'.action.destroy');
+    // Products, Grades, Locations (if permissioned for Cashier)
+    Route::get('/products',           [\App\Http\Controllers\AdminController::class, 'products'])->name($slug.'.products');
+    Route::get('/products/pdf',       [\App\Http\Controllers\AdminController::class, 'productsPdf'])->name($slug.'.products.pdf');
+    Route::post('/products',          [\App\Http\Controllers\AdminController::class, 'storeProduct']);
+    Route::post('/products/toggle/{id}', [\App\Http\Controllers\AdminController::class, 'toggleProductStatus']);
+    Route::delete('/products/{id}',   [\App\Http\Controllers\AdminController::class, 'destroyProduct']);
+    Route::get('/grades',             [\App\Http\Controllers\AdminController::class, 'grades'])->name($slug.'.grades');
+    Route::post('/grades',            [\App\Http\Controllers\AdminController::class, 'storeGrade']);
+    Route::delete('/grades/{id}',     [\App\Http\Controllers\AdminController::class, 'destroyGrade']);
+    Route::get('/locations',          [\App\Http\Controllers\AdminController::class, 'locations'])->name($slug.'.locations');
+    Route::post('/locations',         [\App\Http\Controllers\AdminController::class, 'storeLocationApi']);
+    Route::delete('/locations/{id}',  [\App\Http\Controllers\AdminController::class, 'destroyLocationApi']);
     });
 }
 
@@ -324,6 +336,25 @@ foreach ($roleSlugs['STOCK_MANAGER'] ?? [] as $slug) {
         Route::post('/users',      [AdminController::class, 'storeUser']);
         Route::post('/users/toggle', [AdminController::class, 'toggleUserStatus']);
         Route::delete('/users/{id}', [AdminController::class, 'destroyUser']);
+
+        // Additional permissioned routes (Products, Grades, Locations, Categories, Dispatch Activity, Cashier Overview)
+        Route::get('/products',           [AdminController::class, 'products'])->name($slug.'.products');
+        Route::get('/products/pdf',       [AdminController::class, 'productsPdf'])->name($slug.'.products.pdf');
+        Route::post('/products',          [AdminController::class, 'storeProduct']);
+        Route::post('/products/toggle/{id}', [AdminController::class, 'toggleProductStatus']);
+        Route::delete('/products/{id}',   [AdminController::class, 'destroyProduct']);
+        Route::get('/grades',             [AdminController::class, 'grades'])->name($slug.'.grades');
+        Route::post('/grades',            [AdminController::class, 'storeGrade']);
+        Route::delete('/grades/{id}',     [AdminController::class, 'destroyGrade']);
+        Route::get('/locations',          [AdminController::class, 'locations'])->name($slug.'.locations');
+        Route::post('/locations',         [AdminController::class, 'storeLocationApi']);
+        Route::delete('/locations/{id}',  [AdminController::class, 'destroyLocationApi']);
+        Route::get('/categories',         [AdminController::class, 'categories'])->name($slug.'.categories');
+        Route::post('/categories',        [AdminController::class, 'storeCategory']);
+        Route::post('/categories/toggle', [AdminController::class, 'toggleCategoryStatus']);
+        Route::delete('/categories/{id}', [AdminController::class, 'destroyCategory']);
+        Route::get('/dispatch-activity',  [AdminController::class, 'dispatchActivity'])->name($slug.'.dispatch.activity');
+        Route::get('/cashier-overview',    [AdminController::class, 'cashierOverview'])->name($slug.'.cashier_overview');
     });
 }
 
