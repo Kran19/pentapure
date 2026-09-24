@@ -286,7 +286,10 @@ foreach ($roleSlugs['CASHIER'] ?? [] as $slug) {
     // Bill management
     Route::post('/bill/upload',        'uploadBill')->name($slug.'.bill.upload');
     Route::get('/bill/{id}/view',       'viewBill')->name($slug.'.bill.view');
+    Route::get('/categories',          [\App\Http\Controllers\AdminController::class, 'categories'])->name($slug.'.categories');
     Route::post('/categories',         [\App\Http\Controllers\AdminController::class, 'storeCategory']);
+    Route::post('/categories/toggle',  [\App\Http\Controllers\AdminController::class, 'toggleCategoryStatus']);
+    Route::delete('/categories/{id}',  [\App\Http\Controllers\AdminController::class, 'destroyCategory']);
     Route::delete('/bill/{id}',        'destroyBill')->name($slug.'.bill.destroy');
     // Transaction management
     Route::put('/action/{id}',         'updateTransaction')->name($slug.'.action.update');

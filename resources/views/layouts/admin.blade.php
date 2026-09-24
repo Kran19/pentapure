@@ -257,6 +257,11 @@
                 Cashier Ledger
               </a>
               @endif
+              @if($can('cashier_categories') || $can('admin_categories'))
+              <a href="{{ url(request()->segment(1) . '/categories') }}" class="nav-item {{ $seg=='categories'?'active':'' }}">
+                Expense Categories
+              </a>
+              @endif
 
               {{-- Sales Panel Links --}}
               @if($can('sales_home'))

@@ -223,17 +223,20 @@ function adminReceivePO(id, btn) {
   Swal.fire({
     title: 'Mark as Received?',
     text: "This will acknowledge the physical receipt of the order.",
+    input: 'text',
+    inputPlaceholder: 'Add optional note...',
     icon: 'question',
     showCancelButton: true,
     confirmButtonText: 'Yes, mark as received'
   }).then((result) => {
     if (result.isConfirmed) {
+      const note = result.value || '';
       btn.disabled = true;
       btn.textContent = 'Processing...';
       fetch(window.baseUrl + '/' + window.userSlug + '/po/receive', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-        body: JSON.stringify({ po_id: id })
+        body: JSON.stringify({ po_id: id, note: note })
       }).then(r => r.json()).then(d => {
         if (d.success) {
           Swal.fire('Received!', d.message, 'success');

@@ -134,6 +134,7 @@
             ['key' => 'cashier_action', 'name' => 'Cashier Action / Entry', 'url' => '/cashier2/action'],
             ['key' => 'cashier_history', 'name' => 'Cashier History', 'url' => '/cashier2/history'],
             ['key' => 'cashier_ledger', 'name' => 'Cashier Ledger', 'url' => '/cashier2/ledger'],
+            ['key' => 'cashier_categories', 'name' => 'Expense Categories', 'url' => '/cashier2/categories'],
         ],
         'Sales Panel' => [
             ['key' => 'sales_home', 'name' => 'Sales Dashboard', 'url' => '/sales/home'],
@@ -152,6 +153,9 @@
             ['key' => 'stock_manager_stock', 'name' => 'Live Stock View', 'url' => '/stock_manager/stock'],
             ['key' => 'stock_manager_po', 'name' => 'Stock Purchase Orders', 'url' => '/stock_manager/po'],
             ['key' => 'stock_manager_history', 'name' => 'Stock Manager History', 'url' => '/stock_manager/history'],
+            ['key' => 'stock_manager_products', 'name' => 'Products Master', 'url' => '/stock_manager/products'],
+            ['key' => 'stock_manager_grades', 'name' => 'Grades Master', 'url' => '/stock_manager/grades'],
+            ['key' => 'stock_manager_locations', 'name' => 'Storage Location', 'url' => '/stock_manager/locations'],
         ],
         'Attendance & HR Panel' => [
             ['key' => 'attendance_dashboard', 'name' => 'Attendance Dashboard', 'url' => '/attendance/dashboard'],
@@ -371,29 +375,31 @@ function onPermEditToggle(editCb) {
 }
 
 function toggleAllPerms(type, check) {
-  if (type === 'view') {
-    document.querySelectorAll('.perm-view-cb').forEach(cb => {
-      cb.checked = check;
-      if (!check) {
-        const modKey = cb.dataset.module;
-        const editCb = document.querySelector(`.perm-edit-cb[data-module="${modKey}"]`);
-        if (editCb) editCb.checked = false;
-      }
-    });
-  } else if (type === 'edit') {
-    document.querySelectorAll('.perm-edit-cb').forEach(cb => {
-      cb.checked = check;
-      if (check) {
-        const modKey = cb.dataset.module;
-        const viewCb = document.querySelector(`.perm-view-cb[data-module="${modKey}"]`);
-        if (viewCb) viewCb.checked = true;
-      }
-    });
-  } else if (type === 'all') {
-    document.querySelectorAll('.perm-view-cb, .perm-edit-cb').forEach(cb => cb.checked = false);
-  }
-  document.querySelectorAll('.group-select-all-cb').forEach(cb => {
-    const groupSlug = cb.dataset.group;
+  const cards = document.querySelectorAll('.perm-group-card');
+  cards.forEach(card => {
+    if (card.style.display === 'none') return;
+    if (type === 'view') {
+      card.querySelectorAll('.perm-view-cb').forEach(cb => {
+        cb.checked = check;
+        if (!check) {
+          const modKey = cb.dataset.module;
+          const editCb = card.querySelector(`.perm-edit-cb[data-module="${modKey}"]`);
+          if (editCb) editCb.checked = false;
+        }
+      });
+    } else if (type === 'edit') {
+      card.querySelectorAll('.perm-edit-cb').forEach(cb => {
+        cb.checked = check;
+        if (check) {
+          const modKey = cb.dataset.module;
+          const viewCb = card.querySelector(`.perm-view-cb[data-module="${modKey}"]`);
+          if (viewCb) viewCb.checked = true;
+        }
+      });
+    } else if (type === 'all') {
+      card.querySelectorAll('.perm-view-cb, .perm-edit-cb').forEach(cb => cb.checked = false);
+    }
+    const groupSlug = card.id;
     if (groupSlug) syncGroupSelectAll(groupSlug);
   });
 }
@@ -463,11 +469,26 @@ function toggleRoleFields(role) {
   
   if (role === 'SUB_ADMIN' || role === 'STOCK_MANAGER') {
     permContainer.style.display = 'block';
+
+    document.querySelectorAll('.perm-group-card').forEach(card => {
+      if (role === 'STOCK_MANAGER') {
+        if (card.id === 'perm-group-stock-manager-panel') {
+          card.style.display = 'block';
+        } else {
+          card.style.display = 'none';
+        }
+      } else {
+        card.style.display = 'block';
+      }
+    });
+
     if (role === 'STOCK_MANAGER' && !editingUserId) {
       document.querySelectorAll('.perm-view-cb, .perm-edit-cb').forEach(cb => {
         const modKey = cb.dataset.module;
         if (modKey && modKey.startsWith('stock_manager_')) {
           cb.checked = true;
+        } else {
+          cb.checked = false;
         }
       });
       document.querySelectorAll('.group-select-all-cb').forEach(cb => {
@@ -477,6 +498,9 @@ function toggleRoleFields(role) {
     }
   } else {
     permContainer.style.display = 'none';
+    document.querySelectorAll('.perm-group-card').forEach(card => {
+      card.style.display = 'block';
+    });
   }
 
   if (role === 'ATTENDANCE') {

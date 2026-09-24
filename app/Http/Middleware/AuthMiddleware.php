@@ -96,7 +96,8 @@ class AuthMiddleware
             $moduleKey = $panel . '_' . $seg2;
             
             if ($panel === 'cashier') {
-                if (in_array($seg2, ['home', 'bill', 'categories', 'action'])) $moduleKey = 'cashier_action';
+                if ($seg2 === 'categories') $moduleKey = 'cashier_categories';
+                elseif (in_array($seg2, ['home', 'bill', 'action'])) $moduleKey = 'cashier_action';
                 elseif ($seg2 === 'ledger') $moduleKey = 'cashier_ledger';
                 elseif ($seg2 === 'history') $moduleKey = 'cashier_history';
             } elseif ($panel === 'sales') {
@@ -130,6 +131,9 @@ class AuthMiddleware
                 elseif ($seg2 === 'history') $moduleKey = 'stock_manager_history';
                 elseif ($seg2 === 'home') $moduleKey = 'stock_manager_home';
                 elseif ($seg2 === 'users') $moduleKey = 'admin_users';
+                elseif ($seg2 === 'products') $moduleKey = 'stock_manager_products';
+                elseif ($seg2 === 'grades') $moduleKey = 'stock_manager_grades';
+                elseif ($seg2 === 'locations') $moduleKey = 'stock_manager_locations';
             } elseif ($panel === 'attendance') {
                 if (in_array($seg2, ['home', 'dashboard'])) $moduleKey = 'attendance_dashboard';
                 elseif ($seg2 === 'departments') $moduleKey = 'attendance_departments';
@@ -160,7 +164,11 @@ class AuthMiddleware
                 || in_array('module_' . $moduleKey, $userPermissions)
                 || in_array($moduleKey, $userPermissions)
                 || in_array('can_manage', $userPermissions)
-                || ($seg2 === 'users' && ($user['role'] === 'STOCK_MANAGER' || $user['role'] === 'SUB_ADMIN'));
+                || ($seg2 === 'users' && ($user['role'] === 'STOCK_MANAGER' || $user['role'] === 'SUB_ADMIN'))
+                || ($moduleKey === 'stock_manager_products' && (in_array('admin_products', $userPermissions) || in_array('view_admin_products', $userPermissions) || in_array('edit_admin_products', $userPermissions)))
+                || ($moduleKey === 'stock_manager_grades' && (in_array('admin_grades', $userPermissions) || in_array('view_admin_grades', $userPermissions) || in_array('edit_admin_grades', $userPermissions)))
+                || ($moduleKey === 'stock_manager_locations' && (in_array('admin_locations', $userPermissions) || in_array('view_admin_locations', $userPermissions) || in_array('edit_admin_locations', $userPermissions)))
+                || ($moduleKey === 'cashier_categories' && (in_array('admin_categories', $userPermissions) || in_array('view_admin_categories', $userPermissions) || in_array('edit_admin_categories', $userPermissions)));
 
             if (!$hasView) {
                 if (in_array($seg2, ['home', 'dashboard'])) {
@@ -179,6 +187,7 @@ class AuthMiddleware
                         'cashier_action' => '/cashier2/action',
                         'cashier_history' => '/cashier2/history',
                         'cashier_ledger' => '/cashier2/ledger',
+                        'cashier_categories' => '/cashier2/categories',
                         'sales_home' => '/sales/home',
                         'sales_action' => '/sales/action',
                         'sales_history' => '/sales/history',
@@ -190,6 +199,9 @@ class AuthMiddleware
                         'stock_manager_stock' => '/stock_manager/stock',
                         'stock_manager_po' => '/stock_manager/po',
                         'stock_manager_history' => '/stock_manager/history',
+                        'stock_manager_products' => '/stock_manager/products',
+                        'stock_manager_grades' => '/stock_manager/grades',
+                        'stock_manager_locations' => '/stock_manager/locations',
                         'attendance_dashboard' => '/attendance/dashboard',
                         'attendance_departments' => '/attendance/departments',
                         'attendance_workers' => '/attendance/workers',

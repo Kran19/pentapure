@@ -18,6 +18,7 @@
         <tr>
           <th>Material</th>
           <th>Order Quantity (kg)</th>
+          <th>Note</th>
           <th>Status</th>
           <th>Date</th>
           <th>Action</th>
@@ -28,6 +29,11 @@
         <tr id="po-row-{{ $po->id }}">
           <td style="font-weight:600;">{{ $po->product ? $po->product->formatName() : 'Unknown' }}</td>
           <td style="color:var(--primary-light); font-weight:bold;">{{ number_format($po->quantity, 1) }} {{ $po->product?->unit ?? 'kg' }}</td>
+          <td style="font-size:0.85rem; color:var(--text-muted); max-width:250px;">
+            <div style="word-break:break-word; white-space:normal; line-height:1.35;">
+              {{ $po->note ?? '—' }}
+            </div>
+          </td>
           <td>
             @if($po->status === 'PENDING')
               <span class="badge" style="background:#ef4444; color:#fff;">PENDING</span>
@@ -52,7 +58,7 @@
                 </button>
               @endif
               <button class="btn-icon delete" onclick="deletePo('{{ $po->id }}')" title="Delete Request">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="14" x2="14" y2="17"></line></svg>
               </button>
             </div>
           </td>
