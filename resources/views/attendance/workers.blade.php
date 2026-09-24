@@ -18,10 +18,10 @@
         </div>
         <div class="form-group">
           <label>Department</label>
-          <select id="w-dept" required>
+          <select id="w-dept" required onchange="handleDepartmentChange()">
             <option value="">-- Select --</option>
             @foreach($departments as $d)
-              <option value="{{ $d->id }}">{{ $d->name }}</option>
+              <option value="{{ $d->id }}" data-name="{{ $d->name }}">{{ $d->name }}</option>
             @endforeach
           </select>
         </div>
@@ -123,6 +123,41 @@
 const csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
 let editingWorkerId = null;
 
+function handleDepartmentChange() {
+  const deptSelect = document.getElementById('w-dept');
+  const selectedOption = deptSelect.options[deptSelect.selectedIndex];
+  const deptName = selectedOption ? (selectedOption.getAttribute('data-name') || selectedOption.text || '').trim().toUpperCase() : '';
+  const salaryTypeSelect = document.getElementById('w-salary-type');
+  
+  const isMukadam = deptName.includes('MUKADAM');
+
+  Array.from(salaryTypeSelect.options).forEach(opt => {
+    if (isMukadam) {
+      if (opt.value === 'LABOUR_MUKADAM') {
+        opt.hidden = false;
+        opt.disabled = false;
+        opt.style.display = '';
+      } else {
+        opt.hidden = true;
+        opt.disabled = true;
+        opt.style.display = 'none';
+      }
+    } else {
+      opt.hidden = false;
+      opt.disabled = false;
+      opt.style.display = '';
+    }
+  });
+
+  if (isMukadam) {
+    salaryTypeSelect.value = 'LABOUR_MUKADAM';
+  } else if (salaryTypeSelect.value === 'LABOUR_MUKADAM') {
+    salaryTypeSelect.value = 'DAILY';
+  }
+  
+  updateSalaryLabel();
+}
+
 function openWorkerForm() {
   editingWorkerId = null;
   document.getElementById('w-form-title').innerText = 'Add Worker';
@@ -134,7 +169,7 @@ function openWorkerForm() {
   document.getElementById('w-salary').value = '';
   document.getElementById('w-per-hour').value = '';
   document.getElementById('w-status').value = 'ACTIVE';
-  updateSalaryLabel();
+  handleDepartmentChange();
   document.getElementById('worker-form-card').style.display = 'block';
   document.getElementById('worker-form-card').scrollIntoView({ behavior: 'smooth' });
 }
@@ -160,7 +195,12 @@ function editWorker(w) {
   document.getElementById('w-dept').value = w.department_id;
   document.getElementById('w-role').value = w.role || '';
   document.getElementById('w-shift').value = w.shift_type || 'DAY';
-  document.getElementById('w-salary-type').value = w.salary_type || 'DAILY';
+  
+  handleDepartmentChange();
+  if (w.salary_type) {
+    document.getElementById('w-salary-type').value = w.salary_type;
+  }
+  
   document.getElementById('w-salary').value = w.salary_amount;
   document.getElementById('w-per-hour').value = w.per_hour_salary || '';
   document.getElementById('w-status').value = w.status || 'ACTIVE';

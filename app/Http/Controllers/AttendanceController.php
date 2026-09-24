@@ -604,7 +604,7 @@ class AttendanceController extends Controller
             ['worker_id' => $id, 'month' => $request->month],
             [
                 'petrol_food_amount' => $request->petrol_food_amount ?? 0,
-                'other_allowance_label' => $request->other_allowance_label ?: 'PETROL / FOODS',
+                'other_allowance_label' => $request->other_allowance_label ?? null,
                 'advance' => $request->advance ?? 0,
                 'remark' => $request->remark
             ]
@@ -755,8 +755,12 @@ class AttendanceController extends Controller
 
         $adjustment = WorkerMonthlyAdjustment::firstOrNew(
             ['worker_id' => $id, 'month' => $month],
-            ['petrol_food_amount' => 0, 'other_allowance_label' => 'PETROL / FOODS', 'advance' => 0, 'remark' => null]
+            ['petrol_food_amount' => 0, 'other_allowance_label' => 'OTHER', 'advance' => 0, 'remark' => null]
         );
+
+        if (empty($adjustment->other_allowance_label) || $adjustment->other_allowance_label === 'PETROL / FOODS') {
+            $adjustment->other_allowance_label = 'OTHER';
+        }
 
         $totalOT = 0;
         $totalWage = 0;

@@ -188,7 +188,7 @@
             <tr>
               <td style="border:2px solid #000; padding:6px;">
                 <div style="display:inline-block; width:45%; color:#000;">OTHER</div>
-                <div style="display:inline-block; width:50%; text-align:center;">{{ strtoupper($adjustment->other_allowance_label ?? 'PETROL / FOODS') }}</div>
+                <div style="display:inline-block; width:50%; text-align:center;">{{ strtoupper(($adjustment->other_allowance_label && $adjustment->other_allowance_label !== 'PETROL / FOODS') ? $adjustment->other_allowance_label : 'OTHER') }}</div>
               </td>
               <td style="border:2px solid #000; padding:6px; text-align:right;">
                 {{ $adjustment->petrol_food_amount > 0 ? '+' : '' }}{{ number_format($adjustment->petrol_food_amount, 2) }}
@@ -229,7 +229,7 @@
             </tr>
             <tr>
               <td style="border:2px solid #000; padding:6px; text-align:center;">OTHER</td>
-              <td colspan="3" style="border:2px solid #000; padding:6px; text-align:center;">{{ strtoupper($adjustment->other_allowance_label ?? 'PETROL / FOODS') }}</td>
+              <td colspan="3" style="border:2px solid #000; padding:6px; text-align:center;">{{ strtoupper(($adjustment->other_allowance_label && $adjustment->other_allowance_label !== 'PETROL / FOODS') ? $adjustment->other_allowance_label : 'OTHER') }}</td>
               <td style="border:2px solid #000; padding:6px; text-align:right;">{{ $adjustment->petrol_food_amount > 0 ? '+' : '' }}{{ number_format($adjustment->petrol_food_amount, 2) }}</td>
             </tr>
             <tr>
@@ -271,7 +271,7 @@
             <!-- Row 4 -->
             <tr>
               <td style="border:2px solid #000; padding:6px; text-align:center;">OTHER</td>
-              <td colspan="3" style="border:2px solid #000; padding:6px; text-align:center;">{{ strtoupper($adjustment->other_allowance_label ?? 'PETROL / FOODS') }}</td>
+              <td colspan="3" style="border:2px solid #000; padding:6px; text-align:center;">{{ strtoupper(($adjustment->other_allowance_label && $adjustment->other_allowance_label !== 'PETROL / FOODS') ? $adjustment->other_allowance_label : 'OTHER') }}</td>
               <td style="border:2px solid #000; padding:6px; text-align:right;">{{ number_format($adjustment->petrol_food_amount, 2) }}</td>
             </tr>
             <!-- Row 5 -->

@@ -169,12 +169,13 @@
           <td style="border:2px solid #000; padding:8px;">
             <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
                 <span style="color:#000;">OTHER</span>
-                <div style="display:inline-flex; align-items:center; gap:6px;">
+                <div style="display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%;">
                     <span class="pencil-icon">✏️</span>
-                    <input type="text" class="allowance-label-input" value="{{ $adjustment->other_allowance_label ?? 'PETROL / FOODS' }}" 
+                    <input type="text" class="allowance-label-input" value="{{ ($adjustment?->other_allowance_label && $adjustment->other_allowance_label !== 'PETROL / FOODS') ? $adjustment->other_allowance_label : 'OTHER' }}" 
+                           placeholder="OTHER"
                            oninput="syncAllowanceLabel(this.value)"
                            onchange="quickSaveAllowance(this.value, null)"
-                           style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:3px 10px; font-weight:bold; font-size:0.85rem; text-align:right; text-transform:uppercase; width:170px; color:#0f172a; outline:none;"
+                           style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:4px 12px; font-weight:bold; font-size:0.85rem; text-align:center; text-transform:uppercase; width:100%; max-width:320px; color:#0f172a; outline:none;"
                            title="Click to edit allowance label">
                 </div>
             </div>
@@ -225,13 +226,14 @@
         </tr>
         <tr>
           <td style="border:2px solid #000; padding:6px 8px; text-align:center;">OTHER</td>
-          <td colspan="3" style="border:2px solid #000; padding:6px 8px; text-align:right;">
-            <div style="display:inline-flex; align-items:center; justify-content:flex-end; gap:6px; width:100%;">
+          <td colspan="3" style="border:2px solid #000; padding:6px 8px; text-align:center;">
+            <div style="display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%;">
                 <span class="pencil-icon">✏️</span>
-                <input type="text" class="allowance-label-input" value="{{ $adjustment->other_allowance_label ?? 'PETROL / FOODS' }}" 
+                <input type="text" class="allowance-label-input" value="{{ ($adjustment?->other_allowance_label && $adjustment->other_allowance_label !== 'PETROL / FOODS') ? $adjustment->other_allowance_label : 'OTHER' }}" 
+                       placeholder="OTHER"
                        oninput="syncAllowanceLabel(this.value)"
                        onchange="quickSaveAllowance(this.value, null)"
-                       style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:3px 10px; font-weight:bold; font-size:0.85rem; text-align:right; text-transform:uppercase; width:170px; color:#0f172a; outline:none;"
+                       style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:4px 12px; font-weight:bold; font-size:0.85rem; text-align:center; text-transform:uppercase; width:100%; max-width:320px; color:#0f172a; outline:none;"
                        title="Click to edit allowance label">
             </div>
           </td>
@@ -285,13 +287,14 @@
         <!-- Row 4 -->
         <tr>
           <td style="border:2px solid #000; padding:6px 8px; text-align:center;">OTHER</td>
-          <td colspan="3" style="border:2px solid #000; padding:6px 8px; text-align:right;">
-            <div style="display:inline-flex; align-items:center; justify-content:flex-end; gap:6px; width:100%;">
+          <td colspan="3" style="border:2px solid #000; padding:6px 8px; text-align:center;">
+            <div style="display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%;">
                 <span class="pencil-icon">✏️</span>
-                <input type="text" class="allowance-label-input" value="{{ $adjustment->other_allowance_label ?? 'PETROL / FOODS' }}" 
+                <input type="text" class="allowance-label-input" value="{{ ($adjustment?->other_allowance_label && $adjustment->other_allowance_label !== 'PETROL / FOODS') ? $adjustment->other_allowance_label : 'OTHER' }}" 
+                       placeholder="OTHER"
                        oninput="syncAllowanceLabel(this.value)"
                        onchange="quickSaveAllowance(this.value, null)"
-                       style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:3px 10px; font-weight:bold; font-size:0.85rem; text-align:right; text-transform:uppercase; width:170px; color:#0f172a; outline:none;"
+                       style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:4px 12px; font-weight:bold; font-size:0.85rem; text-align:center; text-transform:uppercase; width:100%; max-width:320px; color:#0f172a; outline:none;"
                        title="Click to edit allowance label">
             </div>
           </td>
@@ -358,7 +361,7 @@
             <input type="hidden" name="month" value="{{ $month }}">
             <div class="form-group mb-3">
                 <label style="color:#000; font-weight:bold;">Allowance / Expense Name</label>
-                <input type="text" name="other_allowance_label" class="form-control" value="{{ $adjustment->other_allowance_label ?? 'PETROL / FOODS' }}" placeholder="e.g. PETROL / FOODS, INCENTIVE" required>
+                <input type="text" name="other_allowance_label" class="form-control" value="{{ ($adjustment?->other_allowance_label && $adjustment->other_allowance_label !== 'PETROL / FOODS') ? $adjustment->other_allowance_label : 'OTHER' }}" placeholder="e.g. OTHER, INCENTIVE">
             </div>
             <div class="form-group mb-3">
                 <label style="color:#000; font-weight:bold;">Allowance Amount (₹)</label>
@@ -383,7 +386,7 @@
 <script>
 function syncAllowanceLabel(val) {
     document.querySelectorAll('.allowance-label-display').forEach(el => {
-        el.innerText = (val || 'PETROL / FOODS').toUpperCase();
+        el.innerText = (val || 'OTHER').toUpperCase();
     });
     document.querySelectorAll('.allowance-label-input').forEach(el => {
         if (el !== document.activeElement) {
@@ -430,7 +433,7 @@ function quickSaveAllowance(label, amount) {
         formData.append('other_allowance_label', label);
     } else {
         const modalLabel = document.querySelector('input[name="other_allowance_label"]');
-        formData.append('other_allowance_label', modalLabel ? modalLabel.value : 'PETROL / FOODS');
+        formData.append('other_allowance_label', modalLabel ? modalLabel.value : 'OTHER');
     }
 
     if (amount !== null) {

@@ -69,7 +69,7 @@
               <td colspan="5" style="font-weight:bold; color:var(--secondary); font-size:0.92rem;">
                 📂 {{ strtoupper($deptName) }} <span style="font-size:0.8rem; font-weight:600; opacity:0.85; margin-left:0.4rem; color:var(--text-color);">(Total Workers: {{ $deptWorkerCount }})</span>
               </td>
-              <td style="font-weight:bold; color:var(--secondary); font-size:0.95rem;">{{ $deptTotalPresent > 0 ? (floor($deptTotalPresent) == $deptTotalPresent ? number_format($deptTotalPresent, 0) : number_format($deptTotalPresent, 1)) : 0 }}</td>
+              <td style="font-weight:bold; color:#000000; font-size:0.95rem;">{{ $deptTotalPresent > 0 ? (floor($deptTotalPresent) == $deptTotalPresent ? number_format($deptTotalPresent, 0) : number_format($deptTotalPresent, 1)) : 0 }}</td>
               <td style="font-weight:bold; font-size:0.9rem;">{{ number_format($deptTotalOt, 1) }}</td>
               <td style="font-weight:bold; color:var(--primary-light); font-size:1.05rem;">₹{{ number_format($deptTotalWage, 2) }}</td>
               <td></td>
@@ -98,7 +98,7 @@
                   @endphp
                   <a href="{{ $reportUrl }}?month={{ $month }}" class="btn btn-sm" style="width:auto; padding:0.2rem 0.6rem; font-size:0.7rem; text-transform:uppercase;">View Sheet</a>
                 </td>
-                <td style="color:var(--secondary); font-weight:bold;">{{ $data['present'] }}</td>
+                <td style="color:#000000; font-weight:bold;">{{ $data['present'] }}</td>
                 <td style="font-weight:bold;">{{ number_format($data['total_ot'], 1) }}</td>
                 <td style="font-weight:bold; color:var(--primary-light); font-size:1.1rem;">₹{{ number_format($data['total_wage'], 2) }}</td>
                 <td>
