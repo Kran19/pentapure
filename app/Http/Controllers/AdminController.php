@@ -1267,9 +1267,26 @@ class AdminController extends Controller
         return $pdf->download($filename);
     }
 
-    public function cashierOverview()
+    public function cashierOverview(Request $request)
     {
-        $txs = \App\Models\Transaction::with(['user', 'bills'])->orderByDesc('created_at')->get();
+        $query = \App\Models\Transaction::with(['user', 'bills'])->orderByDesc('created_at');
+
+        if ($request->filled('cashier_id')) {
+            $query->where('user_id', $request->cashier_id);
+        }
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        $txs = $query->get();
+
+        $cashiers = User::where('role', 'CASHIER')
+            ->orWhereIn('id', \App\Models\Transaction::select('user_id')->distinct())
+            ->orderBy('name')
+            ->get();
         
         $summary = [
             'totalIn'  => $txs->where('type', 'IN')->sum('amount'),
@@ -1292,7 +1309,9 @@ class AdminController extends Controller
 
         $pageData = [
             'transactions' => $txs,
-            'summary' => $summary
+            'summary' => $summary,
+            'cashiers' => $cashiers,
+            'selectedCashier' => $request->cashier_id
         ];
 
         return view('admin.cashier_overview', compact('pageData'));
@@ -1300,7 +1319,19 @@ class AdminController extends Controller
 
     public function overviewPdf(Request $request)
     {
-        $txs = \App\Models\Transaction::with('user')->orderByDesc('created_at')->get();
+        $query = \App\Models\Transaction::with('user')->orderByDesc('created_at');
+
+        if ($request->filled('cashier_id')) {
+            $query->where('user_id', $request->cashier_id);
+        }
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        $txs = $query->get();
         
         $summary = [
             'totalIn'  => $txs->where('type', 'IN')->sum('amount'),

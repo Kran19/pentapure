@@ -9,11 +9,33 @@
             <a href="{{ route(request()->segment(1) . '.cashier.logs') }}" class="btn" style="width:auto; padding:0.6rem 1rem; background-color:var(--primary-light); text-decoration:none; display:flex; align-items:center; gap:5px;">
                 📝 View Edit Logs
             </a>
-            <button type="button" class="btn" onclick="window.downloadPdfAsync('{{ route(request()->segment(1) . '.cashier_overview.pdf') }}', {}, this)" style="width:auto; padding:0.6rem 1rem; display:flex; align-items:center; gap:5px; cursor:pointer;">
+            <button type="button" class="btn" onclick="window.downloadPdfAsync('{{ route(request()->segment(1) . '.cashier_overview.pdf') }}', { cashier_id: '{{ request('cashier_id') }}' }, this)" style="width:auto; padding:0.6rem 1rem; display:flex; align-items:center; gap:5px; cursor:pointer;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                 Export PDF
             </button>
         </div>
+    </div>
+
+    <!-- Cashier Dropdown Filter Card -->
+    <div class="card" style="padding:0.85rem 1.2rem; margin-bottom:1.5rem; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:10px;">
+        <form method="GET" action="{{ url()->current() }}" style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:0.6rem; flex:1 1 250px;">
+                <label for="cashier_id_select" style="font-weight:600; font-size:0.85rem; color:var(--text-muted); white-space:nowrap; margin:0;">👤 SELECT CASHIER:</label>
+                <select name="cashier_id" id="cashier_id_select" onchange="this.form.submit()" style="width:100%; padding:0.6rem 0.9rem; border-radius:8px; font-size:0.9rem; border:1px solid var(--border-soft); background:var(--bg-hover); color:var(--text-main); font-weight:600; outline:none;">
+                    <option value="">-- ALL CASHIERS --</option>
+                    @if(!empty($pageData['cashiers']))
+                        @foreach($pageData['cashiers'] as $c)
+                            <option value="{{ $c->id }}" {{ request('cashier_id') == $c->id ? 'selected' : '' }}>
+                                {{ strtoupper($c->name) }} @if($c->username)({{ strtoupper($c->username) }})@endif
+                            </option>
+                        @endforeach
+                    @endif
+                </select>
+            </div>
+            @if(request('cashier_id'))
+                <a href="{{ url()->current() }}" class="btn btn-secondary" style="width:auto; padding:0.55rem 1rem; font-size:0.85rem; text-decoration:none;">✕ Clear Filter</a>
+            @endif
+        </form>
     </div>
 
     <!-- Summary Cards -->
