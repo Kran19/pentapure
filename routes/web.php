@@ -295,6 +295,7 @@ foreach ($roleSlugs['CASHIER'] ?? [] as $slug) {
     Route::get('/locations',          [\App\Http\Controllers\AdminController::class, 'locations'])->name($slug.'.locations');
     Route::post('/locations',         [\App\Http\Controllers\AdminController::class, 'storeLocationApi']);
     Route::delete('/locations/{id}',  [\App\Http\Controllers\AdminController::class, 'destroyLocationApi']);
+    Route::get('/stock',              [\App\Http\Controllers\AdminController::class, 'stock'])->name($slug.'.stock');
     });
 }
 
