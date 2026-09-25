@@ -8,68 +8,45 @@
   }
 </style>
 <div id="login-screen">
-  <div class="login-card">
-    <img src="{{ asset('logo.png') }}" alt="Logo" style="width:120px; margin-bottom:1rem; object-fit:contain;">
-    <h1 style="margin-bottom: 0.3rem; color: var(--text-main);"><span style="color: var(--primary-light);">Pentapure</span></h1>
-    <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size:0.9rem;">Select your role to login</p>
+  <div class="login-card" style="max-width:380px; margin:0 auto; padding:2rem 1.5rem; text-align:center;">
+    <img src="{{ asset('logo.png') }}" alt="Logo" style="width:100px; margin-bottom:1rem; object-fit:contain;">
+    <h1 style="margin-bottom: 0.3rem; color: var(--text-main); font-size:1.6rem;"><span style="color: var(--primary-light);">Pentapure</span></h1>
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size:0.9rem;">Enter your User ID and Password to login</p>
 
-    @if(session('error'))
-      <div style="background:rgba(239,68,68,0.15); border:1px solid var(--danger); border-radius:8px; padding:0.75rem 1rem; margin-bottom:1rem; color:var(--danger); font-size:0.85rem;">
-        {{ session('error') }}
-      </div>
-    @endif
-
-    {{-- Step 1: Role Selection --}}
-    <div id="users-list" style="display:{{ $selectedUser ? 'none' : 'flex' }}; flex-direction:column; gap:0.5rem; text-align:left;">
-      @foreach($users as $u)
-        <a href="{{ url($u->login_slug . '/login') }}" class="user-btn" style="text-decoration:none; color:inherit; display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <div style="font-weight:600;">{{ $u->name }}</div>
-            <div style="font-size:0.8rem; color:var(--text-muted);">{{ $u->role }}</div>
-          </div>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </a>
-      @endforeach
-    </div>
-
-    {{-- Step 2: Password entry --}}
-    <div id="password-step" style="display:{{ $selectedUser ? 'block' : 'none' }}; margin-top:1rem;">
-      <div style="display:flex; align-items:center; gap:0.8rem; margin-bottom:1.2rem; padding:0.8rem; background:rgba(255,255,255,0.05); border-radius:10px;">
-        <div id="selected-avatar" style="width:40px; height:40px; background:var(--primary); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem; font-weight:bold;">
-          {{ $selectedUser ? strtoupper(substr($selectedUser->name, 0, 1)) : '' }}
-        </div>
-        <div>
-          <div id="selected-name" style="font-weight:600;">{{ $selectedUser ? $selectedUser->name : '' }}</div>
-          <div id="selected-role" style="font-size:0.8rem; color:var(--text-muted);">{{ $selectedUser ? $selectedUser->role : '' }}</div>
-        </div>
+    <form id="login-form" action="{{ route('global.login.post') }}" method="POST" style="text-align:left;">
+      @csrf
+      <input type="hidden" id="push_subscription_field" name="push_subscription">
+      
+      <div class="form-group" style="margin-bottom:1.2rem;">
+        <label style="font-size:0.85rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:0.4rem;">User ID</label>
+        <input type="text" name="username" id="username-input" placeholder="Enter your User ID" required
+          value="{{ old('username') }}" style="width:100%; padding:0.8rem; font-size:1rem; border-radius:8px; border:1px solid var(--border-soft); background:var(--input-bg); color:var(--text-main); font-weight:600;" autofocus>
       </div>
 
-      <form id="login-form" action="{{ url()->current() }}" method="POST">
-        @csrf
-        <input type="hidden" id="user_id_field" name="user_id" value="{{ $selectedUser ? $selectedUser->id : '' }}">
-        <input type="hidden" id="push_subscription_field" name="push_subscription">
-        <div class="form-group" style="margin-bottom:1rem;">
-          <label style="font-size:0.85rem; color:var(--text-muted);">Password</label>
-          <div class="password-wrapper">
-            <input type="password" name="password" id="password-input" placeholder="Enter your password" required
-              style="padding:0.8rem; padding-right:2.5rem; font-size:1rem;" autofocus>
-            <button type="button" class="password-toggle" onclick="togglePassword('password-input')">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="eye-icon">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                <circle cx="12" cy="12" r="3"></circle>
-              </svg>
-            </button>
-          </div>
+      <div class="form-group" style="margin-bottom:1.5rem;">
+        <label style="font-size:0.85rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:0.4rem;">Password</label>
+        <div class="password-wrapper" style="position:relative;">
+          <input type="password" name="password" id="password-input" placeholder="Enter your password" required
+            style="width:100%; padding:0.8rem; padding-right:2.5rem; font-size:1rem; border-radius:8px; border:1px solid {{ session('error') || $errors->has('password') || $errors->has('username') ? 'var(--danger, #ef4444)' : 'var(--border-soft)' }}; background:var(--input-bg); color:var(--text-main);">
+          <button type="button" class="password-toggle" onclick="togglePassword('password-input')" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-muted); cursor:pointer;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="eye-icon">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
         </div>
-        <button type="submit" class="btn" style="padding:1rem; font-size:1rem; width:100%;">
-          Login &rarr;
-        </button>
-      </form>
+        @if(session('error') || $errors->has('password') || $errors->has('username'))
+          <div id="login-error-msg" style="color: var(--danger, #ef4444); font-size: 0.85rem; font-weight: 600; margin-top: 0.4rem; display: flex; align-items: center; gap: 0.3rem;">
+            <span>⚠️</span>
+            <span>{{ session('error') ?? $errors->first('password') ?? $errors->first('username') }}</span>
+          </div>
+        @endif
+      </div>
 
-      <a href="{{ url('login') }}" style="display:block; margin-top:0.8rem; background:none; border:none; color:var(--text-muted); font-size:0.85rem; cursor:pointer; width:100%; text-decoration:none;">
-        &larr; Back to user list
-      </a>
-    </div>
+      <button type="submit" class="btn" style="padding:0.9rem; font-size:1rem; font-weight:700; width:100%; border-radius:8px;">
+        Login &rarr;
+      </button>
+    </form>
   </div>
 </div>
 
@@ -113,7 +90,14 @@
   }
 
   function togglePassword(id) {
-    app.togglePassword(id);
+    if (window.app && typeof app.togglePassword === 'function') {
+      app.togglePassword(id);
+    } else {
+      const input = document.getElementById(id);
+      if (input) {
+        input.type = input.type === 'password' ? 'text' : 'password';
+      }
+    }
   }
 
   document.addEventListener('DOMContentLoaded', () => {

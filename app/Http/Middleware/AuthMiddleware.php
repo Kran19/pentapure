@@ -12,11 +12,7 @@ class AuthMiddleware
         $user = session('auth_user');
 
         if (!$user) {
-            $slug = $request->segment(1);
-            if ($slug && \Illuminate\Support\Facades\Route::has($slug . '.login.show')) {
-                return redirect()->route($slug . '.login.show')->with('error', 'Please login to continue.');
-            }
-            return redirect('/')->with('error', 'Please login to continue.');
+            return redirect()->route('global.login')->with('error', 'Please login to continue.');
         }
 
         // Live sync permissions and status from database on every request
@@ -25,7 +21,7 @@ class AuthMiddleware
             if ($dbUser) {
                 if ($dbUser->status === 'BLOCKED') {
                     session()->forget('auth_user');
-                    return redirect('/login')->with('error', 'Your account has been blocked.');
+                    return redirect()->route('global.login')->with('error', 'Your account has been blocked.');
                 }
                 $user['permissions'] = $dbUser->permissions ?? [];
                 $user['role'] = $dbUser->role;

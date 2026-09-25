@@ -10,48 +10,52 @@ class AuthController extends Controller
 {
     public function showLogin(Request $request)
     {
+        if ($request->has('logout')) {
+            session()->forget('auth_user');
+            session()->flush();
+        }
         if (session('auth_user')) {
+            $role = session('auth_user')['role'] ?? null;
+            $slug = session('auth_user')['login_slug'] ?? strtolower($role ?? '');
+            if (!$slug || !\Illuminate\Support\Facades\Route::has($slug . '.home')) {
+                session()->forget('auth_user');
+                session()->flush();
+                return view('auth.login');
+            }
             return $this->authenticatedRedirect();
         }
-        // Exclude disabled panels: RAW, SEMI, FINISHED
-        $disabledPanels = ['RAW', 'SEMI', 'FINISHED'];
-        $users = User::where('status', 'ACTIVE')->whereNotIn('role', $disabledPanels)->orderBy('role')->orderBy('id')->get(['id', 'name', 'role']);
-        $slug = $request->segment(1);
-
-        // Calculate role-based slugs for each user
-        $roleCounts = [];
-        foreach ($users as $u) {
-            $r = strtolower($u->role);
-            if (!isset($roleCounts[$r])) {
-                $roleCounts[$r] = 1;
-                $u->login_slug = $r;
-            } else {
-                $roleCounts[$r]++;
-                $u->login_slug = $r . $roleCounts[$r];
-            }
-        }
-
-        $selectedUser = $users->firstWhere('login_slug', strtolower($slug)) ?? $users->firstWhere('login_slug', $slug);
-        
-        return view('auth.login', compact('users', 'slug', 'selectedUser'));
+        return view('auth.login');
     }
 
     public function login(Request $request)
     {
+        $loginId = trim($request->username ?? $request->user_id ?? '');
+
         $request->validate([
-            'user_id'  => 'required|exists:users,id',
             'password' => 'required|string|min:4',
         ]);
 
-        $user = User::find($request->user_id);
+        if (empty($loginId)) {
+            return back()->with('error', 'User ID is required.')->withInput();
+        }
+
+        // Lookup user by username, email, or id
+        $user = User::where('username', strtolower($loginId))
+                    ->orWhere('email', strtolower($loginId))
+                    ->orWhere('id', $loginId)
+                    ->first();
+
+        if (!$user) {
+            return back()->with('error', 'User ID or Password is incorrect.')->withInput();
+        }
 
         $disabledPanels = ['RAW', 'SEMI', 'FINISHED'];
-        if ($user && in_array($user->role, $disabledPanels, true)) {
+        if (in_array($user->role, $disabledPanels, true)) {
             return back()->with('error', 'This panel has been disabled.')->withInput();
         }
 
-        if (!$user || !(Hash::check($request->password, $user->password) || Hash::check(strtolower($request->password), $user->password) || Hash::check(strtoupper($request->password), $user->password))) {
-            return back()->with('error', 'Invalid password. Please try again.')->withInput();
+        if (!(Hash::check($request->password, $user->password) || Hash::check(strtolower($request->password), $user->password) || Hash::check(strtoupper($request->password), $user->password))) {
+            return back()->with('error', 'Password is incorrect.')->withInput();
         }
 
         if ($user->status === 'BLOCKED') {
@@ -59,6 +63,7 @@ class AuthController extends Controller
         }
 
         // Calculate login_slug to store in session
+        $disabledPanels = ['RAW', 'SEMI', 'FINISHED'];
         $allUsers = User::where('status', 'ACTIVE')->whereNotIn('role', $disabledPanels)->orderBy('role')->orderBy('id')->get();
         $roleCounts = [];
         $login_slug = strtolower($user->role);
@@ -79,6 +84,7 @@ class AuthController extends Controller
         session(['auth_user' => [
             'id'          => $user->id,
             'name'        => $user->name,
+            'username'    => $user->username,
             'role'        => $user->role,
             'permissions' => $user->permissions,
             'login_slug'  => $login_slug,
@@ -183,7 +189,16 @@ class AuthController extends Controller
             }
         }
 
-        return redirect()->route($slug . '.home');
+        if (\Illuminate\Support\Facades\Route::has($slug . '.home')) {
+            return redirect()->route($slug . '.home');
+        }
+
+        $fallbackRole = strtolower($role ?? 'admin');
+        if (\Illuminate\Support\Facades\Route::has($fallbackRole . '.home')) {
+            return redirect()->route($fallbackRole . '.home');
+        }
+
+        return redirect('/admin/home');
     }
 
     protected function authenticatedRedirect()

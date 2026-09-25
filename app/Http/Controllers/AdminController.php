@@ -94,21 +94,33 @@ class AdminController extends Controller
 
     public function storeUser(Request $request)
     {
+        if (empty($request->username)) {
+            $baseUser = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $request->name ?: ($request->role ?: 'user')));
+            if (empty($baseUser)) $baseUser = 'user';
+            $candidateUser = $baseUser;
+            $counter = 1;
+            while (User::where('username', $candidateUser)->where('id', '!=', $request->user_id ?? 0)->exists()) {
+                $counter++;
+                $candidateUser = $baseUser . $counter;
+            }
+            $request->merge(['username' => $candidateUser]);
+        }
+
         $rules = [
-            'name'   => 'required|string|max:100',
-            'role'   => 'required|in:ADMIN,SUB_ADMIN,STOCK_MANAGER,CASHIER,SALES,DISPATCH,ATTENDANCE', // RAW, SEMI, FINISHED disabled
-            'branch' => 'required_if:role,CASHIER|nullable|string|max:100',
-            'phone'  => 'nullable|string|max:20',
+            'name'     => 'required|string|max:100',
+            'username' => 'required|string|max:50|unique:users,username,' . ($request->user_id ?? 'NULL') . ',id',
+            'role'     => 'required|in:ADMIN,SUB_ADMIN,STOCK_MANAGER,CASHIER,SALES,DISPATCH,ATTENDANCE', // RAW, SEMI, FINISHED disabled
+            'branch'   => 'required_if:role,CASHIER|nullable|string|max:100',
+            'phone'    => 'nullable|string|max:20',
+            'email'    => 'nullable|email',
             'permissions' => 'nullable',
             'visible_cashiers' => 'nullable|array',
             'visible_cashiers.*' => 'exists:users,id',
         ];
 
         if (!$request->user_id) {
-            $rules['email']    = 'nullable|email|unique:users,email';
             $rules['password'] = 'required|string|min:4';
         } else {
-            $rules['email']    = 'nullable|email|unique:users,email,' . $request->user_id;
             $rules['password'] = 'nullable|string|min:4';
         }
 
@@ -140,10 +152,11 @@ class AdminController extends Controller
 
         if ($request->user_id) {
             $user = User::findOrFail($request->user_id);
-            $user->name  = $request->name;
-            $user->email = $request->email;
-            $user->phone = $request->phone;
-            $user->role  = $request->role;
+            $user->name     = $request->name;
+            $user->username = strtolower(trim($request->username));
+            $user->email    = $request->email;
+            $user->phone    = $request->phone;
+            $user->role     = $request->role;
             if ($request->password) {
                 $user->password = Hash::make($request->password);
             }
@@ -160,6 +173,7 @@ class AdminController extends Controller
         } else {
             User::create([
                 'name'      => $request->name,
+                'username'  => strtolower(trim($request->username)),
                 'email'     => $request->email,
                 'phone'     => $request->phone,
                 'password'  => Hash::make($request->password),

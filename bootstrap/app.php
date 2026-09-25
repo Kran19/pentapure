@@ -13,6 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->validateCsrfTokens(except: [
+            'login',
+            '*/login',
             'logout',
             '*/logout',
             'global/logout',
@@ -27,7 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (TokenMismatchException $e, $request) {
-            return redirect('/login')->with('error', 'Session expired. Please login again.');
+            return redirect()->route('global.login')->with('error', 'Session expired. Please try logging in again.');
         });
     })->create();
 

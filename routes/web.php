@@ -85,6 +85,7 @@ Route::middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CA
     Route::post('/api/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);
 });
 Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE,STOCK_MANAGER')->group(function() {
+    Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout']);
     Route::get('/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill']);
     Route::get('/cashier/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill']);
     Route::get('/api/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
@@ -141,8 +142,6 @@ Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FIN
 // === RAW ROUTES ===
 foreach ($roleSlugs['RAW'] ?? [] as $slug) {
     Route::prefix($slug)->group(function () use ($slug) {
-        Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
-        Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
         Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
@@ -162,8 +161,6 @@ foreach ($roleSlugs['RAW'] ?? [] as $slug) {
 // === SEMI ROUTES ===
 foreach ($roleSlugs['SEMI'] ?? [] as $slug) {
     Route::prefix($slug)->group(function () use ($slug) {
-        Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
-        Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
         Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
@@ -183,8 +180,6 @@ foreach ($roleSlugs['SEMI'] ?? [] as $slug) {
 // === FINISHED ROUTES ===
 foreach ($roleSlugs['FINISHED'] ?? [] as $slug) {
     Route::prefix($slug)->group(function () use ($slug) {
-        Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
-        Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
         Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
@@ -205,8 +200,6 @@ foreach ($roleSlugs['FINISHED'] ?? [] as $slug) {
 // === SALES ROUTES ===
 foreach ($roleSlugs['SALES'] ?? [] as $slug) {
     Route::prefix($slug)->group(function () use ($slug) {
-        Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
-        Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
         Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
@@ -243,8 +236,6 @@ foreach ($roleSlugs['SALES'] ?? [] as $slug) {
 // === DISPATCH ROUTES ===
 foreach ($roleSlugs['DISPATCH'] ?? [] as $slug) {
     Route::prefix($slug)->group(function () use ($slug) {
-        Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
-        Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
         Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
@@ -269,8 +260,6 @@ foreach ($roleSlugs['DISPATCH'] ?? [] as $slug) {
 // === CASHIER ROUTES ===
 foreach ($roleSlugs['CASHIER'] ?? [] as $slug) {
     Route::prefix($slug)->group(function () use ($slug) {
-        Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
-        Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
         Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
@@ -312,8 +301,6 @@ foreach ($roleSlugs['CASHIER'] ?? [] as $slug) {
 // === STOCK MANAGER ROUTES ===
 foreach ($roleSlugs['STOCK_MANAGER'] ?? [] as $slug) {
     Route::prefix($slug)->group(function () use ($slug) {
-        Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
-        Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
         Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
@@ -365,8 +352,6 @@ $adminSlugs = array_merge(
 );
 foreach ($adminSlugs as $slug) {
     Route::prefix($slug)->group(function () use ($slug) {
-        Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
-        Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
         Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
@@ -503,8 +488,6 @@ foreach ($adminSlugs as $slug) {
 // === ATTENDANCE ROUTES ===
 foreach ($roleSlugs['ATTENDANCE'] ?? [] as $slug) {
     Route::prefix($slug)->group(function () use ($slug) {
-        Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name($slug.'.login.show');
-        Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name($slug.'.login.post');
         Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 

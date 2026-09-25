@@ -60,8 +60,8 @@
         <input type="text" id="u-name" placeholder="User name">
       </div>
       <div class="form-group">
-        <label>Email (Optional)</label>
-        <input type="email" id="u-email" placeholder="email@pentapure.com">
+        <label>User ID <span class="required-star" style="color:#dc2626 !important; font-weight:700;">*</span></label>
+        <input type="text" id="u-username" placeholder="e.g. cashier1" required style="font-weight:600;">
       </div>
       <div class="form-group">
         <label>Phone Number <span class="required-star" style="color:#dc2626 !important; font-weight:700;">*</span></label>
@@ -251,7 +251,7 @@
         <thead>
           <tr>
             <th>#</th>
-            <th>Name</th>
+            <th>Name & User ID</th>
             <th>Contact Info</th>
             <th>Role</th>
             <th>Status</th>
@@ -262,7 +262,10 @@
           @foreach($pageData['users'] as $user)
           <tr>
             <td>{{ $loop->iteration }}</td>
-            <td style="font-weight:600;">{{ $user['name'] }}</td>
+            <td style="font-weight:600;">
+              <div>{{ $user['name'] }}</div>
+              <div style="font-size:0.8rem; color:var(--primary-light); font-weight:700; margin-top:2px;">User ID: {{ $user['username'] ?? '—' }}</div>
+            </td>
             <td style="font-size:0.85rem; color:var(--text-muted);">
                 <div>{{ $user['phone'] }}</div>
                 @if($user['email'])<div style="font-size:0.75rem;">{{ $user['email'] }}</div>@endif
@@ -427,7 +430,7 @@ function resetUserForm() {
   editingUserId = null;
   document.querySelector('#user-form-card .card-title').innerText = 'Create New User';
   document.getElementById('u-name').value = '';
-  document.getElementById('u-email').value = '';
+  document.getElementById('u-username').value = '';
   document.getElementById('u-country-code').value = '+91';
   document.getElementById('u-phone').value = '';
   onUserCountryCodeInput();
@@ -518,7 +521,7 @@ function adminEditUser(user) {
   document.getElementById('user-form-card').style.display = 'block';
   document.querySelector('#user-form-card .card-title').innerText = 'Edit User';
   document.getElementById('u-name').value = user.name;
-  document.getElementById('u-email').value = user.email || '';
+  document.getElementById('u-username').value = user.username || '';
   
   const rawUserPhone = (user.phone || '').trim();
   const phoneMatch = rawUserPhone.match(/^(\+\d{1,4})\s*(.*)$/);
@@ -592,8 +595,8 @@ function adminSaveUser() {
 
   const payload = {
     user_id: editingUserId,
-    name: document.getElementById('u-name').value,
-    email: document.getElementById('u-email').value,
+    name: document.getElementById('u-name').value.trim(),
+    username: (document.getElementById('u-username').value || '').trim(),
     phone: fullPhone,
     role: document.getElementById('u-role').value,
     branch: document.getElementById('u-branch').value,
@@ -602,8 +605,8 @@ function adminSaveUser() {
     visible_cashiers: Array.from(document.querySelectorAll('.visible-cashier-cb:checked')).map(cb => parseInt(cb.value))
   };
   
-  if (!payload.name || !payload.role || !payload.phone) {
-    Swal.fire('Required', 'Name, Phone and Role are required', 'warning'); return;
+  if (!payload.name || !payload.username || !payload.role || !payload.phone) {
+    Swal.fire('Required', 'Name, User ID, Phone and Role are required', 'warning'); return;
   }
   if (payload.role === 'CASHIER' && !payload.branch.trim()) {
     Swal.fire('Required', 'Assigned Branch is required for Cashier role', 'warning'); return;

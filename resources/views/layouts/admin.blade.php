@@ -6,6 +6,7 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <meta name="base-url" content="{{ url(request()->segment(1) . '/') }}">
   <script>
+    window.csrfToken = '{{ csrf_token() }}';
     window.baseUrl = '{{ url('') }}';
     window.userSlug = '{{ request()->segment(1) }}';
     window.isReadOnly = {{ !empty($isReadOnly) ? 'true' : 'false' }};
@@ -362,10 +363,11 @@
             <div class="nav-item" style="cursor:pointer; display:flex; align-items:center; gap:0.75rem; padding:0.85rem 1.2rem; font-size:1rem;" onclick="toggleTheme()">
               <span id="theme-icon">🌙</span> <span id="theme-text">Dark Mode</span>
             </div>
-            <form method="POST" action="{{ url('/logout') }}" style="margin:0;">
+            <form method="POST" action="{{ url('/logout') }}" style="margin:0;" id="admin-logout-form">
               @csrf
-              <button type="submit" class="nav-item"
+              <button type="button" onclick="app.logout()" class="nav-item"
                 style="width:100%;background:none;border:none;cursor:pointer;color:var(--danger);display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1.2rem;font-size:1rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                 Logout
               </button>
             </form>
