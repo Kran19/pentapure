@@ -674,7 +674,7 @@ function adminDeleteUser(id) {
     confirmButtonText: 'Yes, delete user!'
   }).then((result) => {
     if (result.isConfirmed) {
-      fetch(`/admin/users/${id}`, {
+      fetch(window.baseUrl + '/' + window.userSlug + '/users/' + id, {
         method: 'DELETE',
         headers: { 'X-CSRF-TOKEN': window.csrfToken }
       }).then(r => r.json()).then(d => {

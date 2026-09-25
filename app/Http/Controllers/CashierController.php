@@ -322,6 +322,7 @@ class CashierController extends Controller
     {
         $txs = Transaction::with('bills')
             ->where('user_id', $this->authUser()['id'])
+            ->where('created_at', '<=', now())
             ->orderByDesc('created_at')
             ->get()
             ->map(fn($t) => $this->txToArray($t));
@@ -334,7 +335,7 @@ class CashierController extends Controller
     public function ledger(Request $request = null)
     {
         $user = $this->authUser();
-        $txs = Transaction::with('bills')->where('user_id', $user['id'])->orderByDesc('created_at')->get();
+        $txs = Transaction::with('bills')->where('user_id', $user['id'])->where('created_at', '<=', now())->orderByDesc('created_at')->get();
 
         $summary = [
             'totalIn'  => $txs->where('type', 'IN')->sum('amount'),
@@ -391,6 +392,7 @@ class CashierController extends Controller
         } else {
             $teamTxs = Transaction::with(['bills', 'user'])
                 ->whereIn('user_id', $allowedIds)
+                ->where('created_at', '<=', now())
                 ->whereHas('user', function($q) {
                     $q->where('status', 'ACTIVE');
                 })

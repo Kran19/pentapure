@@ -534,7 +534,7 @@
       }).then(async res => {
         if(res.isConfirmed) {
           try {
-            const response = await fetch(`/admin/locations/${id}`, {
+            const response = await fetch(window.baseUrl + '/' + window.userSlug + '/locations/' + id, {
               method: 'DELETE',
               headers: { 'X-CSRF-TOKEN': window.csrfToken }
             });

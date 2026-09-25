@@ -164,7 +164,7 @@
       confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
       if (result.isConfirmed) {
-        fetch(`/admin/categories/${id}`, {
+        fetch(window.baseUrl + '/' + window.userSlug + '/categories/' + id, {
           method: 'DELETE',
           headers: { 'X-CSRF-TOKEN': csrfToken }
         }).then(r => r.json()).then(d => {

@@ -59,11 +59,14 @@ class SimulationSeeder extends Seeder
         $period = new \DatePeriod(
             $startDate,
             new \DateInterval('P1D'),
-            $endDate->copy()->addDay()
+            $endDate
         );
         
         foreach ($period as $date) {
             $cdate = Carbon::instance($date);
+            if ($cdate->gt(Carbon::now())) {
+                continue;
+            }
             $this->command->info("Simulating day: " . $cdate->format('Y-m-d'));
             
             // 1. CASHIER: 2 Transactions per day
