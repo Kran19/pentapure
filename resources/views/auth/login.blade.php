@@ -2,9 +2,9 @@
 
 @section('content')
 <style>
-  /* Disable auto-capitalization on the login screen */
-  #login-screen, #login-screen * {
-    text-transform: none !important;
+  /* Capitalize input fields on login screen */
+  #username-input, #password-input {
+    text-transform: uppercase !important;
   }
 </style>
 <div id="login-screen">
