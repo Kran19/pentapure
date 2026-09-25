@@ -57,8 +57,9 @@
                 <td>{{ $loop->iteration }}</td>
                 <td>{{ $p->name }}</td>
                 <td>
-                    @if(!empty($p->gradeNames))
-                        {{ implode(', ', $p->gradeNames) }}
+                    @php $validGrades = !empty($p->gradeNames) ? array_filter($p->gradeNames, fn($g) => !in_array(strtoupper(trim($g)), ['NONE', 'N/A', 'NA', 'N / A'], true)) : []; @endphp
+                    @if(!empty($validGrades))
+                        {{ implode(', ', $validGrades) }}
                     @else
                         -
                     @endif
@@ -87,8 +88,9 @@
                 <td>{{ $loop->iteration }}</td>
                 <td>{{ $p->name }}</td>
                 <td>
-                    @if(!empty($p->gradeNames))
-                        {{ implode(', ', $p->gradeNames) }}
+                    @php $validGrades = !empty($p->gradeNames) ? array_filter($p->gradeNames, fn($g) => !in_array(strtoupper(trim($g)), ['NONE', 'N/A', 'NA', 'N / A'], true)) : []; @endphp
+                    @if(!empty($validGrades))
+                        {{ implode(', ', $validGrades) }}
                     @else
                         -
                     @endif
@@ -117,8 +119,9 @@
                 <td>{{ $loop->iteration }}</td>
                 <td>{{ $p->name }}</td>
                 <td>
-                    @if(!empty($p->gradeNames))
-                        {{ implode(', ', $p->gradeNames) }}
+                    @php $validGrades = !empty($p->gradeNames) ? array_filter($p->gradeNames, fn($g) => !in_array(strtoupper(trim($g)), ['NONE', 'N/A', 'NA', 'N / A'], true)) : []; @endphp
+                    @if(!empty($validGrades))
+                        {{ implode(', ', $validGrades) }}
                     @else
                         -
                     @endif

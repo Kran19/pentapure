@@ -38,9 +38,15 @@
                 </thead>
                 <tbody>
                     @foreach($pageData['grades'] as $g)
+                    @php $isFixed = in_array(strtoupper(trim($g->name)), ['NONE', 'N/A', 'NA', 'N / A'], true); @endphp
                     <tr>
                         <td>{{ ($pageData['grades']->currentPage() - 1) * $pageData['grades']->perPage() + $loop->iteration }}</td>
-                        <td style="font-weight:600; color:var(--primary-light);">{{ $g->name }}</td>
+                        <td style="font-weight:600; color:var(--primary-light);">
+                            {{ $g->name }}
+                            @if($isFixed)
+                                <span style="font-size:0.7rem; background:#374151; color:#9ca3af; padding:2px 6px; border-radius:4px; margin-left:6px; font-weight:500;">System Fixed</span>
+                            @endif
+                        </td>
                         <td>
                             <label class="switch">
                                 <input type="checkbox" {{ $g->is_active ? 'checked' : '' }} onchange="adminToggleGrade({{ $g->id }})">
@@ -49,11 +55,15 @@
                         </td>
                         <td>{{ date('d-m-Y', strtotime($g->created_at)) }}</td>
                         <td>
-                            <div class="action-btns">
-                                <button class="btn-icon edit" onclick="adminEditGrade({{ json_encode($g) }})" title="Edit">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
-                                </button>
-                            </div>
+                            @if($isFixed)
+                                <span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">Protected</span>
+                            @else
+                                <div class="action-btns">
+                                    <button class="btn-icon edit" onclick="adminEditGrade({{ json_encode($g) }})" title="Edit">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+                                    </button>
+                                </div>
+                            @endif
                         </td>
                     </tr>
                     @endforeach

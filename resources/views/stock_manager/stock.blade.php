@@ -97,7 +97,7 @@
           <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:400;">
               <div style="font-weight:normal; color:var(--text-color);">
-                {{ $s->name }}@if($s->grade && $s->grade !== 'NONE')_<strong>{{ $s->grade }}</strong>@endif <span style='font-weight:bold;'>(RAW)</span>
+                {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span style='font-weight:bold;'>(RAW)</span>
               </div>
             </td>
             <td style="font-weight:bold; color:var(--secondary);">{{ number_format($s->quantity, 2) }}</td>
@@ -136,7 +136,7 @@
           <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:400;">
               <div style="font-weight:normal; color:var(--text-color);">
-                {{ $s->name }}@if($s->grade && $s->grade !== 'NONE')_<strong>{{ $s->grade }}</strong>@endif <span style='font-weight:bold;'>(SEMI)</span>
+                {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span style='font-weight:bold;'>(SEMI)</span>
               </div>
             </td>
             <td style="font-weight:bold; color:var(--warning);">{{ number_format($s->quantity, 2) }}</td>
@@ -175,7 +175,7 @@
           <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:400;">
               <div style="font-weight:normal; color:var(--text-color);">
-                {{ $s->name }}@if($s->grade && $s->grade !== 'NONE')_<strong>{{ $s->grade }}</strong>@endif <span>(FINISHED)</span>
+                {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span>(FINISHED)</span>
               </div>
             </td>
             <td style="font-weight:bold; color:var(--secondary);">{{ number_format($s->quantity, 2) }}</td>
@@ -259,7 +259,8 @@ function adminAddStock() {
           let t = stage.toLowerCase() === 'finished' ? 'fg' : stage.toLowerCase();
           if (p.grades && p.grades.length > 0) {
             return p.grades.map(g => {
-                let gradeText = g.name !== 'NONE' ? `_${escapeHtml(g.name)}` : '';
+                let isDef = !g.name || ['NONE', 'N/A', 'NA', 'N / A'].includes(g.name.trim().toUpperCase());
+                let gradeText = !isDef ? `_${escapeHtml(g.name)}` : '';
                 return `<option value="${p.id}|${g.name}" data-unit="${escapeHtml(p.unit || 'kg')}">${escapeHtml(p.name)}${gradeText} (${t})</option>`;
             }).join('');
           } else {
@@ -321,7 +322,8 @@ async function adminAdjustStock(productId, stage, grade, productName = '', curre
     return Swal.fire('View-Only Mode', 'You have View-Only permission. Stock adjustment is disabled.', 'warning');
   }
   const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG' }[stage] || stage;
-  const displayGrade = grade !== 'NONE' ? ` &nbsp;·&nbsp; Grade: <strong style="color:#333;">${grade}</strong>` : '';
+  const isDefGrade = !grade || ['NONE', 'N/A', 'NA', 'N / A'].includes(grade.trim().toUpperCase());
+  const displayGrade = !isDefGrade ? ` &nbsp;·&nbsp; Grade: <strong style="color:#333;">${grade}</strong>` : '';
 
   let allLocations = window._swalAllLocations || [];
   if (!allLocations || allLocations.length === 0) {
@@ -589,7 +591,8 @@ function adminSetLimit(productId, stage, grade, currentLimit, productName = '') 
     return Swal.fire('View-Only Mode', 'You have View-Only permission. Setting alert limit is disabled.', 'warning');
   }
   const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG' }[stage] || stage;
-  const displayGrade = grade !== 'NONE' ? ` &nbsp;·&nbsp; Grade: <strong style="color:#333;">${grade}</strong>` : '';
+  const isDefGrade = !grade || ['NONE', 'N/A', 'NA', 'N / A'].includes(grade.trim().toUpperCase());
+  const displayGrade = !isDefGrade ? ` &nbsp;·&nbsp; Grade: <strong style="color:#333;">${grade}</strong>` : '';
 
   Swal.fire({
     title: 'Set Alert Limit',
@@ -733,7 +736,7 @@ function updateStockTables(stockData) {
         <tr class="${rowClass}" ${titleAttr}>
           <td>
             <div style="font-weight:normal; color:var(--text-color);">
-              ${s.name}${s.grade && s.grade !== 'NONE' ? '_<strong>' + s.grade + '</strong>' : ''}(${s.stage === 'FINISHED' ? 'FG' : s.stage})
+              ${s.name}${(s.grade && !['NONE', 'N/A', 'NA', 'N / A'].includes(s.grade.trim().toUpperCase())) ? '_<strong>' + escapeHtml(s.grade) + '</strong>' : ''}(${s.stage === 'FINISHED' ? 'FG' : s.stage})
             </div>
           </td>
           <td style="font-weight:bold; color:${qtyColor};">${formattedQty}</td>
@@ -1114,7 +1117,8 @@ window.onBsStageChange = function(element) {
     if (p.grades && p.grades.length > 0) {
       p.grades.forEach(g => {
         const val = `${p.id}|${g.name}`;
-        const gradeText = g.name !== 'NONE' ? `_${g.name}` : '';
+        const isDef = !g.name || ['NONE', 'N/A', 'NA', 'N / A'].includes(g.name.trim().toUpperCase());
+        const gradeText = !isDef ? `_${g.name}` : '';
         const text = `${p.name}${gradeText}(${t})`;
         const opt = new Option(text, val, false, false);
         opt.setAttribute('data-unit', p.unit || 'kg');

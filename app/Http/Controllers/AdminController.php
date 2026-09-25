@@ -847,6 +847,9 @@ class AdminController extends Controller
 
         if ($request->grade_id) {
             $grade = \App\Models\Grade::findOrFail($request->grade_id);
+            if (in_array(strtoupper(trim($grade->name)), ['NONE', 'N/A', 'NA', 'N / A'], true)) {
+                return response()->json(['success' => false, 'message' => 'Fixed system grade (N/A) cannot be edited!'], 403);
+            }
             $grade->update(['name' => $request->name]);
             return response()->json(['success' => true, 'message' => 'Grade updated!']);
         }
@@ -858,7 +861,11 @@ class AdminController extends Controller
 
     public function destroyGrade($id)
     {
-        \App\Models\Grade::destroy($id);
+        $grade = \App\Models\Grade::findOrFail($id);
+        if (in_array(strtoupper(trim($grade->name)), ['NONE', 'N/A', 'NA', 'N / A'], true)) {
+            return response()->json(['success' => false, 'message' => 'Fixed system grade (N/A) cannot be deleted!'], 403);
+        }
+        $grade->delete();
         return response()->json(['success' => true, 'message' => 'Grade deleted!']);
     }
 

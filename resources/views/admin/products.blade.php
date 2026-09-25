@@ -10,46 +10,6 @@
     </div>
   </div>
 
-  <!-- Common Product Instant Search Bar -->
-  <div class="card" style="padding:0.85rem 1.2rem; margin-bottom:1.5rem; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:10px;">
-    <div style="display:flex; align-items:center; gap:0.75rem;">
-      <span style="font-size:1.1rem; color:var(--text-muted);">🔍</span>
-      <input type="text" id="global-product-search" placeholder="Search product name across RAW, SEMI, and FINISHED stock types..." oninput="onGlobalProductSearch(this.value)" style="width:100%; padding:0.6rem 0.9rem; border-radius:8px; font-size:0.9rem; border:1px solid var(--border-soft); background:var(--bg-hover); color:var(--text-main); outline:none;">
-    </div>
-  </div>
-
-  <!-- Add Form -->
-  <style>
-    /* Products Master Uniform Column Alignment */
-    .table-container table.product-table {
-      width: 100% !important;
-      table-layout: fixed !important;
-      border-collapse: collapse !important;
-    }
-    .table-container table.product-table th,
-    .table-container table.product-table td {
-      padding: 0.65rem 0.5rem !important;
-      vertical-align: middle !important;
-      box-sizing: border-box !important;
-    }
-    .table-container table.product-table th:nth-child(1),
-    .table-container table.product-table td:nth-child(1) { width: 5% !important; text-align: center !important; }
-    .table-container table.product-table th:nth-child(2),
-    .table-container table.product-table td:nth-child(2) { width: 35% !important; text-align: left !important; }
-    .table-container table.product-table th:nth-child(3),
-    .table-container table.product-table td:nth-child(3) { width: 35% !important; text-align: left !important; }
-    .table-container table.product-table th:nth-child(4),
-    .table-container table.product-table td:nth-child(4) { width: 8% !important; text-align: center !important; }
-    .table-container table.product-table th:nth-child(5),
-    .table-container table.product-table td:nth-child(5) { width: 7% !important; text-align: center !important; }
-    .table-container table.product-table th:nth-child(6),
-    .table-container table.product-table td:nth-child(6) { width: 10% !important; text-align: right !important; }
-
-    .table-container table.product-table td:nth-child(6) .action-btns {
-      justify-content: flex-end !important;
-    }
-  </style>
-
   <div id="prod-form" class="card" style="display:none; margin-bottom:1.5rem; padding:1.2rem;">
     <div class="card-title">Add Product</div>
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
@@ -108,6 +68,14 @@
     </div>
   </div>
 
+  <!-- Common Product Instant Search Bar -->
+  <div class="card" style="padding:0.85rem 1.2rem; margin-bottom:1.5rem; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:10px;">
+    <div style="display:flex; align-items:center; gap:0.75rem;">
+      <span style="font-size:1.1rem; color:var(--text-muted);">🔍</span>
+      <input type="text" id="global-product-search" placeholder="Search product name across RAW, SEMI, and FINISHED stock types..." oninput="onGlobalProductSearch(this.value)" style="width:100%; padding:0.6rem 0.9rem; border-radius:8px; font-size:0.9rem; border:1px solid var(--border-soft); background:var(--bg-hover); color:var(--text-main); outline:none;">
+    </div>
+  </div>
+
   @php 
     $rawProds = $pageData['rawProducts'];
     $semiProds = $pageData['semiProducts'];
@@ -120,7 +88,7 @@
       <div class="card-title" style="color:var(--primary-light); margin:0;">🌿 RAW Materials ({{ $rawProds->count() }})</div>
     </div>
     <div class="table-container">
-      <table class="product-table">
+      <table class="product-table" data-filterable="false">
         <thead>
           <tr>
             <th>#</th>
@@ -137,6 +105,7 @@
             <td style="white-space:normal; min-width:200px;">
                 @if(!empty($p['gradeNames']))
                   @foreach($p['gradeNames'] as $gn)
+                      @if(in_array(strtoupper(trim($gn)), ['NONE', 'N/A', 'NA', 'N / A'], true)) @continue @endif
                       <span style="font-size:0.75rem; background:var(--bg-hover); color:var(--primary-light); padding:4px 8px; border-radius:6px; margin:2px; display:inline-block; border:1px solid var(--primary-light); font-weight:600;">{{ $gn }}</span>
                   @endforeach
                 @endif
@@ -176,7 +145,7 @@
       <div class="card-title" style="color:var(--warning); margin:0;">⏳ SEMI Products ({{ $semiProds->count() }})</div>
     </div>
     <div class="table-container">
-      <table class="product-table">
+      <table class="product-table" data-filterable="false">
         <thead>
           <tr>
             <th>#</th>
@@ -193,6 +162,7 @@
             <td style="white-space:normal; min-width:200px;">
                 @if(!empty($p['gradeNames']))
                   @foreach($p['gradeNames'] as $gn)
+                      @if(in_array(strtoupper(trim($gn)), ['NONE', 'N/A', 'NA', 'N / A'], true)) @continue @endif
                       <span style="font-size:0.75rem; background:var(--bg-hover); color:var(--warning); padding:4px 8px; border-radius:6px; margin:2px; display:inline-block; border:1px solid var(--warning); font-weight:600;">{{ $gn }}</span>
                   @endforeach
                 @endif
@@ -232,7 +202,7 @@
       <div class="card-title" style="color:var(--secondary); margin:0;">📦 FINISHED Products ({{ $finishedProds->count() }})</div>
     </div>
     <div class="table-container">
-      <table class="product-table">
+      <table class="product-table" data-filterable="false">
         <thead>
           <tr>
             <th>#</th>
@@ -249,6 +219,7 @@
             <td style="white-space:normal; min-width:200px;">
                 @if(!empty($p['gradeNames']))
                   @foreach($p['gradeNames'] as $gn)
+                      @if(in_array(strtoupper(trim($gn)), ['NONE', 'N/A', 'NA', 'N / A'], true)) @continue @endif
                       <span style="font-size:0.75rem; background:var(--bg-hover); color:var(--secondary); padding:4px 8px; border-radius:6px; margin:2px; display:inline-block; border:1px solid var(--secondary); font-weight:600;">{{ $gn }}</span>
                   @endforeach
                 @endif
