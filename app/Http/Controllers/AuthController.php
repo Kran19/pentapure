@@ -39,11 +39,19 @@ class AuthController extends Controller
             return back()->with('error', 'User ID is required.')->withInput();
         }
 
-        // Lookup user by username, email, or id
-        $user = User::where('username', strtolower($loginId))
-                    ->orWhere('email', strtolower($loginId))
-                    ->orWhere('id', $loginId)
-                    ->first();
+        // Lookup user by username, email, id, or name safely
+        $hasUsernameCol = \Illuminate\Support\Facades\Schema::hasColumn('users', 'username');
+        if ($hasUsernameCol) {
+            $user = User::where('username', strtolower($loginId))
+                        ->orWhere('email', strtolower($loginId))
+                        ->orWhere('id', $loginId)
+                        ->first();
+        } else {
+            $user = User::where('email', strtolower($loginId))
+                        ->orWhere('id', $loginId)
+                        ->orWhere('name', strtolower($loginId))
+                        ->first();
+        }
 
         if (!$user) {
             return back()->with('error', 'User ID or Password is incorrect.')->withInput();
@@ -84,7 +92,7 @@ class AuthController extends Controller
         session(['auth_user' => [
             'id'          => $user->id,
             'name'        => $user->name,
-            'username'    => $user->username,
+            'username'    => $hasUsernameCol ? ($user->username ?? $user->name) : $user->name,
             'role'        => $user->role,
             'permissions' => $user->permissions,
             'login_slug'  => $login_slug,
