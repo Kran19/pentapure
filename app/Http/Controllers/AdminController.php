@@ -1478,7 +1478,8 @@ class AdminController extends Controller
 
     public function destroyLocationApi($id)
     {
-        Location::destroy($id);
+        $loc = Location::findOrFail($id);
+        $loc->delete();
         return response()->json(['success' => true, 'message' => 'Location deleted successfully!']);
     }
 
