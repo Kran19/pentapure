@@ -208,6 +208,14 @@
     }
   </style>
 
+  <!-- Common Product Instant Search Bar -->
+  <div class="card" style="padding:0.85rem 1.2rem; margin-bottom:1.5rem; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:10px;">
+    <div style="display:flex; align-items:center; gap:0.75rem;">
+      <span style="font-size:1.1rem; color:var(--text-muted);">🔍</span>
+      <input type="text" id="global-product-search" placeholder="Search product name across RAW, SEMI, and FINISHED stock types..." oninput="onGlobalProductSearch(this.value)" style="width:100%; padding:0.6rem 0.9rem; border-radius:8px; font-size:0.9rem; border:1px solid var(--border-soft); background:var(--bg-hover); color:var(--text-main); outline:none;">
+    </div>
+  </div>
+
   @if(!$typeFilter || $typeFilter === 'RAW')
   <!-- RAW Stock -->
   <div class="card" style="padding:1.2rem; margin-bottom:1rem;">
@@ -1091,6 +1099,28 @@ function updateStockTables(stockData) {
     tbody.innerHTML = html;
   }
   updateAllLocationLabels();
+  const searchInput = document.getElementById('global-product-search');
+  if (searchInput && searchInput.value) {
+    onGlobalProductSearch(searchInput.value);
+  }
+}
+
+function onGlobalProductSearch(val) {
+  const q = (val || '').trim().toUpperCase();
+  ['raw-stock-tbody', 'semi-stock-tbody', 'finished-stock-tbody'].forEach(tbodyId => {
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+    const rows = tbody.querySelectorAll('tr');
+    rows.forEach(tr => {
+      if (!tr.children || tr.children.length === 0) return;
+      const text = (tr.children[0]?.textContent || tr.children[0]?.innerText || '').toUpperCase();
+      if (!q || text.indexOf(q) > -1) {
+        tr.style.display = '';
+      } else {
+        tr.style.display = 'none';
+      }
+    });
+  });
 }
 
 function getStoredLocationMappings() {

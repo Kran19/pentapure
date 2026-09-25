@@ -161,12 +161,18 @@ class AuthMiddleware
                 || in_array($moduleKey, $userPermissions)
                 || in_array('can_manage', $userPermissions)
                 || ($seg2 === 'users' && ($user['role'] === 'STOCK_MANAGER' || $user['role'] === 'SUB_ADMIN'))
+                || ($moduleKey === 'admin_stock' && (in_array('stock_manager_stock', $userPermissions) || in_array('view_stock_manager_stock', $userPermissions) || in_array('edit_stock_manager_stock', $userPermissions)))
+                || ($moduleKey === 'stock_manager_stock' && (in_array('admin_stock', $userPermissions) || in_array('view_admin_stock', $userPermissions) || in_array('edit_admin_stock', $userPermissions)))
                 || ($moduleKey === 'stock_manager_products' && (in_array('admin_products', $userPermissions) || in_array('view_admin_products', $userPermissions) || in_array('edit_admin_products', $userPermissions)))
+                || ($moduleKey === 'admin_products' && (in_array('stock_manager_products', $userPermissions) || in_array('view_stock_manager_products', $userPermissions) || in_array('edit_stock_manager_products', $userPermissions)))
                 || ($moduleKey === 'stock_manager_grades' && (in_array('admin_grades', $userPermissions) || in_array('view_admin_grades', $userPermissions) || in_array('edit_admin_grades', $userPermissions)))
+                || ($moduleKey === 'admin_grades' && (in_array('stock_manager_grades', $userPermissions) || in_array('view_stock_manager_grades', $userPermissions) || in_array('edit_stock_manager_grades', $userPermissions)))
                 || ($moduleKey === 'stock_manager_locations' && (in_array('admin_locations', $userPermissions) || in_array('view_admin_locations', $userPermissions) || in_array('edit_admin_locations', $userPermissions)))
+                || ($moduleKey === 'admin_locations' && (in_array('stock_manager_locations', $userPermissions) || in_array('view_stock_manager_locations', $userPermissions) || in_array('edit_stock_manager_locations', $userPermissions)))
                 || ($moduleKey === 'cashier_categories' && (in_array('admin_categories', $userPermissions) || in_array('view_admin_categories', $userPermissions) || in_array('edit_admin_categories', $userPermissions)))
                 || (empty($userPermissions) && (
-                    ($user['role'] === 'STOCK_MANAGER' && str_starts_with($moduleKey, 'stock_manager_')) ||
+                    ($user['role'] === 'STOCK_MANAGER' && (str_starts_with($moduleKey, 'stock_manager_') || str_starts_with($moduleKey, 'admin_'))) ||
+                    ($user['role'] === 'SUB_ADMIN' && (str_starts_with($moduleKey, 'admin_') || str_starts_with($moduleKey, 'sub_admin_') || str_starts_with($moduleKey, 'stock_manager_'))) ||
                     ($user['role'] === 'CASHIER' && str_starts_with($moduleKey, 'cashier_')) ||
                     ($user['role'] === 'SALES' && str_starts_with($moduleKey, 'sales_')) ||
                     ($user['role'] === 'DISPATCH' && str_starts_with($moduleKey, 'dispatch_')) ||
@@ -233,12 +239,18 @@ class AuthMiddleware
                 || in_array('edit_module_' . $moduleKey, $userPermissions)
                 || in_array('edit_' . $shortKey, $userPermissions)
                 || ($seg2 === 'users' && ($user['role'] === 'STOCK_MANAGER' || $user['role'] === 'SUB_ADMIN'))
+                || ($moduleKey === 'admin_stock' && (in_array('edit_stock_manager_stock', $userPermissions) || in_array('stock_manager_stock', $userPermissions)))
+                || ($moduleKey === 'stock_manager_stock' && (in_array('edit_admin_stock', $userPermissions) || in_array('admin_stock', $userPermissions)))
                 || ($moduleKey === 'stock_manager_products' && (in_array('edit_admin_products', $userPermissions) || in_array('admin_products', $userPermissions)))
+                || ($moduleKey === 'admin_products' && (in_array('edit_stock_manager_products', $userPermissions) || in_array('stock_manager_products', $userPermissions)))
                 || ($moduleKey === 'stock_manager_grades' && (in_array('edit_admin_grades', $userPermissions) || in_array('admin_grades', $userPermissions)))
+                || ($moduleKey === 'admin_grades' && (in_array('edit_stock_manager_grades', $userPermissions) || in_array('stock_manager_grades', $userPermissions)))
                 || ($moduleKey === 'stock_manager_locations' && (in_array('edit_admin_locations', $userPermissions) || in_array('admin_locations', $userPermissions)))
+                || ($moduleKey === 'admin_locations' && (in_array('edit_stock_manager_locations', $userPermissions) || in_array('admin_locations', $userPermissions)))
                 || ($moduleKey === 'cashier_categories' && (in_array('edit_admin_categories', $userPermissions) || in_array('admin_categories', $userPermissions)))
                 || (empty($userPermissions) && (
-                    ($user['role'] === 'STOCK_MANAGER' && str_starts_with($moduleKey, 'stock_manager_')) ||
+                    ($user['role'] === 'STOCK_MANAGER' && (str_starts_with($moduleKey, 'stock_manager_') || str_starts_with($moduleKey, 'admin_'))) ||
+                    ($user['role'] === 'SUB_ADMIN' && (str_starts_with($moduleKey, 'admin_') || str_starts_with($moduleKey, 'sub_admin_') || str_starts_with($moduleKey, 'stock_manager_'))) ||
                     ($user['role'] === 'CASHIER' && str_starts_with($moduleKey, 'cashier_')) ||
                     ($user['role'] === 'SALES' && str_starts_with($moduleKey, 'sales_')) ||
                     ($user['role'] === 'DISPATCH' && str_starts_with($moduleKey, 'dispatch_')) ||
