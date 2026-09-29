@@ -1407,19 +1407,19 @@ class AdminController extends Controller
 
     public function cashierOverview(Request $request)
     {
-        $query = \App\Models\Transaction::with(['user', 'bills'])->orderByDesc('created_at');
+        $baseQuery = \App\Models\Transaction::with(['user', 'bills'])->orderByDesc('created_at');
 
         if ($request->filled('cashier_id')) {
-            $query->where('user_id', $request->cashier_id);
+            $baseQuery->where('user_id', $request->cashier_id);
         }
         if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
+            $baseQuery->whereDate('created_at', '>=', $request->date_from);
         }
         if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
+            $baseQuery->whereDate('created_at', '<=', $request->date_to);
         }
 
-        $txs = $query->get();
+        $allTxs = $baseQuery->get();
 
         $cashiers = User::where('role', 'CASHIER')
             ->orWhereIn('id', \App\Models\Transaction::select('user_id')->distinct())
@@ -1427,14 +1427,14 @@ class AdminController extends Controller
             ->get();
         
         $summary = [
-            'totalIn'  => $txs->where('type', 'IN')->sum('amount'),
-            'totalOut' => $txs->where('type', 'OUT')->sum('amount'),
-            'balance'  => $txs->where('type', 'IN')->sum('amount') - $txs->where('type', 'OUT')->sum('amount'),
-            'byCategory' => $txs->groupBy('category')->map(fn($group) => [
+            'totalIn'  => $allTxs->where('type', 'IN')->sum('amount'),
+            'totalOut' => $allTxs->where('type', 'OUT')->sum('amount'),
+            'balance'  => $allTxs->where('type', 'IN')->sum('amount') - $allTxs->where('type', 'OUT')->sum('amount'),
+            'byCategory' => $allTxs->groupBy('category')->map(fn($group) => [
                 'in' => $group->where('type', 'IN')->sum('amount'),
                 'out' => $group->where('type', 'OUT')->sum('amount'),
             ]),
-            'byCashier' => $txs->groupBy('user_id')->map(function($group) {
+            'byCashier' => $allTxs->groupBy('user_id')->map(function($group) {
                 $user = $group->first()->user;
                 return [
                     'name' => $user ? $user->name : 'Unknown',
@@ -1446,7 +1446,7 @@ class AdminController extends Controller
         ];
 
         // Running balance chronologically (oldest to newest)
-        $chronoTxs = $txs->sort(function($a, $b) {
+        $chronoTxs = $allTxs->sort(function($a, $b) {
             $tA = strtotime($a->date ?: $a->created_at);
             $tB = strtotime($b->date ?: $b->created_at);
             if ($tA === $tB) {
@@ -1464,6 +1464,14 @@ class AdminController extends Controller
                 $runningBal -= (float)$t->amount;
             }
             $balMap[$t->id] = $runningBal;
+        }
+
+        // Apply type/status filter if specified
+        $statusFilter = strtoupper(trim((string)($request->type ?: $request->status)));
+        if ($statusFilter && in_array($statusFilter, ['IN', 'OUT'])) {
+            $txs = $allTxs->where('type', $statusFilter);
+        } else {
+            $txs = $allTxs;
         }
 
         // Sort descending (newest first) for ledger display
@@ -1489,29 +1497,29 @@ class AdminController extends Controller
 
     public function overviewPdf(Request $request)
     {
-        $query = \App\Models\Transaction::with('user')->orderByDesc('created_at');
+        $baseQuery = \App\Models\Transaction::with('user')->orderByDesc('created_at');
 
         if ($request->filled('cashier_id')) {
-            $query->where('user_id', $request->cashier_id);
+            $baseQuery->where('user_id', $request->cashier_id);
         }
         if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
+            $baseQuery->whereDate('created_at', '>=', $request->date_from);
         }
         if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
+            $baseQuery->whereDate('created_at', '<=', $request->date_to);
         }
 
-        $txs = $query->get();
+        $allTxs = $baseQuery->get();
         
         $summary = [
-            'totalIn'  => $txs->where('type', 'IN')->sum('amount'),
-            'totalOut' => $txs->where('type', 'OUT')->sum('amount'),
-            'balance'  => $txs->where('type', 'IN')->sum('amount') - $txs->where('type', 'OUT')->sum('amount'),
-            'byCategory' => $txs->groupBy('category')->map(fn($group) => [
+            'totalIn'  => $allTxs->where('type', 'IN')->sum('amount'),
+            'totalOut' => $allTxs->where('type', 'OUT')->sum('amount'),
+            'balance'  => $allTxs->where('type', 'IN')->sum('amount') - $allTxs->where('type', 'OUT')->sum('amount'),
+            'byCategory' => $allTxs->groupBy('category')->map(fn($group) => [
                 'in' => $group->where('type', 'IN')->sum('amount'),
                 'out' => $group->where('type', 'OUT')->sum('amount'),
             ]),
-            'byCashier' => $txs->groupBy('user_id')->map(function($group) {
+            'byCashier' => $allTxs->groupBy('user_id')->map(function($group) {
                 $user = $group->first()->user;
                 return [
                     'name' => $user ? $user->name : 'Unknown',
@@ -1521,6 +1529,13 @@ class AdminController extends Controller
                 ];
             })->values(),
         ];
+
+        $statusFilter = strtoupper(trim((string)($request->type ?: $request->status)));
+        if ($statusFilter && in_array($statusFilter, ['IN', 'OUT'])) {
+            $txs = $allTxs->where('type', $statusFilter)->values();
+        } else {
+            $txs = $allTxs;
+        }
 
         $pageData = [
             'transactions' => $txs,

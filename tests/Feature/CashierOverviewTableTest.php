@@ -63,5 +63,74 @@ class CashierOverviewTableTest extends TestCase
         $response->assertSee('+₹1,000.00');
         $response->assertSee('-₹200.00');
         $response->assertSee('₹800.00');
+
+        // Verify status filter dropdown is present
+        $response->assertSee('STATUS:');
+        $response->assertSee('ALL (IN & OUT)', false);
+        $response->assertSee('IN (CASH IN)');
+        $response->assertSee('OUT (CASH OUT)');
+    }
+
+    public function test_cashier_overview_status_filtering(): void
+    {
+        $admin = User::factory()->create(['role' => 'ADMIN', 'status' => 'ACTIVE']);
+        $cashier = User::factory()->create(['role' => 'CASHIER', 'status' => 'ACTIVE', 'name' => 'John Cashier']);
+
+        Transaction::create([
+            'user_id' => $cashier->id,
+            'type' => 'IN',
+            'amount' => 1000.00,
+            'category' => 'sales',
+            'note' => 'Income Transaction 123',
+            'created_at' => now()->subHours(2),
+        ]);
+
+        Transaction::create([
+            'user_id' => $cashier->id,
+            'type' => 'OUT',
+            'amount' => 200.00,
+            'category' => 'edfd',
+            'note' => 'Expense Transaction 456',
+            'created_at' => now()->subHour(),
+        ]);
+
+        $session = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
+
+        // Filter by IN
+        $responseIn = $this->withSession($session)->get('/admin/cashier-overview?type=IN');
+        $responseIn->assertStatus(200);
+        $responseIn->assertSee('Income Transaction 123');
+        $responseIn->assertDontSee('Expense Transaction 456');
+        $responseIn->assertSee('✕ Clear Filter');
+
+        // Filter by OUT
+        $responseOut = $this->withSession($session)->get('/admin/cashier-overview?type=OUT');
+        $responseOut->assertStatus(200);
+        $responseOut->assertSee('Expense Transaction 456');
+        $responseOut->assertDontSee('Income Transaction 123');
+        $responseOut->assertSee('✕ Clear Filter');
+
+        // Filter by ALL (or empty)
+        $responseAll = $this->withSession($session)->get('/admin/cashier-overview?type=');
+        $responseAll->assertStatus(200);
+        $responseAll->assertSee('Income Transaction 123');
+        $responseAll->assertSee('Expense Transaction 456');
+
+        // Combined filter: cashier_id + type
+        $cashier2 = User::factory()->create(['role' => 'CASHIER', 'status' => 'ACTIVE', 'name' => 'Other Cashier']);
+        Transaction::create([
+            'user_id' => $cashier2->id,
+            'type' => 'IN',
+            'amount' => 500.00,
+            'category' => 'sales',
+            'note' => 'Other Cashier Income',
+            'created_at' => now()->subMinutes(10),
+        ]);
+
+        $responseCombined = $this->withSession($session)->get('/admin/cashier-overview?cashier_id=' . $cashier->id . '&type=IN');
+        $responseCombined->assertStatus(200);
+        $responseCombined->assertSee('Income Transaction 123');
+        $responseCombined->assertDontSee('Expense Transaction 456');
+        $responseCombined->assertDontSee('Other Cashier Income');
     }
 }
