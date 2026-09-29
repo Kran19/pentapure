@@ -406,7 +406,7 @@ class AdminController extends Controller
                 IFNULL(stock_limits.alert_limit, products.threshold) as alert_limit,
                 SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
             ")
-            ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) >= 0")
             ->orderBy('stocks.stage')
             ->orderBy('products.sort_order')
             ->get();
@@ -431,6 +431,7 @@ class AdminController extends Controller
                 'transaction_type' => $log->transaction_type,
                 'notes' => $log->notes,
                 'user_name' => $log->user?->name ?? 'Unknown',
+                'date' => $log->date ? \Carbon\Carbon::parse($log->date)->format('d M Y, h:i A') : optional($log->created_at)->format('d M Y, h:i A'),
                 'created_at' => optional($log->created_at)->format('d M Y, h:i A'),
             ])->values());
 
@@ -478,7 +479,7 @@ class AdminController extends Controller
             ->whereIn('stocks.stage', $stages);
 
         if ($date) {
-            $stockQuery->where('stocks.created_at', '<=', $date . ' 23:59:59');
+            $stockQuery->whereRaw('COALESCE(stocks.date, stocks.created_at) <= ?', [$date . ' 23:59:59']);
         }
 
         $stockData = $stockQuery->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.rate', 'products.sort_order')
@@ -832,7 +833,10 @@ class AdminController extends Controller
 
     public function grades()
     {
-        $grades = \App\Models\Grade::orderByRaw("CASE WHEN UPPER(name) IN ('NONE', 'N/A') THEN 0 ELSE 1 END")->orderBy('id')->paginate(50);
+        $grades = \App\Models\Grade::withCount('products')
+            ->orderByRaw("CASE WHEN UPPER(name) IN ('NONE', 'N/A') THEN 0 ELSE 1 END")
+            ->orderBy('id')
+            ->paginate(50);
         return view('admin.grades', ['pageData' => ['grades' => $grades]]);
     }
 
@@ -861,9 +865,15 @@ class AdminController extends Controller
 
     public function destroyGrade($id)
     {
-        $grade = \App\Models\Grade::findOrFail($id);
+        $grade = \App\Models\Grade::withCount('products')->findOrFail($id);
         if (in_array(strtoupper(trim($grade->name)), ['NONE', 'N/A', 'NA', 'N / A'], true)) {
             return response()->json(['success' => false, 'message' => 'Fixed system grade (N/A) cannot be deleted!'], 403);
+        }
+        if ($grade->products_count > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => "Cannot delete grade: it is assigned to {$grade->products_count} product" . ($grade->products_count > 1 ? 's' : '') . "!"
+            ], 422);
         }
         $grade->delete();
         return response()->json(['success' => true, 'message' => 'Grade deleted!']);
@@ -920,10 +930,21 @@ class AdminController extends Controller
 
     public function adjustStock(Request $request)
     {
+        if ($request->input('stage') === 'FG') {
+            $request->merge(['stage' => 'FINISHED']);
+        }
+        if ($request->input('stage') === 'ALL' && $request->filled('product_id')) {
+            $prod = Product::find($request->product_id);
+            if ($prod) {
+                $request->merge(['stage' => $prod->type]);
+            }
+        }
+
         $request->validate([
             'product_id'      => 'required|exists:products,id',
-            'stage'           => 'required|in:RAW,SEMI,FINISHED',
+            'stage'           => 'required|in:RAW,SEMI,FINISHED,FG',
             'grade'           => 'required',
+            'date'            => 'nullable|date',
             'quantity'        => 'nullable|numeric|min:0',
             'adjust_type'     => 'nullable|in:set,add,subtract',
             'reason'          => 'nullable|string|max:255',
@@ -941,9 +962,10 @@ class AdminController extends Controller
             );
         }
 
-        $type   = $request->input('adjust_type', 'add');
-        $reason = trim($request->input('reason', ''));
-        $userId = session('auth_user')['id'] ?? auth()->id();
+        $type      = $request->input('adjust_type', 'add');
+        $reason    = trim($request->input('reason', ''));
+        $userId    = session('auth_user')['id'] ?? auth()->id();
+        $stockDate = $request->filled('date') ? \Carbon\Carbon::parse($request->date)->setTime(now()->hour, now()->minute, now()->second) : now();
 
         // Handle multiple location splits if provided
         $splits = $request->input('location_splits');
@@ -966,37 +988,36 @@ class AdminController extends Controller
                         ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
                         ->value('net') ?? 0);
 
+                    $createStockTxn = function($txnQty, $txnType, $summary) use ($request, $userId, $locId, $stockDate, $note) {
+                        $stock = new Stock([
+                            'product_id'       => $request->product_id,
+                            'user_id'          => $userId,
+                            'stage'            => $request->stage,
+                            'grade'            => $request->grade,
+                            'location_id'      => $locId,
+                            'quantity'         => $txnQty,
+                            'transaction_type' => $txnType,
+                            'date'             => $stockDate,
+                            'notes'            => "{$note} [{$summary}]",
+                        ]);
+                        $stock->created_at = $stockDate;
+                        $stock->updated_at = $stockDate;
+                        $stock->save();
+                    };
+
                     if ($type === 'set') {
                         $diff = $splitQty - $locAvail;
                         if ($diff != 0) {
                             $txnQty  = abs($diff);
                             $txnType = $diff > 0 ? 'IN' : 'OUT';
                             $summary = "Set '{$locName}' to {$splitQty} kg (was {$locAvail} kg)";
-                            Stock::create([
-                                'product_id'       => $request->product_id,
-                                'user_id'          => $userId,
-                                'stage'            => $request->stage,
-                                'grade'            => $request->grade,
-                                'location_id'      => $locId,
-                                'quantity'         => $txnQty,
-                                'transaction_type' => $txnType,
-                                'notes'            => "{$note} [{$summary}]",
-                            ]);
+                            $createStockTxn($txnQty, $txnType, $summary);
                             $summaries[] = $summary;
                         }
                     } elseif ($type === 'add') {
                         if ($splitQty > 0) {
                             $summary = "Added {$splitQty} kg to '{$locName}'";
-                            Stock::create([
-                                'product_id'       => $request->product_id,
-                                'user_id'          => $userId,
-                                'stage'            => $request->stage,
-                                'grade'            => $request->grade,
-                                'location_id'      => $locId,
-                                'quantity'         => $splitQty,
-                                'transaction_type' => 'IN',
-                                'notes'            => "{$note} [{$summary}]",
-                            ]);
+                            $createStockTxn($splitQty, 'IN', $summary);
                             $summaries[] = $summary;
                         }
                     } else { // subtract
@@ -1005,16 +1026,7 @@ class AdminController extends Controller
                                 throw new \Exception("Cannot subtract {$splitQty} kg from location '{$locName}' — only {$locAvail} kg available.");
                             }
                             $summary = "Subtracted {$splitQty} kg from '{$locName}'";
-                            Stock::create([
-                                'product_id'       => $request->product_id,
-                                'user_id'          => $userId,
-                                'stage'            => $request->stage,
-                                'grade'            => $request->grade,
-                                'location_id'      => $locId,
-                                'quantity'         => $splitQty,
-                                'transaction_type' => 'OUT',
-                                'notes'            => "{$note} [{$summary}]",
-                            ]);
+                            $createStockTxn($splitQty, 'OUT', $summary);
                             $summaries[] = $summary;
                         }
                     }
@@ -1089,32 +1101,37 @@ class AdminController extends Controller
             'grade'      => 'required',
         ]);
 
-        $userId = session('auth_user')['id'] ?? auth()->id();
+        $product = Product::findOrFail($request->product_id);
 
-        DB::transaction(function() use ($request, $userId) {
-            $locs = Location::all();
-            foreach ($locs as $loc) {
-                $locAvail = (float) (DB::table('stocks')
-                    ->where('product_id', $request->product_id)
-                    ->where('stage', $request->stage)
-                    ->where('grade', $request->grade)
-                    ->where('location_id', $loc->id)
-                    ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
-                    ->value('net') ?? 0);
+        // Check current net quantity across all locations
+        $currentQty = (float) (DB::table('stocks')
+            ->where('product_id', $request->product_id)
+            ->where('stage', $request->stage)
+            ->where('grade', $request->grade)
+            ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
+            ->value('net') ?? 0);
 
-                if ($locAvail > 0) {
-                    Stock::create([
-                        'product_id'       => $request->product_id,
-                        'user_id'          => $userId,
-                        'stage'            => $request->stage,
-                        'grade'            => $request->grade,
-                        'location_id'      => $loc->id,
-                        'quantity'         => $locAvail,
-                        'transaction_type' => 'OUT',
-                        'notes'            => "Stock entry cleared/deleted by Admin",
-                    ]);
-                }
-            }
+        if ($currentQty > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => "Cannot delete stock entry: current quantity is " . number_format($currentQty, 2) . " {$product->unit}. Stock quantity must be 0 to delete."
+            ], 422);
+        }
+
+        DB::transaction(function() use ($request) {
+            // Delete all stock logs for this specific product, stage, and grade
+            DB::table('stocks')
+                ->where('product_id', $request->product_id)
+                ->where('stage', $request->stage)
+                ->where('grade', $request->grade)
+                ->delete();
+
+            // Also clean up any custom stock_limits entry for this product, stage, grade
+            DB::table('stock_limits')
+                ->where('product_id', $request->product_id)
+                ->where('stage', $request->stage)
+                ->where('grade', $request->grade)
+                ->delete();
         });
 
         return response()->json(['success' => true, 'message' => 'Stock entry deleted successfully.']);
@@ -1122,17 +1139,37 @@ class AdminController extends Controller
 
     public function bulkAddStock(Request $request)
     {
+        if ($request->has('items') && is_array($request->items)) {
+            $items = $request->items;
+            foreach ($items as &$item) {
+                if (isset($item['stage'])) {
+                    if ($item['stage'] === 'FG') {
+                        $item['stage'] = 'FINISHED';
+                    } elseif ($item['stage'] === 'ALL' && !empty($item['product_id'])) {
+                        $prod = Product::find($item['product_id']);
+                        if ($prod) {
+                            $item['stage'] = $prod->type;
+                        }
+                    }
+                }
+            }
+            unset($item);
+            $request->merge(['items' => $items]);
+        }
+
         $request->validate([
-            'items' => 'required|array',
+            'date'               => 'nullable|date',
+            'items'              => 'required|array',
             'items.*.product_id' => 'required|exists:products,id',
-            'items.*.stage' => 'required|in:RAW,SEMI,FINISHED',
-            'items.*.grade' => 'required',
-            'items.*.alert_limit' => 'nullable|numeric|min:0',
-            'items.*.rate' => 'nullable|numeric|min:0',
-            'items.*.locations' => 'required|array',
+            'items.*.stage'      => 'required|in:RAW,SEMI,FINISHED,FG',
+            'items.*.grade'      => 'required',
+            'items.*.date'       => 'nullable|date',
+            'items.*.alert_limit'=> 'nullable|numeric|min:0',
+            'items.*.rate'       => 'nullable|numeric|min:0',
+            'items.*.locations'  => 'required|array',
             'items.*.locations.*.name' => 'required|string',
-            'items.*.locations.*.qty' => 'required|numeric|min:0.01',
-            'items.*.note' => 'nullable|string|max:255',
+            'items.*.locations.*.qty'  => 'required|numeric|min:0.01',
+            'items.*.note'       => 'nullable|string|max:255',
         ]);
 
         DB::transaction(function () use ($request) {
@@ -1142,6 +1179,9 @@ class AdminController extends Controller
                 $grade = $item['grade'];
                 $noteText = 'Bulk stock entry' . (!empty($item['note']) ? " — {$item['note']}" : '');
                 $userId = session('auth_user')['id'] ?? auth()->id();
+
+                $entryDate = !empty($item['date']) ? $item['date'] : ($request->input('date') ?: now()->toDateString());
+                $stockDate = \Carbon\Carbon::parse($entryDate)->setTime(now()->hour, now()->minute, now()->second);
 
                 if (isset($item['alert_limit'])) {
                     \App\Models\StockLimit::updateOrCreate(
@@ -1161,7 +1201,7 @@ class AdminController extends Controller
                     $locationId = Location::firstOrCreate(['name' => $loc['name']])->id;
                     $qty = (float) $loc['qty'];
 
-                    Stock::create([
+                    $stock = new Stock([
                         'product_id'       => $productId,
                         'user_id'          => $userId,
                         'stage'            => $stage,
@@ -1169,8 +1209,12 @@ class AdminController extends Controller
                         'location_id'      => $locationId,
                         'quantity'         => $qty,
                         'transaction_type' => 'IN',
+                        'date'             => $stockDate,
                         'notes'            => "{$noteText} [Added {$qty} kg]",
                     ]);
+                    $stock->created_at = $stockDate;
+                    $stock->updated_at = $stockDate;
+                    $stock->save();
                 }
             }
         });
@@ -1185,27 +1229,38 @@ class AdminController extends Controller
             ->addSelect(['dispatch_logs_count' => DispatchLog::selectRaw('COUNT(*)')
                 ->whereColumn('order_id', 'orders.id')
             ])
-            ->orderByDesc('created_at');
+            ->orderByRaw('COALESCE(orders.date, orders.created_at) DESC')
+            ->orderByDesc('orders.id');
 
-        $status = $request->status;
-        if ($status) {
+        $status = strtoupper(trim((string)$request->status));
+        if ($status && $status !== 'ALL') {
             if ($status === 'PENDING') {
-                $query->where('dispatch_status', 'PENDING');
+                $query->where(function($q) {
+                    $q->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED'])
+                      ->orWhereNull('dispatch_status');
+                });
+            } elseif ($status === 'PARTIAL') {
+                $query->where(function($q) {
+                    $q->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED'])
+                      ->orWhere(function($sub) {
+                          $sub->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED'])
+                              ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) > 1');
+                      });
+                });
             } elseif ($status === 'PARTIAL_PENDING') {
-                $query->where('dispatch_status', 'PARTIAL');
+                $query->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING']);
             } elseif ($status === 'PARTIAL_DISPATCH') {
-                $query->where('dispatch_status', 'DONE')
+                $query->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED'])
                       ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) > 1');
-            } elseif ($status === 'FULLY_DISPATCH') {
-                $query->where('dispatch_status', 'DONE')
-                      ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) <= 1');
+            } elseif ($status === 'FULLY_DISPATCH' || $status === 'FULLY_DISPATCHED') {
+                $query->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED']);
             }
         }
         if ($request->date_from) {
-            $query->whereDate('created_at', '>=', $request->date_from);
+            $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '>=', $request->date_from);
         }
         if ($request->date_to) {
-            $query->whereDate('created_at', '<=', $request->date_to);
+            $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '<=', $request->date_to);
         }
 
         $orders = $query->paginate(20)->withQueryString();
@@ -1229,27 +1284,38 @@ class AdminController extends Controller
             ->addSelect(['dispatch_logs_count' => DispatchLog::selectRaw('COUNT(*)')
                 ->whereColumn('order_id', 'orders.id')
             ])
-            ->orderByDesc('created_at');
+            ->orderByRaw('COALESCE(orders.date, orders.created_at) DESC')
+            ->orderByDesc('orders.id');
 
-        $status = $request->status;
-        if ($status) {
+        $status = strtoupper(trim((string)$request->status));
+        if ($status && $status !== 'ALL') {
             if ($status === 'PENDING') {
-                $query->where('dispatch_status', 'PENDING');
+                $query->where(function($q) {
+                    $q->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED'])
+                      ->orWhereNull('dispatch_status');
+                });
+            } elseif ($status === 'PARTIAL') {
+                $query->where(function($q) {
+                    $q->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED'])
+                      ->orWhere(function($sub) {
+                          $sub->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED'])
+                              ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) > 1');
+                      });
+                });
             } elseif ($status === 'PARTIAL_PENDING') {
-                $query->where('dispatch_status', 'PARTIAL');
+                $query->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING']);
             } elseif ($status === 'PARTIAL_DISPATCH') {
-                $query->where('dispatch_status', 'DONE')
+                $query->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED'])
                       ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) > 1');
-            } elseif ($status === 'FULLY_DISPATCH') {
-                $query->where('dispatch_status', 'DONE')
-                      ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) <= 1');
+            } elseif ($status === 'FULLY_DISPATCH' || $status === 'FULLY_DISPATCHED') {
+                $query->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED']);
             }
         }
         if ($request->date_from) {
-            $query->whereDate('created_at', '>=', $request->date_from);
+            $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '>=', $request->date_from);
         }
         if ($request->date_to) {
-            $query->whereDate('created_at', '<=', $request->date_to);
+            $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '<=', $request->date_to);
         }
 
         $orders = $query->get();
@@ -1632,7 +1698,7 @@ class AdminController extends Controller
             ->where('product_id', $productId)
             ->where('stage', strtoupper($stage))
             ->where('grade', $grade)
-            ->orderBy('created_at', 'asc')
+            ->orderByRaw('COALESCE(date, created_at) asc')
             ->orderBy('id', 'asc')
             ->get();
             

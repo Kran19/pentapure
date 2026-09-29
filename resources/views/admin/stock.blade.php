@@ -13,21 +13,33 @@
 
   <!-- In-Page Add / Adjust Stock Card (Hidden by Default) -->
   <div id="stock-form-card" class="card white-orange-card" style="display:none; margin-bottom:1.5rem; padding:1.2rem;">
-    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
-      <span>📦 Add Stock Entry</span>
+    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem;">
+      <div style="display:flex; align-items:center; gap:1.2rem; flex-wrap:wrap;">
+        <span style="font-size:1.15rem; font-weight:700;">📦 Add Stock Entry</span>
+        <div style="display:inline-flex; align-items:center; gap:0.4rem; background:#f9fafb; padding:0.25rem 0.65rem; border-radius:6px; border:1px solid #e5e7eb;">
+          <label for="stock-entry-date" style="font-size:0.8rem; font-weight:600; color:#4b5563; margin:0;">📅 Date *</label>
+          <input type="date" id="stock-entry-date" onchange="onStockEntryDateChange(this.value)" value="{{ date('Y-m-d') }}" style="height:1.85rem; padding:0.1rem 0.5rem; font-size:0.82rem; font-weight:600; border-radius:6px; border:1px solid #d1d5db; background:#fff; color:#111; cursor:pointer;">
+        </div>
+      </div>
       <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('stock-form-card').style.display='none'" style="width:auto; padding:0.3rem 0.8rem;">✕ Close</button>
     </div>
 
     <div id="stock-rows-wrapper">
         <div class="bulk-stock-row" id="single-stock-row" style="padding: 1rem; margin-bottom: 1rem; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;">
-        <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+        <div style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:flex-end;">
             
-            <div class="form-group" style="margin:0; flex: 1 1 90px;">
+            <div class="form-group" style="margin:0; flex: 1 1 115px;">
+                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">📅 Date *</label>
+                <input type="date" class="form-control form-control-sm bs-date" value="{{ date('Y-m-d') }}" style="height:1.8rem; padding:0.1rem 0.4rem; font-size:0.8rem; font-weight:500;">
+            </div>
+
+            <div class="form-group" style="margin:0; flex: 1 1 85px;">
                 <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Stock Type *</label>
                 <select class="form-control form-control-sm bs-stage" onchange="onBsStageChange(this)" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem;">
+                    <option value="ALL">ALL</option>
                     <option value="RAW" selected>RAW</option>
                     <option value="SEMI">SEMI</option>
-                    <option value="FINISHED">FINISHED</option>
+                    <option value="FINISHED">FG</option>
                 </select>
             </div>
             
@@ -206,13 +218,105 @@
     .table-container table.stock-table td:nth-child(7) > div {
       justify-content: flex-end !important;
     }
+
+    .btn-icon:disabled,
+    .btn-icon.is-disabled {
+      opacity: 0.35 !important;
+      cursor: not-allowed !important;
+      background: rgba(255, 255, 255, 0.03) !important;
+      border-color: rgba(255, 255, 255, 0.08) !important;
+      color: #6b7280 !important;
+      pointer-events: auto !important;
+    }
+    .btn-icon:disabled:hover,
+    .btn-icon.is-disabled:hover {
+      background: rgba(255, 255, 255, 0.03) !important;
+      border-color: rgba(255, 255, 255, 0.08) !important;
+      color: #6b7280 !important;
+    }
+
+    tbody tr.low-stock-row button.btn-icon:disabled,
+    tbody tr.low-stock-row button.btn-icon.is-disabled {
+      opacity: 0.45 !important;
+      color: rgba(255, 255, 255, 0.5) !important;
+      background: rgba(0, 0, 0, 0.15) !important;
+      cursor: not-allowed !important;
+    }
+    tbody tr.low-stock-row button.btn-icon:disabled svg,
+    tbody tr.low-stock-row button.btn-icon.is-disabled svg {
+      stroke: rgba(255, 255, 255, 0.5) !important;
+    }
+
+    /* Select2 Smart Search Custom Styling */
+    .select2-container {
+      width: 100% !important;
+    }
+    .select2-container .select2-selection--single {
+      background-color: #f9fafb !important;
+      border: 1px solid #d1d5db !important;
+      height: 1.8rem !important;
+      border-radius: 6px !important;
+      display: flex !important;
+      align-items: center !important;
+    }
+    .select2-container .select2-selection--single .select2-selection__rendered {
+      color: #333333 !important;
+      font-weight: 600 !important;
+      font-size: 0.8rem !important;
+      line-height: 1.8rem !important;
+      padding-left: 0.5rem !important;
+      padding-right: 1.5rem !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__placeholder {
+      color: #9ca3af !important;
+      font-weight: 500 !important;
+      font-size: 0.8rem !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+      height: 1.8rem !important;
+      right: 6px !important;
+    }
+    .select2-dropdown {
+      border: 1px solid #d1d5db !important;
+      border-radius: 8px !important;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+      z-index: 99999 !important;
+      background: #ffffff !important;
+    }
+    .select2-container--default .select2-search--dropdown {
+      padding: 6px !important;
+      background: #f9fafb !important;
+      border-bottom: 1px solid #e5e7eb !important;
+    }
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+      border: 1px solid #d1d5db !important;
+      border-radius: 6px !important;
+      padding: 0.4rem 0.6rem !important;
+      font-size: 0.82rem !important;
+      outline: none !important;
+      background: #ffffff !important;
+      color: #111827 !important;
+    }
+    .select2-container--default .select2-results__option {
+      font-size: 0.82rem !important;
+      padding: 0.45rem 0.65rem !important;
+      color: #374151 !important;
+    }
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+      background-color: #f59e0b !important;
+      color: #ffffff !important;
+    }
+    .select2-container--default .select2-results__option[aria-selected="true"] {
+      background-color: #fef3c7 !important;
+      color: #92400e !important;
+    }
   </style>
 
   <!-- Common Product Instant Search Bar -->
   <div class="card" style="padding:0.85rem 1.2rem; margin-bottom:1.5rem; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:10px;">
     <div style="display:flex; align-items:center; gap:0.75rem;">
       <span style="font-size:1.1rem; color:var(--text-muted);">🔍</span>
-      <input type="text" id="global-product-search" placeholder="Search product name across RAW, SEMI, and FINISHED stock types..." oninput="onGlobalProductSearch(this.value)" style="width:100%; padding:0.6rem 0.9rem; border-radius:8px; font-size:0.9rem; border:1px solid var(--border-soft); background:var(--bg-hover); color:var(--text-main); outline:none;">
+      <input type="text" id="global-product-search" placeholder="Search product name across RAW, SEMI, and FG stock types..." oninput="onGlobalProductSearch(this.value)" style="width:100%; padding:0.6rem 0.9rem; border-radius:8px; font-size:0.9rem; border:1px solid var(--border-soft); background:var(--bg-hover); color:var(--text-main); outline:none;">
     </div>
   </div>
 
@@ -229,9 +333,10 @@
         <tbody id="raw-stock-tbody">
 @foreach($rawItems as $s)
           @php 
+            $hasQty = (float) $s->quantity > 0;
             $isLow = $s->alert_limit > 0 && $s->quantity <= $s->alert_limit;
           @endphp
-          <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
+          <tr @if($isLow && $hasQty) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:400;">
               <div style="font-weight:normal; color:var(--text-color);">
                 {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span style='font-weight:bold;'>(RAW)</span>
@@ -257,9 +362,15 @@
                 <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }})" title="Adjust Stock">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
-                <button class="btn-icon delete" onclick="adminDeleteStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}')" title="Delete Stock Entry">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                </button>
+                @if($hasQty)
+                  <button class="btn-icon delete is-disabled" disabled style="opacity:0.35; cursor:not-allowed;" title="Cannot delete: Stock has quantity ({{ number_format($s->quantity, 2) }} {{ $s->unit }}). Quantity must be 0 to delete.">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  </button>
+                @else
+                  <button class="btn-icon delete" onclick="adminDeleteStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}')" title="Delete Stock Entry">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  </button>
+                @endif
               </div>
             </td>
           </tr>
@@ -284,9 +395,10 @@
         <tbody id="semi-stock-tbody">
           @foreach($semiItems as $s)
           @php 
+            $hasQty = (float) $s->quantity > 0;
             $isLow = $s->alert_limit > 0 && $s->quantity <= $s->alert_limit;
           @endphp
-          <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
+          <tr @if($isLow && $hasQty) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:400;">
               <div style="font-weight:normal; color:var(--text-color);">
                 {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span style='font-weight:bold;'>(SEMI)</span>
@@ -312,9 +424,15 @@
                 <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }})" title="Adjust Stock">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
-                <button class="btn-icon delete" onclick="adminDeleteStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}')" title="Delete Stock Entry">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                </button>
+                @if($hasQty)
+                  <button class="btn-icon delete is-disabled" disabled style="opacity:0.35; cursor:not-allowed;" title="Cannot delete: Stock has quantity ({{ number_format($s->quantity, 2) }} {{ $s->unit }}). Quantity must be 0 to delete.">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  </button>
+                @else
+                  <button class="btn-icon delete" onclick="adminDeleteStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}')" title="Delete Stock Entry">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  </button>
+                @endif
               </div>
             </td>
           </tr>
@@ -331,7 +449,7 @@
   <div class="card" style="padding:1.2rem;">
     <div class="card-title" style="color:var(--secondary);">✅ FG Stock ({{ $finishedItems->count() }} items)</div>
     @if($finishedItems->isEmpty())
-      <p class="text-muted text-center">No finished stock recorded yet.</p>
+      <p class="text-muted text-center">No FG stock recorded yet.</p>
     @else
     <div class="table-container">
       <table class="stock-table">
@@ -339,12 +457,13 @@
         <tbody id="finished-stock-tbody">
           @foreach($finishedItems as $s)
           @php 
+            $hasQty = (float) $s->quantity > 0;
             $isLow = $s->alert_limit > 0 && $s->quantity <= $s->alert_limit;
           @endphp
-          <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
+          <tr @if($isLow && $hasQty) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:400;">
               <div style="font-weight:normal; color:var(--text-color);">
-                {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span>(FINISHED)</span>
+                {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span style='font-weight:bold;'>(FG)</span>
               </div>
             </td>
             <td style="font-weight:bold; color:var(--secondary);">{{ number_format($s->quantity, 2) }}</td>
@@ -367,9 +486,15 @@
                 <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }})" title="Adjust Stock">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
-                <button class="btn-icon delete" onclick="adminDeleteStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}')" title="Delete Stock Entry">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                </button>
+                @if($hasQty)
+                  <button class="btn-icon delete is-disabled" disabled style="opacity:0.35; cursor:not-allowed;" title="Cannot delete: Stock has quantity ({{ number_format($s->quantity, 2) }} {{ $s->unit }}). Quantity must be 0 to delete.">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  </button>
+                @else
+                  <button class="btn-icon delete" onclick="adminDeleteStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}')" title="Delete Stock Entry">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  </button>
+                @endif
               </div>
             </td>
           </tr>
@@ -401,11 +526,11 @@ function escapeHtml(value) {
 function adminDeleteStock(productId, stage, grade, productName = '') {
   Swal.fire({
     title: 'Delete Stock Entry?',
-    text: `Are you sure you want to delete stock for ${productName} (${stage})? This will reset stock quantity to 0 across all locations.`,
+    text: `Are you sure you want to delete the stock entry for ${productName} (${stage})?`,
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: '#dc2626',
-    confirmButtonText: 'Yes, delete stock!'
+    confirmButtonText: 'Yes, delete it!'
   }).then((result) => {
     if (result.isConfirmed) {
       fetch(window.baseUrl + '/' + window.userSlug + '/stock/delete', {
@@ -416,7 +541,7 @@ function adminDeleteStock(productId, stage, grade, productName = '') {
       .then(r => r.json())
       .then(d => {
         if (d.success) {
-          Swal.fire('Deleted!', d.message || 'Stock reset to 0.', 'success');
+          Swal.fire('Deleted!', d.message || 'Stock entry deleted successfully.', 'success');
           setTimeout(() => location.reload(), 800);
         } else {
           Swal.fire('Error!', d.message || 'Could not delete stock.', 'error');
@@ -431,11 +556,15 @@ function adminAddStock() {
     title: 'Add Stock',
     html: `
       <div style="text-align:left;">
+        <label style="font-size:0.82rem; font-weight:600; color:#6b7280;">📅 Date *</label>
+        <input id="add-stock-date" type="date" value="${new Date().toISOString().split('T')[0]}" style="width:100%; padding:0.65rem; margin:0.35rem 0 0.85rem; border-radius:8px; background:#fff; border:1px solid #d1d5db; color:#333; font-weight:600;">
+
         <label style="font-size:0.82rem; font-weight:600; color:#6b7280;">Stock Type</label>
         <select id="add-stock-stage" onchange="onStockStageChange()" style="width:100%; padding:0.65rem; margin:0.35rem 0 0.85rem; border-radius:8px; background:#fff; border:1px solid #d1d5db; color:#333;">
+          <option value="ALL">ALL</option>
           <option value="RAW">RAW</option>
           <option value="SEMI">SEMI</option>
-          <option value="FINISHED">FINISHED</option>
+          <option value="FINISHED">FG</option>
         </select>
 
         <label style="font-size:0.82rem; font-weight:600; color:#6b7280;">Product</label>
@@ -457,6 +586,9 @@ function adminAddStock() {
     `,
     background: '#ffffff',
     color: '#333333',
+    customClass: {
+      popup: 'swal-stock-popup'
+    },
     showCancelButton: true,
     confirmButtonText: 'Add Stock',
     confirmButtonColor: '#f59e0b',
@@ -465,11 +597,16 @@ function adminAddStock() {
       window.onStockStageChange = function() {
         const stage = document.getElementById('add-stock-stage').value;
         const productSelect = document.getElementById('add-stock-product');
-        const targetType = stage === 'RAW' ? 'RAW' : 'FINISHED';
-        const filteredProducts = adminStockProducts.filter(p => p.type === targetType && p.is_active);
+        let filteredProducts = [];
+        const targetStage = (stage === 'FG' ? 'FINISHED' : stage);
+        if (targetStage === 'ALL') {
+          filteredProducts = adminStockProducts.filter(p => p.is_active);
+        } else {
+          filteredProducts = adminStockProducts.filter(p => (p.type === targetStage || (targetStage === 'FINISHED' && p.type === 'FG')) && p.is_active);
+        }
         
         productSelect.innerHTML = filteredProducts.map(p => {
-          let t = stage.toLowerCase() === 'finished' ? 'fg' : stage.toLowerCase();
+          let t = (p.type === 'FINISHED' || p.type === 'FG') ? 'FG' : p.type;
           if (p.grades && p.grades.length > 0) {
             return p.grades.map(g => {
                 let isDef = !g.name || ['NONE', 'N/A', 'NA', 'N / A'].includes(g.name.trim().toUpperCase());
@@ -480,6 +617,16 @@ function adminAddStock() {
             return `<option value="${p.id}|NONE" data-unit="${escapeHtml(p.unit || 'kg')}">${escapeHtml(p.name)} (${t})</option>`;
           }
         }).join('');
+        
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+          if ($(productSelect).hasClass('select2-hidden-accessible')) {
+            $(productSelect).select2('destroy');
+          }
+          $(productSelect).select2({
+            dropdownParent: Swal.getPopup(),
+            width: '100%'
+          });
+        }
         
         onStockProductChange();
       };
@@ -497,7 +644,11 @@ function adminAddStock() {
     preConfirm: () => {
       const val = document.getElementById('add-stock-product').value;
       const [productId, gradeVal] = val ? val.split('|') : ['', 'NONE'];
-      const stage = document.getElementById('add-stock-stage').value;
+      let stage = document.getElementById('add-stock-stage').value;
+      if (stage === 'ALL') {
+        const prod = adminStockProducts.find(p => String(p.id) === String(productId));
+        stage = prod ? prod.type : 'RAW';
+      }
       let grade = gradeVal || 'NONE';
       const quantity = parseFloat(document.getElementById('add-stock-qty').value);
       const reason = document.getElementById('add-stock-note').value.trim();
@@ -510,7 +661,8 @@ function adminAddStock() {
         Swal.showValidationMessage('Please enter a quantity greater than 0.');
         return false;
       }
-      return { product_id: productId, stage, grade, quantity, adjust_type: 'add', reason };
+      const dateVal = document.getElementById('add-stock-date') ? document.getElementById('add-stock-date').value : '';
+      return { product_id: productId, stage, grade, quantity, date: dateVal, adjust_type: 'add', reason };
     }
   }).then(result => {
     if (!result.isConfirmed) return;
@@ -568,6 +720,15 @@ function adminAdjustStock(productId, stage, grade, productName = '', currentQty 
         <span style="font-size:0.85rem;">${stageLabel}${displayGrade}</span>
         <div style="margin-top:4px; font-size:0.85rem; color:#333;">Total Current Stock: <strong id="swal-total-stock-badge" style="color:var(--secondary);">${currentQty.toFixed(2)} kg</strong></div>
       </div>
+
+      <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
+        📅 Adjustment Date *
+      </label>
+      <input type="date" id="swal-adj-date" value="${new Date().toISOString().split('T')[0]}" style="
+        width:100%; padding:0.65rem 0.8rem; border-radius:8px;
+        background:#fff; border:1px solid #d1d5db; color:#333;
+        font-size:0.95rem; margin-bottom:1rem; outline:none; font-weight:600; box-sizing:border-box;
+      ">
 
       <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
         Adjustment Type
@@ -666,11 +827,12 @@ function adminAdjustStock(productId, stage, grade, productName = '', currentQty 
         splits.push({ location: 'Main Warehouse', quantity: mainVal });
       }
 
-      return { type, reason, splits, mainQty: parseFloat(document.getElementById('swal-main-qty-input').value) || 0 };
+      const adjDate = document.getElementById('swal-adj-date') ? document.getElementById('swal-adj-date').value : '';
+      return { type, reason, splits, mainQty: parseFloat(document.getElementById('swal-main-qty-input').value) || 0, date: adjDate };
     }
   }).then(result => {
     if (!result.isConfirmed) return;
-    const { type, reason, splits, mainQty } = result.value;
+    const { type, reason, splits, mainQty, date } = result.value;
 
     Swal.fire({
       title: 'Applying…',
@@ -685,6 +847,7 @@ function adminAdjustStock(productId, stage, grade, productName = '', currentQty 
       product_id: productId,
       stage,
       grade,
+      date,
       adjust_type: type,
       reason,
       location_splits: splits,
@@ -1050,9 +1213,10 @@ function updateStockTables(stockData) {
     items.forEach(s => {
       const limit = parseFloat(s.alert_limit) || 0;
       const qty = parseFloat(s.quantity);
+      const hasQty = qty > 0;
       const isLow = limit > 0 && qty <= limit;
-      const rowClass = isLow ? 'low-stock-row' : '';
-      const titleAttr = isLow ? `title="Low Stock! min_qty is ${limit}"` : '';
+      const rowClass = (isLow && hasQty) ? 'low-stock-row' : '';
+      const titleAttr = (isLow && hasQty) ? `title="Low Stock! min_qty is ${limit}"` : '';
 
       const formattedQty = qty.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
       
@@ -1065,7 +1229,7 @@ function updateStockTables(stockData) {
         <tr class="${rowClass}" ${titleAttr}>
           <td>
             <div style="font-weight:normal; color:var(--text-color);">
-              @php @endphp${s.name}${(s.grade && !['NONE', 'N/A', 'NA', 'N / A'].includes(s.grade.trim().toUpperCase())) ? '_<strong>' + escapeHtml(s.grade) + '</strong>' : ''}(${s.stage === 'FINISHED' ? 'FG' : s.stage})
+              @php @endphp${s.name}${(s.grade && !['NONE', 'N/A', 'NA', 'N / A'].includes(s.grade.trim().toUpperCase())) ? '_<strong>' + escapeHtml(s.grade) + '</strong>' : ''} <span style="font-weight:bold;">(${s.stage === 'FINISHED' || s.stage === 'FG' ? 'FG' : s.stage})</span>
             </div>
           </td>
           <td style="font-weight:bold; color:${qtyColor};">${formattedQty}</td>
@@ -1088,9 +1252,15 @@ function updateStockTables(stockData) {
               <button class="btn-icon edit" onclick="adminAdjustStock('${s.productId}', '${s.stage}', '${s.grade}', '${escapeHtml(s.name)}', ${s.quantity})" title="Adjust Stock">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
-              <button class="btn-icon delete" onclick="adminDeleteStock('${s.productId}', '${s.stage}', '${s.grade}', '${escapeHtml(s.name)}')" title="Delete Stock Entry">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-              </button>
+              ${hasQty ? `
+                <button class="btn-icon delete is-disabled" disabled style="opacity:0.35; cursor:not-allowed;" title="Cannot delete: Stock has quantity (${formattedQty} ${escapeHtml(s.unit || '')}). Quantity must be 0 to delete.">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
+              ` : `
+                <button class="btn-icon delete" onclick="adminDeleteStock('${s.productId}', '${s.stage}', '${s.grade}', '${escapeHtml(s.name)}')" title="Delete Stock Entry">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
+              `}
             </div>
           </td>
         </tr>
@@ -1468,13 +1638,22 @@ window.onBsStageChange = function(element) {
   const stage = row.querySelector('.bs-stage').value;
   const productSelect = row.querySelector('.bs-product');
   
-  const targetType = stage; // 'RAW', 'SEMI', or 'FINISHED'
-  const filteredProducts = adminStockProducts.filter(p => p.type === targetType && p.is_active);
+  const targetStage = (stage === 'FG' ? 'FINISHED' : stage);
+  let filteredProducts = [];
+  if (targetStage === 'ALL') {
+    filteredProducts = adminStockProducts.filter(p => p.is_active);
+  } else {
+    filteredProducts = adminStockProducts.filter(p => (p.type === targetStage || (targetStage === 'FINISHED' && p.type === 'FG')) && p.is_active);
+  }
   
-  // Empty the select and add a blank option for the placeholder
+  // Destroy existing select2 instance if already initialized
+  if ($(productSelect).hasClass('select2-hidden-accessible')) {
+    $(productSelect).select2('destroy');
+  }
+  
+  // Empty the select and add a blank option for placeholder
   $(productSelect).empty();
   
-  // Add a disabled placeholder option for standard select
   const placeholderOpt = new Option('SELECT PRODUCT...', '', false, false);
   placeholderOpt.disabled = true;
   placeholderOpt.selected = true;
@@ -1482,24 +1661,30 @@ window.onBsStageChange = function(element) {
   
   // Append new options dynamically
   filteredProducts.forEach(p => {
-    let t = targetType === 'FINISHED' ? 'FG' : targetType;
+    let t = (p.type === 'FINISHED' || p.type === 'FG') ? 'FG' : p.type;
     if (p.grades && p.grades.length > 0) {
       p.grades.forEach(g => {
         const val = `${p.id}|${g.name}`;
         const isDef = !g.name || ['NONE', 'N/A', 'NA', 'N / A'].includes(g.name.trim().toUpperCase());
         const gradeText = !isDef ? `_${g.name}` : '';
-        const text = `${p.name}${gradeText}(${t})`;
+        const text = `${p.name}${gradeText} (${t})`;
         const opt = new Option(text, val, false, false);
         opt.setAttribute('data-unit', p.unit || 'kg');
         $(productSelect).append(opt);
       });
     } else {
       const val = `${p.id}|NONE`;
-      const text = `${p.name}(${t})`;
+      const text = `${p.name} (${t})`;
       const opt = new Option(text, val, false, false);
       opt.setAttribute('data-unit', p.unit || 'kg');
       $(productSelect).append(opt);
     }
+  });
+  
+  // Initialize Select2 Smart Search
+  $(productSelect).select2({
+    placeholder: 'SELECT PRODUCT...',
+    width: '100%'
   });
   
   $(productSelect).off('change').on('change', function() {
@@ -1510,24 +1695,53 @@ window.onBsStageChange = function(element) {
 };
 
 window.onBsProductChange = function(element) {
-  // Grade dropdown removed, do nothing
+  const row = element.closest('.bulk-stock-row');
+  const val = element.value;
+  if (!val) return;
+  const [productId, gradeName] = val.split('|');
+  const prod = adminStockProducts.find(p => String(p.id) === String(productId));
+  if (prod) {
+    const rateInput = row.querySelector('.bs-rate');
+    if (rateInput && (!rateInput.value || rateInput.value === '0') && prod.rate) {
+      rateInput.value = prod.rate;
+    }
+    const minQtyInput = row.querySelector('.bs-min-qty');
+    if (minQtyInput && (!minQtyInput.value || minQtyInput.value === '0') && prod.threshold) {
+      minQtyInput.value = prod.threshold;
+    }
+  }
 };
-
-
 
 window.toggleStockFormCard = function() {
   const card = document.getElementById('stock-form-card');
   if (card) {
-    card.style.display = card.style.display === 'none' ? 'block' : 'none';
-    if (card.style.display === 'block') {
+    const isOpening = card.style.display === 'none';
+    card.style.display = isOpening ? 'block' : 'none';
+    if (isOpening) {
       card.scrollIntoView({ behavior: 'smooth' });
+      // Ensure Select2 smart search is cleanly initialized on all product selectors
+      $('.bulk-stock-row .bs-product').each(function() {
+        if (!$(this).hasClass('select2-hidden-accessible')) {
+          $(this).select2({
+            placeholder: 'SELECT PRODUCT...',
+            width: '100%'
+          });
+        }
+      });
     }
   }
+};
+
+window.onStockEntryDateChange = function(newDate) {
+  document.querySelectorAll('.bulk-stock-row .bs-date').forEach(inp => {
+    inp.value = newDate;
+  });
 };
 
 window.adminSaveBulkStock = function() {
   const btn = document.getElementById('btn-save-stock-card');
   const rows = document.querySelectorAll('.bulk-stock-row');
+  const globalDate = document.getElementById('stock-entry-date') ? document.getElementById('stock-entry-date').value : '';
   
   if (rows.length === 0) {
     Swal.fire('Error', 'No products to add.', 'error');
@@ -1540,8 +1754,15 @@ window.adminSaveBulkStock = function() {
   rows.forEach(row => {
     const val = row.querySelector('.bs-product').value;
     const [productId, gradeVal] = val ? val.split('|') : ['', 'NONE'];
-    const stage = row.querySelector('.bs-stage').value;
+    let stage = row.querySelector('.bs-stage').value;
+    if (stage === 'ALL') {
+      const prod = adminStockProducts.find(p => String(p.id) === String(productId));
+      stage = prod ? (prod.type === 'FG' ? 'FINISHED' : prod.type) : 'RAW';
+    } else if (stage === 'FG') {
+      stage = 'FINISHED';
+    }
     let grade = gradeVal || 'NONE';
+    const rowDate = (row.querySelector('.bs-date') && row.querySelector('.bs-date').value) ? row.querySelector('.bs-date').value : globalDate;
     const alertLimit = parseFloat(row.querySelector('.bs-min-qty').value);
     const rate = parseFloat(row.querySelector('.bs-rate') ? row.querySelector('.bs-rate').value : NaN);
     const note = row.querySelector('.bs-note').value.trim();
@@ -1554,11 +1775,12 @@ window.adminSaveBulkStock = function() {
       }
     });
     
-    if (locations.length > 0) {
+    if (productId && locations.length > 0) {
       items.push({
         product_id: productId,
         stage: stage,
         grade: grade,
+        date: rowDate || globalDate,
         alert_limit: isNaN(alertLimit) ? null : alertLimit,
         rate: isNaN(rate) ? null : rate,
         note: note,
@@ -1584,7 +1806,7 @@ window.adminSaveBulkStock = function() {
       'X-CSRF-TOKEN': csrfToken,
       'Accept': 'application/json'
     },
-    body: JSON.stringify({ items })
+    body: JSON.stringify({ items, date: globalDate })
   })
   .then(res => res.json())
   .then(data => {
@@ -1691,6 +1913,13 @@ function addStockRow() {
     
     const dropdownText = newRow.querySelector('.loc-dropdown-text');
     if (dropdownText) dropdownText.textContent = 'Main Warehouse';
+    
+    // Set date to current top entry date
+    const globalDate = document.getElementById('stock-entry-date') ? document.getElementById('stock-entry-date').value : '';
+    const dateInput = newRow.querySelector('.bs-date');
+    if (dateInput && globalDate) {
+        dateInput.value = globalDate;
+    }
     
     // For Select2, remove cloned artifacts
     const select2Span = newRow.querySelector('.select2-container');

@@ -15,19 +15,18 @@
       <div style="flex:1; min-width:200px;">
         <label style="display:block; font-size:0.85rem; margin-bottom:0.4rem; color:var(--text-muted);">Status</label>
         <select name="status" class="form-control" style="width:100%;" onchange="this.form.submit()">
-          <option value="">All Statuses</option>
+          <option value="" {{ in_array(request('status'), ['', 'ALL']) ? 'selected' : '' }}>All</option>
           <option value="PENDING" {{ request('status') === 'PENDING' ? 'selected' : '' }}>Pending</option>
-          <option value="PARTIAL_PENDING" {{ request('status') === 'PARTIAL_PENDING' ? 'selected' : '' }}>Partial Pending</option>
-          <option value="PARTIAL_DISPATCH" {{ request('status') === 'PARTIAL_DISPATCH' ? 'selected' : '' }}>Partial Dispatch</option>
-          <option value="FULLY_DISPATCH" {{ request('status') === 'FULLY_DISPATCH' ? 'selected' : '' }}>Fully Dispatch</option>
+          <option value="PARTIAL" {{ in_array(request('status'), ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL_DISPATCH']) ? 'selected' : '' }}>Partial</option>
+          <option value="FULLY_DISPATCH" {{ in_array(request('status'), ['FULLY_DISPATCH', 'FULLY_DISPATCHED']) ? 'selected' : '' }}>Fully Dispatch</option>
         </select>
       </div>
       <div style="flex:1; min-width:150px;">
-        <label style="display:block; font-size:0.85rem; margin-bottom:0.4rem; color:var(--text-muted);">From Date</label>
+        <label style="display:block; font-size:0.85rem; margin-bottom:0.4rem; color:var(--text-muted);">📅 From Date</label>
         <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}" style="width:100%;">
       </div>
       <div style="flex:1; min-width:150px;">
-        <label style="display:block; font-size:0.85rem; margin-bottom:0.4rem; color:var(--text-muted);">To Date</label>
+        <label style="display:block; font-size:0.85rem; margin-bottom:0.4rem; color:var(--text-muted);">📅 To Date</label>
         <input type="date" name="date_to" class="form-control" value="{{ request('date_to') }}" style="width:100%;">
       </div>
       <div style="display:flex; gap:0.5rem;">
@@ -55,11 +54,42 @@
               <th>Dispatch Details</th>
             </tr>
           </thead>
+          @php
+              $groupedOrders = $pageData['orders']->getCollection()->groupBy(function($order) {
+                  $d = $order->date ? \Carbon\Carbon::parse($order->date) : $order->created_at;
+                  return $d ? $d->format('Y-m-d') : 'Unknown';
+              });
+          @endphp
           <tbody>
-            @foreach($pageData['orders'] as $order)
+            @foreach($groupedOrders as $dateKey => $dateOrders)
+            <tr class="date-group-header" style="background: rgba(245, 158, 11, 0.12); border-top: 2px solid rgba(245, 158, 11, 0.4); border-bottom: 1px solid rgba(245, 158, 11, 0.2);">
+              <td colspan="6" style="padding: 0.65rem 1rem; font-weight: 700; color: var(--primary);">
+                📅 {{ $dateKey !== 'Unknown' ? \Carbon\Carbon::parse($dateKey)->format('d M Y (l)') : 'Other Date' }}
+                <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); margin-left: 0.5rem; background: rgba(0,0,0,0.06); padding: 0.15rem 0.55rem; border-radius: 12px; display: inline-block;">
+                  {{ count($dateOrders) }} {{ Str::plural('Order', count($dateOrders)) }}
+                </span>
+              </td>
+            </tr>
+            @foreach($dateOrders as $order)
+            @php
+                $orderDate = $order->date ? \Carbon\Carbon::parse($order->date) : $order->created_at;
+                $badgeClass = 'badge-pending';
+                $label = 'Pending';
+                
+                if (in_array($order->dispatch_status, ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED'])) {
+                    $badgeClass = 'badge-done';
+                    $label = 'Fully Dispatch';
+                } elseif (in_array($order->dispatch_status, ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING'])) {
+                    $badgeClass = 'badge-warning';
+                    $label = 'Partial';
+                } elseif ($order->dispatch_status === 'PENDING' || !$order->dispatch_status) {
+                    $badgeClass = 'badge-pending';
+                    $label = 'Pending';
+                }
+            @endphp
             <tr>
               <td style="font-weight:bold; color:var(--primary-light);">#{{ $order->id }}</td>
-              <td style="font-size:0.85rem; white-space:nowrap;">{{ $order->created_at->format('d-m-Y, h:i A') }}</td>
+              <td style="font-size:0.85rem; white-space:nowrap;">{{ $orderDate->format('d-m-Y, h:i A') }}</td>
               <td>
                 <div style="font-weight:600;">{{ $order->company?->name ?? 'N/A' }}</div>
                 <div style="font-size:0.75rem; color:var(--text-muted);">By: {{ $order->creator?->name ?? 'System' }}</div>
@@ -72,7 +102,7 @@
                         • {{ $item->product ? $item->product->formatName($item->grade) : 'Unknown' }}: 
                         <span style="font-weight:600;">{{ $item->quantity }} {{ $item->product?->unit }}</span>
                       </div>
-                      @if($order->dispatch_status === 'PARTIAL' || ($order->dispatch_status === 'DONE' && $order->dispatch_logs_count > 1))
+                      @if($order->dispatch_status === 'PARTIAL' || (in_array($order->dispatch_status, ['DONE', 'FULLY_DISPATCHED']) && $order->dispatch_logs_count > 1))
                         <div style="font-size:0.75rem; color:var(--text-muted); padding-left:12px; white-space:normal;">
                           Dispatched: <span style="color:var(--secondary); font-weight:600;">{{ $item->dispatched_qty ?? 0 }} {{ $item->product?->unit }}</span>
                           &nbsp;|&nbsp;
@@ -96,20 +126,6 @@
                 </div>
               </td>
               <td>
-                @php
-                    $badgeClass = 'badge-pending';
-                    $label = $order->dispatch_status;
-                    
-                    if ($order->dispatch_status === 'DONE') {
-                        $badgeClass = 'badge-done';
-                        $label = $order->dispatch_logs_count > 1 ? 'Partial Dispatch' : 'Fully Dispatch';
-                    } elseif ($order->dispatch_status === 'PARTIAL') {
-                        $badgeClass = 'badge-warning';
-                        $label = 'Partial Pending';
-                    } elseif ($order->dispatch_status === 'PENDING') {
-                        $label = 'Pending';
-                    }
-                @endphp
                 <span class="badge {{ $badgeClass }}">{{ $label }}</span>
               </td>
               <td style="font-size:0.85rem;">
@@ -120,7 +136,7 @@
                   </div>
                   @if($order->dispatchLog->lr_image_path)
                     <a href="javascript:void(0)" onclick="app.viewImage('{{ asset($order->dispatchLog->lr_image_path) }}')" style="color:var(--primary-light); font-size:0.75rem; display:flex; align-items:center; gap:4px;">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                       View LR Copy
                     </a>
                   @endif
@@ -129,6 +145,7 @@
                 @endif
               </td>
             </tr>
+            @endforeach
             @endforeach
           </tbody>
         </table>

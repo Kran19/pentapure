@@ -3329,6 +3329,17 @@ window.addEventListener('pageshow', () => {
   window.hidePageLoader();
 });
 
+// Global convenience: open calendar picker directly when clicking date inputs
+document.addEventListener('click', (e) => {
+  if (e.target && e.target.tagName === 'INPUT' && (e.target.type === 'date' || e.target.type === 'month' || e.target.type === 'datetime-local')) {
+    if (typeof e.target.showPicker === 'function') {
+      try {
+        e.target.showPicker();
+      } catch (err) {}
+    }
+  }
+});
+
 window.onload = () => {
   setTimeout(() => app.init(), 10);
 };

@@ -38,13 +38,20 @@
                 </thead>
                 <tbody>
                     @foreach($pageData['grades'] as $g)
-                    @php $isFixed = in_array(strtoupper(trim($g->name)), ['NONE', 'N/A', 'NA', 'N / A'], true); @endphp
+                    @php
+                        $isFixed = in_array(strtoupper(trim($g->name)), ['NONE', 'N/A', 'NA', 'N / A'], true);
+                        $hasProducts = ($g->products_count ?? 0) > 0;
+                    @endphp
                     <tr>
                         <td>{{ ($pageData['grades']->currentPage() - 1) * $pageData['grades']->perPage() + $loop->iteration }}</td>
                         <td style="font-weight:600; color:var(--primary-light);">
                             {{ $g->name }}
                             @if($isFixed)
                                 <span style="font-size:0.7rem; background:#374151; color:#9ca3af; padding:2px 6px; border-radius:4px; margin-left:6px; font-weight:500;">System Fixed</span>
+                            @elseif($hasProducts)
+                                <span style="font-size:0.7rem; background:rgba(59, 130, 246, 0.15); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.3); padding:2px 6px; border-radius:4px; margin-left:6px; font-weight:500;" title="Used in {{ $g->products_count }} {{ \Illuminate\Support\Str::plural('product', $g->products_count) }}">
+                                    {{ $g->products_count }} {{ \Illuminate\Support\Str::plural('product', $g->products_count) }}
+                                </span>
                             @endif
                         </td>
                         <td>
@@ -62,9 +69,15 @@
                                     <button class="btn-icon edit" onclick="adminEditGrade({{ json_encode($g) }})" title="Edit">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                                     </button>
-                                    <button class="btn-icon delete" onclick="adminDeleteGrade({{ $g->id }})" title="Delete">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                                    </button>
+                                    @if($hasProducts)
+                                        <button class="btn-icon delete is-disabled" disabled style="opacity:0.35; cursor:not-allowed;" title="Cannot delete: Assigned to {{ $g->products_count }} {{ \Illuminate\Support\Str::plural('product', $g->products_count) }}">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                        </button>
+                                    @else
+                                        <button class="btn-icon delete" onclick="adminDeleteGrade({{ $g->id }})" title="Delete">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                        </button>
+                                    @endif
                                 </div>
                             @endif
                         </td>
@@ -166,7 +179,7 @@ function adminToggleGrade(id) {
 function adminDeleteGrade(id) {
     Swal.fire({
         title: 'Are you sure?',
-        text: "This grade will be removed from all products!",
+        text: "Are you sure you want to delete this grade?",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
@@ -191,6 +204,22 @@ function adminDeleteGrade(id) {
 @endsection
 
 <style>
+.btn-icon:disabled,
+.btn-icon.is-disabled {
+    opacity: 0.35 !important;
+    cursor: not-allowed !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    color: #6b7280 !important;
+    pointer-events: auto !important;
+}
+.btn-icon:disabled:hover,
+.btn-icon.is-disabled:hover {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    color: #6b7280 !important;
+}
+
 /* White and Orange Theme for Forms */
 .white-orange-card {
     background-color: #ffffff !important;

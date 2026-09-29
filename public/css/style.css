@@ -460,10 +460,108 @@ option {
   padding: 10px;
 }
 
-input[type="date"]::-webkit-calendar-picker-indicator {
+/* Date, Month, Time Input & Calendar Picker Indicator (Universal high-contrast visibility) */
+input[type="date"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="time"] {
+  color-scheme: light;
+  position: relative;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
-  filter: invert(1);
-  opacity: 0.6;
+  filter: brightness(0) opacity(0.75);
+  display: inline-block;
+  font-size: 1.1rem;
+  padding: 2px 4px;
+  border-radius: 4px;
+  margin-left: 4px;
+  vertical-align: middle;
+  transition: opacity 0.2s ease, background-color 0.2s ease, transform 0.1s ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+input[type="month"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  filter: brightness(0) opacity(1);
+  background-color: rgba(0, 0, 0, 0.08);
+  transform: scale(1.08);
+}
+
+/* Dark mode & dark-background date input overrides */
+html.dark-mode input[type="date"],
+html.dark-mode input[type="datetime-local"],
+html.dark-mode input[type="month"],
+html.dark-mode input[type="time"],
+[data-theme="dark"] input[type="date"],
+[data-theme="dark"] input[type="datetime-local"],
+[data-theme="dark"] input[type="month"],
+[data-theme="dark"] input[type="time"],
+.dark input[type="date"],
+.dark input[type="datetime-local"],
+.dark input[type="month"],
+.dark input[type="time"],
+input[type="date"].dark-date-input,
+input[type="date"][style*="background:#161b22"],
+input[type="date"][style*="background: #161b22"],
+input[type="date"][style*="background:var(--glass-bg)"],
+input[type="date"][style*="background: var(--glass-bg)"],
+input[type="date"][style*="color:white"],
+input[type="date"][style*="color: white"],
+input[type="date"][style*="color:#fff"],
+input[type="date"][style*="color: #fff"],
+input[type="date"][style*="color:#e6edf3"],
+input[type="date"][style*="color: #e6edf3"] {
+  color-scheme: dark !important;
+}
+
+html.dark-mode input[type="date"]::-webkit-calendar-picker-indicator,
+html.dark-mode input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+html.dark-mode input[type="month"]::-webkit-calendar-picker-indicator,
+html.dark-mode input[type="time"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] input[type="month"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator,
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.dark input[type="month"]::-webkit-calendar-picker-indicator,
+.dark input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="date"].dark-date-input::-webkit-calendar-picker-indicator,
+input[type="date"][style*="background:#161b22"]::-webkit-calendar-picker-indicator,
+input[type="date"][style*="background: #161b22"]::-webkit-calendar-picker-indicator,
+input[type="date"][style*="background:var(--glass-bg)"]::-webkit-calendar-picker-indicator,
+input[type="date"][style*="background: var(--glass-bg)"]::-webkit-calendar-picker-indicator,
+input[type="date"][style*="color:white"]::-webkit-calendar-picker-indicator,
+input[type="date"][style*="color: white"]::-webkit-calendar-picker-indicator,
+input[type="date"][style*="color:#fff"]::-webkit-calendar-picker-indicator,
+input[type="date"][style*="color: #fff"]::-webkit-calendar-picker-indicator,
+input[type="date"][style*="color:#e6edf3"]::-webkit-calendar-picker-indicator,
+input[type="date"][style*="color: #e6edf3"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) opacity(0.85) !important;
+}
+
+html.dark-mode input[type="date"]::-webkit-calendar-picker-indicator:hover,
+html.dark-mode input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+html.dark-mode input[type="month"]::-webkit-calendar-picker-indicator:hover,
+html.dark-mode input[type="time"]::-webkit-calendar-picker-indicator:hover,
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator:hover,
+[data-theme="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+[data-theme="dark"] input[type="month"]::-webkit-calendar-picker-indicator:hover,
+[data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator:hover,
+.dark input[type="date"]::-webkit-calendar-picker-indicator:hover,
+.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+.dark input[type="month"]::-webkit-calendar-picker-indicator:hover,
+.dark input[type="time"]::-webkit-calendar-picker-indicator:hover,
+input[type="date"].dark-date-input::-webkit-calendar-picker-indicator:hover {
+  filter: invert(1) opacity(1) !important;
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  transform: scale(1.08);
 }
 /* Hide number input spinners (up/down arrows) across browsers */
 input[type=number]::-webkit-inner-spin-button, 

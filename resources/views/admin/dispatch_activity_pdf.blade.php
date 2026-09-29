@@ -55,21 +55,37 @@
                 <th>Dispatch Details</th>
             </tr>
         </thead>
+        @php
+            $groupedOrders = $orders->groupBy(function($order) {
+                $d = $order->date ? \Carbon\Carbon::parse($order->date) : $order->created_at;
+                return $d ? $d->format('Y-m-d') : 'Unknown';
+            });
+        @endphp
         <tbody>
-            @foreach($orders as $order)
+            @foreach($groupedOrders as $dateKey => $dateOrders)
+                <tr style="background-color: #f1f5f9;">
+                    <td colspan="6" style="padding: 6px 8px; font-weight: bold; font-size: 11px; color: #1e293b; background: #e2e8f0; border: 1px solid #cbd5e1;">
+                        DATE: {{ $dateKey !== 'Unknown' ? \Carbon\Carbon::parse($dateKey)->format('d M Y (l)') : 'Other Date' }}
+                        <span style="font-size: 9px; color: #475569; margin-left: 8px;">
+                            ({{ count($dateOrders) }} {{ count($dateOrders) === 1 ? 'Order' : 'Orders' }})
+                        </span>
+                    </td>
+                </tr>
+                @foreach($dateOrders as $order)
                 @php
-                    $label = $order->dispatch_status;
-                    if ($order->dispatch_status === 'DONE') {
-                        $label = $order->dispatch_logs_count > 1 ? 'Partial Dispatch' : 'Fully Dispatch';
-                    } elseif ($order->dispatch_status === 'PARTIAL') {
-                        $label = 'Partial Pending';
-                    } elseif ($order->dispatch_status === 'PENDING') {
+                    $orderDate = $order->date ? \Carbon\Carbon::parse($order->date) : $order->created_at;
+                    $label = 'Pending';
+                    if (in_array($order->dispatch_status, ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED'])) {
+                        $label = 'Fully Dispatch';
+                    } elseif (in_array($order->dispatch_status, ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING'])) {
+                        $label = 'Partial';
+                    } elseif ($order->dispatch_status === 'PENDING' || !$order->dispatch_status) {
                         $label = 'Pending';
                     }
                 @endphp
                 <tr>
                     <td><strong>#{{ $order->id }}</strong></td>
-                    <td>{{ $order->created_at->format('d M Y, h:i A') }}</td>
+                    <td>{{ $orderDate ? $orderDate->format('d M Y, h:i A') : '—' }}</td>
                     <td>
                         <strong>{{ $order->company?->name ?? 'N/A' }}</strong><br>
                         <span style="font-size:10px; color:#666;">By: {{ $order->creator?->name ?? 'System' }}</span>
@@ -79,7 +95,7 @@
                         @foreach($order->items as $item)
                             <li style="margin-bottom: 5px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
                                 - {{ $item->product ? $item->product->formatName($item->grade) : 'Unknown' }}: <strong>{{ $item->quantity }} {{ $item->product?->unit }}</strong>
-                                @if($order->dispatch_status === 'PARTIAL' || ($order->dispatch_status === 'DONE' && $order->dispatch_logs_count > 1))
+                                @if(in_array($order->dispatch_status, ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING']) || (in_array($order->dispatch_status, ['DONE', 'FULLY_DISPATCHED']) && $order->dispatch_logs_count > 1))
                                     <div style="font-size:10px; color:#555; padding-left: 10px;">
                                         Dispatched: {{ $item->dispatched_qty ?? 0 }} {{ $item->product?->unit }} |
                                         Pending: {{ max(0, $item->quantity - ($item->dispatched_qty ?? 0)) }} {{ $item->product?->unit }}
@@ -108,6 +124,7 @@
                         @endif
                     </td>
                 </tr>
+                @endforeach
             @endforeach
         </tbody>
     </table>
