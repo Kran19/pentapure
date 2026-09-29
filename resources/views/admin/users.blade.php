@@ -155,9 +155,9 @@
         ],
         'Stock Manager Panel' => [
             ['key' => 'stock_manager_home', 'name' => 'Stock Manager Home', 'url' => '/stock_manager/home'],
-            ['key' => 'stock_manager_action', 'name' => 'Stock Outward Action', 'url' => '/stock_manager/action'],
+            ['key' => 'stock_manager_action', 'name' => 'Stock Action', 'url' => '/stock_manager/action'],
             ['key' => 'stock_manager_stock', 'name' => 'Live Stock View', 'url' => '/stock_manager/stock'],
-            ['key' => 'stock_manager_po', 'name' => 'Stock Purchase Orders', 'url' => '/stock_manager/po'],
+            ['key' => 'stock_manager_po', 'name' => 'Purchase Orders', 'url' => '/stock_manager/po'],
             ['key' => 'stock_manager_history', 'name' => 'Stock Manager History', 'url' => '/stock_manager/history'],
             ['key' => 'stock_manager_products', 'name' => 'Products Master', 'url' => '/stock_manager/products'],
             ['key' => 'stock_manager_grades', 'name' => 'Grades Master', 'url' => '/stock_manager/grades'],

@@ -172,11 +172,11 @@
       $rawSt = strtoupper(trim((string)($d['dispatchStatus'] ?? $d['status'] ?? 'PENDING')));
       $statusBadge = '';
       if (in_array($rawSt, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED'])) {
-        $statusBadge = '<span class="badge badge-done" style="font-size:0.65rem; background:#16a34a; color:#fff; padding:2px 6px; border-radius:4px; font-weight:700;">FULLY DISPATCHED</span>';
+        $statusBadge = '<span class="badge badge-done" style="font-size:0.65rem; background:#16a34a; color:#ffffff !important; padding:2px 6px; border-radius:4px; font-weight:700;">FULLY DISPATCHED</span>';
       } elseif (in_array($rawSt, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIAL PENDING'])) {
-        $statusBadge = '<span class="badge" style="font-size:0.65rem; background:#f59e0b; color:#fff; padding:2px 6px; border-radius:4px; font-weight:700;">PARTIAL</span>';
+        $statusBadge = '<span class="badge" style="font-size:0.65rem; background:#f59e0b; color:#ffffff !important; padding:2px 6px; border-radius:4px; font-weight:700;">PARTIAL</span>';
       } else {
-        $statusBadge = '<span class="badge badge-pending" style="font-size:0.65rem; background:#ef4444; color:#fff; padding:2px 6px; border-radius:4px; font-weight:700;">PENDING</span>';
+        $statusBadge = '<span class="badge badge-pending" style="font-size:0.65rem; background:#ef4444; color:#ffffff !important; padding:2px 6px; border-radius:4px; font-weight:700;">PENDING</span>';
       }
     @endphp
     <div class="card dispatch-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--glass-border, rgba(255,255,255,0.06)); background:var(--card-bg, rgba(255,255,255,0.03)); transition:all 0.2s ease;">

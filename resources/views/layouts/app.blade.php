@@ -83,7 +83,7 @@
         </a>
         <a href="{{ url($prefix . '/action') }}" class="nav-item {{ $currentRoute == 'action' ? 'active' : '' }}" style="text-decoration:none;">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
-          <span>Action</span>
+          <span>{{ $role === 'stock_manager' ? 'Stock Action' : 'Action' }}</span>
         </a>
         @if($role === 'stock_manager')
         <a href="{{ url($prefix . '/stock') }}" class="nav-item {{ $currentRoute == 'stock' ? 'active' : '' }}" style="text-decoration:none;">
@@ -92,9 +92,9 @@
         </a>
         <a href="{{ url($prefix . '/po') }}" class="nav-item {{ $currentRoute == 'po' ? 'active' : '' }}" style="text-decoration:none; position:relative;">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-          <span>Purchase Request</span>
+          <span>Purchase Orders</span>
           @if(($sidebarPendingPoCount ?? 0) > 0)
-            <span style="position:absolute; top:2px; right:8px; background:#ef4444; color:#fff; font-size:10px; font-weight:700; padding:1px 5px; border-radius:10px; line-height:1;">{{ $sidebarPendingPoCount }}</span>
+            <span style="position:absolute; top:2px; right:8px; background:#ef4444; color:#ffffff !important; font-size:10px; font-weight:700; padding:1px 5px; border-radius:10px; line-height:1;">{{ $sidebarPendingPoCount }}</span>
           @endif
         </a>
         @endif

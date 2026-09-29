@@ -120,7 +120,7 @@
             @endif
             @if($can('stock_manager_action'))
             <a href="{{ url(request()->segment(1) . '/action') }}" class="nav-item {{ $seg=='action'?'active':'' }}">
-              Stock Outward Action
+              Stock Action
             </a>
             @endif
             @if($can('stock_manager_stock'))
@@ -133,7 +133,7 @@
             @endif
             @if($can('stock_manager_po'))
             <a href="{{ url(request()->segment(1) . '/po') }}" class="nav-item {{ $seg=='po'?'active':'' }}">
-              <span>Stock Purchase Orders</span>
+              <span>Purchase Orders</span>
               @if(($sidebarPendingPoCount ?? 0) > 0)
                 <span class="sidebar-badge badge-danger" title="{{ $sidebarPendingPoCount }} pending purchase order(s)">{{ $sidebarPendingPoCount }}</span>
               @endif
@@ -379,13 +379,13 @@
           </div>
           @endif
 
-          @if($can('admin_logs'))
+          @if($role !== 'STOCK_MANAGER' && request()->segment(1) !== 'stock_manager' && $can('admin_logs'))
           <a href="{{ url(request()->segment(1) . '/logs') }}" class="nav-item {{ $seg=='logs'?'active':'' }}">
             Activity Logs
           </a>
           @endif
 
-          @if($can('admin_notifications'))
+          @if($role !== 'STOCK_MANAGER' && request()->segment(1) !== 'stock_manager' && $can('admin_notifications'))
           <a href="{{ url(request()->segment(1) . '/notifications') }}" class="nav-item {{ $seg=='notifications'?'active':'' }}"
              style="display:flex; justify-content:space-between; align-items:center;">
             <span>Notifications</span>

@@ -21,7 +21,7 @@
             <th>Order Quantity (kg)</th>
             <th style="min-width:280px; width:340px; padding-right:1.5rem;">Note</th>
             <th style="white-space:nowrap; padding-left:1.5rem; padding-right:2rem;">Status</th>
-            <th style="padding-left:1.5rem;">Action</th>
+            <th style="padding-left:1.5rem; min-width:180px;">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -38,55 +38,39 @@
             <td style="font-size:0.85rem; color:var(--text-muted); min-width:280px; width:340px; padding-right:1.5rem;">
               <div style="word-break:break-word; white-space:normal; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
                 {{ $po->note ?? '—' }}
-              </div>
+              </div>    
             </td>
             <td style="white-space:nowrap; padding-left:1.5rem; padding-right:2.5rem;">
               @if($po->status === 'PENDING')
-                <span class="badge" style="background:#ef4444; color:#fff;">PENDING</span>
+                <span class="badge" style="background:#ef4444; color:#ffffff !important;">PENDING</span>
               @elseif($po->status === 'READ')
-                <span class="badge" style="background:#eab308; color:#fff;">READ</span>
+                <span class="badge" style="background:#eab308; color:#ffffff !important;">READ</span>
               @elseif($po->status === 'ORDERED')
-                <span class="badge" style="background:#3b82f6; color:#fff;">ORDERED</span>
+                <span class="badge" style="background:#3b82f6; color:#ffffff !important;">ORDERED</span>
               @elseif($po->status === 'RECEIVED')
                 <span class="badge badge-done">RECEIVED</span>
               @elseif($po->status === 'REJECTED')
-                <span class="badge" style="background:#dc2626; color:#fff;">REJECTED</span>
+                <span class="badge" style="background:#dc2626; color:#ffffff !important;">REJECTED</span>
               @else
                 <span class="badge badge-pending">{{ $po->status }}</span>
               @endif
             </td>
-            <td style="padding-left:1.5rem;">
+            <td style="padding-left:1.5rem; min-width:180px;">
               <div class="action-btns" style="display:flex; align-items:center; gap:0.4rem; flex-wrap:nowrap;">
                 @if($po->status === 'PENDING')
-                  <button class="btn btn-sm" style="width:auto; padding:0.3rem 0.6rem; background:#eab308; color:#fff; border:none; border-radius:4px; font-size:0.75rem; cursor:pointer;"
+                  <button class="btn btn-sm" style="width:auto; padding:0.3rem 0.6rem; background:#eab308; color:#ffffff !important; border:none; border-radius:4px; font-size:0.75rem; cursor:pointer; white-space:nowrap;"
                     onclick="adminApprovePO({{ $po->id }}, this)">
                     ✅ Mark as Read
                   </button>
-                  <button class="btn btn-sm" style="width:auto; padding:0.3rem 0.6rem; background:#3b82f6; color:#fff; border:none; border-radius:4px; font-size:0.75rem; cursor:pointer;"
-                    onclick="adminOrderPO({{ $po->id }}, this)">
-                    🛒 Mark as Order
-                  </button>
-                  <button class="btn btn-sm" style="width:auto; padding:0.3rem 0.6rem; background:#ef4444; color:#fff; border:none; border-radius:4px; font-size:0.75rem; cursor:pointer;"
-                    onclick="adminRejectPO({{ $po->id }}, this)">
-                    ❌ Reject
-                  </button>
                 @elseif($po->status === 'READ')
-                  <button class="btn btn-sm" style="width:auto; padding:0.3rem 0.6rem; background:#3b82f6; color:#fff; border:none; border-radius:4px; font-size:0.75rem; cursor:pointer;"
+                  <button class="btn btn-sm" style="width:auto; padding:0.3rem 0.6rem; background:#3b82f6; color:#ffffff !important; border:none; border-radius:4px; font-size:0.75rem; cursor:pointer; white-space:nowrap;"
                     onclick="adminOrderPO({{ $po->id }}, this)">
                     🛒 Mark as Order
-                  </button>
-                  <button class="btn btn-sm" style="width:auto; padding:0.3rem 0.6rem; background:#ef4444; color:#fff; border:none; border-radius:4px; font-size:0.75rem; cursor:pointer;"
-                    onclick="adminRejectPO({{ $po->id }}, this)">
-                    ❌ Reject
-                  </button>
-                @elseif($po->status === 'ORDERED')
-                  <button class="btn btn-sm" style="width:auto; padding:0.3rem 0.6rem; background:#ef4444; color:#fff; border:none; border-radius:4px; font-size:0.75rem; cursor:pointer;"
-                    onclick="adminRejectPO({{ $po->id }}, this)">
-                    ❌ Reject
                   </button>
                 @endif
-                <button class="btn-icon delete" onclick="adminDeletePO({{ $po->id }})" title="Delete">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                <button class="btn btn-sm" style="width:auto; padding:0.3rem 0.6rem; background:#ef4444; color:#ffffff !important; border:none; border-radius:4px; font-size:0.75rem; cursor:pointer; display:inline-flex; align-items:center; gap:0.25rem; white-space:nowrap;"
+                  onclick="adminDeletePO({{ $po->id }})" title="Delete">
+                  🗑️ Delete
                 </button>
               </div>
             </td>

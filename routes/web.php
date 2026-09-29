@@ -83,6 +83,8 @@ Route::middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CA
     Route::get('/api/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
     Route::post('/api/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
     Route::post('/api/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);
+    Route::get('/api/locations', [\App\Http\Controllers\AdminController::class, 'getLocationsApi']);
+    Route::get('/api/stock/locations', [\App\Http\Controllers\AdminController::class, 'stockLocationsBreakdownApi']);
 });
 Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE,STOCK_MANAGER')->group(function() {
     Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout']);
@@ -315,6 +317,7 @@ foreach ($roleSlugs['STOCK_MANAGER'] ?? [] as $slug) {
         Route::post('/stock/pdf',  [\App\Http\Controllers\AdminController::class, 'downloadStockPdf'])->name($slug.'.stock.pdf');
         Route::get('/po',          'po')->name($slug.'.po');
         Route::post('/po',         'storePO')->name($slug.'.po.store');
+        Route::post('/po/receive', 'receivePO')->name($slug.'.po.receive');
         Route::post('/po/{id}',    'updatePO')->name($slug.'.po.update');
         Route::delete('/po/{id}',  'destroyPO')->name($slug.'.po.destroy');
         Route::get('/history',     'history')->name($slug.'.history');
@@ -340,9 +343,11 @@ foreach ($roleSlugs['STOCK_MANAGER'] ?? [] as $slug) {
         Route::get('/categories',         [AdminController::class, 'categories'])->name($slug.'.categories');
         Route::post('/categories',        [AdminController::class, 'storeCategory']);
         Route::post('/categories/toggle', [AdminController::class, 'toggleCategoryStatus']);
-        Route::delete('/categories/{id}', [AdminController::class, 'destroyCategory']);
-        Route::get('/dispatch-activity',  [AdminController::class, 'dispatchActivity'])->name($slug.'.dispatch.activity');
-        Route::get('/cashier-overview',    [AdminController::class, 'cashierOverview'])->name($slug.'.cashier_overview');
+        Route::delete('/categories/{id}',    [AdminController::class, 'destroyCategory']);
+        Route::get('/dispatch-activity',     [AdminController::class, 'dispatchActivity'])->name($slug.'.dispatch.activity');
+        Route::get('/dispatch-activity/pdf', [AdminController::class, 'dispatchActivityPdf'])->name($slug.'.dispatch.pdf');
+        Route::get('/cashier-overview',       [AdminController::class, 'cashierOverview'])->name($slug.'.cashier_overview');
+        Route::get('/cashier-overview/pdf',   [AdminController::class, 'cashierOverviewPdf'])->name($slug.'.cashier.pdf');
     });
 }
 

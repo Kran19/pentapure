@@ -189,46 +189,79 @@
                 };
                 $itemCount = count($logRow['items'] ?? []);
                 $isRowFullyDispatched = in_array($rawStatus, ['FULLY DISPATCHED', 'COMPLETED', 'DONE']);
+                $rowBg = ($idx % 2 === 0) ? '#ffffff' : '#fafafa';
             @endphp
             @foreach($logRow['items'] as $itemIdx => $item)
-                <tr>
-                    @if($itemIdx === 0)
-                        <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle;"><strong>{{ $logRow['dispatch_id'] }}</strong></td>
-                        <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle;">{{ $logRow['order_date'] }}</td>
-                        @if($statusFilter !== 'FULLY_DISPATCHED' && $statusFilter !== 'FULLY DISPATCHED' && $statusFilter !== 'DONE')
-                            <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle; font-weight: bold; color: #344054;">
-                                @if(!$isRowFullyDispatched)
-                                    {{ $logRow['due_days_text'] ?? '0 Days' }}
-                                @else
-                                    -
-                                @endif
-                            </td>
+                @php
+                    $isFirst = ($itemIdx === 0);
+                    $borderTopStyle = $isFirst ? 'border-top: 1.5px solid #344054;' : 'border-top: 1px dashed #d0d5dd;';
+                @endphp
+                <tr style="background-color: {{ $rowBg }};">
+                    <td class="text-center" style="vertical-align: middle; {{ $borderTopStyle }}">
+                        @if($isFirst)
+                            <strong>{{ $logRow['dispatch_id'] }}</strong>
+                        @else
+                            <span style="color: #667085; font-size: 7.5px;">{{ $logRow['dispatch_id'] }}</span>
                         @endif
-                        @if($statusFilter !== 'PENDING')
-                            <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle; font-size: 8px;">
-                                @if($rawStatus !== 'PENDING')
-                                    {{ $logRow['dispatch_date'] ?? '-' }}
-                                @else
-                                    -
-                                @endif
-                            </td>
+                    </td>
+                    <td class="text-center" style="vertical-align: middle; {{ $borderTopStyle }}">
+                        @if($isFirst)
+                            <span>{{ $logRow['order_date'] }}</span>
+                        @else
+                            <span style="color: #667085; font-size: 7.5px;">{{ $logRow['order_date'] }}</span>
                         @endif
-                        <td rowspan="{{ $itemCount }}" style="vertical-align: middle;"><strong>{{ $logRow['customer'] }}</strong></td>
+                    </td>
+                    @if($statusFilter !== 'FULLY_DISPATCHED' && $statusFilter !== 'FULLY DISPATCHED' && $statusFilter !== 'DONE')
+                        <td class="text-center" style="vertical-align: middle; font-weight: {{ $isFirst ? 'bold' : 'normal' }}; color: {{ $isFirst ? '#344054' : '#667085' }}; font-size: {{ $isFirst ? '8px' : '7.5px' }}; {{ $borderTopStyle }}">
+                            @if(!$isRowFullyDispatched)
+                                {{ $logRow['due_days_text'] ?? '0 Days' }}
+                            @else
+                                -
+                            @endif
+                        </td>
                     @endif
-                    <td>
+                    @if($statusFilter !== 'PENDING')
+                        <td class="text-center" style="vertical-align: middle; font-size: {{ $isFirst ? '8px' : '7.5px' }}; color: {{ $isFirst ? '#101828' : '#667085' }}; {{ $borderTopStyle }}">
+                            @if($rawStatus !== 'PENDING')
+                                {{ $logRow['dispatch_date'] ?? '-' }}
+                            @else
+                                -
+                            @endif
+                        </td>
+                    @endif
+                    <td style="vertical-align: middle; {{ $borderTopStyle }}">
+                        @if($isFirst)
+                            <strong>{{ $logRow['customer'] }}</strong>
+                        @else
+                            <span style="color: #475467; font-size: 7.5px;">{{ $logRow['customer'] }}</span>
+                        @endif
+                    </td>
+                    <td style="{{ $borderTopStyle }}">
                         <div style="font-weight: bold; color: #101828;">{{ $item['product'] }}</div>
                     </td>
-                    <td class="text-right text-green"><strong>{{ $item['ordered_qty_formatted'] ?? number_format($item['ordered_qty'] ?? 0) . ' KG' }}</strong></td>
-                    <td class="text-right" style="color: #b37400;"><strong>{{ $item['dispatch_qty_formatted'] ?? number_format($item['qty'] ?? 0) . ' KG' }}</strong></td>
-                    <td class="text-right" style="color: #b42318;"><strong>{{ $item['pending_qty_formatted'] ?? number_format($item['pending_qty'] ?? 0) . ' KG' }}</strong></td>
-                    <td class="text-right"><strong>Rs. {{ number_format($item['amount'], 2) }}</strong></td>
-                    @if($itemIdx === 0)
-                        <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle;">
+                    <td class="text-right text-green" style="{{ $borderTopStyle }}">
+                        <strong>{{ $item['ordered_qty_formatted'] ?? number_format($item['ordered_qty'] ?? 0) . ' KG' }}</strong>
+                    </td>
+                    <td class="text-right" style="color: #b37400; {{ $borderTopStyle }}">
+                        <strong>{{ $item['dispatch_qty_formatted'] ?? number_format($item['qty'] ?? 0) . ' KG' }}</strong>
+                    </td>
+                    <td class="text-right" style="color: #b42318; {{ $borderTopStyle }}">
+                        <strong>{{ $item['pending_qty_formatted'] ?? number_format($item['pending_qty'] ?? 0) . ' KG' }}</strong>
+                    </td>
+                    <td class="text-right" style="{{ $borderTopStyle }}">
+                        <strong>Rs. {{ number_format($item['amount'], 2) }}</strong>
+                    </td>
+                    <td class="text-center" style="vertical-align: middle; {{ $borderTopStyle }}">
+                        @if($isFirst)
                             <span class="badge {{ $badgeClass }}">
                                 {{ $displayStatus }}
                             </span>
-                        </td>
-                    @endif
+                        @else
+                            <span class="badge {{ $badgeClass }}" style="opacity: 0.85; font-size: 6.5px;">
+                                {{ $displayStatus }}
+                            </span>
+                        @endif
+                    </td>
                 </tr>
             @endforeach
         @empty

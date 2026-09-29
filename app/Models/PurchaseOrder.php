@@ -7,9 +7,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PurchaseOrder extends Model
 {
-    protected $fillable = ['user_id', 'product_id', 'quantity', 'note', 'status'];
+    protected $fillable = ['user_id', 'product_id', 'quantity', 'note', 'status', 'date'];
 
-    protected $casts = ['quantity' => 'decimal:3'];
+    protected $casts = [
+        'quantity' => 'decimal:3',
+        'date' => 'datetime',
+    ];
 
     public function user(): BelongsTo
     {

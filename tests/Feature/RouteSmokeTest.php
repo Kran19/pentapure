@@ -137,6 +137,8 @@ class RouteSmokeTest extends TestCase
                     'view_stock_manager_products',
                     'view_stock_manager_grades',
                     'view_stock_manager_locations',
+                    'admin_dispatch_activity',
+                    'admin_categories',
                 ],
             ]
         ];
@@ -150,10 +152,18 @@ class RouteSmokeTest extends TestCase
             '/stock_manager/products',
             '/stock_manager/grades',
             '/stock_manager/locations',
+            '/stock_manager/dispatch-activity',
+            '/stock_manager/categories',
         ];
         foreach ($routes as $uri) {
             $response = $this->withSession($session)->get($uri);
             $response->assertStatus(200);
         }
+
+        $actionResponse = $this->withSession($session)->get('/stock_manager/action');
+        $actionResponse->assertSee('Stock Action');
+        $actionResponse->assertSee('Purchase Orders');
+        $actionResponse->assertDontSee('Stock Outward Action');
+        $actionResponse->assertDontSee('Stock Purchase Orders');
     }
 }

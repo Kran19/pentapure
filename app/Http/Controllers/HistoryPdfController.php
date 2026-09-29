@@ -35,7 +35,7 @@ class HistoryPdfController extends Controller
 
         if ($panel === 'DISPATCH') {
             $data = $this->buildDispatchReportData($request);
-            $pdf = Pdf::loadView('pdf.dispatch-history-report', $data)->setPaper('A4', 'portrait');
+            $pdf = Pdf::loadView('pdf.dispatch-history-report', $data)->setPaper('A4', 'landscape');
         } else {
             $data = $this->buildReportData($request, $panel);
             $pdf = Pdf::loadView('pdf.history-report', $data)->setPaper('A4', 'portrait');

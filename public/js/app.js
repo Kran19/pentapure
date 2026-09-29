@@ -901,11 +901,14 @@ const app = {
     if(comp && div) {
       div.style.display = 'block';
       div.classList.add('animation-fadeIn');
+      const cleanGst = (comp.gst && !['N/A', 'NA'].includes(comp.gst.toUpperCase().trim())) ? comp.gst : '—';
+      const cleanContact = (comp.contact && !['N/A', 'NA'].includes(comp.contact.toUpperCase().trim())) ? comp.contact : '—';
+      const cleanAddress = (comp.address && !['N/A', 'NA'].includes(comp.address.toUpperCase().trim())) ? (comp.address + (comp.pincode ? ' - ' + comp.pincode : '')) : '—';
       div.innerHTML = `
         <div style="display:grid; grid-template-columns:1fr; gap:3px;">
-          <div><span class="info-label">GST:</span> ${comp.gst||'N/A'}</div>
-          <div><span class="info-label">CONTACT:</span> ${comp.contact||'N/A'}</div>
-          <div><span class="info-label">ADDRESS:</span> ${comp.address||'N/A'}${comp.pincode ? ' - ' + comp.pincode : ''}</div>
+          <div><span class="info-label">GST:</span> ${cleanGst}</div>
+          <div><span class="info-label">CONTACT:</span> ${cleanContact}</div>
+          <div><span class="info-label">ADDRESS:</span> ${cleanAddress}</div>
         </div>
       `;
     } else if (div) {
@@ -920,22 +923,22 @@ const app = {
         <div style="text-align:left; font-size:0.9rem;">
           <div style="margin-bottom:12px;">
             <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.8rem; text-transform:uppercase;">Transporter Name *</label>
-            <input id="swal-trans-name" class="swal2-input" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;" value="NA">
+            <input id="swal-trans-name" class="swal2-input" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;" value="" placeholder="Enter transporter name">
           </div>
           <div style="margin-bottom:12px;">
             <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.8rem; text-transform:uppercase;">GST Number (Optional)</label>
-            <input id="swal-trans-gst" class="swal2-input" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;" value="N/A">
+            <input id="swal-trans-gst" class="swal2-input" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;" value="" placeholder="Optional">
           </div>
           <div style="margin-bottom:12px;">
             <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.8rem; text-transform:uppercase;">Contact Number (Optional)</label>
             <div style="display:flex; gap:8px;">
-              <input id="swal-trans-code" class="swal2-input" value="+91" oninput="if(this.value.trim()==='+91'){ document.getElementById('swal-trans-phone').setAttribute('maxlength','10'); document.getElementById('swal-trans-phone').value = document.getElementById('swal-trans-phone').value.replace(/\\D/g,'').slice(0,10); } else { document.getElementById('swal-trans-phone').removeAttribute('maxlength'); }" style="width:75px; margin:0; padding:0.6rem 0.4rem; font-size:0.9rem; font-weight:600; text-align:center; box-sizing:border-box; border-radius:6px; flex-shrink:0;">
-              <input id="swal-trans-phone" class="swal2-input" oninput="if(document.getElementById('swal-trans-code').value.trim()==='+91'){ this.value = this.value.replace(/\\D/g,'').slice(0,10); }" maxlength="10" style="flex:1; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;">
+              <input id="swal-trans-code" class="swal2-input" value="" placeholder="+91" oninput="if((this.value.trim()||'+91')==='+91'){ document.getElementById('swal-trans-phone').setAttribute('maxlength','10'); document.getElementById('swal-trans-phone').value = document.getElementById('swal-trans-phone').value.replace(/\\D/g,'').slice(0,10); } else { document.getElementById('swal-trans-phone').removeAttribute('maxlength'); }" style="width:75px; margin:0; padding:0.6rem 0.4rem; font-size:0.9rem; font-weight:600; text-align:center; box-sizing:border-box; border-radius:6px; flex-shrink:0;">
+              <input id="swal-trans-phone" class="swal2-input" value="" placeholder="Optional contact number" oninput="if((document.getElementById('swal-trans-code').value.trim()||'+91')==='+91'){ this.value = this.value.replace(/\\D/g,'').slice(0,10); }" maxlength="10" style="flex:1; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;">
             </div>
           </div>
           <div style="margin-bottom:8px;">
             <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.8rem; text-transform:uppercase;">Vehicle Numbers (Optional)</label>
-            <input id="swal-trans-vehicles" class="swal2-input" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;">
+            <input id="swal-trans-vehicles" class="swal2-input" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;" value="" placeholder="Optional vehicle numbers">
           </div>
         </div>
       `,
@@ -956,14 +959,15 @@ const app = {
           return false;
         }
 
-        if (gst && gst !== 'N/A' && !/^[A-Za-z0-9]{15}$/.test(gst)) {
-          Swal.showValidationMessage('GST must be exactly 15 alphanumeric characters or N/A');
+        if (gst && gst !== 'N/A' && gst !== 'NA' && !/^[A-Za-z0-9]{15}$/.test(gst)) {
+          Swal.showValidationMessage('GST must be exactly 15 alphanumeric characters or optional');
           return false;
         }
 
         let formattedContact = '';
         if (rawPhone) {
-          if (code === '+91') {
+          const effectiveCode = code || '+91';
+          if (effectiveCode === '+91') {
             const digits = rawPhone.replace(/\D/g, '');
             const isLandline = /^0?79[\s\-]?[0-9]{6,8}$/.test(rawPhone);
             if (!isLandline && digits.length !== 10) {
@@ -972,11 +976,11 @@ const app = {
             }
             formattedContact = '+91 ' + rawPhone;
           } else {
-            formattedContact = code ? (code + ' ' + rawPhone) : rawPhone;
+            formattedContact = effectiveCode + ' ' + rawPhone;
           }
         }
 
-        return { name, gst: gst || 'N/A', contact: formattedContact, vehicles };
+        return { name, gst: (gst && gst !== 'NA') ? gst : 'N/A', contact: formattedContact, vehicles };
       }
     }).then(result => {
       if (result.isConfirmed && result.value) {
@@ -1068,11 +1072,14 @@ const app = {
     if(trans && div) {
       div.style.display = 'block';
       div.classList.add('animation-fadeIn');
+      const cleanGst = (trans.gst && !['N/A', 'NA'].includes(trans.gst.toUpperCase().trim())) ? trans.gst : '—';
+      const cleanContact = (trans.contact && !['N/A', 'NA'].includes(trans.contact.toUpperCase().trim())) ? trans.contact : '—';
+      const cleanVehicles = (trans.vehicles && !['N/A', 'NA'].includes(trans.vehicles.toUpperCase().trim())) ? trans.vehicles : '—';
       div.innerHTML = `
         <div style="display:grid; grid-template-columns:1fr; gap:3px;">
-          <div><span class="info-label">GST:</span> ${trans.gst||'N/A'}</div>
-          <div><span class="info-label">CONTACT:</span> ${trans.contact||'N/A'}</div>
-          <div><span class="info-label">VEHICLES:</span> ${trans.vehicles||'N/A'}</div>
+          <div><span class="info-label">GST:</span> ${cleanGst}</div>
+          <div><span class="info-label">CONTACT:</span> ${cleanContact}</div>
+          <div><span class="info-label">VEHICLES:</span> ${cleanVehicles}</div>
         </div>
       `;
     } else if (div) {

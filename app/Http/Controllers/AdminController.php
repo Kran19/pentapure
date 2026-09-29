@@ -11,6 +11,7 @@ use App\Models\Product;
 use App\Models\ProductionLog;
 use App\Models\PurchaseOrder;
 use App\Models\Stock;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Worker;
 use Illuminate\Http\Request;
@@ -812,6 +813,11 @@ class AdminController extends Controller
         DB::transaction(function() use ($request) {
             $po = PurchaseOrder::findOrFail($request->po_id);
             $po->status = 'RECEIVED';
+            if ($request->filled('date')) {
+                $po->date = Carbon::parse($request->date);
+            } else {
+                $po->date = now();
+            }
             if ($request->has('note')) {
                 $po->note = $request->note;
             }
@@ -962,6 +968,11 @@ class AdminController extends Controller
     public function categories()
     {
         $categories = Category::orderByDesc('is_active')->orderBy('name')->paginate(15);
+
+        foreach ($categories as $cat) {
+            $cat->transactions_count = $cat->getUsageCount();
+        }
+
         return view('admin.categories', ['pageData' => ['categories' => $categories]]);
     }
 
@@ -1004,7 +1015,17 @@ class AdminController extends Controller
 
     public function destroyCategory($id)
     {
-        Category::destroy($id);
+        $category = Category::findOrFail($id);
+
+        $usageCount = $category->getUsageCount();
+        if ($usageCount > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => "Cannot delete category '{$category->name}': it is currently in use across {$usageCount} " . (\Illuminate\Support\Str::plural('transaction record', $usageCount)) . "! To delete this category, associated records must be cleared or reassigned first."
+            ], 422);
+        }
+
+        $category->delete();
         return response()->json(['success' => true, 'message' => 'Category deleted!']);
     }
 

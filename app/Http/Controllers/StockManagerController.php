@@ -6,6 +6,7 @@ use App\Models\Location;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\Stock;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -123,7 +124,7 @@ class StockManagerController extends Controller
                     'product_id'       => $product->id,
                     'user_id'          => $user['id'],
                     'stage'            => $stage,
-                    'grade'            => $request->grade ?? 'NONE',
+                    'grade'            => (!empty($request->grade) && strtoupper($request->grade) !== 'ALL') ? $request->grade : 'NONE',
                     'location_id'      => $locationId,
                     'quantity'         => $qty,
                     'transaction_type' => 'IN',
@@ -145,7 +146,7 @@ class StockManagerController extends Controller
         $request->validate([
             'product_id' => 'required|exists:products,id',
             'quantity'   => 'nullable|numeric|min:0.001',
-            'stage'      => 'required|string|in:RAW,SEMI,FINISHED',
+            'stage'      => 'nullable|string',
             'grade'      => 'nullable|string|max:50',
             'location'   => 'nullable|string',
             'notes'      => 'nullable|string',
@@ -155,8 +156,9 @@ class StockManagerController extends Controller
         ]);
 
         $user = $this->authUser();
-        $grade = $request->grade ?? 'NONE';
-        $stage = $request->stage;
+        $product = Product::findOrFail($request->product_id);
+        $stage = ($request->stage && in_array($request->stage, ['RAW', 'SEMI', 'FINISHED'])) ? $request->stage : ($product->type ?: 'RAW');
+        $grade = (!empty($request->grade) && strtoupper($request->grade) !== 'ALL') ? $request->grade : null;
 
         $locationSplits = $request->location_splits;
         if (empty($locationSplits) && $request->quantity) {
@@ -172,12 +174,23 @@ class StockManagerController extends Controller
         $totalQtyToOutward = array_sum(array_column($locationSplits, 'quantity'));
 
         // Check if enough stock exists overall
-        $netStock = DB::table('stocks')
+        $stockQuery = DB::table('stocks')
             ->where('stage', $stage)
-            ->where('product_id', $request->product_id)
-            ->where('grade', $grade)
+            ->where('product_id', $request->product_id);
+
+        if ($grade) {
+            $stockQuery->where(function($q) use ($grade) {
+                if (strtoupper($grade) === 'NONE') {
+                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '');
+                } else {
+                    $q->where('grade', $grade);
+                }
+            });
+        }
+
+        $netStock = (float) ($stockQuery
             ->selectRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as net")
-            ->value('net') ?? 0;
+            ->value('net') ?? 0);
 
         if ($netStock < $totalQtyToOutward) {
             return response()->json(['success' => false, 'message' => "Insufficient {$stage} stock. Total requested: {$totalQtyToOutward} kg, Available: {$netStock} kg"], 400);
@@ -200,7 +213,7 @@ class StockManagerController extends Controller
                     'product_id'       => $request->product_id,
                     'user_id'          => $user['id'],
                     'stage'            => $stage,
-                    'grade'            => $grade,
+                    'grade'            => $grade ?: 'NONE',
                     'location_id'      => $locationId,
                     'quantity'         => $qty,
                     'transaction_type' => 'OUT',
@@ -364,6 +377,42 @@ class StockManagerController extends Controller
         }
 
         return redirect()->back()->with('success', 'Purchase order updated successfully!');
+    }
+
+    // ── POST: Mark Purchase Order as Received ──────────────────────────────
+    public function receivePO(Request $request)
+    {
+        $request->validate([
+            'po_id' => 'required|exists:purchase_orders,id',
+            'date'  => 'nullable|date',
+            'note'  => 'nullable|string',
+        ]);
+
+        $user = $this->authUser();
+        DB::transaction(function() use ($request, $user) {
+            $query = PurchaseOrder::where('id', $request->po_id);
+            if (!in_array($user['role'] ?? '', ['ADMIN', 'SUB_ADMIN'])) {
+                $query->where('user_id', $user['id']);
+            }
+            $po = $query->firstOrFail();
+
+            $po->status = 'RECEIVED';
+            if ($request->filled('date')) {
+                $po->date = Carbon::parse($request->date);
+            } else {
+                $po->date = now();
+            }
+            if ($request->filled('note')) {
+                $po->note = $request->note;
+            }
+            $po->save();
+        });
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'PO marked as received!']);
+        }
+
+        return redirect()->back()->with('success', 'PO marked as received!');
     }
 
     // ── DELETE: Delete Purchase Order Request ──────────────────────────────

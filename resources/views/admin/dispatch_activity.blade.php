@@ -4,14 +4,22 @@
 <div style="padding:1.5rem;">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
     <h2 style="margin:0;">🚚 Dispatch Order Activity</h2>
-    <button type="button" class="btn" onclick="window.downloadPdfAsync('{{ route(request()->segment(1) . '.dispatch.pdf') }}', {{ json_encode(request()->all()) }}, this)" style="width:auto; padding:0.6rem 1.2rem; background:var(--secondary); cursor:pointer;">
+    @php
+      $pdfRoute = Route::has(request()->segment(1) . '.dispatch.pdf') 
+        ? route(request()->segment(1) . '.dispatch.pdf') 
+        : (Route::has('admin.dispatch.pdf') ? route('admin.dispatch.pdf') : url(request()->segment(1) . '/dispatch-activity/pdf'));
+      $activityRoute = Route::has(request()->segment(1) . '.dispatch.activity') 
+        ? route(request()->segment(1) . '.dispatch.activity') 
+        : (Route::has('admin.dispatch.activity') ? route('admin.dispatch.activity') : url(request()->segment(1) . '/dispatch-activity'));
+    @endphp
+    <button type="button" class="btn" onclick="window.downloadPdfAsync('{{ $pdfRoute }}', {{ json_encode(request()->all()) }}, this)" style="width:auto; padding:0.6rem 1.2rem; background:var(--secondary); cursor:pointer;">
       📥 Download PDF Report
     </button>
   </div>
 
   <!-- Filters -->
   <div class="card" style="padding:1.2rem; margin-bottom:1.5rem;">
-    <form method="GET" action="{{ route(request()->segment(1) . '.dispatch.activity') }}" style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end;">
+    <form method="GET" action="{{ $activityRoute }}" style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end;">
       <div style="flex:1; min-width:200px;">
         <label style="display:block; font-size:0.85rem; margin-bottom:0.4rem; color:var(--text-muted);">Status</label>
         <select name="status" class="form-control" style="width:100%;" onchange="this.form.submit()">

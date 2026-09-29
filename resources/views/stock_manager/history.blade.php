@@ -42,9 +42,9 @@
             <td style="white-space: nowrap;">{{ $s->grade }}</td>
             <td style="white-space: nowrap;">
               @if($s->transaction_type === 'IN')
-                <span class="badge" style="background:#10b981; color:#fff; padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:bold;">INWARD</span>
+                <span class="badge" style="background:#10b981; color:#ffffff !important; padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:bold;">INWARD</span>
               @else
-                <span class="badge" style="background:#ef4444; color:#fff; padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:bold;">OUTWARD</span>
+                <span class="badge" style="background:#ef4444; color:#ffffff !important; padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:bold;">OUTWARD</span>
               @endif
             </td>
             <td style="font-weight:bold; color:{{ $s->transaction_type==='IN'?'#10b981':'#ef4444' }}; white-space: nowrap;">

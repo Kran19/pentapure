@@ -38,9 +38,20 @@
         </thead>
         <tbody>
           @foreach($pageData['categories'] as $c)
+          @php
+            $usageCount = $c->transactions_count ?? 0;
+            $isInUse = $usageCount > 0;
+          @endphp
           <tr>
             <td>{{ $c->id }}</td>
-            <td style="font-weight:600; color:var(--primary-light);">{{ $c->name }}</td>
+            <td style="font-weight:600; color:var(--primary-light);">
+              {{ $c->name }}
+              @if($isInUse)
+                <span style="font-size:0.7rem; background:rgba(59, 130, 246, 0.15); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.3); padding:2px 6px; border-radius:4px; margin-left:6px; font-weight:500;" title="Used in {{ $usageCount }} {{ \Illuminate\Support\Str::plural('record', $usageCount) }}">
+                  {{ $usageCount }} {{ \Illuminate\Support\Str::plural('record', $usageCount) }}
+                </span>
+              @endif
+            </td>
             <td>
               <label class="switch">
                 <input type="checkbox" {{ $c->is_active ? 'checked' : '' }} onchange="adminToggleCategory({{ $c->id }})">
@@ -53,9 +64,15 @@
                 <button class="btn-icon edit" onclick="adminEditCategory({{ json_encode($c) }})" title="Edit">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
-                <button class="btn-icon delete" onclick="adminDeleteCategory({{ $c->id }})" title="Delete">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                </button>
+                @if($isInUse)
+                  <button class="btn-icon delete is-disabled" disabled style="opacity:0.35; cursor:not-allowed;" title="Cannot delete: In use across {{ $usageCount }} {{ \Illuminate\Support\Str::plural('record', $usageCount) }}">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  </button>
+                @else
+                  <button class="btn-icon delete" onclick="adminDeleteCategory({{ $c->id }})" title="Delete">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  </button>
+                @endif
               </div>
             </td>
           </tr>
@@ -157,7 +174,7 @@
   function adminDeleteCategory(id) {
     Swal.fire({
       title: 'Are you sure?',
-      text: "This category will be deleted from master (existing transactions keep the stored string).",
+      text: "Are you sure you want to delete this category?",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
@@ -167,13 +184,16 @@
         fetch(window.baseUrl + '/' + window.userSlug + '/categories/' + id, {
           method: 'DELETE',
           headers: { 'X-CSRF-TOKEN': csrfToken }
-        }).then(r => r.json()).then(d => {
+        }).then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+        .then(({ ok, data: d }) => {
           if(d.success) {
             Swal.fire('Deleted!', d.message, 'success');
             setTimeout(() => location.reload(), 800);
           } else {
-            Swal.fire('Error!', d.message || 'Error', 'error');
+            Swal.fire('Cannot Delete!', d.message || 'Error', 'error');
           }
+        }).catch(err => {
+            Swal.fire('Error!', 'An error occurred while deleting.', 'error');
         });
       }
     });

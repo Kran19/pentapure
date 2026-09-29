@@ -623,7 +623,7 @@ select:focus, input:focus, textarea:focus {
   cursor: pointer;
   transition: all 0.2s;
   background: var(--primary);
-  color: var(--dark-brand) !important;
+  color: var(--dark-brand);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -676,8 +676,23 @@ select:focus, input:focus, textarea:focus {
   background: rgba(255, 255, 255, 0.2);
 }
 
-.btn-danger { background: var(--danger); }
-.btn-danger:hover { background: #DC2626; }
+.btn-danger,
+button.btn-danger,
+a.btn-danger,
+input.btn-danger {
+  background: var(--danger);
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+.btn-danger:hover,
+.btn-danger:focus,
+.btn-danger:active,
+button.btn-danger:hover,
+a.btn-danger:hover {
+  background: #DC2626;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
 
 .btn-secondary {
   background: #FFFFFF;
@@ -753,6 +768,13 @@ select:focus, input:focus, textarea:focus {
 .badge-production { background: #E8F0FF; color: #2952A3; }
 .badge-inventory { background: #F1F1F1; color: #555555; }
 .badge-sales { background: #FFE2C7; color: #A54B00; }
+.badge-danger,
+.badge-rejected,
+.badge-error {
+  background: #dc2626;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
 
 .warning-card {
   background: #FFF3D6;
@@ -1087,9 +1109,9 @@ select:focus, input:focus, textarea:focus {
   box-shadow: 0 1px 3px rgba(239, 68, 68, 0.4);
 }
 .sidebar-badge.badge-warning {
-  background: #f59e0b;
+  background: #ef4444;
   color: #ffffff;
-  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.4);
+  box-shadow: 0 1px 3px rgba(239, 68, 68, 0.4);
 }
 .sidebar-badge.badge-info {
   background: #3b82f6;
@@ -1102,7 +1124,7 @@ select:focus, input:focus, textarea:focus {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
 }
 .admin-sidebar .nav-item.active .sidebar-badge.badge-warning {
-  background: #b45309;
+  background: #dc2626;
   color: #ffffff;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
 }
@@ -1562,16 +1584,16 @@ body:not(.admin-mode) [style*="background: rgba(0,0,0"] {
   border-color: var(--border-soft) !important;
 }
 
-body:not(.admin-mode) [style*="color:#fff"],
-body:not(.admin-mode) [style*="color: #fff"],
-body:not(.admin-mode) [style*="color:white"],
-body:not(.admin-mode) [style*="color: white"] {
+body:not(.admin-mode) [style*="color:#fff"]:not([style*="background:#ef4444"]):not([style*="background: #ef4444"]):not([style*="background:#dc2626"]):not([style*="background: #dc2626"]):not([style*="background:#b91c1c"]):not([style*="background: #b91c1c"]):not([style*="background:#e11d48"]):not([style*="background: #e11d48"]):not([style*="background:var(--danger)"]):not([style*="background: var(--danger)"]):not([style*="background:red"]):not([style*="background: red"]):not(.btn-danger):not(.badge-danger):not(.sidebar-badge),
+body:not(.admin-mode) [style*="color: #fff"]:not([style*="background:#ef4444"]):not([style*="background: #ef4444"]):not([style*="background:#dc2626"]):not([style*="background: #dc2626"]):not([style*="background:#b91c1c"]):not([style*="background: #b91c1c"]):not([style*="background:#e11d48"]):not([style*="background: #e11d48"]):not([style*="background:var(--danger)"]):not([style*="background: var(--danger)"]):not([style*="background:red"]):not([style*="background: red"]):not(.btn-danger):not(.badge-danger):not(.sidebar-badge),
+body:not(.admin-mode) [style*="color:white"]:not([style*="background:#ef4444"]):not([style*="background: #ef4444"]):not([style*="background:#dc2626"]):not([style*="background: #dc2626"]):not([style*="background:#b91c1c"]):not([style*="background: #b91c1c"]):not([style*="background:#e11d48"]):not([style*="background: #e11d48"]):not([style*="background:var(--danger)"]):not([style*="background: var(--danger)"]):not([style*="background:red"]):not([style*="background: red"]):not(.btn-danger):not(.badge-danger):not(.sidebar-badge),
+body:not(.admin-mode) [style*="color: white"]:not([style*="background:#ef4444"]):not([style*="background: #ef4444"]):not([style*="background:#dc2626"]):not([style*="background: #dc2626"]):not([style*="background:#b91c1c"]):not([style*="background: #b91c1c"]):not([style*="background:#e11d48"]):not([style*="background: #e11d48"]):not([style*="background:var(--danger)"]):not([style*="background: var(--danger)"]):not([style*="background:red"]):not([style*="background: red"]):not(.btn-danger):not(.badge-danger):not(.sidebar-badge) {
   color: #2A2A2A !important;
 }
 
-body:not(.admin-mode) .btn,
-body:not(.admin-mode) button.btn,
-body:not(.admin-mode) a.btn {
+body:not(.admin-mode) .btn:not(.btn-danger):not([style*="background:#ef4444"]):not([style*="background: #ef4444"]):not([style*="background:#dc2626"]):not([style*="background: #dc2626"]):not([style*="background:#b91c1c"]):not([style*="background: #b91c1c"]):not([style*="background:#e11d48"]):not([style*="background: #e11d48"]):not([style*="background:var(--danger)"]):not([style*="background: var(--danger)"]):not([style*="background:red"]):not([style*="background: red"]):not([style*="background-color:#ef4444"]):not([style*="background-color:#dc2626"]),
+body:not(.admin-mode) button.btn:not(.btn-danger):not([style*="background:#ef4444"]):not([style*="background: #ef4444"]):not([style*="background:#dc2626"]):not([style*="background: #dc2626"]):not([style*="background:#b91c1c"]):not([style*="background: #b91c1c"]):not([style*="background:#e11d48"]):not([style*="background: #e11d48"]):not([style*="background:var(--danger)"]):not([style*="background: var(--danger)"]):not([style*="background:red"]):not([style*="background: red"]):not([style*="background-color:#ef4444"]):not([style*="background-color:#dc2626"]),
+body:not(.admin-mode) a.btn:not(.btn-danger):not([style*="background:#ef4444"]):not([style*="background: #ef4444"]):not([style*="background:#dc2626"]):not([style*="background: #dc2626"]):not([style*="background:#b91c1c"]):not([style*="background: #b91c1c"]):not([style*="background:#e11d48"]):not([style*="background: #e11d48"]):not([style*="background:var(--danger)"]):not([style*="background: var(--danger)"]):not([style*="background:red"]):not([style*="background: red"]):not([style*="background-color:#ef4444"]):not([style*="background-color:#dc2626"]) {
   color: var(--dark-brand) !important;
 }
 
@@ -2091,3 +2113,129 @@ body .app-container,
   height: 100% !important;
   max-width: 100% !important;
 }
+
+/* ==========================================================================
+   GLOBAL MANDATORY WHITE TEXT FOR ALL RED BACKGROUNDS IN ENTIRE PROJECT
+   Wherever a red background is present, make font color white (#FFFFFF).
+   ========================================================================== */
+.btn-danger,
+button.btn-danger,
+a.btn-danger,
+input.btn-danger,
+.badge-danger,
+.badge-rejected,
+.badge-error,
+.bg-danger,
+.alert-danger,
+.sidebar-badge.badge-danger,
+.sidebar-badge.badge-warning,
+[style*="background:#ef4444" i],
+[style*="background: #ef4444" i],
+[style*="background:#dc2626" i],
+[style*="background: #dc2626" i],
+[style*="background:#b91c1c" i],
+[style*="background: #b91c1c" i],
+[style*="background:#991b1b" i],
+[style*="background: #991b1b" i],
+[style*="background:#e11d48" i],
+[style*="background: #e11d48" i],
+[style*="background:#dc3545" i],
+[style*="background: #dc3545" i],
+[style*="background:#f43f5e" i],
+[style*="background: #f43f5e" i],
+[style*="background:#f87171" i],
+[style*="background: #f87171" i],
+[style*="background:var(--danger)" i],
+[style*="background: var(--danger)" i],
+[style*="background:red" i],
+[style*="background: red" i],
+[style*="background-color:#ef4444" i],
+[style*="background-color: #ef4444" i],
+[style*="background-color:#dc2626" i],
+[style*="background-color: #dc2626" i],
+[style*="background-color:#b91c1c" i],
+[style*="background-color: #b91c1c" i],
+[style*="background-color:#991b1b" i],
+[style*="background-color: #991b1b" i],
+[style*="background-color:#e11d48" i],
+[style*="background-color: #e11d48" i],
+[style*="background-color:#dc3545" i],
+[style*="background-color: #dc3545" i],
+[style*="background-color:#f43f5e" i],
+[style*="background-color: #f43f5e" i],
+[style*="background-color:var(--danger)" i],
+[style*="background-color: var(--danger)" i],
+[style*="background-color:red" i],
+[style*="background-color: red" i],
+[style*="background: rgb(239, 68, 68)" i],
+[style*="background: rgb(220, 38, 38)" i],
+[style*="background-color: rgb(239, 68, 68)" i],
+[style*="background-color: rgb(220, 38, 38)" i] {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Also ensure all nested text, spans, icons, SVGs and strong elements inherit pure white */
+.btn-danger *,
+button.btn-danger *,
+a.btn-danger *,
+.badge-danger *,
+.badge-rejected *,
+.badge-error *,
+.bg-danger *,
+.alert-danger *,
+.sidebar-badge.badge-danger *,
+.sidebar-badge.badge-warning *,
+[style*="background:#ef4444" i] *,
+[style*="background: #ef4444" i] *,
+[style*="background:#dc2626" i] *,
+[style*="background: #dc2626" i] *,
+[style*="background:#b91c1c" i] *,
+[style*="background: #b91c1c" i] *,
+[style*="background:#991b1b" i] *,
+[style*="background: #991b1b" i] *,
+[style*="background:#e11d48" i] *,
+[style*="background: #e11d48" i] *,
+[style*="background:#dc3545" i] *,
+[style*="background: #dc3545" i] *,
+[style*="background:#f43f5e" i] *,
+[style*="background: #f43f5e" i] *,
+[style*="background:var(--danger)" i] *,
+[style*="background: var(--danger)" i] *,
+[style*="background:red" i] *,
+[style*="background: red" i] *,
+[style*="background-color:#ef4444" i] *,
+[style*="background-color: #ef4444" i] *,
+[style*="background-color:#dc2626" i] *,
+[style*="background-color: #dc2626" i] *,
+[style*="background-color:#b91c1c" i] *,
+[style*="background-color: #b91c1c" i] *,
+[style*="background-color:#e11d48" i] *,
+[style*="background-color: #e11d48" i] *,
+[style*="background-color:#dc3545" i] *,
+[style*="background-color: #dc3545" i] *,
+[style*="background-color:var(--danger)" i] *,
+[style*="background-color: var(--danger)" i] *,
+[style*="background-color:red" i] *,
+[style*="background-color: red" i] * {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Ensure hover, active, focus states on red backgrounds remain pure white */
+.btn-danger:hover,
+.btn-danger:focus,
+.btn-danger:active,
+button.btn-danger:hover,
+a.btn-danger:hover,
+[style*="background:#ef4444" i]:hover,
+[style*="background:#dc2626" i]:hover,
+[style*="background:#b91c1c" i]:hover,
+[style*="background:#e11d48" i]:hover,
+[style*="background:#dc3545" i]:hover,
+[style*="background:var(--danger)" i]:hover,
+[style*="background:red" i]:hover {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+

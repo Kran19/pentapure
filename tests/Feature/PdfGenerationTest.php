@@ -20,6 +20,7 @@ class PdfGenerationTest extends TestCase
     protected User $adminUser;
     protected User $cashierUser;
     protected User $rawUser;
+    protected User $stockManagerUser;
 
     protected function setUp(): void
     {
@@ -46,6 +47,14 @@ class PdfGenerationTest extends TestCase
             'email' => 'rawuser@example.com',
             'password' => 'password123',
             'role' => 'RAW',
+            'status' => 'ACTIVE',
+        ]);
+
+        $this->stockManagerUser = User::create([
+            'name' => 'Stock Manager User',
+            'email' => 'sm@example.com',
+            'password' => 'password123',
+            'role' => 'STOCK_MANAGER',
             'status' => 'ACTIVE',
         ]);
 
@@ -183,5 +192,88 @@ class PdfGenerationTest extends TestCase
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'application/pdf');
         $this->assertNotEmpty($response->getContent());
+    }
+
+    public function test_stock_manager_dispatch_activity_pdf_download(): void
+    {
+        $response = $this->withSession(['auth_user' => [
+            'id' => $this->stockManagerUser->id,
+            'name' => $this->stockManagerUser->name,
+            'role' => 'STOCK_MANAGER',
+            'permissions' => ['admin_dispatch_activity'],
+        ]])->get('/stock_manager/dispatch-activity/pdf');
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $this->assertNotEmpty($response->getContent());
+    }
+
+    public function test_dispatch_history_pdf_has_consistent_column_alignment_on_all_rows(): void
+    {
+        $company = Company::create(['name' => 'Test Alignment Corp']);
+        $transporter = Transporter::create(['name' => 'Test Transporter', 'gst' => 'N/A']);
+        $product = Product::first();
+
+        $order = Order::create([
+            'company_id' => $company->id,
+            'transporter_id' => $transporter->id,
+            'created_by' => $this->adminUser->id,
+            'status' => 'PENDING',
+            'dispatch_status' => 'PENDING',
+        ]);
+
+        for ($i = 0; $i < 5; $i++) {
+            OrderItem::create([
+                'order_id' => $order->id,
+                'product_id' => $product->id,
+                'quantity' => 100 * ($i + 1),
+                'price' => 50,
+                'dispatched_qty' => 0,
+            ]);
+        }
+
+        $response = $this->withSession(['auth_user' => [
+            'id' => $this->adminUser->id,
+            'name' => $this->adminUser->name,
+            'role' => 'ADMIN',
+        ]])->get('/admin/dispatch-activity/pdf?range=all');
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/pdf');
+
+        // Verify HTML table row columns match headers exactly
+        $controller = app(\App\Http\Controllers\HistoryPdfController::class);
+        $request = \Illuminate\Http\Request::create('/dispatch/history/pdf', 'GET', ['range' => 'all']);
+        $reflection = new \ReflectionClass($controller);
+        $method = $reflection->getMethod('buildDispatchReportData');
+        $method->setAccessible(true);
+        $data = $method->invoke($controller, $request);
+
+        $html = view('pdf.dispatch-history-report', $data)->render();
+        $dom = new \DOMDocument();
+        @$dom->loadHTML($html);
+
+        $tables = $dom->getElementsByTagName('table');
+        $dataTable = null;
+        foreach ($tables as $t) {
+            if (strpos($t->getAttribute('class'), 'data-table') !== false) {
+                $dataTable = $t;
+                break;
+            }
+        }
+        $this->assertNotNull($dataTable);
+
+        $headerCount = $dataTable->getElementsByTagName('th')->length;
+        $this->assertGreaterThan(0, $headerCount);
+
+        foreach ($dataTable->getElementsByTagName('tbody') as $tbody) {
+            foreach ($tbody->getElementsByTagName('tr') as $tr) {
+                if ($tr->getAttribute('class') === 'total-row') {
+                    continue;
+                }
+                $tdCount = $tr->getElementsByTagName('td')->length;
+                $this->assertEquals($headerCount, $tdCount, 'Every row must have exactly the same column count as table header to prevent DomPDF page break shift');
+            }
+        }
     }
 }

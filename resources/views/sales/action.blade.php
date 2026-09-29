@@ -149,10 +149,14 @@ html.dark-mode .info-preview-box .info-label {
       <div class="form-group">
         <label>Select Company *</label>
         <select id="order-company" onchange="app.onSalesCompanySelect(this.value)">
-          <option value="" disabled {{ empty($pageData['editOrder']) ? 'selected' : '' }}>NA</option>
+          <option value="" disabled {{ empty($pageData['editOrder']) ? 'selected' : '' }}>-- Select Company --</option>
           @foreach($pageData['companies'] as $c)
+            @php
+              $gstClean = trim((string)($c['gst'] ?? ''));
+              $hasGst = $gstClean !== '' && !in_array(strtoupper($gstClean), ['N/A', 'NA']);
+            @endphp
             <option value="{{ $c['id'] }}" {{ (!empty($pageData['editOrder']) && $pageData['editOrder']->company_id == $c['id']) ? 'selected' : '' }}>
-              {{ $c['name'] }} {{ $c['gst'] ? '('.$c['gst'].')' : '' }}
+              {{ $c['name'] }}{{ $hasGst ? ' ('.$gstClean.')' : '' }}
             </option>
           @endforeach
         </select>

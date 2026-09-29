@@ -294,4 +294,29 @@ class SalesTest extends TestCase
         $response->assertStatus(200);
         $response->assertJson(['success' => true]);
     }
+
+    public function test_select_company_and_transport_placeholders_and_transporter_modal_is_blank(): void
+    {
+        $session = ['auth_user' => [
+            'id' => $this->salesUser->id,
+            'name' => $this->salesUser->name,
+            'role' => 'SALES',
+        ]];
+
+        $response = $this->withSession($session)->get('/sales/action');
+        $response->assertStatus(200);
+
+        // Verify Select Company has descriptive placeholder instead of "NA"
+        $response->assertSee('-- Select Company --');
+
+        // Verify Select Transport shows "NA" when not selected
+        $response->assertSee('<option value="" disabled selected>NA</option>', false);
+
+        // Verify app.js openAddTransportModal has blank input defaults
+        $appJs = file_get_contents(public_path('js/app.js'));
+        $this->assertStringContainsString('id="swal-trans-name" class="swal2-input" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;" value="" placeholder="Enter transporter name"', $appJs);
+        $this->assertStringContainsString('id="swal-trans-gst" class="swal2-input" style="width:100%; margin:0; padding:0.6rem; font-size:0.9rem; box-sizing:border-box; border-radius:6px;" value="" placeholder="Optional"', $appJs);
+        $this->assertStringContainsString('id="swal-trans-code" class="swal2-input" value="" placeholder="+91"', $appJs);
+    }
 }
+
