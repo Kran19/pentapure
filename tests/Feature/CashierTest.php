@@ -238,4 +238,30 @@ class CashierTest extends TestCase
         $this->assertStringStartsWith('2026-04-10', (string)$tx1->date);
         $this->assertStringStartsWith('2026-04-12', (string)$tx2->date);
     }
+
+    public function test_cashier_ledger_table_shows_details_column(): void
+    {
+        $sessionA = ['auth_user' => [
+            'id' => $this->cashierA->id,
+            'name' => $this->cashierA->name,
+            'role' => 'CASHIER',
+        ]];
+
+        Transaction::create([
+            'user_id' => $this->cashierA->id,
+            'type' => 'IN',
+            'amount' => 750.00,
+            'category' => 'sales',
+            'note' => 'Sales deposit for ledger',
+        ]);
+
+        $response = $this->withSession($sessionA)->get('/cashier/ledger');
+        $response->assertStatus(200);
+
+        // Verify Details column header is present
+        $response->assertSee('<th style="padding:12px; text-align:left;">Details</th>', false);
+
+        // Verify Details content is displayed in the table row
+        $response->assertSee('Sales deposit for ledger');
+    }
 }

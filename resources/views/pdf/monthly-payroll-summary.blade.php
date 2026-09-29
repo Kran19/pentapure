@@ -78,7 +78,7 @@
     <table style="width:100%; border:none; margin-bottom:12px;">
         <tr>
             <td style="border:none; width:70px; text-align:left; vertical-align:middle; padding:0;">
-                @if(file_exists(public_path('logo.png')))
+                @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
                     <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 42px; height: 42px; object-fit: contain;">
                 @endif
             </td>

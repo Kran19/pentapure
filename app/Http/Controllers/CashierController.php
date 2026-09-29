@@ -351,7 +351,7 @@ class CashierController extends Controller
     public function ledger(Request $request = null)
     {
         $user = $this->authUser();
-        $txs = Transaction::with('bills')->where('user_id', $user['id'])->orderByDesc('created_at')->get();
+        $txs = Transaction::with(['bills', 'user'])->where('user_id', $user['id'])->orderByDesc('created_at')->get();
 
         $summary = [
             'totalIn'  => $txs->where('type', 'IN')->sum('amount'),
@@ -788,15 +788,16 @@ class CashierController extends Controller
     private function txToArray($t): array
     {
         return [
-            'id'          => $t->id,
-            'user_id'     => $t->user_id,
-            'type'        => $t->type,
-            'amount'      => $t->amount,
-            'category'    => $t->category,
-            'note'        => $t->note,
-            'reference'   => $t->reference,
-            'site'        => $t->site,
-            'description' => $t->description,
+            'id'           => $t->id,
+            'user_id'      => $t->user_id,
+            'cashier_name' => strtoupper($t->user?->name ?? ($this->authUser()['name'] ?? 'Unknown')),
+            'type'         => $t->type,
+            'amount'       => $t->amount,
+            'category'     => $t->category,
+            'note'         => $t->note,
+            'reference'    => $t->reference,
+            'site'         => $t->site,
+            'description'  => $t->description,
             'date'        => ($t->date ? \Carbon\Carbon::parse($t->date) : $t->created_at)->toISOString(),
             'bills'       => $t->bills->map(fn($b) => [
                 'id'            => $b->id,

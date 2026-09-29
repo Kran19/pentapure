@@ -224,7 +224,12 @@ function updateModalSalaryLabel() {
   
   const perHourGroup = document.getElementById('modal-per-hour-group');
   if (perHourGroup) {
-    perHourGroup.style.display = (type === 'FIXED_MONTHLY') ? 'none' : 'block';
+    const isMonthly = (type === 'MONTHLY' || type === 'FIXED_MONTHLY');
+    perHourGroup.style.display = isMonthly ? 'none' : 'block';
+    if (isMonthly) {
+      const perHourInput = perHourGroup.querySelector('input[name="per_hour_salary"]');
+      if (perHourInput) perHourInput.value = '';
+    }
   }
 }
 

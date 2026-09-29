@@ -20,16 +20,16 @@
 
     <div id="stock-rows-wrapper">
         <div class="bulk-stock-row" id="single-stock-row" style="padding: 1rem; margin-bottom: 1rem; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;">
-        <div style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:flex-end;">
+        <div class="bulk-stock-fields">
             
-            <div class="form-group" style="margin:0; flex: 1 1 115px;">
-                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">📅 Date *</label>
-                <input type="date" class="form-control form-control-sm bs-date" value="{{ date('Y-m-d') }}" style="height:1.8rem; padding:0.1rem 0.4rem; font-size:0.8rem; font-weight:500;">
+            <div class="form-group bs-col-date">
+                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280; display:block;">📅 Date *</label>
+                <input type="date" class="form-control form-control-sm bs-date" value="{{ date('Y-m-d') }}" style="height:1.8rem; padding:0.1rem 0.4rem; font-size:0.8rem; font-weight:500; width:100%;">
             </div>
 
-            <div class="form-group" style="margin:0; flex: 1 1 85px;">
-                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Stock Type *</label>
-                <select class="form-control form-control-sm bs-stage" onchange="onBsStageChange(this)" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem;">
+            <div class="form-group bs-col-stage">
+                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280; display:block;">Stock Type *</label>
+                <select class="form-control form-control-sm bs-stage" onchange="onBsStageChange(this)" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem; width:100%;">
                     <option value="ALL">ALL</option>
                     <option value="RAW" selected>RAW</option>
                     <option value="SEMI">SEMI</option>
@@ -37,22 +37,20 @@
                 </select>
             </div>
             
-            <div class="form-group" style="margin:0; flex: 3 1 250px; min-width: 220px;">
-                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Product *</label>
-                <select class="form-control form-control-sm bs-product">
-                    <option></option>
+            <div class="form-group bs-col-product">
+                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280; display:block;">Product *</label>
+                <select class="form-control form-control-sm bs-product" onchange="onBsProductChange(this)" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem; font-weight:600; width:100%; border:1px solid #d1d5db; border-radius:6px; background:#fff; color:#333;">
+                    <option value="" disabled selected>SELECT PRODUCT...</option>
                 </select>
             </div>
-            
 
-
-            <div class="bs-location-row" style="display:flex; gap:0.5rem; flex: 2 1 180px; margin:0; position:relative;">
-                <div class="form-group" style="margin:0; flex:2;">
+            <div class="bs-location-row bs-col-location" style="display:flex; gap:0.4rem; align-items:flex-end;">
+                <div class="form-group" style="margin:0; flex:1.6; min-width:0; position:relative;">
                     <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280; display:block;">Storage Location *</label>
                     <div class="custom-location-dropdown" style="width: 100%; position: relative;">
                         <button class="btn" type="button" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'block' ? 'none' : 'block'" style="width:100%; text-align:left; display:flex; justify-content:space-between; align-items:center; background:#fff; border: 1px solid #d1d5db; height:1.8rem; padding: 0.1rem 0.5rem; font-size:0.8rem; color:#333; cursor:pointer;">
-                            <span class="loc-dropdown-text">Main Warehouse</span>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            <span class="loc-dropdown-text" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Main Warehouse</span>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
                         </button>
                         <ul class="dropdown-menu p-2 shadow" style="display:none; position:absolute; top:100%; left:0; z-index:1000; width: 220px; max-height:250px; overflow-y:auto; background:#fff; border:1px solid #d1d5db; border-radius:0.25rem; list-style:none; margin-top:0.125rem;">
                             @php $allLocs = \App\Models\Location::orderBy('name')->get(); @endphp
@@ -73,26 +71,28 @@
                         </ul>
                     </div>
                 </div>
-                <div class="form-group" style="margin:0; flex:1;">
-                    <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Qty *</label>
-                    <input type="number" min="0.001" step="0.001" class="form-control form-control-sm bs-loc-qty no-spinners" placeholder="0.00" readonly style="background-color: #f9fafb; height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem;">
+                <div class="form-group" style="margin:0; flex:1; min-width:65px;">
+                    <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280; display:block;">Qty *</label>
+                    <input type="number" min="0.001" step="0.001" class="form-control form-control-sm bs-loc-qty no-spinners" placeholder="0.00" readonly style="background-color: #f9fafb; height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem; width:100%;">
                 </div>
             </div>
 
-            <div class="form-group" style="margin:0; flex: 1 1 80px;">
-                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">MIN.QTY</label>
-                <input type="number" min="0" step="0.01" class="form-control form-control-sm bs-min-qty no-spinners" placeholder="0.00" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem;">
+            <div class="form-group bs-col-minqty">
+                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280; display:block;">MIN.QTY</label>
+                <input type="number" min="0" step="0.01" class="form-control form-control-sm bs-min-qty no-spinners" placeholder="0.00" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem; width:100%;">
             </div>
 
-            <div class="form-group" style="margin:0; flex: 1 1 80px;">
-                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Rate</label>
-                <input type="number" min="0" step="0.01" class="form-control form-control-sm bs-rate no-spinners" placeholder="0.00" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem;">
+            <div class="form-group bs-col-rate">
+                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280; display:block;">Rate</label>
+                <input type="number" min="0" step="0.01" class="form-control form-control-sm bs-rate no-spinners" placeholder="0.00" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem; width:100%;">
             </div>
 
-            <div class="form-group" style="margin:0; flex: 1 1 100px;">
-                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Note</label>
-                <input type="text" class="form-control form-control-sm bs-note" placeholder="Optional" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem;">
+            <div class="form-group bs-col-note">
+                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280; display:block;">Note</label>
+                <input type="text" class="form-control form-control-sm bs-note" placeholder="Optional" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem; width:100%;">
             </div>
+
+            <div class="row-actions form-group bs-col-actions" style="margin:0;"></div>
         </div>
     </div>
     </div> <!-- end wrapper -->
@@ -244,6 +244,8 @@
     /* Select2 Smart Search Custom Styling - Single Line Product Names */
     .select2-container {
       width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
     }
     .select2-container .select2-selection--single {
       background-color: #f9fafb !important;
@@ -252,6 +254,10 @@
       border-radius: 6px !important;
       display: flex !important;
       align-items: center !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      overflow: hidden !important;
     }
     .select2-container .select2-selection--single .select2-selection__rendered {
       color: #333333 !important;
@@ -263,12 +269,17 @@
       white-space: nowrap !important;
       overflow: hidden !important;
       text-overflow: ellipsis !important;
+      display: block !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
     }
     .select2-container--default .select2-selection--single .select2-selection__placeholder {
       color: #9ca3af !important;
       font-weight: 500 !important;
       font-size: 0.8rem !important;
       white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
     }
     .select2-container--default .select2-selection--single .select2-selection__arrow {
       height: 1.8rem !important;
@@ -280,9 +291,10 @@
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
       z-index: 99999 !important;
       background: #ffffff !important;
+      width: 100% !important;
       min-width: 100% !important;
-      width: max-content !important;
-      max-width: 92vw !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
     }
     .select2-container--default .select2-search--dropdown {
       padding: 6px !important;
@@ -292,7 +304,7 @@
     .select2-container--default .select2-search--dropdown .select2-search__field {
       border: 1px solid #d1d5db !important;
       border-radius: 6px !important;
-      padding: 0.4rem 0.6rem !important;
+      padding: 0.35rem 0.5rem !important;
       font-size: 0.82rem !important;
       outline: none !important;
       background: #ffffff !important;
@@ -301,17 +313,17 @@
       box-sizing: border-box !important;
     }
     .select2-results__options {
-      max-height: 260px !important;
+      max-height: 240px !important;
       overflow-y: auto !important;
-      overflow-x: auto !important;
+      overflow-x: hidden !important;
     }
     .select2-container--default .select2-results__option {
       font-size: 0.82rem !important;
       padding: 0.45rem 0.65rem !important;
       color: #374151 !important;
-      white-space: nowrap !important;
-      word-break: keep-all !important;
-      overflow: visible !important;
+      white-space: normal !important;
+      word-break: break-word !important;
+      line-height: 1.35 !important;
     }
     .select2-container--default .select2-results__option--highlighted[aria-selected] {
       background-color: #f59e0b !important;
@@ -320,6 +332,62 @@
     .select2-container--default .select2-results__option[aria-selected="true"] {
       background-color: #fef3c7 !important;
       color: #92400e !important;
+    }
+
+    /* Responsive Bulk Stock Fields Grid */
+    .bulk-stock-fields {
+      display: grid;
+      grid-template-columns: 120px 85px minmax(200px, 2.5fr) minmax(220px, 1.8fr) 75px 75px minmax(95px, 1fr) auto;
+      grid-template-areas: "date stage product location minqty rate note actions";
+      gap: 0.5rem;
+      align-items: flex-end;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .bulk-stock-fields > .form-group,
+    .bulk-stock-fields > .bs-location-row {
+      margin: 0 !important;
+      min-width: 0 !important;
+    }
+
+    .bs-col-date     { grid-area: date; }
+    .bs-col-stage    { grid-area: stage; }
+    .bs-col-product  { grid-area: product; min-width: 0 !important; }
+    .bs-col-location { grid-area: location; min-width: 0 !important; }
+    .bs-col-minqty   { grid-area: minqty; }
+    .bs-col-rate     { grid-area: rate; }
+    .bs-col-note     { grid-area: note; min-width: 0 !important; }
+    .bs-col-actions  { grid-area: actions; display: flex; align-items: flex-end; }
+
+    .bulk-stock-row {
+      position: relative;
+    }
+
+    /* Tablet & Smaller Desktop Screens (<= 1280px) */
+    @media (max-width: 1280px) and (min-width: 641px) {
+      .bulk-stock-fields {
+        grid-template-columns: 130px 100px 1fr 1fr 85px 85px 1fr auto;
+        grid-template-areas:
+          "date stage product product product product product product"
+          "location location minqty rate note note note actions";
+        gap: 0.65rem 0.5rem;
+      }
+    }
+
+    /* Mobile Screens (<= 640px) */
+    @media (max-width: 640px) {
+      .bulk-stock-fields {
+        grid-template-columns: 1fr 1fr;
+        grid-template-areas:
+          "date stage"
+          "product product"
+          "location location"
+          "minqty rate"
+          "note note"
+          "actions actions";
+        gap: 0.5rem;
+      }
     }
 
     /* All Product Names in 1 line in tables */
@@ -643,7 +711,7 @@ function adminAddStock() {
           $(productSelect).select2({
             dropdownParent: Swal.getPopup(),
             width: '100%',
-            dropdownAutoWidth: true
+            dropdownAutoWidth: false
           });
         }
         
@@ -1665,17 +1733,11 @@ window.onBsStageChange = function(element) {
     filteredProducts = adminStockProducts.filter(p => (p.type === targetStage || (targetStage === 'FINISHED' && p.type === 'FG')) && p.is_active);
   }
   
-  // Destroy existing select2 instance if already initialized
-  if ($(productSelect).hasClass('select2-hidden-accessible')) {
-    $(productSelect).select2('destroy');
-  }
-  
   // Empty the select and add a blank option for placeholder
   $(productSelect).empty();
   
-  const placeholderOpt = new Option('SELECT PRODUCT...', '', false, false);
+  const placeholderOpt = new Option('SELECT PRODUCT...', '', true, true);
   placeholderOpt.disabled = true;
-  placeholderOpt.selected = true;
   $(productSelect).append(placeholderOpt);
   
   // Append new options dynamically
@@ -1698,13 +1760,6 @@ window.onBsStageChange = function(element) {
       opt.setAttribute('data-unit', p.unit || 'kg');
       $(productSelect).append(opt);
     }
-  });
-  
-  // Initialize Select2 Smart Search
-  $(productSelect).select2({
-    placeholder: 'SELECT PRODUCT...',
-    width: '100%',
-    dropdownAutoWidth: true
   });
   
   $(productSelect).off('change').on('change', function() {
@@ -1739,16 +1794,6 @@ window.toggleStockFormCard = function() {
     card.style.display = isOpening ? 'block' : 'none';
     if (isOpening) {
       card.scrollIntoView({ behavior: 'smooth' });
-      // Ensure Select2 smart search is cleanly initialized on all product selectors
-      $('.bulk-stock-row .bs-product').each(function() {
-        if (!$(this).hasClass('select2-hidden-accessible')) {
-          $(this).select2({
-            placeholder: 'SELECT PRODUCT...',
-            width: '100%',
-            dropdownAutoWidth: true
-          });
-        }
-      });
     }
   }
 };
@@ -1936,22 +1981,17 @@ function addStockRow() {
         dateInput.value = prevDate;
     }
     
-    // For Select2, remove cloned artifacts
+    // Remove any leftover select2 container if present
     const select2Span = newRow.querySelector('.select2-container');
     if (select2Span) select2Span.remove();
-    
-    const bsProduct = newRow.querySelector('.bs-product');
-    if (bsProduct) {
-        bsProduct.classList.remove('select2-hidden-accessible');
-        bsProduct.removeAttribute('data-select2-id');
-        bsProduct.removeAttribute('tabindex');
-        bsProduct.removeAttribute('aria-hidden');
-    }
     
     // Make sure select elements are un-selected
     newRow.querySelectorAll('select').forEach(sel => {
         sel.selectedIndex = 0;
+        sel.classList.remove('select2-hidden-accessible');
         sel.removeAttribute('data-select2-id');
+        sel.removeAttribute('tabindex');
+        sel.removeAttribute('aria-hidden');
     });
     
     // Hide grade wrapper initially
@@ -1962,11 +2002,10 @@ function addStockRow() {
     let actionsDiv = newRow.querySelector('.row-actions');
     if (!actionsDiv) {
         actionsDiv = document.createElement('div');
-        actionsDiv.className = 'row-actions form-group';
-        actionsDiv.style.cssText = 'margin:0; display:flex; align-items:flex-end; padding-bottom: 0.1rem;';
-        newRow.firstElementChild.appendChild(actionsDiv);
+        actionsDiv.className = 'row-actions form-group bs-col-actions';
+        newRow.querySelector('.bulk-stock-fields').appendChild(actionsDiv);
     }
-    actionsDiv.innerHTML = `<button type="button" class="btn btn-sm btn-danger" onclick="this.closest('.bulk-stock-row').remove()" style="height: 2rem; padding: 0 0.5rem; background: #dc3545; color: white; border: none; font-weight: bold; line-height: 1;" title="Remove row">✖</button>`;
+    actionsDiv.innerHTML = `<button type="button" class="btn btn-sm btn-danger" onclick="this.closest('.bulk-stock-row').remove()" style="height: 1.8rem; padding: 0 0.55rem; background: #dc3545; color: white; border: none; font-weight: bold; line-height: 1.8rem; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 0.85rem;" title="Remove row">✖</button>`;
 
     // Add top border/margin to separate rows
     newRow.style.borderTop = '1px dashed #d1d5db';
@@ -1986,7 +2025,7 @@ function addStockRow() {
 }
 document.addEventListener('DOMContentLoaded', function() {
   if (sessionStorage.getItem('keepStockFormOpen') === 'true') {
-    const el = document.getElementById('bulk-stock-container');
+    const el = document.getElementById('stock-form-card');
     if (el) el.style.display = 'block';
     sessionStorage.removeItem('keepStockFormOpen');
   }

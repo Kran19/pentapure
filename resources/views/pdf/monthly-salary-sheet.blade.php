@@ -59,9 +59,9 @@
     <div style="text-align:center; margin-bottom:8px;">
         <table style="width:100%; border:none; margin-bottom:3px;">
             <tr>
-                <td style="border:none; width:75px; text-align:left; vertical-align:middle; padding:0;">
-                    @if(file_exists(public_path('logo.png')))
-                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 36px; height: 36px; object-fit: contain;">
+                <td style="border:none; width:80px; text-align:left; vertical-align:middle; padding:0;">
+                    @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
+                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 58px; height: 58px; object-fit: contain;">
                     @endif
                 </td>
                 <td style="border:none; text-align:center; vertical-align:middle; padding:0;">
@@ -142,8 +142,9 @@
                     $outTime = $att?->out_time ? date('h:i A', strtotime($att->out_time)) : '';
                 @endphp
                 <tr style="{{ $isSunday ? 'background-color:#fff8f8;' : '' }}">
-                    <td style="border-left:2px solid #000; font-weight:bold; text-align:center; white-space:nowrap; font-size:8px;">
-                        {{ $date->format('j') }} ({{ substr($date->format('D'), 0, 3) }})
+                    <td style="border-left:2px solid #000; font-weight:bold; text-align:center; white-space:nowrap; font-size:8px; padding:2px 1px;">
+                        <span style="display:inline-block; width:12px; text-align:right;">{{ $date->format('j') }}</span>
+                        <span style="display:inline-block; width:30px; text-align:left;">&nbsp;({{ substr($date->format('D'), 0, 3) }})</span>
                     </td>
                     <td style="font-weight:bold; font-size:7.5px; color:{{ $att?->status === 'ABSENT' ? '#d00' : '#000' }};">
                         {{ $worker->salary_type === 'LABOUR_MUKADAM' ? ($att?->num_workers ?? '') : ($att?->status ?? '') }}
@@ -176,9 +177,8 @@
           <td style="border:2px solid #000; padding:6px; text-align:right; width:25%;">{{ number_format($worker->salary_amount, 2) }}</td>
         </tr>
         <tr>
-          <td style="border:2px solid #000; padding:6px;">
-            <div style="display:inline-block; width:45%; color:#000;">OTHER</div>
-            <div style="display:inline-block; width:50%; text-align:center;">{{ strtoupper(($adjustment->other_allowance_label && $adjustment->other_allowance_label !== 'PETROL / FOODS') ? $adjustment->other_allowance_label : 'OTHER') }}</div>
+          <td style="border:2px solid #000; padding:6px; text-align:center;">
+            {{ ($adjustment->other_allowance_label && !in_array($adjustment->other_allowance_label, ['PETROL / FOODS', 'OTHER'])) ? strtoupper($adjustment->other_allowance_label) : '' }}
           </td>
           <td style="border:2px solid #000; padding:6px; text-align:right;">
             {{ $adjustment->petrol_food_amount > 0 ? '+' : '' }}{{ number_format($adjustment->petrol_food_amount, 2) }}
@@ -218,8 +218,7 @@
           <td style="border:2px solid #000; padding:6px; text-align:right;">{{ $otUtAdjustment >= 0 ? '' : '' }}{{ number_format($otUtAdjustment, 2) }}</td>
         </tr>
         <tr>
-          <td style="border:2px solid #000; padding:6px; text-align:center;">OTHER</td>
-          <td colspan="3" style="border:2px solid #000; padding:6px; text-align:center;">{{ strtoupper(($adjustment->other_allowance_label && $adjustment->other_allowance_label !== 'PETROL / FOODS') ? $adjustment->other_allowance_label : 'OTHER') }}</td>
+          <td colspan="4" style="border:2px solid #000; padding:6px; text-align:center;">{{ ($adjustment->other_allowance_label && !in_array($adjustment->other_allowance_label, ['PETROL / FOODS', 'OTHER'])) ? strtoupper($adjustment->other_allowance_label) : '' }}</td>
           <td style="border:2px solid #000; padding:6px; text-align:right;">{{ $adjustment->petrol_food_amount > 0 ? '+' : '' }}{{ number_format($adjustment->petrol_food_amount, 2) }}</td>
         </tr>
         <tr>
@@ -260,8 +259,7 @@
         </tr>
         <!-- Row 4 -->
         <tr>
-          <td style="border:2px solid #000; padding:6px; text-align:center;">OTHER</td>
-          <td colspan="3" style="border:2px solid #000; padding:6px; text-align:center;">{{ strtoupper(($adjustment->other_allowance_label && $adjustment->other_allowance_label !== 'PETROL / FOODS') ? $adjustment->other_allowance_label : 'OTHER') }}</td>
+          <td colspan="4" style="border:2px solid #000; padding:6px; text-align:center;">{{ ($adjustment->other_allowance_label && !in_array($adjustment->other_allowance_label, ['PETROL / FOODS', 'OTHER'])) ? strtoupper($adjustment->other_allowance_label) : '' }}</td>
           <td style="border:2px solid #000; padding:6px; text-align:right;">{{ number_format($adjustment->petrol_food_amount, 2) }}</td>
         </tr>
         <!-- Row 5 -->

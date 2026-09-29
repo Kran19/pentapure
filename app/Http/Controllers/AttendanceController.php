@@ -148,6 +148,10 @@ class AttendanceController extends Controller
         // Auto-calculate daily_salary for backward compatibility and internal logic
         if (($data['salary_type'] ?? '') === 'MONTHLY') {
             $data['daily_salary'] = $request->salary_amount / 30;
+            $data['per_hour_salary'] = null;
+        } elseif (($data['salary_type'] ?? '') === 'FIXED_MONTHLY') {
+            $data['daily_salary'] = $request->salary_amount;
+            $data['per_hour_salary'] = null;
         } else {
             $data['daily_salary'] = $request->salary_amount;
         }
@@ -605,11 +609,16 @@ class AttendanceController extends Controller
             'remark' => 'nullable|string'
         ]);
 
+        $label = $request->filled('other_allowance_label') ? trim($request->other_allowance_label) : null;
+        if ($label === 'OTHER' || $label === 'PETROL / FOODS') {
+            $label = null;
+        }
+
         $adj = WorkerMonthlyAdjustment::updateOrCreate(
             ['worker_id' => $id, 'month' => $request->month],
             [
                 'petrol_food_amount' => $request->petrol_food_amount ?? 0,
-                'other_allowance_label' => $request->other_allowance_label ?? null,
+                'other_allowance_label' => $label,
                 'advance' => $request->advance ?? 0,
                 'remark' => $request->remark
             ]
@@ -760,11 +769,11 @@ class AttendanceController extends Controller
 
         $adjustment = WorkerMonthlyAdjustment::firstOrNew(
             ['worker_id' => $id, 'month' => $month],
-            ['petrol_food_amount' => 0, 'other_allowance_label' => 'OTHER', 'advance' => 0, 'remark' => null]
+            ['petrol_food_amount' => 0, 'other_allowance_label' => null, 'advance' => 0, 'remark' => null]
         );
 
-        if (empty($adjustment->other_allowance_label) || $adjustment->other_allowance_label === 'PETROL / FOODS') {
-            $adjustment->other_allowance_label = 'OTHER';
+        if ($adjustment->other_allowance_label === 'PETROL / FOODS' || $adjustment->other_allowance_label === 'OTHER') {
+            $adjustment->other_allowance_label = null;
         }
 
         $totalOT = 0;

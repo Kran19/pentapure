@@ -189,7 +189,12 @@ function updateSalaryLabel() {
   
   const perHourGroup = document.getElementById('per-hour-group');
   if (perHourGroup) {
-      perHourGroup.style.display = (type === 'FIXED_MONTHLY') ? 'none' : 'block';
+      const isMonthly = (type === 'MONTHLY' || type === 'FIXED_MONTHLY');
+      perHourGroup.style.display = isMonthly ? 'none' : 'block';
+      if (isMonthly) {
+          const perHourInput = document.getElementById('w-per-hour');
+          if (perHourInput) perHourInput.value = '';
+      }
   }
 }
 
