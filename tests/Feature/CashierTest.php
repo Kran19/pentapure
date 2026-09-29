@@ -156,4 +156,86 @@ class CashierTest extends TestCase
         // Cashier A DOES NOT see Cashier C's transaction ($9999)
         $this->assertFalse($teamTxs->pluck('amount')->contains(9999.00));
     }
+
+    public function test_cashier_can_create_date_wise_transactions_and_update_date(): void
+    {
+        $session = ['auth_user' => [
+            'id' => $this->cashierA->id,
+            'name' => $this->cashierA->name,
+            'role' => 'CASHIER',
+        ]];
+
+        $customDate = '2026-05-15';
+        $response = $this->withSession($session)->postJson('/cashier/action', [
+            'transactions' => [
+                [
+                    'date' => $customDate,
+                    'type' => 'OUT',
+                    'amount' => 350.00,
+                    'category' => 'office_supplies',
+                    'note' => 'Date wise stationery purchase',
+                    'reference' => 'INV-2026-05',
+                ]
+            ]
+        ]);
+
+        $response->assertJson(['success' => true]);
+
+        $tx = Transaction::where('user_id', $this->cashierA->id)
+            ->where('reference', 'INV-2026-05')
+            ->first();
+
+        $this->assertNotNull($tx);
+        $this->assertEquals(350.00, (float)$tx->amount);
+        $this->assertStringStartsWith('2026-05-15', (string)$tx->date);
+        $this->assertStringStartsWith('2026-05-15', (string)$tx->created_at);
+
+        // Edit with a new date
+        $updatedDate = '2026-05-20';
+        $editResponse = $this->withSession($session)->putJson("/cashier/action/{$tx->id}", [
+            'date' => $updatedDate,
+            'amount' => 450.00,
+            'category' => 'office_supplies',
+            'note' => 'Updated date wise stationery purchase',
+        ]);
+
+        $editResponse->assertJson(['success' => true]);
+
+        $tx->refresh();
+        $this->assertEquals(450.00, (float)$tx->amount);
+        $this->assertStringStartsWith('2026-05-20', (string)$tx->date);
+        $this->assertStringStartsWith('2026-05-20', (string)$tx->created_at);
+
+        // Test multiple rows with separate dates in one submission
+        $multiResponse = $this->withSession($session)->postJson('/cashier/action', [
+            'transactions' => [
+                [
+                    'date' => '2026-04-10',
+                    'type' => 'OUT',
+                    'amount' => 100.00,
+                    'category' => 'office_supplies',
+                    'note' => 'Row 1',
+                    'reference' => 'MULTI-1',
+                ],
+                [
+                    'date' => '2026-04-12',
+                    'type' => 'IN',
+                    'amount' => 500.00,
+                    'category' => 'office_supplies',
+                    'note' => 'Row 2',
+                    'reference' => 'MULTI-2',
+                ]
+            ]
+        ]);
+
+        $multiResponse->assertJson(['success' => true]);
+
+        $tx1 = Transaction::where('reference', 'MULTI-1')->first();
+        $tx2 = Transaction::where('reference', 'MULTI-2')->first();
+
+        $this->assertNotNull($tx1);
+        $this->assertNotNull($tx2);
+        $this->assertStringStartsWith('2026-04-10', (string)$tx1->date);
+        $this->assertStringStartsWith('2026-04-12', (string)$tx2->date);
+    }
 }

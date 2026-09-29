@@ -285,7 +285,7 @@ const app = {
       if (!el) return;
       if (count > 0) {
         el.innerText = count;
-        el.style.display = 'inline-block';
+        el.style.display = 'inline-flex';
       } else {
         el.style.display = 'none';
       }
@@ -2448,11 +2448,16 @@ const app = {
 
     const isGeneralSelected = String(t.category || '').toLowerCase() === 'general';
     const currentType = (t.type || 'OUT').toUpperCase();
+    const currentDate = t.date ? t.date.split('T')[0] : '';
 
     Swal.fire({
       title: '✏️ Edit Transaction',
       html: `
         <div style="text-align:left;">
+          <div class="form-group mb-1" style="margin-bottom:0.8rem;">
+            <label style="color:var(--text-muted); font-size:0.8rem; font-weight:600; display:block; margin-bottom:4px;">Date</label>
+            <input type="date" id="edit-tx-date" value="${currentDate}" class="swal2-input" style="width:100%; margin:0; box-sizing:border-box;">
+          </div>
           <div class="form-group mb-1" style="margin-bottom:0.8rem;">
             <label style="color:var(--text-muted); font-size:0.8rem; font-weight:600; display:block; margin-bottom:4px;">Type</label>
             <select id="edit-tx-type" class="swal2-select" style="width:100%; margin:0; box-sizing:border-box;">
@@ -2492,6 +2497,7 @@ const app = {
   },
 
   saveTransactionEdit(id) {
+    const date = document.getElementById('edit-tx-date') ? document.getElementById('edit-tx-date').value : null;
     const type = document.getElementById('edit-tx-type').value;
     const amount = Number(document.getElementById('edit-tx-amount').value);
     const category = document.getElementById('edit-tx-category').value;
@@ -2506,7 +2512,7 @@ const app = {
     fetch(updateUrl, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken || csrfToken },
-      body: JSON.stringify({ amount, category, note })
+      body: JSON.stringify({ type, amount, category, reference, note, date })
     })
     .then(r => r.json())
     .then(d => {

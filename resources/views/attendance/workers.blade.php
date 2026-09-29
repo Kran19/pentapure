@@ -123,36 +123,40 @@
 const csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
 let editingWorkerId = null;
 
-function handleDepartmentChange() {
+const defaultSalaryOptions = [
+  { value: 'DAILY', text: 'Daily (₹ / Day)' },
+  { value: 'MONTHLY', text: 'Monthly (₹ / Month)' },
+  { value: 'FIXED_MONTHLY', text: 'Fixed Monthly (₹ / Month)' },
+  { value: 'LABOUR_MUKADAM', text: 'MUKADAM (₹ / LABOUR)' }
+];
+
+function handleDepartmentChange(targetSalaryType = null) {
   const deptSelect = document.getElementById('w-dept');
-  const selectedOption = deptSelect.options[deptSelect.selectedIndex];
+  const selectedOption = deptSelect && deptSelect.selectedIndex >= 0 ? deptSelect.options[deptSelect.selectedIndex] : null;
   const deptName = selectedOption ? (selectedOption.getAttribute('data-name') || selectedOption.text || '').trim().toUpperCase() : '';
   const salaryTypeSelect = document.getElementById('w-salary-type');
+  if (!salaryTypeSelect) return;
   
   const isMukadam = deptName.includes('MUKADAM');
+  const currentVal = targetSalaryType || salaryTypeSelect.value;
 
-  Array.from(salaryTypeSelect.options).forEach(opt => {
+  salaryTypeSelect.innerHTML = '';
+  defaultSalaryOptions.forEach(opt => {
     if (isMukadam) {
       if (opt.value === 'LABOUR_MUKADAM') {
-        opt.hidden = false;
-        opt.disabled = false;
-        opt.style.display = '';
-      } else {
-        opt.hidden = true;
-        opt.disabled = true;
-        opt.style.display = 'none';
+        salaryTypeSelect.add(new Option(opt.text, opt.value));
       }
     } else {
-      opt.hidden = false;
-      opt.disabled = false;
-      opt.style.display = '';
+      if (opt.value !== 'LABOUR_MUKADAM') {
+        salaryTypeSelect.add(new Option(opt.text, opt.value));
+      }
     }
   });
 
   if (isMukadam) {
     salaryTypeSelect.value = 'LABOUR_MUKADAM';
-  } else if (salaryTypeSelect.value === 'LABOUR_MUKADAM') {
-    salaryTypeSelect.value = 'DAILY';
+  } else {
+    salaryTypeSelect.value = (currentVal && currentVal !== 'LABOUR_MUKADAM') ? currentVal : 'DAILY';
   }
   
   updateSalaryLabel();
@@ -165,17 +169,18 @@ function openWorkerForm() {
   document.getElementById('w-dept').value = '';
   document.getElementById('w-role').value = '';
   document.getElementById('w-shift').value = 'DAY';
-  document.getElementById('w-salary-type').value = 'DAILY';
   document.getElementById('w-salary').value = '';
   document.getElementById('w-per-hour').value = '';
   document.getElementById('w-status').value = 'ACTIVE';
-  handleDepartmentChange();
+  handleDepartmentChange('DAILY');
   document.getElementById('worker-form-card').style.display = 'block';
   document.getElementById('worker-form-card').scrollIntoView({ behavior: 'smooth' });
 }
 
 function updateSalaryLabel() {
-  const type = document.getElementById('w-salary-type').value;
+  const salaryTypeSelect = document.getElementById('w-salary-type');
+  if (!salaryTypeSelect) return;
+  const type = salaryTypeSelect.value;
   let label = 'Daily Salary (₹)';
   if (type === 'MONTHLY') label = 'Monthly Salary (₹)';
   if (type === 'FIXED_MONTHLY') label = 'Fixed Monthly Salary (₹)';
@@ -196,10 +201,7 @@ function editWorker(w) {
   document.getElementById('w-role').value = w.role || '';
   document.getElementById('w-shift').value = w.shift_type || 'DAY';
   
-  handleDepartmentChange();
-  if (w.salary_type) {
-    document.getElementById('w-salary-type').value = w.salary_type;
-  }
+  handleDepartmentChange(w.salary_type);
   
   document.getElementById('w-salary').value = w.salary_amount;
   document.getElementById('w-per-hour').value = w.per_hour_salary || '';

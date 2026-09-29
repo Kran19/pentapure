@@ -140,8 +140,13 @@ class AttendanceController extends Controller
 
         $data = $request->all();
         
+        $dept = \App\Models\Department::find($request->department_id);
+        if ($dept && stripos($dept->name, 'MUKADAM') !== false) {
+            $data['salary_type'] = 'LABOUR_MUKADAM';
+        }
+
         // Auto-calculate daily_salary for backward compatibility and internal logic
-        if ($request->salary_type === 'MONTHLY') {
+        if (($data['salary_type'] ?? '') === 'MONTHLY') {
             $data['daily_salary'] = $request->salary_amount / 30;
         } else {
             $data['daily_salary'] = $request->salary_amount;

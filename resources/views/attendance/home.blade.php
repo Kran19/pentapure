@@ -116,10 +116,10 @@
                 </div>
                 <div class="form-group">
                   <label>Department</label>
-                  <select name="department_id" required style="width:100%;">
+                  <select name="department_id" id="modal-dept" required style="width:100%;" onchange="handleModalDepartmentChange()">
                     <option value="">-- Select --</option>
                     @foreach($departments as $d)
-                      <option value="{{ $d->id }}">{{ $d->name }}</option>
+                      <option value="{{ $d->id }}" data-name="{{ $d->name }}">{{ $d->name }}</option>
                     @endforeach
                   </select>
                 </div>
@@ -137,7 +137,7 @@
                 </div>
                 <div class="form-group">
                   <label>Salary Type</label>
-                  <select name="salary_type" id="modal-salary-type" onchange="let lbl = 'Daily Salary (₹)'; if(this.value === 'MONTHLY') lbl = 'Monthly Salary (₹)'; if(this.value === 'FIXED_MONTHLY') lbl = 'Fixed Monthly Salary (₹)'; if(this.value === 'LABOUR_MUKADAM') lbl = 'Per Labour Salary (₹)'; document.getElementById('modal-salary-label').innerText = lbl; document.getElementById('modal-per-hour-group').style.display = (this.value === 'FIXED_MONTHLY') ? 'none' : 'block';" style="width:100%;">
+                  <select name="salary_type" id="modal-salary-type" onchange="updateModalSalaryLabel()" style="width:100%;">
                     <option value="DAILY">Daily (₹ / Day)</option>
                     <option value="MONTHLY">Monthly (₹ / Month)</option>
                     <option value="FIXED_MONTHLY">Fixed Monthly (₹ / Month)</option>
@@ -170,14 +170,76 @@
 
 <script>
 const csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+const defaultModalSalaryOptions = [
+  { value: 'DAILY', text: 'Daily (₹ / Day)' },
+  { value: 'MONTHLY', text: 'Monthly (₹ / Month)' },
+  { value: 'FIXED_MONTHLY', text: 'Fixed Monthly (₹ / Month)' },
+  { value: 'LABOUR_MUKADAM', text: 'MUKADAM (₹ / LABOUR)' }
+];
+
+function handleModalDepartmentChange(targetSalaryType = null) {
+  const deptSelect = document.getElementById('modal-dept');
+  const selectedOption = deptSelect && deptSelect.selectedIndex >= 0 ? deptSelect.options[deptSelect.selectedIndex] : null;
+  const deptName = selectedOption ? (selectedOption.getAttribute('data-name') || selectedOption.text || '').trim().toUpperCase() : '';
+  const salaryTypeSelect = document.getElementById('modal-salary-type');
+  if (!salaryTypeSelect) return;
+  
+  const isMukadam = deptName.includes('MUKADAM');
+  const currentVal = targetSalaryType || salaryTypeSelect.value;
+
+  salaryTypeSelect.innerHTML = '';
+  defaultModalSalaryOptions.forEach(opt => {
+    if (isMukadam) {
+      if (opt.value === 'LABOUR_MUKADAM') {
+        salaryTypeSelect.add(new Option(opt.text, opt.value));
+      }
+    } else {
+      if (opt.value !== 'LABOUR_MUKADAM') {
+        salaryTypeSelect.add(new Option(opt.text, opt.value));
+      }
+    }
+  });
+
+  if (isMukadam) {
+    salaryTypeSelect.value = 'LABOUR_MUKADAM';
+  } else {
+    salaryTypeSelect.value = (currentVal && currentVal !== 'LABOUR_MUKADAM') ? currentVal : 'DAILY';
+  }
+
+  updateModalSalaryLabel();
+}
+
+function updateModalSalaryLabel() {
+  const salaryTypeSelect = document.getElementById('modal-salary-type');
+  if (!salaryTypeSelect) return;
+  const type = salaryTypeSelect.value;
+  let lbl = 'Daily Salary (₹)';
+  if (type === 'MONTHLY') lbl = 'Monthly Salary (₹)';
+  if (type === 'FIXED_MONTHLY') lbl = 'Fixed Monthly Salary (₹)';
+  if (type === 'LABOUR_MUKADAM') lbl = 'Per Labour Salary (₹)';
+  
+  const labelEl = document.getElementById('modal-salary-label');
+  if (labelEl) labelEl.innerText = lbl;
+  
+  const perHourGroup = document.getElementById('modal-per-hour-group');
+  if (perHourGroup) {
+    perHourGroup.style.display = (type === 'FIXED_MONTHLY') ? 'none' : 'block';
+  }
+}
+
 function openAddWorkerModal() {
-    document.getElementById('addWorkerModal').style.display = 'flex';
+    const modal = document.getElementById('addWorkerModal');
+    if (modal) modal.style.display = 'flex';
+    handleModalDepartmentChange();
 }
 
 function closeAddWorkerModal() {
-    document.getElementById('addWorkerModal').style.display = 'none';
-    document.getElementById('addWorkerForm').reset();
-    document.getElementById('modal-salary-label').innerText = 'Daily Salary (₹)';
+    const modal = document.getElementById('addWorkerModal');
+    if (modal) modal.style.display = 'none';
+    const form = document.getElementById('addWorkerForm');
+    if (form) form.reset();
+    handleModalDepartmentChange('DAILY');
 }
 
 function submitWorkerForm(e) {

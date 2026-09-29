@@ -1045,6 +1045,7 @@ select:focus, input:focus, textarea:focus {
 .admin-sidebar .nav-item {
   flex-direction: row;
   justify-content: flex-start;
+  align-items: center;
   padding: 0.8rem 1rem;
   font-size: 1rem;
   border-radius: var(--border-radius);
@@ -1063,6 +1064,47 @@ select:focus, input:focus, textarea:focus {
   border-radius: 12px;
   border-left: none;
   box-shadow: none;
+}
+
+.sidebar-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 10px;
+  letter-spacing: 0;
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+.sidebar-badge.badge-danger {
+  background: #ef4444;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(239, 68, 68, 0.4);
+}
+.sidebar-badge.badge-warning {
+  background: #f59e0b;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.4);
+}
+.sidebar-badge.badge-info {
+  background: #3b82f6;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.4);
+}
+.admin-sidebar .nav-item.active .sidebar-badge.badge-danger {
+  background: #dc2626;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+.admin-sidebar .nav-item.active .sidebar-badge.badge-warning {
+  background: #b45309;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
 }
 
 .admin-layout-wrapper {

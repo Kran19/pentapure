@@ -47,7 +47,8 @@ input[type="number"],
 
 .cashier-tx-row select,
 .cashier-tx-row input[type="text"],
-.cashier-tx-row input[type="number"] {
+.cashier-tx-row input[type="number"],
+.cashier-tx-row input[type="date"] {
   width: 100%;
   padding: 0.8rem 1rem;
   border-radius: 8px;
@@ -56,6 +57,11 @@ input[type="number"],
   color: var(--text-main, #333);
   font-size: 0.95rem;
   box-sizing: border-box;
+}
+
+.cashier-tx-row input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.85;
 }
 
 .cashier-tx-row input[type="file"] {
@@ -203,13 +209,26 @@ input[type="number"],
       wrapper.appendChild(hr);
     }
 
+    // Default to the previous row's date if set, or today's date
+    const existingDateInputs = container.querySelectorAll('.tx-date');
+    let defaultDate = '{{ date('Y-m-d') }}';
+    if (existingDateInputs.length > 0) {
+      const lastDate = existingDateInputs[existingDateInputs.length - 1].value;
+      if (lastDate) defaultDate = lastDate;
+    }
+
     const div = document.createElement('div');
     div.className = 'cashier-tx-row';
     
     div.innerHTML = `
-      <!-- Line 1: Type, Category, Amount, and Delete button -->
-      <div style="display:flex; gap:16px; align-items:flex-end;">
-        <div class="form-group" style="flex:1 1 120px;">
+      <!-- Line 1: Date, Type, Category, Amount, and Delete button -->
+      <div style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap;">
+        <div class="form-group" style="flex:1.2 1 150px;">
+          <label>Date</label>
+          <input type="date" class="tx-date" value="${defaultDate}" required>
+        </div>
+
+        <div class="form-group" style="flex:1.1 1 130px;">
           <label>Type</label>
           <select class="tx-type">
             <option value="OUT">EXPENSE (OUT)</option>
@@ -217,7 +236,7 @@ input[type="number"],
           </select>
         </div>
         
-        <div class="form-group" style="flex:2.5 1 220px;">
+        <div class="form-group" style="flex:2.2 1 200px;">
           <label>Category</label>
           <select class="tx-category">
             ${categories.map(c => `<option value="${c.value}">${c.label}</option>`).join('')}
@@ -235,7 +254,7 @@ input[type="number"],
       </div>
 
       <!-- Line 2: Note, Reference, Bill file -->
-      <div style="display:flex; gap:16px; align-items:flex-end;">
+      <div style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap;">
         <div class="form-group" style="flex:2 1 250px;">
           <label>Particulars / Note</label>
           <input type="text" class="tx-note" placeholder="Description of transaction">
@@ -278,6 +297,8 @@ input[type="number"],
     const formData = new FormData();
 
     rows.forEach((row, idx) => {
+      const dateEl = row.querySelector('.tx-date');
+      const date = dateEl ? dateEl.value : '';
       const type = row.querySelector('.tx-type').value;
       const category = row.querySelector('.tx-category').value;
       const amount = Number(row.querySelector('.tx-amount').value);
@@ -291,6 +312,9 @@ input[type="number"],
         return;
       }
 
+      if (date) {
+        formData.append(`transactions[${idx}][date]`, date);
+      }
       formData.append(`transactions[${idx}][type]`, type);
       formData.append(`transactions[${idx}][category]`, category);
       formData.append(`transactions[${idx}][amount]`, amount);

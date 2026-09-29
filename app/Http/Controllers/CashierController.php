@@ -54,6 +54,7 @@ class CashierController extends Controller
             'transactions.*.category' => 'nullable|string',
             'transactions.*.note' => 'nullable|string',
             'transactions.*.reference' => 'nullable|string',
+            'transactions.*.date' => 'nullable|date',
         ]);
 
         $userArray = $this->authUser();
@@ -63,6 +64,12 @@ class CashierController extends Controller
             foreach ($request->transactions as $idx => $tData) {
                 $rawType = strtoupper($tData['type'] ?? 'OUT');
                 $normalizedType = ($rawType === 'EXPENSE' || $rawType === 'OUT') ? 'OUT' : 'IN';
+                if (!empty($tData['date'])) {
+                    $parsed = \Carbon\Carbon::parse($tData['date']);
+                    $txDate = $parsed->isToday() ? now() : $parsed->copy()->setTime(12, 0, 0);
+                } else {
+                    $txDate = now();
+                }
 
                 $tx = Transaction::create([
                     'user_id'     => $userArray['id'],
@@ -72,6 +79,8 @@ class CashierController extends Controller
                     'note'        => $tData['note'] ?? null,
                     'reference'   => $tData['reference'] ?? null,
                     'site'        => $userModel ? $userModel->branch : null,
+                    'date'        => $txDate,
+                    'created_at'  => $txDate,
                 ]);
 
                 // Handle optional bill file on creation via index
@@ -92,6 +101,7 @@ class CashierController extends Controller
             'category'  => 'nullable|string',
             'note'      => 'nullable|string',
             'reference' => 'nullable|string',
+            'date'      => 'nullable|date',
         ]);
 
         $user = $this->authUser();
@@ -118,13 +128,20 @@ class CashierController extends Controller
         $oldData = $tx->toArray();
 
         \DB::transaction(function() use ($request, $tx, $user, $oldData) {
-            $tx->update([
+            $updatePayload = [
                 'type'      => $request->type ? $request->type : $tx->type,
                 'amount'    => $request->amount,
                 'category'  => $request->has('category') ? $request->category : $tx->category,
                 'note'      => $request->note,
                 'reference' => $request->reference,
-            ]);
+            ];
+            if ($request->filled('date')) {
+                $parsedDate = \Carbon\Carbon::parse($request->date);
+                $txDate = $parsedDate->isToday() ? now() : $parsedDate->copy()->setTime(12, 0, 0);
+                $updatePayload['date'] = $txDate;
+                $updatePayload['created_at'] = $txDate;
+            }
+            $tx->update($updatePayload);
 
             \App\Models\TransactionLog::create([
                 'transaction_id' => $tx->id,
@@ -322,7 +339,6 @@ class CashierController extends Controller
     {
         $txs = Transaction::with('bills')
             ->where('user_id', $this->authUser()['id'])
-            ->where('created_at', '<=', now())
             ->orderByDesc('created_at')
             ->get()
             ->map(fn($t) => $this->txToArray($t));
@@ -335,7 +351,7 @@ class CashierController extends Controller
     public function ledger(Request $request = null)
     {
         $user = $this->authUser();
-        $txs = Transaction::with('bills')->where('user_id', $user['id'])->where('created_at', '<=', now())->orderByDesc('created_at')->get();
+        $txs = Transaction::with('bills')->where('user_id', $user['id'])->orderByDesc('created_at')->get();
 
         $summary = [
             'totalIn'  => $txs->where('type', 'IN')->sum('amount'),
@@ -392,7 +408,6 @@ class CashierController extends Controller
         } else {
             $teamTxs = Transaction::with(['bills', 'user'])
                 ->whereIn('user_id', $allowedIds)
-                ->where('created_at', '<=', now())
                 ->whereHas('user', function($q) {
                     $q->where('status', 'ACTIVE');
                 })
@@ -408,7 +423,7 @@ class CashierController extends Controller
 
         // Day Wise Balance
         $dailyData = $txs->groupBy(function($t) {
-            return Carbon::parse($t->created_at)->format('Y-m-d');
+            return Carbon::parse($t->date ?: $t->created_at)->format('Y-m-d');
         })->map(function($group, $date) {
             $in = $group->where('type', 'IN')->sum('amount');
             $out = $group->where('type', 'OUT')->sum('amount');
@@ -435,7 +450,7 @@ class CashierController extends Controller
             'value' => str_replace(' ', '_', strtolower($c)),
         ])->values()->toArray();
 
-        $minDate = Transaction::min('created_at');
+        $minDate = Transaction::min('date') ?: Transaction::min('created_at');
         $earliestDate = $minDate ? Carbon::parse($minDate)->format('Y-m-d') : now()->subMonth()->format('Y-m-d');
 
         $pageData = [
@@ -782,7 +797,7 @@ class CashierController extends Controller
             'reference'   => $t->reference,
             'site'        => $t->site,
             'description' => $t->description,
-            'date'        => $t->created_at->toISOString(),
+            'date'        => ($t->date ? \Carbon\Carbon::parse($t->date) : $t->created_at)->toISOString(),
             'bills'       => $t->bills->map(fn($b) => [
                 'id'            => $b->id,
                 'original_name' => $b->original_name,

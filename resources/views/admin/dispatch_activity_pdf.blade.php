@@ -47,12 +47,16 @@
     <table>
         <thead>
             <tr>
-                <th>Order ID</th>
-                <th>Date</th>
-                <th>Customer / Company</th>
-                <th style="width: 35%;">Items & Details</th>
-                <th>Status</th>
-                <th>Dispatch Details</th>
+                <th style="width: 8%; text-align: center;">Order ID</th>
+                <th style="width: 11%;">Date & Time</th>
+                <th style="width: 16%;">Customer</th>
+                <th style="width: 18%;">Product</th>
+                <th style="width: 8%; text-align: center;">Grade</th>
+                <th style="width: 9%; text-align: right;">Ordered</th>
+                <th style="width: 9%; text-align: right;">Dispatched</th>
+                <th style="width: 8%; text-align: right;">Pending</th>
+                <th style="width: 9%; text-align: center;">Status</th>
+                <th style="width: 14%;">Transporter</th>
             </tr>
         </thead>
         @php
@@ -64,7 +68,7 @@
         <tbody>
             @foreach($groupedOrders as $dateKey => $dateOrders)
                 <tr style="background-color: #f1f5f9;">
-                    <td colspan="6" style="padding: 6px 8px; font-weight: bold; font-size: 11px; color: #1e293b; background: #e2e8f0; border: 1px solid #cbd5e1;">
+                    <td colspan="10" style="padding: 6px 8px; font-weight: bold; font-size: 11px; color: #1e293b; background: #e2e8f0; border: 1px solid #cbd5e1;">
                         DATE: {{ $dateKey !== 'Unknown' ? \Carbon\Carbon::parse($dateKey)->format('d M Y (l)') : 'Other Date' }}
                         <span style="font-size: 9px; color: #475569; margin-left: 8px;">
                             ({{ count($dateOrders) }} {{ count($dateOrders) === 1 ? 'Order' : 'Orders' }})
@@ -74,8 +78,12 @@
                 @foreach($dateOrders as $order)
                 @php
                     $orderDate = $order->date ? \Carbon\Carbon::parse($order->date) : $order->created_at;
+                    $items = $order->items;
+                    $itemCount = max(1, $items->count());
+                    $isDoneOrder = in_array($order->dispatch_status, ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED']);
+
                     $label = 'Pending';
-                    if (in_array($order->dispatch_status, ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED'])) {
+                    if ($isDoneOrder) {
                         $label = 'Fully Dispatch';
                     } elseif (in_array($order->dispatch_status, ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING'])) {
                         $label = 'Partial';
@@ -83,47 +91,79 @@
                         $label = 'Pending';
                     }
                 @endphp
+
+                @if($items->isEmpty())
                 <tr>
-                    <td><strong>#{{ $order->id }}</strong></td>
+                    <td style="text-align: center;"><strong>#{{ $order->id }}</strong></td>
                     <td>{{ $orderDate ? $orderDate->format('d M Y, h:i A') : '—' }}</td>
-                    <td>
-                        <strong>{{ $order->company?->name ?? 'N/A' }}</strong><br>
-                        <span style="font-size:10px; color:#666;">By: {{ $order->creator?->name ?? 'System' }}</span>
+                    <td><strong>{{ $order->company?->name ?? 'N/A' }}</strong></td>
+                    <td colspan="5" style="text-align: center; color: #888;">No items</td>
+                    <td style="text-align: center;">{{ $label }}</td>
+                    <td>{{ $order->transporter?->name ?? '—' }}</td>
+                </tr>
+                @else
+                @foreach($items as $itemIdx => $item)
+                @php
+                    $isFirst = ($itemIdx === 0);
+                    $dispatched = ($item->dispatched_qty > 0) ? (float)$item->dispatched_qty : ($isDoneOrder ? (float)$item->quantity : 0);
+                    $pending = max(0, (float)$item->quantity - $dispatched);
+                    $unit = $item->product?->unit ?? 'kg';
+                @endphp
+                <tr>
+                    @if($isFirst)
+                    <td rowspan="{{ $itemCount }}" style="text-align: center; vertical-align: middle;">
+                        <strong>#{{ $order->id }}</strong>
                     </td>
-                    <td>
-                        <ul class="items-list" style="margin: 0; padding-left: 15px; list-style-type: none; padding: 0;">
-                        @foreach($order->items as $item)
-                            <li style="margin-bottom: 5px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
-                                - {{ $item->product ? $item->product->formatName($item->grade) : 'Unknown' }}: <strong>{{ $item->quantity }} {{ $item->product?->unit }}</strong>
-                                @if(in_array($order->dispatch_status, ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING']) || (in_array($order->dispatch_status, ['DONE', 'FULLY_DISPATCHED']) && $order->dispatch_logs_count > 1))
-                                    <div style="font-size:10px; color:#555; padding-left: 10px;">
-                                        Dispatched: {{ $item->dispatched_qty ?? 0 }} {{ $item->product?->unit }} |
-                                        Pending: {{ max(0, $item->quantity - ($item->dispatched_qty ?? 0)) }} {{ $item->product?->unit }}
-                                    </div>
-                                @endif
-                            </li>
-                        @endforeach
-                        </ul>
+                    <td rowspan="{{ $itemCount }}" style="vertical-align: middle;">
+                        {{ $orderDate ? $orderDate->format('d M Y, h:i A') : '—' }}
+                    </td>
+                    <td rowspan="{{ $itemCount }}" style="vertical-align: middle;">
+                        <strong>{{ $order->company?->name ?? 'N/A' }}</strong><br>
+                        <span style="font-size: 9px; color: #666;">By: {{ $order->creator?->name ?? 'System' }}</span>
                         @if($order->notes)
-                            <div style="font-size:10px; font-style:italic; margin-top:5px; color:#666;">Note: {{ $order->notes }}</div>
+                            <div style="font-size: 9px; color: #666; font-style: italic; margin-top: 3px;">Note: {{ $order->notes }}</div>
                         @endif
                     </td>
-                    <td>{{ $label }}</td>
+                    @endif
+
                     <td>
+                        {{ $item->product?->name ?? 'Unknown' }}
+                        @if($item->product?->type)
+                            <span style="font-size: 9px; color: #777;">({{ ($item->product->type === 'FINISHED' || $item->product->type === 'FG') ? 'FG' : $item->product->type }})</span>
+                        @endif
+                    </td>
+                    <td style="text-align: center;">
+                        {{ ($item->grade && !in_array(strtoupper(trim($item->grade)), ['NONE', 'N/A', 'NA', ''])) ? $item->grade : '—' }}
+                    </td>
+                    <td style="text-align: right;">
+                        {{ number_format($item->quantity, 2) }} {{ $unit }}
+                    </td>
+                    <td style="text-align: right; color: #16a34a; font-weight: bold;">
+                        {{ number_format($dispatched, 2) }} {{ $unit }}
+                    </td>
+                    <td style="text-align: right; color: {{ $pending > 0 ? '#dc2626' : '#16a34a' }}; font-weight: bold;">
+                        {{ $pending > 0 ? number_format($pending, 2) . ' ' . $unit : '0.00' }}
+                    </td>
+
+                    @if($isFirst)
+                    <td rowspan="{{ $itemCount }}" style="text-align: center; vertical-align: middle;">
+                        <strong>{{ $label }}</strong>
+                    </td>
+                    <td rowspan="{{ $itemCount }}" style="vertical-align: middle;">
                         @if($order->dispatchLog)
-                            <div>Transporter: {{ $order->transporter?->name ?? 'N/A' }}</div>
-                            <div style="font-size:10px; color:#666;">Dispatched by: {{ $order->dispatchLog->user?->name }}</div>
-                            @if($order->dispatchLog->driver_no)
-                                <div style="font-size:10px; color:#666;">Driver: {{ $order->dispatchLog->driver_no }}</div>
-                            @endif
+                            <div>{{ $order->transporter?->name ?? 'N/A' }}</div>
+                            <div style="font-size: 9px; color: #666;">By: {{ $order->dispatchLog->user?->name }}</div>
                             @if($order->dispatchLog->lr_no)
-                                <div style="font-size:10px; color:#666;">LR No: {{ $order->dispatchLog->lr_no }}</div>
+                                <div style="font-size: 9px; color: #666;">LR: {{ $order->dispatchLog->lr_no }}</div>
                             @endif
                         @else
-                            <span style="color:#888;">Not dispatched yet</span>
+                            <span style="color: #888;">Not dispatched yet</span>
                         @endif
                     </td>
+                    @endif
                 </tr>
+                @endforeach
+                @endif
                 @endforeach
             @endforeach
         </tbody>

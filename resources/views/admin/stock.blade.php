@@ -14,13 +14,7 @@
   <!-- In-Page Add / Adjust Stock Card (Hidden by Default) -->
   <div id="stock-form-card" class="card white-orange-card" style="display:none; margin-bottom:1.5rem; padding:1.2rem;">
     <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem;">
-      <div style="display:flex; align-items:center; gap:1.2rem; flex-wrap:wrap;">
-        <span style="font-size:1.15rem; font-weight:700;">📦 Add Stock Entry</span>
-        <div style="display:inline-flex; align-items:center; gap:0.4rem; background:#f9fafb; padding:0.25rem 0.65rem; border-radius:6px; border:1px solid #e5e7eb;">
-          <label for="stock-entry-date" style="font-size:0.8rem; font-weight:600; color:#4b5563; margin:0;">📅 Date *</label>
-          <input type="date" id="stock-entry-date" onchange="onStockEntryDateChange(this.value)" value="{{ date('Y-m-d') }}" style="height:1.85rem; padding:0.1rem 0.5rem; font-size:0.82rem; font-weight:600; border-radius:6px; border:1px solid #d1d5db; background:#fff; color:#111; cursor:pointer;">
-        </div>
-      </div>
+      <span style="font-size:1.15rem; font-weight:700;">📦 Add Stock Entry</span>
       <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('stock-form-card').style.display='none'" style="width:auto; padding:0.3rem 0.8rem;">✕ Close</button>
     </div>
 
@@ -1732,16 +1726,10 @@ window.toggleStockFormCard = function() {
   }
 };
 
-window.onStockEntryDateChange = function(newDate) {
-  document.querySelectorAll('.bulk-stock-row .bs-date').forEach(inp => {
-    inp.value = newDate;
-  });
-};
-
 window.adminSaveBulkStock = function() {
   const btn = document.getElementById('btn-save-stock-card');
   const rows = document.querySelectorAll('.bulk-stock-row');
-  const globalDate = document.getElementById('stock-entry-date') ? document.getElementById('stock-entry-date').value : '';
+  const fallbackDate = '{{ date('Y-m-d') }}';
   
   if (rows.length === 0) {
     Swal.fire('Error', 'No products to add.', 'error');
@@ -1762,7 +1750,7 @@ window.adminSaveBulkStock = function() {
       stage = 'FINISHED';
     }
     let grade = gradeVal || 'NONE';
-    const rowDate = (row.querySelector('.bs-date') && row.querySelector('.bs-date').value) ? row.querySelector('.bs-date').value : globalDate;
+    const rowDate = (row.querySelector('.bs-date') && row.querySelector('.bs-date').value) ? row.querySelector('.bs-date').value : fallbackDate;
     const alertLimit = parseFloat(row.querySelector('.bs-min-qty').value);
     const rate = parseFloat(row.querySelector('.bs-rate') ? row.querySelector('.bs-rate').value : NaN);
     const note = row.querySelector('.bs-note').value.trim();
@@ -1780,7 +1768,7 @@ window.adminSaveBulkStock = function() {
         product_id: productId,
         stage: stage,
         grade: grade,
-        date: rowDate || globalDate,
+        date: rowDate,
         alert_limit: isNaN(alertLimit) ? null : alertLimit,
         rate: isNaN(rate) ? null : rate,
         note: note,
@@ -1806,7 +1794,7 @@ window.adminSaveBulkStock = function() {
       'X-CSRF-TOKEN': csrfToken,
       'Accept': 'application/json'
     },
-    body: JSON.stringify({ items, date: globalDate })
+    body: JSON.stringify({ items, date: items[0]?.date || fallbackDate })
   })
   .then(res => res.json())
   .then(data => {
@@ -1914,11 +1902,11 @@ function addStockRow() {
     const dropdownText = newRow.querySelector('.loc-dropdown-text');
     if (dropdownText) dropdownText.textContent = 'Main Warehouse';
     
-    // Set date to current top entry date
-    const globalDate = document.getElementById('stock-entry-date') ? document.getElementById('stock-entry-date').value : '';
+    // Set date of new row to previous row's date or today
+    const prevDate = firstRow.querySelector('.bs-date')?.value || '{{ date('Y-m-d') }}';
     const dateInput = newRow.querySelector('.bs-date');
-    if (dateInput && globalDate) {
-        dateInput.value = globalDate;
+    if (dateInput) {
+        dateInput.value = prevDate;
     }
     
     // For Select2, remove cloned artifacts

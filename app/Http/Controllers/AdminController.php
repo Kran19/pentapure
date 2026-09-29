@@ -1263,10 +1263,28 @@ class AdminController extends Controller
             $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '<=', $request->date_to);
         }
 
+        $baseStatsQuery = Order::query();
+        if ($request->date_from) {
+            $baseStatsQuery->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '>=', $request->date_from);
+        }
+        if ($request->date_to) {
+            $baseStatsQuery->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '<=', $request->date_to);
+        }
+
+        $stats = [
+            'total' => (clone $baseStatsQuery)->count(),
+            'pending' => (clone $baseStatsQuery)->where(function($q) {
+                $q->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED'])->orWhereNull('dispatch_status');
+            })->count(),
+            'partial' => (clone $baseStatsQuery)->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING'])->count(),
+            'fully_dispatched' => (clone $baseStatsQuery)->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED'])->count(),
+        ];
+
         $orders = $query->paginate(20)->withQueryString();
 
         $pageData = [
             'orders' => $orders,
+            'stats' => $stats,
             'filters' => [
                 'status' => $request->status,
                 'date_from' => $request->date_from,
@@ -1501,7 +1519,7 @@ class AdminController extends Controller
     // ── LOCATIONS / WAREHOUSE MASTER ──────────────────────────────────────────
     public function locations()
     {
-        $locations = Location::orderBy('name')->paginate(20);
+        $locations = Location::withCount(['stocks', 'dispatchLocations'])->orderBy('name')->paginate(20);
         return view('admin.locations', compact('locations'));
     }
 
@@ -1544,7 +1562,20 @@ class AdminController extends Controller
 
     public function destroyLocationApi($id)
     {
-        $loc = Location::findOrFail($id);
+        $loc = Location::withCount(['stocks', 'dispatchLocations'])->findOrFail($id);
+
+        if (in_array(strtoupper(trim($loc->name)), ['MAIN WAREHOUSE', 'DEFAULT'], true)) {
+            return response()->json(['success' => false, 'message' => 'Fixed system location (Main Warehouse) cannot be deleted!'], 403);
+        }
+
+        $usageCount = ($loc->stocks_count ?? 0) + ($loc->dispatch_locations_count ?? 0);
+        if ($usageCount > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => "Cannot delete location: it is currently in use across {$usageCount} stock/dispatch " . (\Illuminate\Support\Str::plural('record', $usageCount)) . "!"
+            ], 422);
+        }
+
         $loc->delete();
         return response()->json(['success' => true, 'message' => 'Location deleted successfully!']);
     }

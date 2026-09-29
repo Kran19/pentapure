@@ -74,7 +74,7 @@
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
               <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
             </svg>
-            <span id="notif-badge" style="position:absolute; top:-5px; right:-5px; background:var(--danger); color:white; font-size:10px; padding:2px 5px; border-radius:10px; display:none; min-width:16px; text-align:center;">0</span>
+            <span id="notif-badge" style="position:absolute; top:-5px; right:-5px; background:var(--danger); color:white; font-size:10px; padding:2px 5px; border-radius:10px; {{ ($sidebarUnreadNotifCount ?? 0) > 0 ? '' : 'display:none;' }} min-width:16px; text-align:center;">{{ $sidebarUnreadNotifCount ?? 0 }}</span>
           </a>
         </div>
 
@@ -125,12 +125,18 @@
             @endif
             @if($can('stock_manager_stock'))
             <a href="{{ url(request()->segment(1) . '/stock') }}" class="nav-item {{ $seg=='stock'?'active':'' }}">
-              Live Stock View
+              <span>Live Stock View</span>
+              @if(($sidebarLowStockCount ?? 0) > 0)
+                <span class="sidebar-badge badge-warning" title="{{ $sidebarLowStockCount }} low stock alert(s)">{{ $sidebarLowStockCount }}</span>
+              @endif
             </a>
             @endif
             @if($can('stock_manager_po'))
             <a href="{{ url(request()->segment(1) . '/po') }}" class="nav-item {{ $seg=='po'?'active':'' }}">
-              Stock Purchase Orders
+              <span>Stock Purchase Orders</span>
+              @if(($sidebarPendingPoCount ?? 0) > 0)
+                <span class="sidebar-badge badge-danger" title="{{ $sidebarPendingPoCount }} pending purchase order(s)">{{ $sidebarPendingPoCount }}</span>
+              @endif
             </a>
             @endif
             @if($can('stock_manager_history'))
@@ -165,12 +171,18 @@
             @endif
             @if($can('admin_stock'))
             <a href="{{ url(request()->segment(1) . '/admin/stock') }}" class="nav-item {{ request()->segment(2)=='admin' && request()->segment(3)=='stock' ? 'active' : '' }}">
-              Admin Live Stock
+              <span>Admin Live Stock</span>
+              @if(($sidebarLowStockCount ?? 0) > 0)
+                <span class="sidebar-badge badge-warning" title="{{ $sidebarLowStockCount }} low stock alert(s)">{{ $sidebarLowStockCount }}</span>
+              @endif
             </a>
             @endif
             @if($can('admin_dispatch_activity'))
             <a href="{{ url(request()->segment(1) . '/dispatch-activity') }}" class="nav-item {{ $seg=='dispatch-activity'?'active':'' }}">
-              Dispatch Activity
+              <span>Dispatch Activity</span>
+              @if(($sidebarPendingDispatchCount ?? 0) > 0)
+                <span class="sidebar-badge badge-warning" title="{{ $sidebarPendingDispatchCount }} pending dispatch order(s)">{{ $sidebarPendingDispatchCount }}</span>
+              @endif
             </a>
             @endif
             @if($can('admin_cashier_overview'))
@@ -199,7 +211,10 @@
 
             @if($can('admin_stock'))
             <a href="{{ url(request()->segment(1) . '/stock') }}" class="nav-item {{ $seg=='stock'?'active':'' }}">
-              Live Stock
+              <span>Live Stock</span>
+              @if(($sidebarLowStockCount ?? 0) > 0)
+                <span class="sidebar-badge badge-warning" title="{{ $sidebarLowStockCount }} low stock alert(s)">{{ $sidebarLowStockCount }}</span>
+              @endif
             </a>
             @endif
 
@@ -223,13 +238,19 @@
 
             @if($can('admin_po'))
             <a href="{{ url(request()->segment(1) . '/po') }}" class="nav-item {{ $seg=='po'?'active':'' }}">
-              Purchase Requests
+              <span>Purchase Requests</span>
+              @if(($sidebarPendingPoCount ?? 0) > 0)
+                <span class="sidebar-badge badge-danger" title="{{ $sidebarPendingPoCount }} pending purchase request(s)">{{ $sidebarPendingPoCount }}</span>
+              @endif
             </a>
             @endif
 
             @if($can('admin_dispatch_activity'))
             <a href="{{ url(request()->segment(1) . '/dispatch-activity') }}" class="nav-item {{ $seg=='dispatch-activity'?'active':'' }}">
-              Dispatch Activity
+              <span>Dispatch Activity</span>
+              @if(($sidebarPendingDispatchCount ?? 0) > 0)
+                <span class="sidebar-badge badge-warning" title="{{ $sidebarPendingDispatchCount }} pending dispatch order(s)">{{ $sidebarPendingDispatchCount }}</span>
+              @endif
             </a>
             @endif
 
@@ -272,7 +293,10 @@
               @endif
               @if($can('sales_action'))
               <a href="{{ url(request()->segment(1) . '/sales/action') }}" class="nav-item {{ request()->segment(2)=='sales' && request()->segment(3)=='action' ? 'active' : '' }}">
-                Sales Orders
+                <span>Sales Orders</span>
+                @if(($sidebarPendingSalesCount ?? 0) > 0)
+                  <span class="sidebar-badge badge-warning" title="{{ $sidebarPendingSalesCount }} open sales order(s)">{{ $sidebarPendingSalesCount }}</span>
+                @endif
               </a>
               @endif
               @if($can('sales_history'))
@@ -289,7 +313,10 @@
               @endif
               @if($can('dispatch_action'))
               <a href="{{ url(request()->segment(1) . '/dispatch/action') }}" class="nav-item {{ request()->segment(2)=='dispatch' && request()->segment(3)=='action' ? 'active' : '' }}">
-                Dispatch Entry
+                <span>Dispatch Entry</span>
+                @if(($sidebarPendingDispatchCount ?? 0) > 0)
+                  <span class="sidebar-badge badge-warning" title="{{ $sidebarPendingDispatchCount }} pending dispatch order(s)">{{ $sidebarPendingDispatchCount }}</span>
+                @endif
               </a>
               @endif
               @if($can('dispatch_history'))
@@ -311,8 +338,13 @@
             <div class="nav-item" id="att-toggle" onclick="toggleAttMenu()"
               style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
               <span>Attendance & HR</span>
-              <svg id="att-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                style="transition:transform 0.3s;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              <div style="display:flex; align-items:center; gap:6px;">
+                @if(($sidebarPendingAttendanceCount ?? 0) > 0)
+                  <span class="sidebar-badge badge-warning" title="{{ $sidebarPendingAttendanceCount }} pending attendance submission(s)">{{ $sidebarPendingAttendanceCount }}</span>
+                @endif
+                <svg id="att-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  style="transition:transform 0.3s;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </div>
             </div>
             <div id="att-submenu" style="display:none; padding-left:1rem; border-left:2px solid var(--primary);">
               @if($can('attendance_dashboard'))
@@ -322,7 +354,10 @@
               @endif
               @if($can('attendance_daily'))
               <a href="{{ url(request()->segment(1) . '/attendance/daily') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='daily' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
-                Daily Entry
+                <span>Daily Entry</span>
+                @if(($sidebarPendingAttendanceCount ?? 0) > 0)
+                  <span class="sidebar-badge badge-warning" title="{{ $sidebarPendingAttendanceCount }} pending submission(s)">{{ $sidebarPendingAttendanceCount }}</span>
+                @endif
               </a>
               @endif
               @if($can('attendance_departments'))
@@ -354,7 +389,7 @@
           <a href="{{ url(request()->segment(1) . '/notifications') }}" class="nav-item {{ $seg=='notifications'?'active':'' }}"
              style="display:flex; justify-content:space-between; align-items:center;">
             <span>Notifications</span>
-            <span id="nav-notif-count" class="badge badge-danger" style="display:none; font-size:0.7rem; padding:2px 6px;">0</span>
+            <span id="nav-notif-count" class="sidebar-badge badge-danger" style="{{ ($sidebarUnreadNotifCount ?? 0) > 0 ? '' : 'display:none;' }}">{{ $sidebarUnreadNotifCount ?? 0 }}</span>
           </a>
           @endif
 

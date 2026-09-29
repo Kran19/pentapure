@@ -56,8 +56,11 @@
           <a href="{{ url(request()->segment(1) . '/home') }}" class="nav-item {{ $seg=='home'?'active':'' }}">
             📊 Dashboard
           </a>
-          <a href="{{ url(request()->segment(1) . '/daily') }}" class="nav-item {{ $seg=='daily'?'active':'' }}">
-            📅 Daily Attendance
+          <a href="{{ url(request()->segment(1) . '/daily') }}" class="nav-item {{ $seg=='daily'?'active':'' }}" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>📅 Daily Attendance</span>
+            @if(($sidebarPendingAttendanceCount ?? 0) > 0)
+              <span class="sidebar-badge badge-warning">{{ $sidebarPendingAttendanceCount }}</span>
+            @endif
           </a>
           <a href="{{ url(request()->segment(1) . '/departments') }}" class="nav-item {{ $seg=='departments'?'active':'' }}">
             🏢 Departments

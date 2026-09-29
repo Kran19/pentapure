@@ -43,9 +43,23 @@
         </thead>
         <tbody>
           @foreach($locations as $loc)
+          @php
+            $isFixed = in_array(strtoupper(trim($loc->name)), ['MAIN WAREHOUSE', 'DEFAULT'], true);
+            $usageCount = ($loc->stocks_count ?? 0) + ($loc->dispatch_locations_count ?? 0);
+            $isInUse = $usageCount > 0;
+          @endphp
           <tr>
-            <td>{{ $loop->iteration }}</td>
-            <td style="font-weight:600; color:var(--dark-brand);">{{ $loc->name }}</td>
+            <td>{{ ($locations->currentPage() - 1) * $locations->perPage() + $loop->iteration }}</td>
+            <td style="font-weight:600; color:var(--dark-brand);">
+              {{ $loc->name }}
+              @if($isFixed)
+                <span style="font-size:0.7rem; background:#374151; color:#9ca3af; padding:2px 6px; border-radius:4px; margin-left:6px; font-weight:500;">System Fixed</span>
+              @elseif($isInUse)
+                <span style="font-size:0.7rem; background:rgba(59, 130, 246, 0.15); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.3); padding:2px 6px; border-radius:4px; margin-left:6px; font-weight:500;" title="Used in {{ $usageCount }} {{ \Illuminate\Support\Str::plural('record', $usageCount) }}">
+                  {{ $usageCount }} {{ \Illuminate\Support\Str::plural('record', $usageCount) }}
+                </span>
+              @endif
+            </td>
             <td style="color:var(--text-muted);">{{ $loc->description ?: '—' }}</td>
             <td>{{ date('d-m-Y, h:i A', strtotime($loc->created_at)) }}</td>
             <td>
@@ -53,9 +67,19 @@
                 <button class="btn-icon edit" onclick="adminEditLocation({{ json_encode($loc) }})" title="Edit">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
-                <button class="btn-icon delete" onclick="adminDeleteLocation({{ $loc->id }}, '{{ addslashes($loc->name) }}')" title="Delete">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                </button>
+                @if($isFixed)
+                  <button class="btn-icon delete is-disabled" disabled style="opacity:0.35; cursor:not-allowed;" title="Cannot delete: System fixed location (Main Warehouse)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  </button>
+                @elseif($isInUse)
+                  <button class="btn-icon delete is-disabled" disabled style="opacity:0.35; cursor:not-allowed;" title="Cannot delete: In use across {{ $usageCount }} {{ \Illuminate\Support\Str::plural('record', $usageCount) }}">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  </button>
+                @else
+                  <button class="btn-icon delete" onclick="adminDeleteLocation({{ $loc->id }}, '{{ addslashes($loc->name) }}')" title="Delete">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  </button>
+                @endif
               </div>
             </td>
           </tr>
@@ -194,4 +218,22 @@ function escapeHtml(value) {
   }[char]));
 }
 </script>
+
+<style>
+.btn-icon:disabled,
+.btn-icon.is-disabled {
+    opacity: 0.35 !important;
+    cursor: not-allowed !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    color: #6b7280 !important;
+    pointer-events: auto !important;
+}
+.btn-icon:disabled:hover,
+.btn-icon.is-disabled:hover {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    color: #6b7280 !important;
+}
+</style>
 @endsection

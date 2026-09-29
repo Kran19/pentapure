@@ -10,7 +10,7 @@ class Transaction extends Model
 {
     protected $fillable = [
         'user_id', 'type', 'amount', 'category',
-        'note', 'reference', 'site', 'description', 'date'
+        'note', 'reference', 'site', 'description', 'date', 'created_at'
     ];
 
     protected $casts = ['amount' => 'decimal:2'];

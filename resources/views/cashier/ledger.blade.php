@@ -209,6 +209,7 @@
       <thead>
         <tr style="background:rgba(0,0,0,0.05); border-bottom:1px solid var(--border-soft, #DDCFAF);">
           <th style="padding:12px; text-align:left;">Date</th>
+          <th style="padding:12px; text-align:center;">Type</th>
           <th style="padding:12px; text-align:left;">Details</th>
           <th style="padding:12px; text-align:left;">Category</th>
           <th style="padding:12px; text-align:right;">Amount</th>
@@ -223,6 +224,11 @@
             <td style="padding:12px; font-size:0.75rem; white-space:nowrap;">
               {{ \Carbon\Carbon::parse($t['date'])->format('d-m-Y') }}<br>
               <span style="color:var(--text-muted);">{{ \Carbon\Carbon::parse($t['date'])->format('h:i A') }}</span>
+            </td>
+            <td style="padding:12px; text-align:center;">
+              <span style="display:inline-block; min-width:55px; text-align:center; padding:4px 8px; border-radius:4px; font-weight:bold; background: #d3d3d3de; color:{{ $t['type'] === 'IN' ? '#2ecc71' : 'red' }};">
+                {{ $t['type'] }}
+              </span>
             </td>
             <td style="padding:12px;">
               <div style="font-weight:600;">{{ $t['note'] ?: 'Cash ' . $t['type'] }}</div>
@@ -274,7 +280,7 @@
           </tr>
         @empty
           <tr>
-            <td colspan="7" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
+            <td colspan="8" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
               No transactions found matching criteria.
             </td>
           </tr>
@@ -524,7 +530,7 @@
     if (filtered.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="7" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
+          <td colspan="8" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
             No transactions found matching criteria.
           </td>
         </tr>
@@ -544,6 +550,8 @@
 
       const amtFormatted = (t.type === 'IN' ? '+' : '-') + '₹' + Number(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const amtColor = (t.type === 'IN') ? '#16a34a' : '#dc2626';
+
+      const typeBadge = `<span style="display:inline-block; min-width:55px; text-align:center; padding:4px 8px; border-radius:4px; font-weight:bold; background: #d3d3d3de; color:${t.type === 'IN' ? '#2ecc71' : 'red'};">${t.type}</span>`;
 
       const rowBal = balanceMap[t.id] || 0;
       const rowBalFormatted = '₹' + Number(rowBal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -567,6 +575,9 @@
           <td style="padding:12px; font-size:0.75rem; white-space:nowrap;">
             ${dateFormatted}<br>
             <span style="color:var(--text-muted);">${timeFormatted}</span>
+          </td>
+          <td style="padding:12px; text-align:center;">
+            ${typeBadge}
           </td>
           <td style="padding:12px;">
             <div style="font-weight:600;">${t.note || ('Cash ' + t.type)}</div>

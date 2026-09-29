@@ -93,7 +93,6 @@
                         <th>Category</th>
                         <th>Amount</th>
                         <th>Notes</th>
-                        <th>Reference</th>
                         <th>Bill</th>
                     </tr>
                 </thead>
@@ -112,7 +111,6 @@
                             {{ $tx->type === 'IN' ? '+' : '-' }}₹{{ number_format($tx->amount, 2) }}
                         </td>
                         <td style="font-size:0.9rem; max-width:200px;">{{ $tx->note ?? '—' }}</td>
-                        <td style="font-size:0.85rem; color:var(--text-muted);">{{ $tx->reference ?? '—' }}</td>
                         <td>
                             @if($tx->bills && $tx->bills->count() > 0)
                                 <div style="display:flex; flex-direction:column; gap:8px;">
