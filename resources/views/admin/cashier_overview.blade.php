@@ -80,58 +80,100 @@
         </div>
     </div>
 
+    @php
+        if (!isset($pageData['balMap'])) {
+            $balMap = [];
+            $runningBal = 0;
+            $chrono = collect($pageData['transactions'])->sort(function($a, $b) {
+                $tA = strtotime($a->date ?: $a->created_at);
+                $tB = strtotime($b->date ?: $b->created_at);
+                return $tA === $tB ? ($a->id <=> $b->id) : ($tA <=> $tB);
+            });
+            foreach ($chrono as $t) {
+                $runningBal += ($t->type === 'IN' ? (float)$t->amount : -(float)$t->amount);
+                $balMap[$t->id] = $runningBal;
+            }
+            $pageData['balMap'] = $balMap;
+        }
+    @endphp
+
     <!-- Details Table -->
     <div class="card" style="padding:1.2rem; margin-bottom:2rem;">
-        <div class="card-title">Transaction Ledger</div>
-        <div class="table-container">
-            <table id="admin-cashier-table">
+        <div class="card-title" style="margin-bottom:1rem;">Transaction Ledger</div>
+        <div class="table-container" style="overflow-x:auto;">
+            <table id="admin-cashier-table" style="width:100%; border-collapse:collapse; font-size:0.85rem;">
                 <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Cashier</th>
-                        <th>Type</th>
-                        <th>Category</th>
-                        <th>Amount</th>
-                        <th>Notes</th>
-                        <th>Bill</th>
+                    <tr style="background:rgba(0,0,0,0.05); border-bottom:1px solid var(--border-soft, #DDCFAF);">
+                        <th style="padding:12px; text-align:left;">Date</th>
+                        <th style="padding:12px; text-align:left;">Cashier</th>
+                        <th style="padding:12px; text-align:center;">Type</th>
+                        <th style="padding:12px; text-align:left;">Details</th>
+                        <th style="padding:12px; text-align:left;">Category</th>
+                        <th style="padding:12px; text-align:right;">Amount</th>
+                        <th style="padding:12px; text-align:right;">Balance</th>
+                        <th style="padding:12px; text-align:center;">Bills</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($pageData['transactions'] as $tx)
-                    <tr>
-                        <td style="font-size:0.85rem;">{{ $tx->created_at->format('d-m-Y, h:i A') }}</td>
-                        <td><strong>{{ $tx->user->name }}</strong></td>
-                        <td>
+                    @forelse($pageData['transactions'] as $tx)
+                    <tr style="border-bottom:1px solid var(--border-soft, #DDCFAF);">
+                        <td style="padding:12px; font-size:0.75rem; white-space:nowrap;">
+                            {{ \Carbon\Carbon::parse($tx->date ?: $tx->created_at)->format('d/m/Y') }}<br>
+                            <span style="color:var(--text-muted);">{{ \Carbon\Carbon::parse($tx->date ?: $tx->created_at)->format('h:i A') }}</span>
+                        </td>
+                        <td style="padding:12px; font-weight:600; color:var(--text-main); white-space:nowrap;">
+                            👤 {{ $tx->user?->name ?? 'Unknown' }}
+                        </td>
+                        <td style="padding:12px; text-align:center;">
                             <span style="display:inline-block; min-width:55px; text-align:center; padding:4px 8px; border-radius:4px; font-weight:bold; background: #d3d3d3de; color:{{ $tx->type === 'IN' ? '#2ecc71' : 'red' }};">
                                 {{ $tx->type }}
                             </span>
                         </td>
-                        <td><span class="badge badge-info">{{ strtoupper($tx->category) }}</span></td>
-                        <td style="font-weight:700; color: {{ $tx->type === 'IN' ? '#2ecc71' : 'red' }}">
+                        <td style="padding:12px;">
+                            <div style="font-weight:600;">{{ $tx->note ?: 'Cash ' . $tx->type }}</div>
+                            @if($tx->description)
+                                <div style="font-size:0.72rem; color:var(--text-muted);">{{ $tx->description }}</div>
+                            @endif
+                        </td>
+                        <td style="padding:12px;">
+                            <span style="font-size:0.75rem; background:rgba(0,0,0,0.06); padding:2px 8px; border-radius:10px; font-weight:bold; white-space:nowrap;">
+                                {{ strtoupper(str_replace('_', ' ', $tx->category)) }}
+                            </span>
+                            @if($tx->site)
+                                <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">📍 {{ $tx->site }}</div>
+                            @endif
+                        </td>
+                        <td style="padding:12px; font-weight:bold; color:{{ $tx->type === 'IN' ? '#16a34a' : '#dc2626' }}; text-align:right; white-space:nowrap;">
                             {{ $tx->type === 'IN' ? '+' : '-' }}₹{{ number_format($tx->amount, 2) }}
                         </td>
-                        <td style="font-size:0.9rem; max-width:200px;">{{ $tx->note ?? '—' }}</td>
-                        <td>
+                        @php $cBal = $pageData['balMap'][$tx->id] ?? 0; @endphp
+                        <td style="padding:12px; font-weight:bold; color:{{ $cBal >= 0 ? '#16a34a' : '#dc2626' }}; text-align:right; white-space:nowrap;">
+                            ₹{{ number_format($cBal, 2) }}
+                        </td>
+                        <td style="padding:12px; text-align:center; min-width:80px;">
                             @if($tx->bills && $tx->bills->count() > 0)
-                                <div style="display:flex; flex-direction:column; gap:8px;">
+                                <div style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:6px;">
                                 @foreach($tx->bills as $bill)
-                                    <div style="display:flex; gap:10px; align-items:center;">
-                                        <a href="javascript:void(0)" onclick="app.viewBill({{ $bill->id }}, '{{ $bill->file_type }}')" style="color:var(--primary-light); text-decoration:underline; font-size:0.85rem; display:flex; align-items:center; gap:4px;">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                            Preview Bill
-                                        </a>
-                                        <a href="{{ url(request()->segment(1) . '/cashier/bill/' . $bill->id . '/view') }}?download=1" download="{{ $bill->original_name }}" title="Download Bill" style="color:var(--secondary); font-size:1.1rem; text-decoration:none;">
-                                            📥
-                                        </a>
-                                    </div>
+                                    <button type="button" onclick="app.viewBill({{ $bill->id }}, '{{ $bill->file_type }}')" title="View {{ $bill->original_name }}" style="background:none; border:none; cursor:pointer; color:var(--primary); padding:2px; font-size:1.1rem; line-height:1;">
+                                        📎
+                                    </button>
+                                    <a href="{{ url(request()->segment(1) . '/cashier/bill/' . $bill->id . '/view') }}?download=1" download="{{ $bill->original_name }}" title="Download {{ $bill->original_name }}" style="color:var(--secondary); font-size:1rem; text-decoration:none; display:inline-flex; align-items:center; line-height:1;">
+                                        📥
+                                    </a>
                                 @endforeach
                                 </div>
                             @else
-                                <span style="color:var(--text-muted);">—</span>
+                                <span style="color:var(--text-muted); font-size:0.75rem;">No Bills</span>
                             @endif
                         </td>
                     </tr>
-                    @endforeach
+                    @empty
+                    <tr>
+                        <td colspan="8" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
+                            No transactions found.
+                        </td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>

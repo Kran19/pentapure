@@ -62,12 +62,15 @@
       -moz-appearance: textfield;
     }
     
-    /* Fix Select2 visibility inside white-orange-card and make it compact */
+    /* Fix Select2 visibility inside white-orange-card and make it compact - single line product names */
     .select2-container .select2-selection--single .select2-selection__rendered {
         color: #333333 !important;
         font-weight: 600;
         font-size: 0.8rem;
         line-height: 1.6rem !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
     }
     .select2-container--default .select2-selection--single {
         background-color: #f9fafb !important;
@@ -76,6 +79,22 @@
     }
     .select2-container--default .select2-selection--single .select2-selection__arrow {
         height: 1.6rem !important;
+    }
+    .select2-dropdown {
+        min-width: 100% !important;
+        width: max-content !important;
+        max-width: 92vw !important;
+    }
+    .select2-container--default .select2-results__option {
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+        overflow: visible !important;
+    }
+    .select2-results__options {
+        overflow-x: auto !important;
+    }
+    table td:first-child, table th:first-child {
+        white-space: nowrap !important;
     }
   </style>
 

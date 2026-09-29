@@ -37,7 +37,7 @@
                 </select>
             </div>
             
-            <div class="form-group" style="margin:0; flex: 2 1 160px;">
+            <div class="form-group" style="margin:0; flex: 3 1 250px; min-width: 220px;">
                 <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Product *</label>
                 <select class="form-control form-control-sm bs-product">
                     <option></option>
@@ -241,7 +241,7 @@
       stroke: rgba(255, 255, 255, 0.5) !important;
     }
 
-    /* Select2 Smart Search Custom Styling */
+    /* Select2 Smart Search Custom Styling - Single Line Product Names */
     .select2-container {
       width: 100% !important;
     }
@@ -260,11 +260,15 @@
       line-height: 1.8rem !important;
       padding-left: 0.5rem !important;
       padding-right: 1.5rem !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
     }
     .select2-container--default .select2-selection--single .select2-selection__placeholder {
       color: #9ca3af !important;
       font-weight: 500 !important;
       font-size: 0.8rem !important;
+      white-space: nowrap !important;
     }
     .select2-container--default .select2-selection--single .select2-selection__arrow {
       height: 1.8rem !important;
@@ -276,6 +280,9 @@
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
       z-index: 99999 !important;
       background: #ffffff !important;
+      min-width: 100% !important;
+      width: max-content !important;
+      max-width: 92vw !important;
     }
     .select2-container--default .select2-search--dropdown {
       padding: 6px !important;
@@ -290,11 +297,21 @@
       outline: none !important;
       background: #ffffff !important;
       color: #111827 !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    .select2-results__options {
+      max-height: 260px !important;
+      overflow-y: auto !important;
+      overflow-x: auto !important;
     }
     .select2-container--default .select2-results__option {
       font-size: 0.82rem !important;
       padding: 0.45rem 0.65rem !important;
       color: #374151 !important;
+      white-space: nowrap !important;
+      word-break: keep-all !important;
+      overflow: visible !important;
     }
     .select2-container--default .select2-results__option--highlighted[aria-selected] {
       background-color: #f59e0b !important;
@@ -303,6 +320,13 @@
     .select2-container--default .select2-results__option[aria-selected="true"] {
       background-color: #fef3c7 !important;
       color: #92400e !important;
+    }
+
+    /* All Product Names in 1 line in tables */
+    .stock-table td:first-child,
+    .stock-table th:first-child,
+    .stock-table tbody td:first-child div {
+      white-space: nowrap !important;
     }
   </style>
 
@@ -618,7 +642,8 @@ function adminAddStock() {
           }
           $(productSelect).select2({
             dropdownParent: Swal.getPopup(),
-            width: '100%'
+            width: '100%',
+            dropdownAutoWidth: true
           });
         }
         
@@ -1678,7 +1703,8 @@ window.onBsStageChange = function(element) {
   // Initialize Select2 Smart Search
   $(productSelect).select2({
     placeholder: 'SELECT PRODUCT...',
-    width: '100%'
+    width: '100%',
+    dropdownAutoWidth: true
   });
   
   $(productSelect).off('change').on('change', function() {
@@ -1718,7 +1744,8 @@ window.toggleStockFormCard = function() {
         if (!$(this).hasClass('select2-hidden-accessible')) {
           $(this).select2({
             placeholder: 'SELECT PRODUCT...',
-            width: '100%'
+            width: '100%',
+            dropdownAutoWidth: true
           });
         }
       });

@@ -243,11 +243,27 @@ class AdminController extends Controller
     // ── PRODUCTS ───────────────────────────────────────────────────────────
     public function products()
     {
-        $rawProducts = Product::where('type', 'RAW')
+        $withCounts = [
+            'stocks',
+            'grades as custom_grades_count' => function($q) {
+                $q->whereNotIn(\Illuminate\Support\Facades\DB::raw('UPPER(name)'), ['NONE', 'N/A', 'NA', 'N / A']);
+            }
+        ];
+
+        $rawProducts = Product::with('grades')
+            ->withCount($withCounts)
+            ->where('type', 'RAW')
             ->orderBy('sort_order')
             ->get();
+
+        $rawProducts->transform(function($p) {
+            $p->gradeIds = $p->grades->pluck('id')->toArray();
+            $p->gradeNames = $p->grades->pluck('name')->toArray();
+            return $p;
+        });
             
         $semiProducts = Product::with('grades')
+            ->withCount($withCounts)
             ->where('type', 'SEMI')
             ->orderBy('sort_order')
             ->get();
@@ -259,6 +275,7 @@ class AdminController extends Controller
         });
 
         $finishedProducts = Product::with('grades')
+            ->withCount($withCounts)
             ->where('type', 'FINISHED')
             ->orderBy('sort_order')
             ->get();
@@ -372,7 +389,44 @@ class AdminController extends Controller
 
     public function destroyProduct($id)
     {
-        Product::destroy($id);
+        $product = Product::withCount([
+            'stocks',
+            'grades' => function($q) {
+                $q->whereNotIn(\Illuminate\Support\Facades\DB::raw('UPPER(name)'), ['NONE', 'N/A', 'NA', 'N / A']);
+            },
+            'orderItems',
+            'purchaseOrders',
+            'productionLogs',
+            'productionInputs'
+        ])->findOrFail($id);
+
+        $reasons = [];
+        if ($product->stocks_count > 0) {
+            $reasons[] = "it has {$product->stocks_count} record" . ($product->stocks_count > 1 ? 's' : '') . " in Stock";
+        }
+        if ($product->grades_count > 0) {
+            $reasons[] = "it has {$product->grades_count} assigned grade" . ($product->grades_count > 1 ? 's' : '') . " in Grades Master";
+        }
+        if ($product->order_items_count > 0) {
+            $reasons[] = "it is used in Orders ({$product->order_items_count} item" . ($product->order_items_count > 1 ? 's' : '') . ")";
+        }
+        if ($product->purchase_orders_count > 0) {
+            $reasons[] = "it is used in Purchase Orders ({$product->purchase_orders_count} PO" . ($product->purchase_orders_count > 1 ? 's' : '') . ")";
+        }
+        if ($product->production_logs_count > 0 || $product->production_inputs_count > 0) {
+            $prodCount = $product->production_logs_count + $product->production_inputs_count;
+            $reasons[] = "it is linked to Production logs ({$prodCount} entry/entries)";
+        }
+
+        if (!empty($reasons)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete product: ' . implode(' and ', $reasons) . '!'
+            ], 422);
+        }
+
+        $product->grades()->detach();
+        $product->delete();
         return response()->json(['success' => true, 'message' => 'Product deleted!']);
     }
 
@@ -1391,11 +1445,43 @@ class AdminController extends Controller
             })->values(),
         ];
 
+        // Running balance chronologically (oldest to newest)
+        $chronoTxs = $txs->sort(function($a, $b) {
+            $tA = strtotime($a->date ?: $a->created_at);
+            $tB = strtotime($b->date ?: $b->created_at);
+            if ($tA === $tB) {
+                return $a->id <=> $b->id;
+            }
+            return $tA <=> $tB;
+        });
+
+        $runningBal = 0;
+        $balMap = [];
+        foreach ($chronoTxs as $t) {
+            if ($t->type === 'IN') {
+                $runningBal += (float)$t->amount;
+            } else {
+                $runningBal -= (float)$t->amount;
+            }
+            $balMap[$t->id] = $runningBal;
+        }
+
+        // Sort descending (newest first) for ledger display
+        $txs = $txs->sort(function($a, $b) {
+            $tA = strtotime($a->date ?: $a->created_at);
+            $tB = strtotime($b->date ?: $b->created_at);
+            if ($tA === $tB) {
+                return $b->id <=> $a->id;
+            }
+            return $tB <=> $tA;
+        })->values();
+
         $pageData = [
             'transactions' => $txs,
             'summary' => $summary,
             'cashiers' => $cashiers,
-            'selectedCashier' => $request->cashier_id
+            'selectedCashier' => $request->cashier_id,
+            'balMap' => $balMap,
         ];
 
         return view('admin.cashier_overview', compact('pageData'));
