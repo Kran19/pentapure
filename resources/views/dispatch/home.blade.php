@@ -162,10 +162,15 @@
       <div class="card" style="border-left: 4px solid {{ $progressColor }}; background:rgba(255,255,255,0.02); transition: transform 0.2s; margin-bottom: 0; padding:0; overflow:hidden; border-radius:12px;">
         <!-- Clickable Header Row -->
         <div onclick="toggleHomeAccordion('home-acc-{{ $o['id'] }}', this)" style="cursor:pointer; padding:1.1rem; user-select:none;">
-          <div class="flex-between mb-1" style="align-items:center;">
-            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <span style="font-weight:bold; font-size:1.1rem; color:#fff;">Order #{{ strtoupper((string)$o['id']) }}</span>
-              <span class="badge" style="font-size:0.65rem; background:{{ $statusBadgeBg }}; color:{{ $statusBadgeFg }}; padding:3px 8px; border-radius:4px; font-weight:700;">{{ $statusBadgeLabel }}</span>
+          <div class="flex-between mb-1" style="align-items:flex-start;">
+            <div>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span style="font-weight:bold; font-size:1.1rem; color:#fff;">Order #{{ strtoupper((string)$o['id']) }}</span>
+                <span class="badge" style="font-size:0.65rem; background:{{ $statusBadgeBg }}; color:{{ $statusBadgeFg }}; padding:3px 8px; border-radius:4px; font-weight:700;">{{ $statusBadgeLabel }}</span>
+              </div>
+              <div style="font-size:0.83rem; color:var(--text-muted); margin-top:2px;">
+                <strong>Sales By:</strong> <span style="color:var(--primary-light, #F4B400); font-weight:600;">{{ $o['salesPerson'] ?? 'N/A' }}</span>
+              </div>
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
               <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action') }}" onclick="event.stopPropagation(); localStorage.setItem('auto_dispatch_id', '{{ $o['id'] }}');" style="width:auto; text-decoration:none; background:{{ $readinessBg }}; color:{{ $readinessFg }}; font-weight:700; padding:4px 12px; border-radius:6px; font-size:0.8rem;">
@@ -238,10 +243,17 @@
     @forelse($completedOrdersList as $o)
       <div class="card" style="border-left: 4px solid var(--secondary); background:rgba(255,255,255,0.02); margin-bottom: 0; padding:0; overflow:hidden; border-radius:12px;">
         <div onclick="toggleHomeAccordion('home-acc-comp-{{ $o['id'] }}', this)" style="cursor:pointer; padding:1.1rem; user-select:none;">
-          <div class="flex-between mb-1" style="align-items:center;">
-            <span style="font-weight:bold; font-size:1.1rem; color:#fff;">Order #{{ strtoupper((string)$o['id']) }}</span>
+          <div class="flex-between mb-1" style="align-items:flex-start;">
+            <div>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span style="font-weight:bold; font-size:1.1rem; color:#fff;">Order #{{ strtoupper((string)$o['id']) }}</span>
+                <span class="badge badge-done" style="font-size:0.7rem; padding:4px 8px;">COMPLETED</span>
+              </div>
+              <div style="font-size:0.83rem; color:var(--text-muted); margin-top:2px;">
+                <strong>Sales By:</strong> <span style="color:var(--primary-light, #F4B400); font-weight:600;">{{ $o['salesPerson'] ?? 'N/A' }}</span>
+              </div>
+            </div>
             <div style="display:flex; align-items:center; gap:10px;">
-              <span class="badge badge-done" style="font-size:0.7rem; padding:4px 8px;">COMPLETED</span>
               <div class="acc-chevron" style="transition:transform 0.25s ease; color:var(--text-muted); display:flex; align-items:center;">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="6 9 12 15 18 9"></polyline>

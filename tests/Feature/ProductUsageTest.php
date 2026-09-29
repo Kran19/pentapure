@@ -101,4 +101,15 @@ class ProductUsageTest extends TestCase
         $uiResponse->assertStatus(200);
         $uiResponse->assertSee('Cannot delete: Product is assigned in Grades master');
     }
+
+    public function test_stock_page_initial_stock_type_is_all(): void
+    {
+        $auth = $this->createAdmin();
+        $response = $this->withSession($auth['session'])->get('/admin/stock');
+        $response->assertStatus(200);
+        $content = $response->getContent();
+
+        $this->assertStringContainsString('<option value="ALL" selected>ALL</option>', $content);
+        $this->assertStringContainsString('<option value="RAW">RAW</option>', $content);
+    }
 }

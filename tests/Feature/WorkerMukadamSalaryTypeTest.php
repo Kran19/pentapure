@@ -208,5 +208,68 @@ class WorkerMukadamSalaryTypeTest extends TestCase
         $pdfResponse->assertStatus(200);
         $this->assertEquals('application/pdf', $pdfResponse->headers->get('Content-Type'));
     }
+
+    public function test_attendance_reports_and_summary_pdf_display_mukadam_per_labour_salary(): void
+    {
+        $attendanceUser = $this->createUser('ATTENDANCE');
+        $sessionAttendance = ['auth_user' => ['id' => $attendanceUser->id, 'name' => $attendanceUser->name, 'role' => 'ATTENDANCE']];
+
+        $mukadamDept = Department::create(['name' => 'MUKADAM']);
+        $mukadamWorker = Worker::create([
+            'name'          => 'Mukadam Contractor',
+            'department_id' => $mukadamDept->id,
+            'role'          => 'Mukadam',
+            'shift_type'    => 'DAY',
+            'salary_type'   => 'LABOUR_MUKADAM',
+            'salary_amount' => 500,
+            'daily_salary'  => 500,
+            'status'        => 'ACTIVE',
+        ]);
+
+        // Attendance with 12 labours on 2026-09-10
+        \App\Models\Attendance::create([
+            'worker_id'       => $mukadamWorker->id,
+            'date'            => '2026-09-10',
+            'status'          => 'PRESENT',
+            'num_workers'     => 12,
+            'calculated_wage' => 6000,
+            'overtime_hours'  => 0,
+        ]);
+
+        // 1. Web report page: /attendance/reports?month=2026-09
+        $reportsRes = $this->withSession($sessionAttendance)->get('/attendance/reports?month=2026-09');
+        $reportsRes->assertStatus(200);
+        $reportsContent = $reportsRes->getContent();
+
+        $this->assertStringContainsString('₹500', $reportsContent);
+        $this->assertStringContainsString('/ Per Labour', $reportsContent);
+        $this->assertStringContainsString('PER LABOUR SALARY (LABOUR_MUKADAM)', $reportsContent);
+
+        // 2. Summary PDF export: /attendance/reports/summary/pdf?month=2026-09
+        $pdfRes = $this->withSession($sessionAttendance)->get('/attendance/reports/summary/pdf?month=2026-09');
+        $pdfRes->assertStatus(200);
+        $this->assertEquals('application/pdf', $pdfRes->headers->get('Content-Type'));
+
+        // 3. Rendered PDF view HTML verification
+        $renderedPdfView = view('pdf.monthly-payroll-summary', [
+            'reportData' => [
+                $mukadamWorker->id => [
+                    'worker'        => $mukadamWorker,
+                    'worker_number' => 1,
+                    'present'       => 12,
+                    'absent'        => 0,
+                    'half'          => 0,
+                    'total_ot'      => 0,
+                    'total_wage'    => 6000,
+                    'adjustment'    => null,
+                ]
+            ],
+            'month' => '2026-09'
+        ])->render();
+
+        $this->assertStringContainsString('₹500', $renderedPdfView);
+        $this->assertStringContainsString('/ Per Labour', $renderedPdfView);
+        $this->assertStringContainsString('PER LABOUR SALARY (LABOUR_MUKADAM)', $renderedPdfView);
+    }
 }
 

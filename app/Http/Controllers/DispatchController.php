@@ -17,14 +17,14 @@ class DispatchController extends Controller
 
     public function home()
     {
-        $pending   = Order::with(['company', 'transporter', 'items.product'])
+        $pending   = Order::with(['company', 'transporter', 'items.product', 'creator'])
             ->where(function($q) {
                 $q->whereNotIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY DISPATCHED'])
                   ->orWhereNull('dispatch_status');
             })
             ->orderByDesc('created_at')
             ->get();
-        $completed = Order::with(['company', 'transporter'])->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY DISPATCHED'])->orderByDesc('created_at')->get();
+        $completed = Order::with(['company', 'transporter', 'creator', 'items.product'])->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY DISPATCHED'])->orderByDesc('created_at')->get();
 
         $rawStock = DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
@@ -121,6 +121,7 @@ class DispatchController extends Controller
                     'companyName'  => $o->company?->name,
                     'transportId'  => $o->transporter_id,
                     'transporterName' => $o->transporter?->name,
+                    'salesPerson'  => $o->creator?->name ?? 'N/A',
                     'total'        => $o->total,
                     'date'         => $o->created_at->toISOString(),
                     'totalQty'     => $o->items->sum('quantity'),
@@ -137,6 +138,7 @@ class DispatchController extends Controller
                 'companyName'  => $o->company?->name,
                 'transportId'  => $o->transporter_id,
                 'transporterName' => $o->transporter?->name,
+                'salesPerson'  => $o->creator?->name ?? 'N/A',
                 'total'        => $o->total,
                 'date'         => $o->created_at->toISOString(),
                 'notes'        => $o->notes,
@@ -162,7 +164,7 @@ class DispatchController extends Controller
 
     public function action()
     {
-        $pendingOrders = Order::with(['company', 'transporter', 'items.product'])
+        $pendingOrders = Order::with(['company', 'transporter', 'items.product', 'creator'])
             ->where(function($q) {
                 $q->whereNotIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY DISPATCHED'])
                   ->orWhereNull('dispatch_status');
@@ -174,6 +176,7 @@ class DispatchController extends Controller
             'pendingOrders' => $pendingOrders->map(fn($o)=>[
                 'id'          => $o->id,
                 'notes'       => $o->notes,
+                'salesPerson' => $o->creator?->name ?? 'N/A',
                 'company'     => [
                     'name'    => $o->company?->name,
                     'gst'     => $o->company?->gst,

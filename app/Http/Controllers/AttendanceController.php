@@ -511,14 +511,21 @@ class AttendanceController extends Controller
             $totalOT = 0; $totalWage = 0;
 
             foreach ($w->attendances as $att) {
-                if ($att->status == 'ABSENT') {
-                    $absent++;
+                if ($w->salary_type === 'LABOUR_MUKADAM') {
+                    $present += ($att->num_workers ?? 0);
                 } else {
-                    $present += $this->getPresentMultiplier($att->status);
+                    if ($att->status == 'ABSENT') {
+                        $absent++;
+                    } else {
+                        $present += $this->getPresentMultiplier($att->status);
+                    }
                 }
                 $totalOT += $att->overtime_hours;
 
-                if ($w->salary_type === 'DAILY' || $w->salary_type === 'LABOUR_MUKADAM') {
+                if ($w->salary_type === 'LABOUR_MUKADAM') {
+                    $wageForDay = $att->calculated_wage > 0 ? $att->calculated_wage : (($att->num_workers ?? 0) * ($w->salary_amount ?? 0));
+                    $totalWage += $wageForDay;
+                } elseif ($w->salary_type === 'DAILY') {
                     $totalWage += $att->calculated_wage;
                 } else {
                     $hourly = ($w->daily_salary ?? 0) / 9;
@@ -704,14 +711,21 @@ class AttendanceController extends Controller
             $totalOT = 0; $totalWage = 0;
 
             foreach ($w->attendances as $att) {
-                if ($att->status == 'ABSENT') {
-                    $absent++;
+                if ($w->salary_type === 'LABOUR_MUKADAM') {
+                    $present += ($att->num_workers ?? 0);
                 } else {
-                    $present += $this->getPresentMultiplier($att->status);
+                    if ($att->status == 'ABSENT') {
+                        $absent++;
+                    } else {
+                        $present += $this->getPresentMultiplier($att->status);
+                    }
                 }
                 $totalOT += $att->overtime_hours;
 
-                if ($w->salary_type === 'DAILY' || $w->salary_type === 'LABOUR_MUKADAM') {
+                if ($w->salary_type === 'LABOUR_MUKADAM') {
+                    $wageForDay = $att->calculated_wage > 0 ? $att->calculated_wage : (($att->num_workers ?? 0) * ($w->salary_amount ?? 0));
+                    $totalWage += $wageForDay;
+                } elseif ($w->salary_type === 'DAILY') {
                     $totalWage += $att->calculated_wage;
                 } else {
                     $hourly = ($w->daily_salary ?? 0) / 9;

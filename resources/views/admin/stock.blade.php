@@ -30,8 +30,8 @@
             <div class="form-group bs-col-stage">
                 <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280; display:block;">Stock Type *</label>
                 <select class="form-control form-control-sm bs-stage" onchange="onBsStageChange(this)" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem; width:100%;">
-                    <option value="ALL">ALL</option>
-                    <option value="RAW" selected>RAW</option>
+                    <option value="ALL" selected>ALL</option>
+                    <option value="RAW">RAW</option>
                     <option value="SEMI">SEMI</option>
                     <option value="FINISHED">FG</option>
                 </select>

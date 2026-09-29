@@ -44,6 +44,12 @@
 .user-status-switch input:checked + .user-status-slider:before {
   transform: translateX(20px);
 }
+.btn-icon:disabled,
+.btn-icon.is-disabled {
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+  pointer-events: auto !important;
+}
 </style>
 <div style="padding:1.5rem;">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
@@ -292,9 +298,27 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                   </button>
                   @if(strtoupper($user['role']) !== 'ADMIN' && strtoupper($user['role']) !== 'SUPER_ADMIN' && strtolower($user['name']) !== 'super admin')
-                  <button class="btn-icon delete" onclick="adminDeleteUser({{ $user['id'] }})" title="Delete">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                  </button>
+                    @php
+                      $userObj = is_array($user) ? (object)$user : $user;
+                      $dataCount = ($userObj->stocks_count ?? 0) 
+                        + ($userObj->transactions_count ?? 0) 
+                        + ($userObj->transaction_logs_count ?? 0) 
+                        + ($userObj->dispatch_logs_count ?? 0) 
+                        + ($userObj->orders_count ?? 0) 
+                        + ($userObj->production_logs_count ?? 0) 
+                        + ($userObj->purchase_orders_count ?? 0) 
+                        + ($userObj->attendance_submissions_count ?? 0) 
+                        + ($userObj->subordinates_count ?? 0);
+                    @endphp
+                    @if($dataCount > 0)
+                      <button class="btn-icon delete is-disabled" disabled style="opacity:0.35; cursor:not-allowed;" title="Cannot delete: User has {{ $dataCount }} associated record(s) in system.">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                      </button>
+                    @else
+                      <button class="btn-icon delete" onclick="adminDeleteUser({{ $user['id'] }})" title="Delete">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                      </button>
+                    @endif
                   @endif
                 @endif
               </div>
@@ -676,14 +700,24 @@ function adminDeleteUser(id) {
     if (result.isConfirmed) {
       fetch(window.baseUrl + '/' + window.userSlug + '/users/' + id, {
         method: 'DELETE',
-        headers: { 'X-CSRF-TOKEN': window.csrfToken }
-      }).then(r => r.json()).then(d => {
-        if (d.success) {
-          Swal.fire('Deleted!', d.message, 'success');
+        headers: { 
+          'X-CSRF-TOKEN': window.csrfToken,
+          'Accept': 'application/json'
+        }
+      })
+      .then(async r => {
+        const data = await r.json().catch(() => ({}));
+        return { status: r.status, data };
+      })
+      .then(res => {
+        if (res.data.success) {
+          Swal.fire('Deleted!', res.data.message || 'User deleted!', 'success');
           setTimeout(() => location.reload(), 800);
         } else {
-          Swal.fire('Error!', d.message || 'Error', 'error');
+          Swal.fire('Cannot Delete', res.data.message || 'Could not delete user.', 'error');
         }
+      }).catch(err => {
+        Swal.fire('Error!', 'An error occurred while deleting user.', 'error');
       });
     }
   });

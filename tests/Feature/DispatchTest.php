@@ -195,4 +195,48 @@ class DispatchTest extends TestCase
         $secondRevert = $this->withSession($session)->postJson("/dispatch/revert/{$dispatchLog->id}");
         $secondRevert->assertStatus(404);
     }
+
+    public function test_dispatch_home_displays_sales_by_sales_person(): void
+    {
+        $salesUser = User::create([
+            'name'     => 'Rajesh Salesman',
+            'email'    => 'rajesh@example.com',
+            'password' => 'password123',
+            'role'     => 'SALES',
+            'status'   => 'ACTIVE',
+        ]);
+
+        $order = Order::create([
+            'created_by'      => $salesUser->id,
+            'company_id'      => $this->company->id,
+            'transporter_id'  => $this->transporter->id,
+            'total'           => 12000,
+            'status'          => 'OPEN',
+            'dispatch_status' => 'PENDING',
+        ]);
+
+        $session = ['auth_user' => [
+            'id'   => $this->dispatchUser->id,
+            'name' => $this->dispatchUser->name,
+            'role' => 'DISPATCH',
+        ]];
+
+        $response = $this->withSession($session)->get('/dispatch/home');
+        $response->assertStatus(200);
+        $content = $response->getContent();
+
+        $this->assertStringContainsString("Order #{$order->id}", $content);
+        $this->assertStringContainsString('Sales By:', $content);
+        $this->assertStringContainsString('Rajesh Salesman', $content);
+
+        // Also test completed order
+        $order->update(['dispatch_status' => 'COMPLETED']);
+        $completedResponse = $this->withSession($session)->get('/dispatch/home?tab=completed');
+        $completedResponse->assertStatus(200);
+        $completedContent = $completedResponse->getContent();
+
+        $this->assertStringContainsString("Order #{$order->id}", $completedContent);
+        $this->assertStringContainsString('Sales By:', $completedContent);
+        $this->assertStringContainsString('Rajesh Salesman', $completedContent);
+    }
 }

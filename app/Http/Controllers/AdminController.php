@@ -86,7 +86,20 @@ class AdminController extends Controller
 
     public function users()
     {
-        $users = User::with('parent')->orderBy('role')->paginate(15);
+        $users = User::with('parent')
+            ->withCount([
+                'stocks',
+                'transactions',
+                'transactionLogs',
+                'dispatchLogs',
+                'orders',
+                'productionLogs',
+                'purchaseOrders',
+                'attendanceSubmissions',
+                'subordinates'
+            ])
+            ->orderBy('role')
+            ->paginate(15);
         $allCashiers = User::where('role', 'CASHIER')->get(['id', 'name']);
         $departments = \App\Models\Department::orderBy('name')->get();
         return view('admin.users', ['pageData' => ['users' => $users, 'cashiers' => $allCashiers, 'departments' => $departments]]);
@@ -203,13 +216,26 @@ class AdminController extends Controller
 
     public function destroyUser($id)
     {
-        if($id == session('auth_user')['id']) {
-            return response()->json(['success' => false, 'message' => 'Cannot delete yourself!']);
+        if ($id == session('auth_user')['id']) {
+            return response()->json(['success' => false, 'message' => 'Cannot delete yourself!'], 422);
         }
         $targetUser = User::find($id);
-        if ($targetUser && ($targetUser->role === 'ADMIN' || strtoupper($targetUser->role) === 'SUPER_ADMIN' || strtolower($targetUser->name) === 'super admin')) {
-            return response()->json(['success' => false, 'message' => 'Super Admin cannot be deleted!']);
+        if (!$targetUser) {
+            return response()->json(['success' => false, 'message' => 'User not found!'], 404);
         }
+        if ($targetUser->role === 'ADMIN' || strtoupper($targetUser->role) === 'SUPER_ADMIN' || strtolower($targetUser->name) === 'super admin') {
+            return response()->json(['success' => false, 'message' => 'Super Admin cannot be deleted!'], 422);
+        }
+
+        $summary = $targetUser->getAssociatedDataSummary();
+        if (!empty($summary)) {
+            $details = collect($summary)->map(fn($cnt, $type) => "{$cnt} {$type}")->implode(', ');
+            return response()->json([
+                'success' => false,
+                'message' => "Cannot delete user '{$targetUser->name}': this user has associated data ({$details}) in the system! To delete this user, their associated records must be cleared or reassigned first."
+            ], 422);
+        }
+
         User::destroy($id);
         return response()->json(['success' => true, 'message' => 'User deleted!']);
     }
