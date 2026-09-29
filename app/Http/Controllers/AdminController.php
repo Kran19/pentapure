@@ -1304,7 +1304,7 @@ class AdminController extends Controller
     // ── DISPATCH ACTIVITY ───────────────────────────────────────────────────
     public function dispatchActivity(Request $request)
     {
-        $query = Order::with(['company', 'items.product', 'dispatchLog.user', 'transporter'])
+        $query = Order::with(['company', 'items.product', 'dispatchLog.user', 'transporter', 'creator'])
             ->select('orders.*')
             ->addSelect(['dispatch_logs_count' => DispatchLog::selectRaw('COUNT(*)')
                 ->whereColumn('order_id', 'orders.id')
@@ -1343,28 +1343,10 @@ class AdminController extends Controller
             $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '<=', $request->date_to);
         }
 
-        $baseStatsQuery = Order::query();
-        if ($request->date_from) {
-            $baseStatsQuery->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '>=', $request->date_from);
-        }
-        if ($request->date_to) {
-            $baseStatsQuery->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '<=', $request->date_to);
-        }
-
-        $stats = [
-            'total' => (clone $baseStatsQuery)->count(),
-            'pending' => (clone $baseStatsQuery)->where(function($q) {
-                $q->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED'])->orWhereNull('dispatch_status');
-            })->count(),
-            'partial' => (clone $baseStatsQuery)->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING'])->count(),
-            'fully_dispatched' => (clone $baseStatsQuery)->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED'])->count(),
-        ];
-
         $orders = $query->paginate(20)->withQueryString();
 
         $pageData = [
             'orders' => $orders,
-            'stats' => $stats,
             'filters' => [
                 'status' => $request->status,
                 'date_from' => $request->date_from,
@@ -1377,7 +1359,7 @@ class AdminController extends Controller
 
     public function dispatchActivityPdf(Request $request)
     {
-        $query = Order::with(['company', 'items.product', 'dispatchLog.user', 'transporter'])
+        $query = Order::with(['company', 'items.product', 'dispatchLog.user', 'transporter', 'creator'])
             ->select('orders.*')
             ->addSelect(['dispatch_logs_count' => DispatchLog::selectRaw('COUNT(*)')
                 ->whereColumn('order_id', 'orders.id')
