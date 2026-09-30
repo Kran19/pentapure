@@ -19,8 +19,15 @@
     <button type="button" onclick="document.getElementById('raw-stock-scroll').scrollBy({left:-200, behavior:'smooth'})" style="border:1px solid #444; background:transparent; color:#ccc; border-radius:4px; cursor:pointer; padding:2px 8px;">&larr;</button>
     <button type="button" onclick="document.getElementById('raw-stock-scroll').scrollBy({left:200, behavior:'smooth'})" style="border:1px solid #444; background:transparent; color:#ccc; border-radius:4px; cursor:pointer; padding:2px 8px;">&rarr;</button>
   </div>
-  <div id="raw-stock-scroll" style="display:flex; overflow-x:auto; gap:10px; padding-bottom:5px; scrollbar-width:none; -ms-overflow-style:none;">
-    <style>#raw-stock-scroll::-webkit-scrollbar { display: none; }</style>
+    <style>
+      #raw-stock-scroll::-webkit-scrollbar { display: none; }
+      @media (max-width: 720px) {
+        .dispatch-item-badges {
+          grid-template-columns: repeat(3, 1fr) !important;
+          width: 100% !important;
+        }
+      }
+    </style>
     @forelse($pageData['rawStock'] as $s)
       <div style="flex:0 0 150px; background:rgba(255,255,255,0.04); padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
         <div style="font-size:0.7rem; font-weight:700; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ $s->name }} <small class="text-muted">({{ $s->grade }})</small></div>
@@ -211,21 +218,41 @@
               <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">Order Items & Dispatch Status</div>
               @foreach($o['items'] as $item)
                 @php
-                  $pName = preg_replace('/\s+(PURE|PREMIUM|COMMERCIAL|NONE|\b[A-Za-z0-9_-]+\b)\s*\((fg|raw|semi)\)$/i', '', $item['productName'] ?? 'Unknown');
-                  $pName = preg_replace('/\s*\((fg|raw|semi)\)$/i', '', $pName);
-                  $gName = ($item['grade'] && $item['grade'] !== 'NONE' && $item['grade'] !== 'N/A') ? $item['grade'] : '';
-                  $tName = ($item['productType'] === 'FINISHED') ? 'FG' : ($item['productType'] ? strtoupper($item['productType']) : 'N/A');
-                  $tot = $item['quantity'] ?? 0;
-                  $disp = $item['dispatchedQty'] ?? 0;
-                  $rem = $item['remainingQty'] ?? 0;
+                  $rawName = $item['rawProductName'] ?? $item['productName'] ?? 'Unknown';
+                  $pName = trim(preg_replace('/\s*\((FG|SEMI|RAW|FINISHED)\)$/i', '', $rawName));
+                  $gName = ($item['grade'] && $item['grade'] !== 'NONE' && $item['grade'] !== 'N/A') ? trim($item['grade']) : '';
+                  if ($gName) {
+                    $pName = trim(preg_replace('/\s+' . preg_quote($gName, '/') . '$/i', '', $pName));
+                  }
+                  $rawType = strtoupper((string)($item['productType'] ?? 'FINISHED'));
+                  $tName = ($rawType === 'FINISHED' || $rawType === 'FG') ? 'FG' : ($rawType === 'SEMI' ? 'SEMI' : ($rawType === 'RAW' ? 'RAW' : $rawType));
+                  $tot = (float)($item['quantity'] ?? 0);
+                  $disp = (float)($item['dispatchedQty'] ?? 0);
+                  $rem = (float)($item['remainingQty'] ?? 0);
+                  $fmtQty = fn($val) => (floor($val) == $val ? number_format($val, 0) : number_format($val, 2)) . ' kg';
                 @endphp
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.88rem; flex-wrap:wrap; gap:8px;">
-                  <span>{{ $pName }} @if($gName)<strong style="font-weight:800; color:var(--primary, #D88A00);">{{ $gName }}</strong> @endif({{ $tName }})</span>
-                  <span style="font-size:0.8rem; color:var(--text-muted);">
-                    Total: <strong style="color:var(--text-main, #fff);">{{ number_format($tot, 2) }} kg</strong> | 
-                    Dispatched: <strong style="color:#16a34a;">{{ number_format($disp, 2) }} kg</strong> | 
-                    Pending: <strong style="color:#ef4444;">{{ number_format($rem, 2) }} kg</strong>
-                  </span>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.88rem; flex-wrap:wrap; gap:12px;">
+                  <div style="flex:1; min-width:200px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                    <span style="font-weight:600; color:var(--text-main, #fff);">{{ $pName }}</span>
+                    @if($gName)
+                      <strong style="font-weight:800; color:var(--primary, #D88A00);">{{ $gName }}</strong>
+                    @endif
+                    <span style="color:var(--text-muted, #9ca3af); font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
+                  </div>
+                  <div class="dispatch-item-badges" style="display:grid; grid-template-columns:135px 145px 145px; gap:8px; align-items:center; flex-shrink:0;">
+                    <span style="background:rgba(255,255,255,0.08); padding:4px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.15); font-weight:600; color:var(--text-main, #fff); width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                      <span style="color:var(--text-muted, #9ca3af); font-size:0.72rem; font-weight:700;">ORDER:</span>
+                      <strong style="color:var(--primary, #D88A00);">{{ $fmtQty($tot) }}</strong>
+                    </span>
+                    <span style="background:rgba(22,163,74,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(22,163,74,0.3); font-weight:700; color:#16a34a; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                      <span style="font-size:0.72rem;">DISPATCHED:</span>
+                      <strong>{{ $fmtQty($disp) }}</strong>
+                    </span>
+                    <span style="background:rgba(239,68,68,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(239,68,68,0.3); font-weight:700; color:#ef4444; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                      <span style="font-size:0.72rem;">PENDING:</span>
+                      <strong>{{ $fmtQty($rem) }}</strong>
+                    </span>
+                  </div>
                 </div>
               @endforeach
             </div>
@@ -277,21 +304,41 @@
               <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">Order Items Summary</div>
               @foreach($o['items'] as $item)
                 @php
-                  $pName = preg_replace('/\s+(PURE|PREMIUM|COMMERCIAL|NONE|\b[A-Za-z0-9_-]+\b)\s*\((fg|raw|semi)\)$/i', '', $item['productName'] ?? 'Unknown');
-                  $pName = preg_replace('/\s*\((fg|raw|semi)\)$/i', '', $pName);
-                  $gName = ($item['grade'] && $item['grade'] !== 'NONE' && $item['grade'] !== 'N/A') ? $item['grade'] : '';
-                  $tName = ($item['productType'] === 'FINISHED') ? 'FG' : ($item['productType'] ? strtoupper($item['productType']) : 'N/A');
-                  $tot = $item['quantity'] ?? 0;
-                  $disp = $item['dispatchedQty'] ?? 0;
-                  $rem = $item['remainingQty'] ?? 0;
+                  $rawName = $item['rawProductName'] ?? $item['productName'] ?? 'Unknown';
+                  $pName = trim(preg_replace('/\s*\((FG|SEMI|RAW|FINISHED)\)$/i', '', $rawName));
+                  $gName = ($item['grade'] && $item['grade'] !== 'NONE' && $item['grade'] !== 'N/A') ? trim($item['grade']) : '';
+                  if ($gName) {
+                    $pName = trim(preg_replace('/\s+' . preg_quote($gName, '/') . '$/i', '', $pName));
+                  }
+                  $rawType = strtoupper((string)($item['productType'] ?? 'FINISHED'));
+                  $tName = ($rawType === 'FINISHED' || $rawType === 'FG') ? 'FG' : ($rawType === 'SEMI' ? 'SEMI' : ($rawType === 'RAW' ? 'RAW' : $rawType));
+                  $tot = (float)($item['quantity'] ?? 0);
+                  $disp = (float)($item['dispatchedQty'] ?? 0);
+                  $rem = (float)($item['remainingQty'] ?? 0);
+                  $fmtQty = fn($val) => (floor($val) == $val ? number_format($val, 0) : number_format($val, 2)) . ' kg';
                 @endphp
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.88rem; flex-wrap:wrap; gap:8px;">
-                  <span>{{ $pName }} @if($gName)<strong style="font-weight:800; color:var(--primary, #D88A00);">{{ $gName }}</strong> @endif({{ $tName }})</span>
-                  <span style="font-size:0.8rem; color:var(--text-muted);">
-                    Total: <strong style="color:var(--text-main, #fff);">{{ number_format($tot, 2) }} kg</strong> | 
-                    Dispatched: <strong style="color:#16a34a;">{{ number_format($disp, 2) }} kg</strong> | 
-                    Pending: <strong style="color:#ef4444;">{{ number_format($rem, 2) }} kg</strong>
-                  </span>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.88rem; flex-wrap:wrap; gap:12px;">
+                  <div style="flex:1; min-width:200px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                    <span style="font-weight:600; color:var(--text-main, #fff);">{{ $pName }}</span>
+                    @if($gName)
+                      <strong style="font-weight:800; color:var(--primary, #D88A00);">{{ $gName }}</strong>
+                    @endif
+                    <span style="color:var(--text-muted, #9ca3af); font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
+                  </div>
+                  <div class="dispatch-item-badges" style="display:grid; grid-template-columns:135px 145px 145px; gap:8px; align-items:center; flex-shrink:0;">
+                    <span style="background:rgba(255,255,255,0.08); padding:4px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.15); font-weight:600; color:var(--text-main, #fff); width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                      <span style="color:var(--text-muted, #9ca3af); font-size:0.72rem; font-weight:700;">ORDER:</span>
+                      <strong style="color:var(--primary, #D88A00);">{{ $fmtQty($tot) }}</strong>
+                    </span>
+                    <span style="background:rgba(22,163,74,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(22,163,74,0.3); font-weight:700; color:#16a34a; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                      <span style="font-size:0.72rem;">DISPATCHED:</span>
+                      <strong>{{ $fmtQty($disp) }}</strong>
+                    </span>
+                    <span style="background:rgba(239,68,68,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(239,68,68,0.3); font-weight:700; color:#ef4444; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                      <span style="font-size:0.72rem;">PENDING:</span>
+                      <strong>{{ $fmtQty($rem) }}</strong>
+                    </span>
+                  </div>
                 </div>
               @endforeach
             </div>

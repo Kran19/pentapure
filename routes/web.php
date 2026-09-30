@@ -465,6 +465,7 @@ foreach ($adminSlugs as $slug) {
     Route::get('/dispatch/action',       [DispatchController::class, 'action'])->name($slug.'.dispatch.action');
     Route::post('/dispatch/action',      [DispatchController::class, 'storeDispatch']);
     Route::get('/dispatch/history',      [DispatchController::class, 'history'])->name($slug.'.dispatch.history');
+    Route::get('/dispatch/report',       [DispatchController::class, 'report'])->name($slug.'.dispatch.report');
     Route::get('/dispatch/order/pdf/{id}', [HistoryPdfController::class, 'salesOrderPdf']);
     Route::get('/dispatch/pdf/{id}',     [HistoryPdfController::class, 'dispatchNotePdf']);
 

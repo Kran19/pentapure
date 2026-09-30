@@ -572,7 +572,7 @@ class DispatchController extends Controller
 
     public function history()
     {
-        $logs = DispatchLog::with(['order.company', 'order.transporter', 'user', 'dispatchItems.orderItem.product'])
+        $logs = DispatchLog::with(['order.company', 'order.transporter', 'order.creator', 'user', 'dispatchItems.orderItem.product'])
             ->orderByDesc('created_at')
             ->get()
             ->map(fn($d) => [
@@ -581,6 +581,8 @@ class DispatchController extends Controller
                 'companyId'     => $d->order?->company_id,
                 'companyName'   => $d->order?->company?->name,
                 'transportName' => $d->transporter?->name ?? $d->order?->transporter?->name,
+                'salesPerson'   => $d->order?->creator?->name ?? 'N/A',
+                'salesBy'       => $d->order?->creator?->name ?? 'N/A',
                 'dispatchedBy'  => $d->user?->name,
                 'lrImage'       => $d->lr_image_path ? asset($d->lr_image_path) : null,
                 'orderTotal'    => $d->order?->total,
@@ -591,7 +593,9 @@ class DispatchController extends Controller
                 'dispatchNotes' => $d->notes,
                 'orderNotes'    => $d->order?->notes,
                 'items'         => $d->dispatchItems->filter(fn($di) => $di->orderItem && $di->orderItem->order_id == $d->order_id)->map(fn($di) => [
-                    'productName'   => $di->orderItem?->product ? $di->orderItem->product->formatName($di->orderItem->grade) : 'Unknown',
+                    'productName'   => $di->orderItem?->product?->name ?? 'Unknown',
+                    'rawProductName'=> $di->orderItem?->product?->name ?? 'Unknown',
+                    'formattedName' => $di->orderItem?->product ? $di->orderItem->product->formatName($di->orderItem->grade) : 'Unknown',
                     'grade'         => $di->orderItem?->grade,
                     'productType'   => $di->orderItem?->product?->type,
                     'totalQty'      => (float) ($di->orderItem?->quantity ?? 0),
@@ -614,7 +618,7 @@ class DispatchController extends Controller
 
     public function report()
     {
-        $orders = Order::with(['company', 'transporter', 'items.product', 'dispatchLogs'])
+        $orders = Order::with(['company', 'transporter', 'items.product', 'dispatchLogs', 'creator'])
             ->where('status', '!=', 'CANCELLED')
             ->orderByDesc('created_at')
             ->get();
@@ -639,6 +643,8 @@ class DispatchController extends Controller
                 'companyId'      => $o->company_id,
                 'companyName'    => $o->company?->name,
                 'transportName'  => $o->transporter?->name,
+                'salesPerson'    => $o->creator?->name ?? 'N/A',
+                'salesBy'        => $o->creator?->name ?? 'N/A',
                 'orderTotal'     => $o->total,
                 'status'         => $o->status,
                 'dispatchStatus' => $dispatchStatus,
@@ -649,7 +655,9 @@ class DispatchController extends Controller
                 'remainingQty'   => $remainingQty,
                 'items'          => $o->items->map(fn($i) => [
                     'id'            => $i->id,
-                    'productName'   => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
+                    'productName'   => $i->product?->name ?? 'Unknown',
+                    'rawProductName'=> $i->product?->name ?? 'Unknown',
+                    'formattedName' => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
                     'grade'         => $i->grade,
                     'productType'   => $i->product?->type,
                     'quantity'      => (float) $i->quantity,

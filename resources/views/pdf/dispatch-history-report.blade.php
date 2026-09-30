@@ -232,6 +232,9 @@
                     <td style="vertical-align: middle; {{ $borderTopStyle }}">
                         @if($isFirst)
                             <strong>{{ $logRow['customer'] }}</strong>
+                            @if(!empty($logRow['sales_by']) && $logRow['sales_by'] !== 'N/A')
+                                <div style="font-size: 7px; color: #475467; margin-top: 1px; font-weight: normal;">BY: {{ $logRow['sales_by'] }}</div>
+                            @endif
                         @else
                             <span style="color: #475467; font-size: 7.5px;">{{ $logRow['customer'] }}</span>
                         @endif

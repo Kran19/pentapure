@@ -539,6 +539,9 @@ class HistoryPdfController extends Controller
                 $sub->whereHas('company', function($qc) use ($q) {
                     $qc->where('name', 'like', "%{$q}%");
                 })->orWhere('id', 'like', "%{$q}%")
+                  ->orWhereHas('creator', function($qu) use ($q) {
+                      $qu->where('name', 'like', "%{$q}%");
+                  })
                   ->orWhereHas('items.product', function($qp) use ($q) {
                       $qp->where('name', 'like', "%{$q}%");
                   });
@@ -682,6 +685,7 @@ class HistoryPdfController extends Controller
                     'due_days' => $diffDays,
                     'due_days_text' => $dueDaysText,
                     'customer' => $custName,
+                    'sales_by' => $order->creator?->name ?? 'N/A',
                     'status' => $orderStatus,
                     'lr_copy' => null,
                     'items' => $orderItems,

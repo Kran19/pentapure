@@ -242,15 +242,22 @@
     }
 
     /* Select2 Smart Search Custom Styling - Single Line Product Names */
-    .select2-container {
+    .bs-col-product {
+      position: relative !important;
+      min-width: 0 !important;
+      width: 100% !important;
+    }
+    .bs-col-product .select2-container {
       width: 100% !important;
       max-width: 100% !important;
       min-width: 0 !important;
+      display: block !important;
     }
-    .select2-container .select2-selection--single {
-      background-color: #f9fafb !important;
+    .bs-col-product .select2-container .select2-selection--single {
+      background-color: #ffffff !important;
       border: 1px solid #d1d5db !important;
       height: 1.8rem !important;
+      min-height: 1.8rem !important;
       border-radius: 6px !important;
       display: flex !important;
       align-items: center !important;
@@ -258,9 +265,17 @@
       max-width: 100% !important;
       min-width: 0 !important;
       overflow: hidden !important;
+      box-sizing: border-box !important;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
     }
-    .select2-container .select2-selection--single .select2-selection__rendered {
-      color: #333333 !important;
+    .bs-col-product .select2-container--default.select2-container--focus .select2-selection--single,
+    .bs-col-product .select2-container--default.select2-container--open .select2-selection--single {
+      border-color: #f59e0b !important;
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2) !important;
+      outline: none !important;
+    }
+    .bs-col-product .select2-container .select2-selection--single .select2-selection__rendered {
+      color: #111827 !important;
       font-weight: 600 !important;
       font-size: 0.8rem !important;
       line-height: 1.8rem !important;
@@ -273,7 +288,7 @@
       width: 100% !important;
       box-sizing: border-box !important;
     }
-    .select2-container--default .select2-selection--single .select2-selection__placeholder {
+    .bs-col-product .select2-container--default .select2-selection--single .select2-selection__placeholder {
       color: #9ca3af !important;
       font-weight: 500 !important;
       font-size: 0.8rem !important;
@@ -281,57 +296,121 @@
       overflow: hidden !important;
       text-overflow: ellipsis !important;
     }
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
+    .bs-col-product .select2-container--default .select2-selection--single .select2-selection__arrow {
       height: 1.8rem !important;
       right: 6px !important;
+      top: 0 !important;
+      display: flex !important;
+      align-items: center !important;
     }
+    .bs-col-product .select2-container--default .select2-selection--single .select2-selection__arrow b {
+      border-color: #6b7280 transparent transparent transparent !important;
+      border-width: 5px 4px 0 4px !important;
+    }
+    .bs-col-product .select2-container--default.select2-container--open .select2-selection--single .select2-selection__arrow b {
+      border-color: transparent transparent #6b7280 transparent !important;
+      border-width: 0 4px 5px 4px !important;
+    }
+
+    /* Select2 Dropdown Styling */
+    .bs-product-select2-dropdown.select2-dropdown,
     .select2-dropdown {
       border: 1px solid #d1d5db !important;
       border-radius: 8px !important;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
-      z-index: 99999 !important;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18) !important;
+      z-index: 999999 !important;
       background: #ffffff !important;
-      width: 100% !important;
-      min-width: 100% !important;
-      max-width: 100% !important;
+      overflow: hidden !important;
       box-sizing: border-box !important;
     }
-    .select2-container--default .select2-search--dropdown {
-      padding: 6px !important;
+    .bs-product-select2-dropdown.select2-dropdown {
+      min-width: min(340px, calc(100vw - 24px)) !important;
+      max-width: min(580px, calc(100vw - 24px)) !important;
+    }
+    .bs-product-select2-dropdown .select2-search--dropdown {
+      padding: 8px !important;
       background: #f9fafb !important;
       border-bottom: 1px solid #e5e7eb !important;
     }
-    .select2-container--default .select2-search--dropdown .select2-search__field {
+    .bs-product-select2-dropdown .select2-search--dropdown .select2-search__field {
       border: 1px solid #d1d5db !important;
       border-radius: 6px !important;
-      padding: 0.35rem 0.5rem !important;
+      padding: 0.4rem 0.65rem !important;
       font-size: 0.82rem !important;
       outline: none !important;
       background: #ffffff !important;
       color: #111827 !important;
       width: 100% !important;
       box-sizing: border-box !important;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
     }
-    .select2-results__options {
-      max-height: 240px !important;
+    .bs-product-select2-dropdown .select2-search--dropdown .select2-search__field:focus {
+      border-color: #f59e0b !important;
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25) !important;
+    }
+    .bs-product-select2-dropdown .select2-results__options {
+      max-height: 250px !important;
       overflow-y: auto !important;
       overflow-x: hidden !important;
+      padding: 4px 0 !important;
     }
-    .select2-container--default .select2-results__option {
+    .bs-product-select2-dropdown .select2-results__option {
       font-size: 0.82rem !important;
-      padding: 0.45rem 0.65rem !important;
-      color: #374151 !important;
-      white-space: normal !important;
-      word-break: break-word !important;
+      padding: 0.5rem 0.75rem !important;
+      color: #111827 !important;
       line-height: 1.35 !important;
+      border-bottom: 1px solid #f3f4f6 !important;
+      cursor: pointer !important;
+      background-color: #ffffff !important;
+      transition: background-color 0.1s ease, color 0.1s ease !important;
     }
-    .select2-container--default .select2-results__option--highlighted[aria-selected] {
-      background-color: #f59e0b !important;
-      color: #ffffff !important;
+    .bs-product-select2-dropdown .select2-results__option:last-child {
+      border-bottom: none !important;
     }
-    .select2-container--default .select2-results__option[aria-selected="true"] {
-      background-color: #fef3c7 !important;
-      color: #92400e !important;
+
+    /* Selected state when not hovered */
+    .bs-product-select2-dropdown .select2-results__option[aria-selected="true"] {
+      background-color: #fef9c3 !important;
+      border-left: 3px solid #eab308 !important;
+    }
+    .bs-product-select2-dropdown .select2-results__option[aria-selected="true"] .prod-name {
+      color: #854d0e !important;
+      font-weight: 700 !important;
+    }
+
+    /* Hovered / Highlighted state (always sharp and high contrast!) */
+    .bs-product-select2-dropdown .select2-results__option--highlighted,
+    .bs-product-select2-dropdown .select2-results__option--highlighted[aria-selected],
+    .bs-product-select2-dropdown .select2-results__option--highlighted[aria-selected="true"],
+    .bs-product-select2-dropdown .select2-results__option--highlighted[aria-selected="false"],
+    .bs-product-select2-dropdown .select2-results__option:hover {
+      background-color: #fef08a !important;
+      color: #000000 !important;
+      border-left: 3px solid #ca8a04 !important;
+    }
+    .bs-product-select2-dropdown .select2-results__option--highlighted .prod-name,
+    .bs-product-select2-dropdown .select2-results__option:hover .prod-name {
+      color: #000000 !important;
+      font-weight: 700 !important;
+      background: transparent !important;
+    }
+    .bs-product-select2-dropdown .select2-results__option--highlighted .prod-unit,
+    .bs-product-select2-dropdown .select2-results__option:hover .prod-unit {
+      color: #1f2937 !important;
+      font-weight: 600 !important;
+    }
+    .bs-product-select2-dropdown .select2-results__option--highlighted .prod-grade-badge,
+    .bs-product-select2-dropdown .select2-results__option:hover .prod-grade-badge {
+      background-color: #ffffff !important;
+      color: #3730a3 !important;
+      border: 1px solid #c7d2fe !important;
+      font-weight: 700 !important;
+    }
+    .bs-product-select2-dropdown .select2-results__option--highlighted .prod-stage-badge,
+    .bs-product-select2-dropdown .select2-results__option:hover .prod-stage-badge {
+      border-color: rgba(0, 0, 0, 0.25) !important;
+      background-color: #ffffff !important;
+      font-weight: 700 !important;
     }
 
     /* Responsive Bulk Stock Fields Grid */
@@ -1364,6 +1443,7 @@ function updateStockTables(stockData) {
 
 function onGlobalProductSearch(val) {
   const q = (val || '').trim().toUpperCase();
+  const tokens = q.split(/\s+/).filter(Boolean);
   ['raw-stock-tbody', 'semi-stock-tbody', 'finished-stock-tbody'].forEach(tbodyId => {
     const tbody = document.getElementById(tbodyId);
     if (!tbody) return;
@@ -1371,7 +1451,7 @@ function onGlobalProductSearch(val) {
     rows.forEach(tr => {
       if (!tr.children || tr.children.length === 0) return;
       const text = (tr.children[0]?.textContent || tr.children[0]?.innerText || '').toUpperCase();
-      if (!q || text.indexOf(q) > -1) {
+      if (tokens.length === 0 || tokens.every(token => text.indexOf(token) > -1)) {
         tr.style.display = '';
       } else {
         tr.style.display = 'none';
@@ -1720,6 +1800,96 @@ function adminExportStockPdf() {
 
 
 
+window.initBsProductSelect2 = function(selectElement) {
+  if (!selectElement) return;
+  const $select = $(selectElement);
+  if (!$select.length) return;
+
+  if (typeof jQuery === 'undefined' || typeof jQuery.fn.select2 === 'undefined') {
+    setTimeout(() => window.initBsProductSelect2(selectElement), 50);
+    return;
+  }
+
+  if ($select.hasClass('select2-hidden-accessible')) {
+    try {
+      $select.select2('destroy');
+    } catch (e) {}
+  }
+
+  $select.select2({
+    placeholder: 'SELECT PRODUCT...',
+    allowClear: false,
+    width: '100%',
+    dropdownAutoWidth: false,
+    dropdownCssClass: 'bs-product-select2-dropdown',
+    matcher: function(params, data) {
+      if (!params.term || $.trim(params.term) === '') {
+        return data;
+      }
+      if (!data.text) {
+        return null;
+      }
+      const term = params.term.toLowerCase().trim();
+      const text = data.text.toLowerCase();
+      const tokens = term.split(/\s+/).filter(Boolean);
+      for (let i = 0; i < tokens.length; i++) {
+        if (text.indexOf(tokens[i]) === -1) {
+          return null;
+        }
+      }
+      return data;
+    },
+    templateResult: function(data) {
+      if (!data.id) {
+        return $(`<span style="color:#9ca3af; font-weight:500;">${escapeHtml(data.text)}</span>`);
+      }
+      const el = data.element;
+      const stage = el ? el.getAttribute('data-stage') : '';
+      const unit = el ? el.getAttribute('data-unit') : '';
+      const grade = el ? el.getAttribute('data-grade') : '';
+      const prodName = el ? el.getAttribute('data-name') : data.text;
+
+      let badgeColor = '#6b7280';
+      let badgeBg = '#f3f4f6';
+      let badgeBorder = '#d1d5db';
+      if (stage === 'RAW') { badgeColor = '#065f46'; badgeBg = '#d1fae5'; badgeBorder = '#a7f3d0'; }
+      else if (stage === 'SEMI') { badgeColor = '#1e40af'; badgeBg = '#dbeafe'; badgeBorder = '#bfdbfe'; }
+      else if (stage === 'FINISHED' || stage === 'FG') { badgeColor = '#92400e'; badgeBg = '#fef3c7'; badgeBorder = '#fde68a'; }
+
+      let gradeBadge = '';
+      if (grade && !['NONE', 'N/A', 'NA', 'N / A'].includes(grade.trim().toUpperCase())) {
+        gradeBadge = `<span class="prod-grade-badge" style="font-size:0.7rem; font-weight:700; padding:1px 6px; border-radius:4px; background:#e0e7ff; color:#3730a3; border:1px solid #c7d2fe; margin-left:4px;">${escapeHtml(grade)}</span>`;
+      }
+
+      return $(`
+        <div class="prod-option-row" style="display:flex; justify-content:space-between; align-items:center; width:100%; padding:2px 0;">
+          <div style="display:flex; align-items:center; gap:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+            <span class="prod-name" style="font-weight:700; color:#111827;">${escapeHtml(prodName)}</span>
+            ${gradeBadge}
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; flex-shrink:0; margin-left:8px;">
+            <span class="prod-stage-badge" style="font-size:0.68rem; font-weight:700; padding:1px 6px; border-radius:4px; background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder};">${stage === 'FINISHED' ? 'FG' : stage}</span>
+            ${unit ? `<span class="prod-unit" style="font-size:0.72rem; color:#4b5563; font-weight:600;">(${escapeHtml(unit)})</span>` : ''}
+          </div>
+        </div>
+      `);
+    },
+    templateSelection: function(data) {
+      if (!data.id) return data.text;
+      return data.text;
+    }
+  });
+
+  $select.off('select2:open.bsFocus').on('select2:open.bsFocus', function() {
+    setTimeout(() => {
+      const searchBox = document.querySelector('.bs-product-select2-dropdown .select2-search__field, .select2-container--open .select2-search__field');
+      if (searchBox) {
+        searchBox.focus();
+      }
+    }, 15);
+  });
+};
+
 window.onBsStageChange = function(element) {
   const row = element.closest('.bulk-stock-row');
   const stage = row.querySelector('.bs-stage').value;
@@ -1733,6 +1903,12 @@ window.onBsStageChange = function(element) {
     filteredProducts = adminStockProducts.filter(p => (p.type === targetStage || (targetStage === 'FINISHED' && p.type === 'FG')) && p.is_active);
   }
   
+  if (window.jQuery && $.fn.select2 && $(productSelect).hasClass('select2-hidden-accessible')) {
+    try {
+      $(productSelect).select2('destroy');
+    } catch(e) {}
+  }
+
   // Empty the select and add a blank option for placeholder
   $(productSelect).empty();
   
@@ -1751,6 +1927,9 @@ window.onBsStageChange = function(element) {
         const text = `${p.name}${gradeText} (${t})`;
         const opt = new Option(text, val, false, false);
         opt.setAttribute('data-unit', p.unit || 'kg');
+        opt.setAttribute('data-stage', t);
+        opt.setAttribute('data-name', p.name);
+        opt.setAttribute('data-grade', g.name || 'NONE');
         $(productSelect).append(opt);
       });
     } else {
@@ -1758,11 +1937,17 @@ window.onBsStageChange = function(element) {
       const text = `${p.name} (${t})`;
       const opt = new Option(text, val, false, false);
       opt.setAttribute('data-unit', p.unit || 'kg');
+      opt.setAttribute('data-stage', t);
+      opt.setAttribute('data-name', p.name);
+      opt.setAttribute('data-grade', 'NONE');
       $(productSelect).append(opt);
     }
   });
+
+  // Re-initialize Select2 Smart Search
+  window.initBsProductSelect2(productSelect);
   
-  $(productSelect).off('change').on('change', function() {
+  $(productSelect).off('change.bsProd').on('change.bsProd', function() {
     onBsProductChange(this);
   });
   
@@ -1794,6 +1979,10 @@ window.toggleStockFormCard = function() {
     card.style.display = isOpening ? 'block' : 'none';
     if (isOpening) {
       card.scrollIntoView({ behavior: 'smooth' });
+      // Re-initialize all Select2 instances on visible card
+      document.querySelectorAll('.bulk-stock-row .bs-product').forEach(sel => {
+        window.initBsProductSelect2(sel);
+      });
     }
   }
 };
@@ -1851,8 +2040,13 @@ window.adminSaveBulkStock = function() {
     }
   });
   
-  if (hasError && items.length === 0) {
-    Swal.fire('Error', 'Please fill in product, quantity (>0) and at least one location for all rows.', 'error');
+  if (items.length === 0) {
+    Swal.fire('Validation Error', 'Please select a product and enter a quantity (>0) with at least one storage location.', 'error');
+    return;
+  }
+  
+  if (hasError) {
+    Swal.fire('Incomplete Rows', 'Some rows have missing product or storage location quantities. Please complete or remove incomplete rows before saving.', 'warning');
     return;
   }
   
@@ -1957,6 +2151,15 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Instantly update all location labels on page load
   updateAllLocationLabels();
+
+  if (sessionStorage.getItem('keepStockFormOpen') === 'true') {
+    const el = document.getElementById('stock-form-card');
+    if (el) el.style.display = 'block';
+    sessionStorage.removeItem('keepStockFormOpen');
+    document.querySelectorAll('.bulk-stock-row .bs-product').forEach(sel => {
+      window.initBsProductSelect2(sel);
+    });
+  }
 });
 
 function addStockRow() {
@@ -1981,20 +2184,23 @@ function addStockRow() {
         dateInput.value = prevDate;
     }
     
-    // Remove any leftover select2 container if present
-    const select2Span = newRow.querySelector('.select2-container');
-    if (select2Span) select2Span.remove();
+    // Remove cloned Select2 container from newRow
+    newRow.querySelectorAll('.select2-container').forEach(el => el.remove());
     
-    // Make sure select elements are un-selected
+    // Clean all select elements and options in newRow
     newRow.querySelectorAll('select').forEach(sel => {
-        sel.selectedIndex = 0;
         sel.classList.remove('select2-hidden-accessible');
         sel.removeAttribute('data-select2-id');
         sel.removeAttribute('tabindex');
         sel.removeAttribute('aria-hidden');
+        sel.removeAttribute('id');
+        sel.selectedIndex = 0;
+    });
+    newRow.querySelectorAll('option').forEach(opt => {
+        opt.removeAttribute('data-select2-id');
     });
     
-    // Hide grade wrapper initially
+    // Hide grade wrapper initially if present
     const gradeWrapper = newRow.querySelector('.bs-grade-wrapper');
     if (gradeWrapper) gradeWrapper.style.display = 'none';
 
@@ -2017,19 +2223,12 @@ function addStockRow() {
 
     wrapper.appendChild(newRow);
     
-    // Trigger onBsStageChange to re-populate products and re-init any select2
+    // Trigger onBsStageChange to re-populate products and init select2 on newRow
     const stageSelect = newRow.querySelector('.bs-stage');
-    if (typeof onBsStageChange === 'function') {
+    if (typeof onBsStageChange === 'function' && stageSelect) {
         onBsStageChange(stageSelect);
     }
 }
-document.addEventListener('DOMContentLoaded', function() {
-  if (sessionStorage.getItem('keepStockFormOpen') === 'true') {
-    const el = document.getElementById('stock-form-card');
-    if (el) el.style.display = 'block';
-    sessionStorage.removeItem('keepStockFormOpen');
-  }
-});
 </script>
 
 <style>

@@ -239,4 +239,130 @@ class DispatchTest extends TestCase
         $this->assertStringContainsString('Sales By:', $completedContent);
         $this->assertStringContainsString('Rajesh Salesman', $completedContent);
     }
+
+    public function test_dispatch_history_displays_sales_by_and_searches_by_sales_person(): void
+    {
+        $salesUser = User::create([
+            'name'     => 'Ankit Sales',
+            'email'    => 'ankit@example.com',
+            'password' => 'password123',
+            'role'     => 'SALES',
+            'status'   => 'ACTIVE',
+        ]);
+
+        $order = Order::create([
+            'created_by'      => $salesUser->id,
+            'company_id'      => $this->company->id,
+            'transporter_id'  => $this->transporter->id,
+            'total'           => 15000,
+            'status'          => 'OPEN',
+            'dispatch_status' => 'DONE',
+        ]);
+
+        $log = DispatchLog::create([
+            'order_id'       => $order->id,
+            'user_id'        => $this->dispatchUser->id,
+            'transporter_id' => $this->transporter->id,
+            'notes'          => 'Dispatched fully',
+        ]);
+
+        $session = ['auth_user' => [
+            'id'   => $this->dispatchUser->id,
+            'name' => $this->dispatchUser->name,
+            'role' => 'DISPATCH',
+        ]];
+
+        $response = $this->withSession($session)->get('/dispatch/history');
+        $response->assertStatus(200);
+        $content = $response->getContent();
+
+        $this->assertStringContainsString("Order #{$order->id}", $content);
+        $this->assertStringContainsString('Sales By:', $content);
+        $this->assertStringContainsString('Ankit Sales', $content);
+
+        // Test search by salesperson name
+        $searchResponse = $this->withSession($session)->get('/dispatch/history?q=Ankit');
+        $searchResponse->assertStatus(200);
+        $this->assertStringContainsString('Ankit Sales', $searchResponse->getContent());
+
+        // Test search with unmatched query does not show the order
+        $missResponse = $this->withSession($session)->get('/dispatch/history?q=NonExistentSalesPerson');
+        $missResponse->assertStatus(200);
+        $this->assertStringNotContainsString("Order #{$order->id}", $missResponse->getContent());
+    }
+
+    public function test_dispatch_report_displays_sales_by_and_searches_by_sales_person(): void
+    {
+        $salesUser = User::create([
+            'name'     => 'Pooja Sales',
+            'email'    => 'pooja@example.com',
+            'password' => 'password123',
+            'role'     => 'SALES',
+            'status'   => 'ACTIVE',
+        ]);
+
+        $order = Order::create([
+            'created_by'      => $salesUser->id,
+            'company_id'      => $this->company->id,
+            'transporter_id'  => $this->transporter->id,
+            'total'           => 20000,
+            'status'          => 'OPEN',
+            'dispatch_status' => 'PENDING',
+        ]);
+
+        $session = ['auth_user' => [
+            'id'   => $this->dispatchUser->id,
+            'name' => $this->dispatchUser->name,
+            'role' => 'DISPATCH',
+        ]];
+
+        $response = $this->withSession($session)->get('/dispatch/report');
+        $response->assertStatus(200);
+        $content = $response->getContent();
+
+        $this->assertStringContainsString("Order #{$order->id}", $content);
+        $this->assertStringContainsString('Sales By:', $content);
+        $this->assertStringContainsString('Pooja Sales', $content);
+
+        // Test search by salesperson name
+        $searchResponse = $this->withSession($session)->get('/dispatch/report?q=Pooja');
+        $searchResponse->assertStatus(200);
+        $this->assertStringContainsString('Pooja Sales', $searchResponse->getContent());
+
+        // Test search with unmatched query does not show the order
+        $missResponse = $this->withSession($session)->get('/dispatch/report?q=NonExistentSalesPerson');
+        $missResponse->assertStatus(200);
+        $this->assertStringNotContainsString("Order #{$order->id}", $missResponse->getContent());
+    }
+
+    public function test_order_items_product_name_type_and_aligned_order_badges(): void
+    {
+        $session = ['auth_user' => [
+            'id'   => $this->dispatchUser->id,
+            'name' => $this->dispatchUser->name,
+            'role' => 'DISPATCH',
+        ]];
+
+        // 1. Dispatch Home
+        $homeResp = $this->withSession($session)->get('/dispatch/home');
+        $homeResp->assertStatus(200);
+        $homeContent = $homeResp->getContent();
+        $this->assertStringContainsString('Finished Pipe 75mm', $homeContent);
+        $this->assertStringContainsString('(FG)', $homeContent);
+        $this->assertStringContainsString('ORDER:', $homeContent);
+        $this->assertStringContainsString('DISPATCHED:', $homeContent);
+        $this->assertStringContainsString('PENDING:', $homeContent);
+        $this->assertStringContainsString('dispatch-item-badges', $homeContent);
+
+        // 2. Dispatch Report
+        $reportResp = $this->withSession($session)->get('/dispatch/report');
+        $reportResp->assertStatus(200);
+        $reportContent = $reportResp->getContent();
+        $this->assertStringContainsString('Finished Pipe 75mm', $reportContent);
+        $this->assertStringContainsString('(FG)', $reportContent);
+        $this->assertStringContainsString('ORDER:', $reportContent);
+        $this->assertStringContainsString('DISPATCHED:', $reportContent);
+        $this->assertStringContainsString('PENDING:', $reportContent);
+        $this->assertStringContainsString('dispatch-item-badges', $reportContent);
+    }
 }
