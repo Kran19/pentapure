@@ -267,12 +267,35 @@ class PdfGenerationTest extends TestCase
         $this->assertGreaterThan(0, $headerCount);
 
         foreach ($dataTable->getElementsByTagName('tbody') as $tbody) {
-            foreach ($tbody->getElementsByTagName('tr') as $tr) {
-                if ($tr->getAttribute('class') === 'total-row') {
-                    continue;
+            $rows = $tbody->getElementsByTagName('tr');
+            if ($rows->length === 0) {
+                continue;
+            }
+
+            $firstRow = $rows->item(0);
+            if ($firstRow->getAttribute('class') === 'total-row') {
+                continue;
+            }
+
+            // Each order block must avoid page breaks inside to protect rowspan layout
+            $this->assertStringContainsString('page-break-inside: avoid', (string) $tbody->getAttribute('style'));
+
+            $firstRowTds = $firstRow->getElementsByTagName('td');
+            $this->assertEquals($headerCount, $firstRowTds->length, 'First row of an order must contain full header count');
+
+            if ($rows->length > 1) {
+                // Verify order id and customer are merged with rowspan matching the item count
+                $dispatchIdTd = $firstRowTds->item(0);
+                $this->assertEquals((string) $rows->length, $dispatchIdTd->getAttribute('rowspan'), 'Dispatch ID should merge across all items of the order');
+
+                $customerTd = $firstRowTds->item(4);
+                $this->assertEquals((string) $rows->length, $customerTd->getAttribute('rowspan'), 'Customer cell should merge across all items of the order');
+
+                // Subsequent item rows should contain only the 5 item-specific columns
+                for ($r = 1; $r < $rows->length; $r++) {
+                    $subRowTds = $rows->item($r)->getElementsByTagName('td');
+                    $this->assertEquals(5, $subRowTds->length, 'Subsequent item rows should have item columns while order-level cells are merged via rowspan');
                 }
-                $tdCount = $tr->getElementsByTagName('td')->length;
-                $this->assertEquals($headerCount, $tdCount, 'Every row must have exactly the same column count as table header to prevent DomPDF page break shift');
             }
         }
     }

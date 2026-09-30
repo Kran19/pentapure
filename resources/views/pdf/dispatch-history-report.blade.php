@@ -171,7 +171,6 @@
                 <th style="width: 5%;" class="text-center">Status</th>
             </tr>
         </thead>
-        <tbody>
         @forelse($rows as $idx => $logRow)
             @php
                 $rawStatus = strtoupper(trim(str_replace('_', ' ', $logRow['status'] ?? 'PENDING')));
@@ -191,54 +190,45 @@
                 $isRowFullyDispatched = in_array($rawStatus, ['FULLY DISPATCHED', 'COMPLETED', 'DONE']);
                 $rowBg = ($idx % 2 === 0) ? '#ffffff' : '#fafafa';
             @endphp
+            <tbody style="page-break-inside: avoid;">
             @foreach($logRow['items'] as $itemIdx => $item)
                 @php
                     $isFirst = ($itemIdx === 0);
                     $borderTopStyle = $isFirst ? 'border-top: 1.5px solid #344054;' : 'border-top: 1px dashed #d0d5dd;';
                 @endphp
                 <tr style="background-color: {{ $rowBg }};">
-                    <td class="text-center" style="vertical-align: middle; {{ $borderTopStyle }}">
-                        @if($isFirst)
+                    @if($isFirst)
+                        <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle; border-top: 1.5px solid #344054;">
                             <strong>{{ $logRow['dispatch_id'] }}</strong>
-                        @else
-                            <span style="color: #667085; font-size: 7.5px;">{{ $logRow['dispatch_id'] }}</span>
-                        @endif
-                    </td>
-                    <td class="text-center" style="vertical-align: middle; {{ $borderTopStyle }}">
-                        @if($isFirst)
+                        </td>
+                        <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle; border-top: 1.5px solid #344054;">
                             <span>{{ $logRow['order_date'] }}</span>
-                        @else
-                            <span style="color: #667085; font-size: 7.5px;">{{ $logRow['order_date'] }}</span>
+                        </td>
+                        @if($statusFilter !== 'FULLY_DISPATCHED' && $statusFilter !== 'FULLY DISPATCHED' && $statusFilter !== 'DONE')
+                            <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle; font-weight: bold; color: #344054; font-size: 8px; border-top: 1.5px solid #344054;">
+                                @if(!$isRowFullyDispatched)
+                                    {{ $logRow['due_days_text'] ?? '0 Days' }}
+                                @else
+                                    -
+                                @endif
+                            </td>
                         @endif
-                    </td>
-                    @if($statusFilter !== 'FULLY_DISPATCHED' && $statusFilter !== 'FULLY DISPATCHED' && $statusFilter !== 'DONE')
-                        <td class="text-center" style="vertical-align: middle; font-weight: {{ $isFirst ? 'bold' : 'normal' }}; color: {{ $isFirst ? '#344054' : '#667085' }}; font-size: {{ $isFirst ? '8px' : '7.5px' }}; {{ $borderTopStyle }}">
-                            @if(!$isRowFullyDispatched)
-                                {{ $logRow['due_days_text'] ?? '0 Days' }}
-                            @else
-                                -
-                            @endif
-                        </td>
-                    @endif
-                    @if($statusFilter !== 'PENDING')
-                        <td class="text-center" style="vertical-align: middle; font-size: {{ $isFirst ? '8px' : '7.5px' }}; color: {{ $isFirst ? '#101828' : '#667085' }}; {{ $borderTopStyle }}">
-                            @if($rawStatus !== 'PENDING')
-                                {{ $logRow['dispatch_date'] ?? '-' }}
-                            @else
-                                -
-                            @endif
-                        </td>
-                    @endif
-                    <td style="vertical-align: middle; {{ $borderTopStyle }}">
-                        @if($isFirst)
+                        @if($statusFilter !== 'PENDING')
+                            <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle; font-size: 8px; color: #101828; border-top: 1.5px solid #344054;">
+                                @if($rawStatus !== 'PENDING')
+                                    {{ $logRow['dispatch_date'] ?? '-' }}
+                                @else
+                                    -
+                                @endif
+                            </td>
+                        @endif
+                        <td rowspan="{{ $itemCount }}" style="vertical-align: middle; border-top: 1.5px solid #344054;">
                             <strong>{{ $logRow['customer'] }}</strong>
                             @if(!empty($logRow['sales_by']) && $logRow['sales_by'] !== 'N/A')
                                 <div style="font-size: 7px; color: #475467; margin-top: 1px; font-weight: normal;">BY: {{ $logRow['sales_by'] }}</div>
                             @endif
-                        @else
-                            <span style="color: #475467; font-size: 7.5px;">{{ $logRow['customer'] }}</span>
-                        @endif
-                    </td>
+                        </td>
+                    @endif
                     <td style="{{ $borderTopStyle }}">
                         <div style="font-weight: bold; color: #101828;">{{ $item['product'] }}</div>
                     </td>
@@ -254,20 +244,18 @@
                     <td class="text-right" style="{{ $borderTopStyle }}">
                         <strong>Rs. {{ number_format($item['amount'], 2) }}</strong>
                     </td>
-                    <td class="text-center" style="vertical-align: middle; {{ $borderTopStyle }}">
-                        @if($isFirst)
+                    @if($isFirst)
+                        <td rowspan="{{ $itemCount }}" class="text-center" style="vertical-align: middle; border-top: 1.5px solid #344054;">
                             <span class="badge {{ $badgeClass }}">
                                 {{ $displayStatus }}
                             </span>
-                        @else
-                            <span class="badge {{ $badgeClass }}" style="opacity: 0.85; font-size: 6.5px;">
-                                {{ $displayStatus }}
-                            </span>
-                        @endif
-                    </td>
+                        </td>
+                    @endif
                 </tr>
             @endforeach
+            </tbody>
         @empty
+            <tbody>
             @php
                 $colSpanCount = 11;
                 if ($statusFilter === 'PENDING' || in_array($statusFilter, ['FULLY_DISPATCHED', 'FULLY DISPATCHED', 'DONE'])) {
@@ -277,6 +265,7 @@
             <tr>
                 <td colspan="{{ $colSpanCount }}" class="text-center" style="padding: 15px; color: #667085;">No dispatch history found for the selected filters.</td>
             </tr>
+            </tbody>
         @endforelse
         @if(count($rows) > 0)
             @php
@@ -285,6 +274,7 @@
                     $labelColSpan = 5;
                 }
             @endphp
+            <tbody style="page-break-inside: avoid;">
             <tr class="total-row">
                 <td colspan="{{ $labelColSpan }}">TOTAL</td>
                 <td class="text-right text-green">{{ number_format($totalOrderedQty ?? 0) }} KG</td>
@@ -293,8 +283,8 @@
                 <td class="text-right">Rs. {{ number_format($totalValue, 2) }}</td>
                 <td></td>
             </tr>
+            </tbody>
         @endif
-        </tbody>
     </table>
 
     <div class="page-break-avoid">
