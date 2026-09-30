@@ -38,14 +38,21 @@
 <!-- Add PO Modal -->
 <div id="po-modal" class="modal-overlay" onclick="if(event.target==this) this.classList.remove('active')">
   <div class="modal-content card" style="max-width:400px; width:100%;">
-    <div class="card-title">Request Raw Material</div>
+    <div class="card-title">Request Material</div>
     <form action="{{ url(request()->segment(1) . '/po') }}" method="POST" id="po-form" onsubmit="disableBtn(this)">
       @csrf
       <div class="form-group">
         <label>Select Material</label>
         <select name="product_id" required>
             @foreach($pageData['products'] as $rm)
-                <option value="{{ $rm->id }}">{{ $rm->name }} - (grade- N/A) (type - {{ strtolower($pageData['type']) }})</option>
+                @php
+                  $sStage = match(strtoupper($rm->type ?? '')) {
+                      'FINISHED' => 'FG',
+                      'PACKAGING' => 'PKG',
+                      default => strtoupper($rm->type ?? 'RAW'),
+                  };
+                @endphp
+                <option value="{{ $rm->id }}">{{ $rm->name }} [{{ $sStage }}]</option>
             @endforeach
         </select>
       </div>

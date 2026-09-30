@@ -325,6 +325,27 @@
   color: #15803d !important;
   font-weight: 700 !important;
 }
+
+/* Material Stage Filter Pills */
+.po-stage-pills { display: flex; gap: 6px; margin-bottom: 0.75rem; flex-wrap: wrap; }
+.po-stage-pill {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.po-stage-pill:hover { background: #f1f5f9; color: #1e293b; border-color: #cbd5e1; }
+.po-stage-pill.active { background: #0f172a; color: #ffffff; border-color: #0f172a; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.2); }
+.po-stage-pill[data-stage="RAW"].active { background: #059669; border-color: #059669; }
+.po-stage-pill[data-stage="SEMI"].active { background: #2563eb; border-color: #2563eb; }
+.po-stage-pill[data-stage="FG"].active { background: #d97706; border-color: #d97706; }
+.po-stage-pill[data-stage="PKG"].active { background: #0284c7; border-color: #0284c7; }
 </style>
 
 <!-- Add PO Modal -->
@@ -353,16 +374,32 @@
           <span>Select Material <span style="color:#ef4444;">*</span></span>
           <span style="font-size:0.72rem; color:#94a3b8; font-weight:500;">Smart Search</span>
         </label>
+
+        <!-- Material Category Filter Pills -->
+        <div class="po-stage-pills">
+          <button type="button" class="po-stage-pill active" data-stage="ALL" onclick="filterPoStage('ALL', this)">ALL</button>
+          <button type="button" class="po-stage-pill" data-stage="RAW" onclick="filterPoStage('RAW', this)">🌿 RAW</button>
+          <button type="button" class="po-stage-pill" data-stage="SEMI" onclick="filterPoStage('SEMI', this)">⚗️ SEMI</button>
+          <button type="button" class="po-stage-pill" data-stage="FG" onclick="filterPoStage('FG', this)">✅ FG</button>
+          <button type="button" class="po-stage-pill" data-stage="PKG" onclick="filterPoStage('PKG', this)">📦 PACKAGING</button>
+        </div>
+
         <select name="product_id" id="po-product-id" style="width:100%;">
           <option value="" disabled selected>-- Search &amp; Select Material --</option>
           @foreach($pageData['products'] as $rm)
             @php
-              $typeDisp = strtoupper($rm->type ?? 'RAW');
+              $rawType = strtoupper($rm->type ?? 'RAW');
+              $shortType = match($rawType) {
+                'FINISHED', 'FG' => 'FG',
+                'PACKAGING', 'PKG' => 'PKG',
+                'SEMI' => 'SEMI',
+                default => 'RAW'
+              };
               $availQty = (float) $rm->totalAvailableStock();
               $unit = $rm->unit ?? 'kg';
             @endphp
-            <option value="{{ $rm->id }}" data-name="{{ $rm->name }}" data-type="{{ $typeDisp }}" data-unit="{{ $unit }}" data-avail="{{ $availQty }}">
-              {{ $rm->name }} [{{ $typeDisp }}] (Avail: {{ number_format($availQty, 1) }} {{ $unit }})
+            <option value="{{ $rm->id }}" data-name="{{ $rm->name }}" data-type="{{ $shortType }}" data-raw-type="{{ $rawType }}" data-unit="{{ $unit }}" data-avail="{{ $availQty }}">
+              {{ $rm->name }} [{{ $shortType }}] (Avail: {{ number_format($availQty, 1) }} {{ $unit }})
             </option>
           @endforeach
         </select>
@@ -414,6 +451,22 @@ function escapeHtml(text) {
   return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+let currentPoStage = 'ALL';
+
+function filterPoStage(stage, btn) {
+  currentPoStage = stage;
+  document.querySelectorAll('.po-stage-pill').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  const $select = $('#po-product-id');
+  if ($select.hasClass('select2-hidden-accessible')) {
+    $select.select2('close');
+    setTimeout(() => {
+      $select.select2('open');
+    }, 50);
+  }
+}
+
 function initPoSelect2() {
   if (typeof jQuery === 'undefined' || typeof jQuery.fn.select2 === 'undefined') {
     setTimeout(initPoSelect2, 50);
@@ -436,17 +489,30 @@ function initPoSelect2() {
     allowClear: false,
     width: '100%',
     matcher: function(params, data) {
+      if (!data.id) return data;
+      const $el = $(data.element);
+      const shortType = ($el.data('type') || '').toUpperCase();
+      const rawType = ($el.data('raw-type') || '').toUpperCase();
+
+      if (currentPoStage !== 'ALL') {
+        const matchStage = (currentPoStage === 'PKG' || currentPoStage === 'PACKAGING')
+          ? (shortType === 'PKG' || rawType === 'PACKAGING')
+          : (currentPoStage === 'FG' || currentPoStage === 'FINISHED')
+            ? (shortType === 'FG' || rawType === 'FINISHED')
+            : (shortType === currentPoStage || rawType === currentPoStage);
+        if (!matchStage) return null;
+      }
+
       if (!params.term || $.trim(params.term) === '') {
         return data;
       }
-      if (!data.text) {
-        return null;
-      }
       const term = params.term.toLowerCase().trim();
-      const text = data.text.toLowerCase();
+      const text = (data.text || '').toLowerCase();
+      const name = ($el.data('name') || '').toLowerCase();
       const tokens = term.split(/\s+/).filter(Boolean);
       for (let i = 0; i < tokens.length; i++) {
-        if (text.indexOf(tokens[i]) === -1) {
+        const token = tokens[i];
+        if (text.indexOf(token) === -1 && name.indexOf(token) === -1 && shortType.toLowerCase().indexOf(token) === -1 && rawType.toLowerCase().indexOf(token) === -1) {
           return null;
         }
       }
@@ -455,7 +521,13 @@ function initPoSelect2() {
     templateResult: function(state) {
       if (!state.id) return $(`<span style="color:#94a3b8; font-weight:500;">${escapeHtml(state.text)}</span>`);
       const $el = $(state.element);
-      const type = ($el.data('type') || 'RAW').toUpperCase();
+      const rawType = ($el.data('raw-type') || $el.data('type') || 'RAW').toUpperCase();
+      let shortType = rawType;
+      if (rawType === 'FINISHED' || rawType === 'FG') shortType = 'FG';
+      else if (rawType === 'PACKAGING' || rawType === 'PKG') shortType = 'PKG';
+      else if (rawType === 'SEMI') shortType = 'SEMI';
+      else if (rawType === 'RAW') shortType = 'RAW';
+
       const unit = $el.data('unit') || 'kg';
       const avail = parseFloat($el.data('avail') || 0);
       const name = $el.data('name') || state.text;
@@ -463,8 +535,13 @@ function initPoSelect2() {
       let badgeBg = '#d1fae5';
       let badgeColor = '#065f46';
       let badgeBorder = '#a7f3d0';
-      if (type === 'SEMI') { badgeBg = '#dbeafe'; badgeColor = '#1e40af'; badgeBorder = '#bfdbfe'; }
-      else if (type === 'FINISHED' || type === 'FG') { badgeBg = '#fef3c7'; badgeColor = '#92400e'; badgeBorder = '#fde68a'; }
+      if (shortType === 'SEMI') {
+        badgeBg = '#dbeafe'; badgeColor = '#1e40af'; badgeBorder = '#bfdbfe';
+      } else if (shortType === 'FG') {
+        badgeBg = '#fef3c7'; badgeColor = '#92400e'; badgeBorder = '#fde68a';
+      } else if (shortType === 'PKG') {
+        badgeBg = '#e0f2fe'; badgeColor = '#0369a1'; badgeBorder = '#bae6fd';
+      }
 
       const availFormatted = avail.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
       const availColor = avail > 0 ? '#15803d' : '#94a3b8';
@@ -473,7 +550,7 @@ function initPoSelect2() {
         <div class="prod-option-row" style="display:flex; justify-content:space-between; align-items:center; width:100%; padding:2px 0;">
           <div style="display:flex; align-items:center; gap:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
             <span class="prod-name" style="font-weight:700; color:#0f172a;">${escapeHtml(name)}</span>
-            <span class="prod-stage-badge" style="font-size:0.68rem; font-weight:700; padding:1px 6px; border-radius:4px; background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder};">${escapeHtml(type)}</span>
+            <span class="prod-stage-badge" style="font-size:0.68rem; font-weight:700; padding:1px 6px; border-radius:4px; background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder};">${escapeHtml(shortType)}</span>
           </div>
           <div class="prod-avail" style="font-size:0.75rem; font-weight:700; color:${availColor}; white-space:nowrap; margin-left:12px;">
             Avail: ${availFormatted} ${escapeHtml(unit)}
@@ -484,12 +561,18 @@ function initPoSelect2() {
     templateSelection: function(state) {
       if (!state.id) return state.text;
       const $el = $(state.element);
-      const type = ($el.data('type') || 'RAW').toUpperCase();
+      const rawType = ($el.data('raw-type') || $el.data('type') || 'RAW').toUpperCase();
+      let shortType = rawType;
+      if (rawType === 'FINISHED' || rawType === 'FG') shortType = 'FG';
+      else if (rawType === 'PACKAGING' || rawType === 'PKG') shortType = 'PKG';
+      else if (rawType === 'SEMI') shortType = 'SEMI';
+      else if (rawType === 'RAW') shortType = 'RAW';
+
       const unit = $el.data('unit') || 'kg';
       const avail = parseFloat($el.data('avail') || 0);
       const name = $el.data('name') || state.text;
       const availFormatted = avail.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
-      return `${name} [${type}] (Avail: ${availFormatted} ${unit})`;
+      return `${name} [${shortType}] (Avail: ${availFormatted} ${unit})`;
     }
   });
 
@@ -554,6 +637,12 @@ function openNewPoModal() {
   btn.style.opacity = '1';
 
   document.getElementById('po-modal').classList.add('active');
+
+  // Reset stage filter to ALL
+  currentPoStage = 'ALL';
+  document.querySelectorAll('.po-stage-pill').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-stage') === 'ALL');
+  });
 
   // Reset and initialize Select2 with smart search
   const $select = $('#po-product-id');

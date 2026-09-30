@@ -149,16 +149,19 @@
 
                         $statusText = $att->status ? strtoupper(str_replace('_', ' ', $att->status)) : 'ABSENT';
 
+                        $isFixedSalary = in_array(strtoupper($att->worker->salary_type ?? ''), ['FIXED_MONTHLY', 'FIX_MONTHLY', 'FIXED', 'FIXED_SALARY']);
                         $otUtDisplay = '';
                         $isUt = false;
                         $isOt = false;
 
-                        if ($att->ot_ut === 'OT' && $att->ot_ut_hours > 0) {
-                            $otUtDisplay = '+' . (float)$att->ot_ut_hours . ' OT';
-                            $isOt = true;
-                        } elseif ($att->ot_ut === 'UT' && $att->ot_ut_hours > 0) {
-                            $otUtDisplay = '-' . (float)$att->ot_ut_hours . ' UT';
-                            $isUt = true;
+                        if (!$isFixedSalary) {
+                            if ($att->ot_ut === 'OT' && $att->ot_ut_hours > 0) {
+                                $otUtDisplay = '+' . (float)$att->ot_ut_hours . ' OT';
+                                $isOt = true;
+                            } elseif ($att->ot_ut === 'UT' && $att->ot_ut_hours > 0) {
+                                $otUtDisplay = '-' . (float)$att->ot_ut_hours . ' UT';
+                                $isUt = true;
+                            }
                         }
                     @endphp
                     <tr>

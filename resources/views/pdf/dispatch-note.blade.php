@@ -31,9 +31,11 @@
         
         /* Top Metadata Grid */
         .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; background-color: #fcfcfd; border: 1px solid #eaecf0; border-radius: 4px; }
-        .meta-table td { padding: 6px 10px; vertical-align: middle; font-size: 9.5px; }
-        .meta-label { font-weight: bold; color: #475467; display: inline-block; width: 85px; }
-        .meta-value { color: #101828; }
+        .meta-inner-table { width: 100%; border-collapse: collapse; }
+        .meta-inner-table td { padding: 2px 0; font-size: 9.5px; vertical-align: middle; }
+        .meta-lbl { width: 95px; font-weight: bold; color: #475467; white-space: nowrap; }
+        .meta-colon { width: 12px; color: #475467; text-align: center; font-weight: bold; white-space: nowrap; }
+        .meta-val { color: #101828; white-space: nowrap; }
         
         .badge { display: inline-block; padding: 2px 6px; font-size: 9px; font-weight: 700; border-radius: 4px; text-transform: uppercase; }
         .badge-dispatched { background: #ecfdf3; color: #027a48; border: 1px solid #abefc6; }
@@ -52,9 +54,9 @@
         .section-box td.val { color: #101828; }
         
         /* Items Table */
-        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-        .items-table th { background: #f8c300; color: #101828; padding: 6px 8px; font-weight: bold; text-align: left; font-size: 9.5px; border: 1px solid #344054; }
-        .items-table td { padding: 6px 8px; border: 1px solid #d0d5dd; font-size: 9.5px; }
+        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; table-layout: fixed; }
+        .items-table th { background: #f8c300; color: #101828; padding: 6px 6px; font-weight: bold; text-align: left; font-size: 9px; border: 1px solid #344054; vertical-align: middle; }
+        .items-table td { padding: 6px 6px; border: 1px solid #d0d5dd; font-size: 9px; vertical-align: middle; }
         .items-table tr.total-row td { font-weight: bold; background: #f9fafb; border-top: 2px solid #f8c300; }
         
         /* Footer signatures */
@@ -65,8 +67,16 @@
         
         .text-green { color: #027a48; font-weight: bold; }
         .text-red { color: #b54708; font-weight: bold; }
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
+        .nowrap { white-space: nowrap !important; }
+        .text-right,
+        .items-table th.text-right,
+        .items-table td.text-right { text-align: right !important; }
+        .text-center,
+        .items-table th.text-center,
+        .items-table td.text-center { text-align: center !important; }
+        .text-left,
+        .items-table th.text-left,
+        .items-table td.text-left { text-align: left !important; }
         
         .page-break-avoid { page-break-inside: avoid; }
     </style>
@@ -105,17 +115,47 @@
     <!-- Top Metadata Grid: Order Date, Order No, Dispatch Date, Dispatch No, Dispatch By, Order By -->
     <table class="meta-table">
         <tr>
-            <td style="width: 33.33%;">
-                <div style="margin-bottom: 4px;"><span class="meta-label">Order Date</span><span class="meta-value">: {{ $orderDate }}</span></div>
-                <div><span class="meta-label">Order No.</span><span class="meta-value">: <strong>{{ $orderNo }}</strong></span></div>
+            <td style="width: 33.33%; vertical-align: top; padding: 6px 12px;">
+                <table class="meta-inner-table">
+                    <tr>
+                        <td class="meta-lbl">Order Date</td>
+                        <td class="meta-colon">:</td>
+                        <td class="meta-val">{{ $orderDate }}</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-lbl">Order No.</td>
+                        <td class="meta-colon">:</td>
+                        <td class="meta-val"><strong>{{ $orderNo }}</strong></td>
+                    </tr>
+                </table>
             </td>
-            <td style="width: 33.33%;">
-                <div style="margin-bottom: 4px;"><span class="meta-label">Dispatch Date</span><span class="meta-value">: {{ $dispatchDate }}</span></div>
-                <div><span class="meta-label">Dispatch No.</span><span class="meta-value">: <strong>{{ $dispatchNo }}</strong></span></div>
+            <td style="width: 33.33%; vertical-align: top; padding: 6px 12px; border-left: 1px solid #eaecf0;">
+                <table class="meta-inner-table">
+                    <tr>
+                        <td class="meta-lbl">Dispatch Date</td>
+                        <td class="meta-colon">:</td>
+                        <td class="meta-val">{{ $dispatchDate }}</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-lbl">Dispatch No.</td>
+                        <td class="meta-colon">:</td>
+                        <td class="meta-val"><strong>{{ $dispatchNo }}</strong></td>
+                    </tr>
+                </table>
             </td>
-            <td style="width: 33.33%;">
-                <div style="margin-bottom: 4px;"><span class="meta-label">Dispatch By</span><span class="meta-value">: <strong>{{ $generatedBy }}</strong></span></div>
-                <div><span class="meta-label">Order By</span><span class="meta-value">: <strong>{{ $orderGeneratedBy }}</strong></span></div>
+            <td style="width: 33.33%; vertical-align: top; padding: 6px 12px; border-left: 1px solid #eaecf0;">
+                <table class="meta-inner-table">
+                    <tr>
+                        <td class="meta-lbl">Dispatch By</td>
+                        <td class="meta-colon">:</td>
+                        <td class="meta-val"><strong>{{ $generatedBy }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="meta-lbl">Order By</td>
+                        <td class="meta-colon">:</td>
+                        <td class="meta-val"><strong>{{ $orderGeneratedBy }}</strong></td>
+                    </tr>
+                </table>
             </td>
         </tr>
     </table>
@@ -179,14 +219,14 @@
     <table class="items-table">
         <thead>
             <tr>
-                <th style="width: 5%;" class="text-center">No.</th>
+                <th style="width: 5%; text-align: center;" class="text-center nowrap">No.</th>
                 <th style="width: 25%;">Product Name</th>
-                <th style="width: 11%;" class="text-right">Ordered Qty</th>
-                <th style="width: 12%;" class="text-right">Prev. Dispatched Qty.</th>
-                <th style="width: 12%;" class="text-right">Current Dispatch Qty.</th>
-                <th style="width: 11%;" class="text-right">Rate (&#8377;)</th>
-                <th style="width: 12%;" class="text-right">Amount (&#8377;)</th>
-                <th style="width: 12%;" class="text-right">Pending Qty</th>
+                <th style="width: 11%; text-align: right;" class="text-right nowrap">Ordered Qty</th>
+                <th style="width: 12%; text-align: right;" class="text-right nowrap">Prev. Dispatched Qty.</th>
+                <th style="width: 12%; text-align: right;" class="text-right nowrap">Current Dispatch Qty.</th>
+                <th style="width: 11%; text-align: right;" class="text-right nowrap">Rate (&#8377;)</th>
+                <th style="width: 12%; text-align: right;" class="text-right nowrap">Amount (&#8377;)</th>
+                <th style="width: 12%; text-align: right;" class="text-right nowrap">Pending Qty</th>
             </tr>
         </thead>
         <tbody>
@@ -222,13 +262,13 @@
                 </tr>
             @endforeach
             <tr class="total-row">
-                <td colspan="2">TOTAL</td>
-                <td class="text-right text-green">{{ number_format($totalOrderedQty) }} KG</td>
-                <td class="text-right">{{ number_format($totalPrevDispatchedQty) }} KG</td>
-                <td class="text-right"><strong>{{ number_format($totalDispatchedQty) }} KG</strong></td>
+                <td colspan="2" style="text-align: right; padding-right: 8px;">TOTAL</td>
+                <td class="text-right text-green nowrap" style="text-align: right; white-space: nowrap;">{{ number_format($totalOrderedQty) }}&nbsp;KG</td>
+                <td class="text-right nowrap" style="text-align: right; white-space: nowrap;">{{ number_format($totalPrevDispatchedQty) }}&nbsp;KG</td>
+                <td class="text-right nowrap" style="text-align: right; white-space: nowrap;"><strong>{{ number_format($totalDispatchedQty) }}&nbsp;KG</strong></td>
                 <td class="text-right"></td>
-                <td class="text-right">&#8377;{{ number_format($totalAmount, 2) }}</td>
-                <td class="text-right text-red">{{ number_format($totalPendingQty) }} KG</td>
+                <td class="text-right nowrap" style="text-align: right; white-space: nowrap;">&#8377;{{ number_format($totalAmount, 2) }}</td>
+                <td class="text-right text-red nowrap" style="text-align: right; white-space: nowrap;">{{ number_format($totalPendingQty) }}&nbsp;KG</td>
             </tr>
         </tbody>
     </table>

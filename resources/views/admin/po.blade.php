@@ -9,9 +9,39 @@
       <p style="color:var(--text-muted); margin:0;">No purchase requests yet. Users will submit them from their profiles.</p>
     </div>
   @else
+  <style>
+    .po-table-container {
+      width: 100% !important;
+      overflow-x: auto;
+    }
+    @media (min-width: 900px) {
+      .po-table-container {
+        overflow-x: hidden !important;
+      }
+    }
+    .po-table {
+      width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+    }
+    .po-table th, .po-table td {
+      padding: 0.65rem 0.5rem !important;
+      vertical-align: middle !important;
+      box-sizing: border-box !important;
+    }
+    .po-table th:nth-child(1), .po-table td:nth-child(1) { width: 10% !important; text-align: left !important; }
+    .po-table th:nth-child(2), .po-table td:nth-child(2) { width: 14% !important; text-align: left !important; }
+    .po-table th:nth-child(3), .po-table td:nth-child(3) { width: 20% !important; text-align: left !important; }
+    .po-table th:nth-child(4), .po-table td:nth-child(4) { width: 10% !important; text-align: right !important; }
+    .po-table th:nth-child(5), .po-table td:nth-child(5) { width: 11% !important; text-align: right !important; }
+    .po-table th:nth-child(6), .po-table td:nth-child(6) { width: 16% !important; text-align: left !important; }
+    .po-table th:nth-child(7), .po-table td:nth-child(7) { width: 9% !important; text-align: center !important; }
+    .po-table th:nth-child(8), .po-table td:nth-child(8) { width: 10% !important; text-align: center !important; }
+  </style>
+
   <div class="card" style="padding:1.2rem;">
-    <div class="table-container">
-      <table>
+    <div class="table-container po-table-container">
+      <table class="po-table" data-page-size="all">
         <thead>
           <tr>
             <th>Date</th>
@@ -19,9 +49,9 @@
             <th>Material</th>
             <th>Available Qty (kg)</th>
             <th>Order Quantity (kg)</th>
-            <th style="min-width:280px; width:340px; padding-right:1.5rem;">Note</th>
-            <th style="white-space:nowrap; padding-left:1.5rem; padding-right:2rem;">Status</th>
-            <th style="padding-left:1.5rem; min-width:180px;">Action</th>
+            <th>Note</th>
+            <th>Status</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody>
@@ -34,18 +64,20 @@
               @endif
             </td>
             <td>
-              <div style="font-weight:600;">{{ $po->user?->name }}</div>
-              <div style="font-size:0.75rem; color:var(--text-muted);">{{ $po->user?->role }}</div>
+              <div style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ $po->user?->name }}">{{ $po->user?->name }}</div>
+              <div style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ $po->user?->role }}</div>
             </td>
-            <td style="font-weight:600;">{{ $po->product ? $po->product->formatName() : 'Unknown' }}</td>
+            <td style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ $po->product ? $po->product->formatName() : 'Unknown' }}">
+              {{ $po->product ? $po->product->formatName() : 'Unknown' }}
+            </td>
             <td style="color:#10b981; font-weight:bold;">{{ number_format($po->product ? $po->product->totalAvailableStock() : 0, 1) }}</td>
             <td style="color:var(--primary-light); font-weight:bold;">{{ number_format($po->quantity, 1) }}</td>
-            <td style="font-size:0.85rem; color:var(--text-muted); min-width:280px; width:340px; padding-right:1.5rem;">
-              <div style="word-break:break-word; white-space:normal; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
+            <td style="font-size:0.85rem; color:var(--text-muted);">
+              <div style="word-break:break-word; white-space:normal; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;" title="{{ $po->note ?? '' }}">
                 {{ $po->note ?? '—' }}
               </div>    
             </td>
-            <td style="white-space:nowrap; padding-left:1.5rem; padding-right:2.5rem;">
+            <td>
               @if($po->status === 'PENDING')
                 <span class="badge" style="background:#ef4444; color:#ffffff !important;">PENDING</span>
               @elseif($po->status === 'READ')
@@ -60,20 +92,20 @@
                 <span class="badge badge-pending">{{ $po->status }}</span>
               @endif
             </td>
-            <td style="padding-left:1.5rem; min-width:180px;">
-              <div class="action-btns" style="display:flex; align-items:center; gap:0.4rem; flex-wrap:nowrap;">
+            <td>
+              <div class="action-btns" style="display:inline-flex; align-items:center; justify-content:center; gap:0.35rem; flex-wrap:nowrap;">
                 @if($po->status === 'PENDING')
-                  <button class="btn btn-sm" style="width:auto; padding:0.3rem 0.6rem; background:#eab308; color:#ffffff !important; border:none; border-radius:4px; font-size:0.75rem; cursor:pointer; white-space:nowrap;"
+                  <button class="btn btn-sm" style="width:auto; padding:0.25rem 0.5rem; background:#eab308; color:#ffffff !important; border:none; border-radius:4px; font-size:0.75rem; cursor:pointer; white-space:nowrap;"
                     onclick="adminApprovePO({{ $po->id }}, this)">
                     ✅ Mark as Read
                   </button>
                 @elseif($po->status === 'READ')
-                  <button class="btn btn-sm" style="width:auto; padding:0.3rem 0.6rem; background:#3b82f6; color:#ffffff !important; border:none; border-radius:4px; font-size:0.75rem; cursor:pointer; white-space:nowrap;"
+                  <button class="btn btn-sm" style="width:auto; padding:0.25rem 0.5rem; background:#3b82f6; color:#ffffff !important; border:none; border-radius:4px; font-size:0.75rem; cursor:pointer; white-space:nowrap;"
                     onclick="adminOrderPO({{ $po->id }}, this)">
                     🛒 Mark as Order
                   </button>
                 @endif
-                <button class="btn btn-sm" style="width:auto; padding:0.3rem 0.6rem; background:#ef4444; color:#ffffff !important; border:none; border-radius:4px; font-size:0.75rem; cursor:pointer; display:inline-flex; align-items:center; gap:0.25rem; white-space:nowrap;"
+                <button class="btn btn-sm" style="width:auto; padding:0.25rem 0.55rem; background:#ef4444; color:#ffffff !important; border:none; border-radius:4px; font-size:0.75rem; cursor:pointer; display:inline-flex; align-items:center; gap:0.2rem; white-space:nowrap;"
                   onclick="adminDeletePO({{ $po->id }})" title="Delete">
                   🗑️ Delete
                 </button>
@@ -85,10 +117,12 @@
       </table>
     </div>
 
+    @if(method_exists($pageData['purchaseOrders'], 'links') && $pageData['purchaseOrders']->hasPages())
     <!-- Pagination Links -->
     <div style="margin-top:1.5rem; display:flex; justify-content:center;">
       {{ $pageData['purchaseOrders']->links() }}
     </div>
+    @endif
   </div>
   @endif
 </div>

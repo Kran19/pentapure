@@ -168,5 +168,26 @@ class AdminDispatchActivityTest extends TestCase
         $res->assertSee('Sales Note');
         $res->assertSee('Deliver before noon with fragile handling');
     }
+
+    public function test_admin_dispatch_activity_displays_due_date(): void
+    {
+        $admin = $this->createAdmin();
+        $session = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
+
+        $company = Company::create(['name' => 'Omega Foods']);
+        $order = Order::create([
+            'created_by' => $admin->id,
+            'company_id' => $company->id,
+            'total' => 2500.00,
+            'status' => 'APPROVED',
+            'dispatch_status' => 'PENDING',
+            'due_date' => '2026-10-15',
+        ]);
+
+        $res = $this->withSession($session)->get('/admin/dispatch-activity');
+        $res->assertStatus(200);
+        $res->assertSee('DUE DATE:');
+        $res->assertSee('15-10-2026');
+    }
 }
 

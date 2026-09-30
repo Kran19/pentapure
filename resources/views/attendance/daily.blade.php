@@ -102,6 +102,7 @@
             
             $isAdmin = ($authUser['role'] === 'ADMIN');
             $disableInputs = $isLocked; // Normal users are locked if SUBMITTED. Admin can always edit.
+            $isFixedSalary = in_array(strtoupper($w->salary_type ?? ''), ['FIXED_MONTHLY', 'FIX_MONTHLY', 'FIXED', 'FIXED_SALARY']);
           @endphp
         
         <div class="card worker-card" style="padding:1rem; border-left:4px solid {{ $status === 'ABSENT' ? '#e74c3c' : '#2ecc71' }};" data-name="{{ strtolower($w->name) }}" data-dept="{{ strtolower($w->department->name ?? '') }}">
@@ -111,7 +112,12 @@
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem; border-bottom:1px solid #eee; padding-bottom:0.5rem;">
             <div>
               <div style="font-weight:bold; font-size:1.1rem;">{{ $w->name }}</div>
-              <div style="font-size:0.85rem; color:var(--text-muted);">{{ $w->department->name ?? 'N/A' }}</div>
+              <div style="font-size:0.85rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+                <span>{{ $w->department->name ?? 'N/A' }}</span>
+                @if($isFixedSalary)
+                  <span style="font-size:0.68rem; font-weight:700; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; padding:1px 6px; border-radius:4px;">FIXED SALARY</span>
+                @endif
+              </div>
             </div>
             <div style="text-align:right;">
               <div class="status-badge" style="background: {{ $status === 'ABSENT' ? '#e74c3c' : '#2ecc71' }}; color:white; padding:4px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold; display:inline-block; margin-bottom:4px;">
@@ -198,6 +204,7 @@
             </div>
           </div>
 
+          @if(!$isFixedSalary)
           <!-- Row 4: OT/UT | OT/UT Hours -->
           <div class="extra-field-flex" style="display:{{ in_array($status, ['ABSENT', 'HOLIDAY', 'SUNDAY']) ? 'none' : 'flex' }}; gap:10px; margin-bottom:0.75rem;">
             <div style="flex:1;">
@@ -216,6 +223,10 @@
               </div>
             </div>
           </div>
+          @else
+          <input type="hidden" name="attendances[{{$index}}][ot_ut]" value="NONE">
+          <input type="hidden" name="attendances[{{$index}}][ot_ut_hours]" value="0">
+          @endif
 
           <!-- Row 5: Advance -->
           <div class="extra-field-flex" style="display:{{ in_array($status, ['ABSENT', 'HOLIDAY', 'SUNDAY']) ? 'none' : 'flex' }}; gap:10px; margin-bottom:0.5rem;">

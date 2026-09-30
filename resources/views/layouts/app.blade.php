@@ -15,6 +15,8 @@
   <link rel="apple-touch-icon" href="{{ asset('logo.png') }}?v=1">
   <link rel="stylesheet" href="{{ asset('css/style.css') }}?v={{ filemtime(public_path('css/style.css')) }}">
   <link rel="stylesheet" href="{{ asset('css/tabulator-custom.css') }}">
+  <!-- Select2 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
   <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   
@@ -201,6 +203,8 @@
   <script src="{{ asset('js/tabulator-init.js') }}"></script>
   <script src="{{ asset('js/table-sorter.js') }}"></script>
   <script src="{{ asset('js/table-filter.js') }}"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}"></script>
   <script>
     // ── CSRF for all fetch() calls ─────────────────────────────────────────

@@ -193,7 +193,7 @@
         $statusBadge = '<span class="badge badge-pending" style="font-size:0.65rem; background:#ef4444; color:#ffffff !important; padding:2px 6px; border-radius:4px; font-weight:700;">PENDING</span>';
       }
     @endphp
-    <div class="card dispatch-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--glass-border, rgba(255,255,255,0.06)); background:var(--card-bg, rgba(255,255,255,0.03)); transition:all 0.2s ease;">
+    <div class="card dispatch-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--border-soft, #e5e7eb); background:var(--bg-card, #ffffff); box-shadow:0 1px 3px rgba(0,0,0,0.04); transition:all 0.2s ease;">
       <!-- Clickable Header Row -->
       <div onclick="toggleReportAccordion('rep-acc-{{ $d['id'] }}', this)" style="cursor:pointer; padding:1.1rem; display:flex; justify-content:space-between; align-items:center; user-select:none;">
         <div style="flex:1; padding-right:15px;">
@@ -203,11 +203,13 @@
           <div style="margin-top:6px; font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
             {!! $statusBadge !!}
             <span>•</span>
-            <span>Sales By: <strong style="color:var(--text-main, #fff);">{{ $d['salesPerson'] ?? 'N/A' }}</strong></span>
+            <span>Sales By: <strong style="color:var(--text-main, #111827);">{{ $d['salesPerson'] ?? 'N/A' }}</strong></span>
             <span>•</span>
             <span>Transporter: {{ $d['transportName'] ?? 'N/A' }}</span>
             <span>•</span>
             <span>Ordered: {{ \Carbon\Carbon::parse($d['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }}</span>
+            <span>•</span>
+            <span>Due Date: <strong style="color:{{ !empty($d['dueDate']) ? 'var(--primary, #D88A00)' : 'inherit' }}; font-weight:700;">{{ $d['dueDate'] ?? 'N/A' }}</strong></span>
           </div>
         </div>
         <div style="display:flex; align-items:center; gap:10px; text-align:right; flex-wrap:nowrap;">
@@ -226,7 +228,7 @@
       </div>
 
       <!-- Expandable Details Dropdown / Collapsible -->
-      <div id="rep-acc-{{ $d['id'] }}" class="rep-accordion-content" style="display:none; padding:1.2rem; border-top:1px solid var(--glass-border, rgba(255,255,255,0.06)); background:rgba(0,0,0,0.02);">
+      <div id="rep-acc-{{ $d['id'] }}" class="rep-accordion-content" style="display:none; padding:1.2rem; border-top:1px solid #f3f4f6; background:#ffffff;">
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:1rem; margin-bottom:1rem;">
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Order ID</div>
@@ -237,12 +239,16 @@
             <div style="font-size:0.85rem; font-weight:500;">{{ \Carbon\Carbon::parse($d['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i:s A') }}</div>
           </div>
           <div>
+            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Due Date</div>
+            <div style="font-size:0.85rem; font-weight:700; color:{{ !empty($d['dueDate']) ? 'var(--primary, #D88A00)' : 'inherit' }};">{{ $d['dueDate'] ?? '—' }}</div>
+          </div>
+          <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Company</div>
             <div style="font-weight:600; font-size:0.9rem;">{{ $d['companyName'] ?? 'N/A' }}</div>
           </div>
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Sales By</div>
-            <div style="font-weight:600; font-size:0.9rem; color:var(--text-main, #fff);">{{ $d['salesPerson'] ?? 'N/A' }}</div>
+            <div style="font-weight:600; font-size:0.9rem; color:var(--text-main, #111827);">{{ $d['salesPerson'] ?? 'N/A' }}</div>
           </div>
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Transport</div>
@@ -261,6 +267,10 @@
             <div style="font-weight:700; font-size:0.95rem; color:#ef4444;">{{ number_format($d['remainingQty'] ?? 0, 3) }} kg</div>
           </div>
           <div>
+            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Amount</div>
+            <div style="font-weight:700; font-size:0.95rem; color:var(--primary, #D88A00);">₹{{ number_format($d['orderTotal'] ?? 0, 2) }}</div>
+          </div>
+          <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Sales Note</div>
             <div style="font-weight:600; font-size:0.88rem; color:{{ !empty(trim((string)($d['notes'] ?? ''))) ? 'var(--primary, #D88A00)' : 'var(--text-muted)' }};">
               {{ !empty(trim((string)($d['notes'] ?? ''))) ? $d['notes'] : '—' }}
@@ -274,14 +284,14 @@
             <span style="font-size:1.1rem; line-height:1;">📝</span>
             <div style="flex:1;">
               <div style="color:var(--primary, #D88A00); font-size:0.75rem; text-transform:uppercase; font-weight:700; margin-bottom:3px; letter-spacing:0.3px;">Sales Note / Instructions</div>
-              <div style="font-size:0.88rem; color:var(--text-main, #ffffff); line-height:1.45; word-break:break-word; white-space:pre-wrap;">{{ $d['notes'] }}</div>
+              <div style="font-size:0.88rem; color:var(--text-main, #111827); line-height:1.45; word-break:break-word; white-space:pre-wrap;">{{ $d['notes'] }}</div>
             </div>
           </div>
         @endif
 
         @if(!empty($d['items']) && count($d['items']) > 0)
-          <div style="margin-bottom:1rem; background:rgba(0,0,0,0.15); border-radius:8px; padding:12px; border-left:3px solid var(--primary, #D88A00);">
-            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">Ordered Items List</div>
+          <div style="margin-bottom:1rem; background:#ffffff; border:1px solid #e5e7eb; border-radius:8px; padding:12px; border-left:3px solid var(--primary, #D88A00); box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+            <div style="color:#6b7280; font-size:0.75rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">Ordered Items List</div>
             @foreach($d['items'] as $item)
               @php
                 $rawName = $item['rawProductName'] ?? $item['productName'] ?? 'Unknown';
@@ -297,24 +307,24 @@
                 $rem = (float)($item['remainingQty'] ?? 0);
                 $fmtQty = fn($val) => (floor($val) == $val ? number_format($val, 0) : number_format($val, 2)) . ' kg';
               @endphp
-              <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.88rem; flex-wrap:wrap; gap:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f3f4f6; font-size:0.88rem; flex-wrap:wrap; gap:12px;">
                 <div style="flex:1; min-width:200px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                  <span style="font-weight:600; color:var(--text-main, #fff);">{{ $pName }}</span>
+                  <span style="font-weight:600; color:#111827;">{{ $pName }}</span>
                   @if($gName)
                     <strong style="font-weight:800; color:var(--primary, #D88A00);">{{ $gName }}</strong>
                   @endif
-                  <span style="color:var(--text-muted, #9ca3af); font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
+                  <span style="color:#6b7280; font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
                 </div>
                 <div class="dispatch-item-badges" style="display:grid; grid-template-columns:135px 145px 145px; gap:8px; align-items:center; flex-shrink:0;">
-                  <span style="background:rgba(255,255,255,0.08); padding:4px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.15); font-weight:600; color:var(--text-main, #fff); width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
-                    <span style="color:var(--text-muted, #9ca3af); font-size:0.72rem; font-weight:700;">ORDER:</span>
+                  <span style="background:#f9fafb; padding:4px 8px; border-radius:6px; border:1px solid #e5e7eb; font-weight:600; color:#111827; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                    <span style="color:#6b7280; font-size:0.72rem; font-weight:700;">ORDER:</span>
                     <strong style="color:var(--primary, #D88A00);">{{ $fmtQty($tot) }}</strong>
                   </span>
-                  <span style="background:rgba(22,163,74,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(22,163,74,0.3); font-weight:700; color:#16a34a; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                  <span style="background:rgba(22,163,74,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(22,163,74,0.3); font-weight:700; color:#15803d; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
                     <span style="font-size:0.72rem;">DISPATCHED:</span>
                     <strong>{{ $fmtQty($disp) }}</strong>
                   </span>
-                  <span style="background:rgba(239,68,68,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(239,68,68,0.3); font-weight:700; color:#ef4444; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                  <span style="background:rgba(239,68,68,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(239,68,68,0.3); font-weight:700; color:#b91c1c; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
                     <span style="font-size:0.72rem;">PENDING:</span>
                     <strong>{{ $fmtQty($rem) }}</strong>
                   </span>

@@ -117,6 +117,7 @@ class SalesController extends Controller
         $request->validate([
             'company_id'      => 'required|exists:companies,id',
             'transporter_id'  => 'nullable|exists:transporters,id',
+            'due_date'        => 'nullable|date',
             'items'           => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.grade'      => 'required|string',
@@ -155,6 +156,7 @@ class SalesController extends Controller
                 'status'          => 'OPEN',
                 'dispatch_status' => 'PENDING',
                 'notes'           => $request->notes,
+                'due_date'        => $request->due_date ?: null,
             ]);
 
             foreach ($request->items as $item) {
@@ -417,6 +419,7 @@ class SalesController extends Controller
                 'status'         => $o->status,
                 'dispatchStatus' => $o->dispatch_status,
                 'date'           => $o->created_at->toISOString(),
+                'dueDate'        => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
                 'notes'          => $o->notes,
                 'lrCopies'       => $o->dispatchLogs ? $o->dispatchLogs->filter(fn($l) => !empty($l->lr_image_path))->map(fn($l) => [
                     'id'         => $l->id,
@@ -473,6 +476,7 @@ class SalesController extends Controller
         $request->validate([
             'company_id'      => 'required|exists:companies,id',
             'transporter_id'  => 'nullable|exists:transporters,id',
+            'due_date'        => 'nullable|date',
             'items'           => 'required|array|min:1',
             'items.*.id'      => 'nullable|exists:order_items,id',
             'items.*.product_id' => 'required|exists:products,id',
@@ -523,6 +527,7 @@ class SalesController extends Controller
                 'transporter_id' => $request->transporter_id,
                 'total'          => $total,
                 'notes'          => $request->notes,
+                'due_date'       => $request->due_date ?: null,
             ]);
 
             $existingItemIds = [];

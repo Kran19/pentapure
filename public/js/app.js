@@ -884,6 +884,9 @@ const app = {
               sel.appendChild(opt);
               if (sel.id === 'finished-output-id' || sel.id === 'prod-output' || sel.classList.contains('o-prod-id')) {
                 sel.value = res.product.id;
+                if (sel.classList.contains('o-prod-id')) {
+                  app.initOrderProductSelect2(sel);
+                }
               }
             }
           });
@@ -1099,7 +1102,18 @@ const app = {
     const currentVal = prodSelect.value;
     const rowType = typeSelect.value || 'ALL';
     this.populateProductSelect(prodSelect, currentVal, rowType);
+    this.initOrderProductSelect2(prodSelect);
     this.onOrderProductChange(prodSelect);
+  },
+
+  escapeHtml(str) {
+    if (!str && str !== 0) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   },
 
   populateProductSelect(selectEl, selectedProdId = '', rowType = 'ALL') {
@@ -1111,13 +1125,16 @@ const app = {
       const fgList = prods.filter(p => p.type === 'FINISHED');
       const semiList = prods.filter(p => p.type === 'SEMI');
       const rawList = prods.filter(p => p.type === 'RAW');
+      const packList = prods.filter(p => p.type === 'PACKAGING');
 
       const addGroup = (list, label) => {
         if (!list || list.length === 0) return;
         html += `<optgroup label="${label}">`;
         list.forEach(p => {
           const isSel = (p.id == selectedProdId) ? 'selected' : '';
-          html += `<option value="${p.id}" ${isSel}>${p.name} (${p.type === 'FINISHED' ? 'FG' : p.type.toLowerCase()})</option>`;
+          const displayType = p.type === 'FINISHED' ? 'FG' : (p.type ? p.type.toLowerCase() : '');
+          const gradesStr = Array.isArray(p.grades) ? p.grades.filter(g => g && g !== 'NA' && g !== 'NONE').join(', ') : '';
+          html += `<option value="${p.id}" data-name="${this.escapeHtml(p.name)}" data-type="${p.type || ''}" data-unit="${this.escapeHtml(p.unit || '')}" data-grades="${this.escapeHtml(gradesStr)}" ${isSel}>${p.name} (${displayType})</option>`;
         });
         html += `</optgroup>`;
       };
@@ -1125,16 +1142,146 @@ const app = {
       addGroup(fgList, '📦 FINISHED PRODUCTS (FG)');
       addGroup(semiList, '⚙️ SEMI-FINISHED');
       addGroup(rawList, '🌿 RAW MATERIALS');
+      addGroup(packList, '📦 PACKAGING MATERIALS');
     } else {
       const filtered = prods.filter(p => p.type === rowType);
       filtered.forEach(p => {
         const displayType = p.type === 'FINISHED' ? 'FG' : (p.type ? p.type.toLowerCase() : '');
         const isSel = (p.id == selectedProdId) ? 'selected' : '';
-        html += `<option value="${p.id}" ${isSel}>${p.name} (${displayType})</option>`;
+        const gradesStr = Array.isArray(p.grades) ? p.grades.filter(g => g && g !== 'NA' && g !== 'NONE').join(', ') : '';
+        html += `<option value="${p.id}" data-name="${this.escapeHtml(p.name)}" data-type="${p.type || ''}" data-unit="${this.escapeHtml(p.unit || '')}" data-grades="${this.escapeHtml(gradesStr)}" ${isSel}>${p.name} (${displayType})</option>`;
       });
     }
 
     selectEl.innerHTML = html;
+  },
+
+  initOrderProductSelect2(selectEl) {
+    if (!selectEl) return;
+    if (typeof jQuery === 'undefined' || typeof jQuery.fn.select2 === 'undefined') {
+      setTimeout(() => this.initOrderProductSelect2(selectEl), 50);
+      return;
+    }
+    const $select = jQuery(selectEl);
+    if ($select.hasClass('select2-hidden-accessible')) {
+      try {
+        $select.select2('destroy');
+      } catch (e) {}
+    }
+
+    $select.select2({
+      placeholder: '-- SELECT PRODUCT --',
+      allowClear: false,
+      width: '100%',
+      dropdownAutoWidth: false,
+      dropdownCssClass: 'order-prod-select2-dropdown',
+      matcher: function(params, data) {
+        if (!params.term || jQuery.trim(params.term) === '') {
+          return data;
+        }
+        if (!data.text) {
+          return null;
+        }
+        const term = params.term.toLowerCase().trim();
+        const tokens = term.split(/\s+/).filter(Boolean);
+
+        const el = data.element;
+        const name = (el ? el.getAttribute('data-name') : '') || data.text || '';
+        const type = (el ? el.getAttribute('data-type') : '') || '';
+        const unit = (el ? el.getAttribute('data-unit') : '') || '';
+        const grades = (el ? el.getAttribute('data-grades') : '') || '';
+
+        let typeAliases = '';
+        if (type === 'FINISHED' || type === 'FG') typeAliases = 'fg finished goods';
+        else if (type === 'RAW') typeAliases = 'raw materials material';
+        else if (type === 'SEMI') typeAliases = 'semi finish finished';
+        else if (type === 'PACKAGING') typeAliases = 'packaging package packing';
+
+        const searchableText = `${data.text} ${name} ${type} ${typeAliases} ${unit} ${grades}`.toLowerCase();
+
+        for (let i = 0; i < tokens.length; i++) {
+          if (searchableText.indexOf(tokens[i]) === -1) {
+            return null;
+          }
+        }
+        return data;
+      },
+      templateResult: function(data) {
+        if (!data.id) {
+          return jQuery(`<span style="color:var(--text-muted, #94a3b8); font-weight:500;">${app.escapeHtml(data.text)}</span>`);
+        }
+        const el = data.element;
+        const name = (el ? el.getAttribute('data-name') : '') || data.text;
+        const type = ((el ? el.getAttribute('data-type') : '') || 'FINISHED').toUpperCase();
+        const unit = (el ? el.getAttribute('data-unit') : '') || '';
+        const grades = (el ? el.getAttribute('data-grades') : '') || '';
+
+        let badgeBg = '#fef3c7';
+        let badgeColor = '#92400e';
+        let badgeBorder = '#fde68a';
+        let typeLabel = 'FG';
+
+        if (type === 'RAW') {
+          badgeBg = '#d1fae5';
+          badgeColor = '#065f46';
+          badgeBorder = '#a7f3d0';
+          typeLabel = 'RAW';
+        } else if (type === 'SEMI') {
+          badgeBg = '#dbeafe';
+          badgeColor = '#1e40af';
+          badgeBorder = '#bfdbfe';
+          typeLabel = 'SEMI';
+        } else if (type === 'PACKAGING') {
+          badgeBg = '#e0f2fe';
+          badgeColor = '#0369a1';
+          badgeBorder = '#bae6fd';
+          typeLabel = 'PKG';
+        }
+
+        let extraDetails = '';
+        if (unit) {
+          extraDetails += `<span class="prod-unit-badge" style="font-size:0.7rem; font-weight:600; padding:1px 5px; border-radius:4px; background:rgba(0,0,0,0.06); color:inherit; margin-left:4px;">${app.escapeHtml(unit)}</span>`;
+        }
+        if (grades && grades !== 'NA' && grades !== 'NONE') {
+          extraDetails += `<span class="prod-grades-text" style="font-size:0.68rem; font-weight:500; opacity:0.8; margin-left:6px;">Grades: ${app.escapeHtml(grades)}</span>`;
+        }
+
+        return jQuery(`
+          <div class="prod-option-row" style="display:flex; justify-content:space-between; align-items:center; width:100%; padding:2px 0;">
+            <div style="display:flex; align-items:center; gap:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+              <span class="prod-name" style="font-weight:600; color:inherit;">${app.escapeHtml(name)}</span>
+              <span class="prod-stage-badge" style="font-size:0.68rem; font-weight:700; padding:1px 6px; border-radius:4px; background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder};">${typeLabel}</span>
+            </div>
+            <div style="font-size:0.75rem; white-space:nowrap; margin-left:8px; display:flex; align-items:center;">
+              ${extraDetails}
+            </div>
+          </div>
+        `);
+      },
+      templateSelection: function(data) {
+        if (!data.id) return data.text;
+        const el = data.element;
+        const name = (el ? el.getAttribute('data-name') : '') || data.text;
+        const type = ((el ? el.getAttribute('data-type') : '') || '').toUpperCase();
+        let typeSuffix = '';
+        if (type === 'FINISHED' || type === 'FG') typeSuffix = ' (FG)';
+        else if (type === 'RAW') typeSuffix = ' (RAW)';
+        else if (type === 'SEMI') typeSuffix = ' (SEMI)';
+        else if (type === 'PACKAGING') typeSuffix = ' (PKG)';
+        return name + typeSuffix;
+      }
+    });
+
+    $select.off('select2:open.orderFocus').on('select2:open.orderFocus', function() {
+      const searchBox = document.querySelector('.order-prod-select2-dropdown .select2-search__field, .select2-container--open .select2-search__field');
+      if (searchBox) {
+        setTimeout(() => searchBox.focus(), 20);
+      }
+    });
+
+    $select.off('change.orderProdChange').on('change.orderProdChange', function() {
+      app.onOrderProductChange(this);
+    });
   },
 
   onOrderProductChange(selectEl, selectedGrade = '') {
@@ -1212,6 +1359,7 @@ const app = {
             <option value="RAW" ${rowType === 'RAW' ? 'selected' : ''}>RAW MATIRALS</option>
             <option value="SEMI" ${rowType === 'SEMI' ? 'selected' : ''}>SEMI-FINISH SALES</option>
             <option value="FINISHED" ${rowType === 'FINISHED' ? 'selected' : ''}>FG SALES</option>
+            <option value="PACKAGING" ${rowType === 'PACKAGING' ? 'selected' : ''}>PACKAGING</option>
           </select>
         </div>
         <div style="flex:2; min-width:200px;">
@@ -1246,6 +1394,7 @@ const app = {
 
     const selEl = div.querySelector('.o-prod-id');
     this.populateProductSelect(selEl, selectedProdId, rowType);
+    this.initOrderProductSelect2(selEl);
     if (selectedProdId) {
       this.onOrderProductChange(selEl, selectedGrade);
     } else {
@@ -1257,6 +1406,12 @@ const app = {
   removeOrderProductRow(btn) {
     const wrapper = btn.closest('.order-product-wrapper') || btn.closest('.order-product-row');
     if (wrapper) {
+      const selEl = wrapper.querySelector('.o-prod-id');
+      if (selEl && window.jQuery && jQuery(selEl).hasClass('select2-hidden-accessible')) {
+        try {
+          jQuery(selEl).select2('destroy');
+        } catch (e) {}
+      }
       wrapper.remove();
       this.updateOrderProductDividers();
     }
@@ -1580,8 +1735,10 @@ const app = {
 
     if (items.length === 0) return this.toast('Add valid products and grades', 'error');
 
+    const dueDateEl   = document.getElementById('order-due-date');
+    const dueDate     = dueDateEl ? dueDateEl.value : null;
     const cleanTransportId = (transportId && transportId !== 'NA' && transportId !== '') ? transportId : null;
-    const body = { company_id: companyId, transporter_id: cleanTransportId, notes, items };
+    const body = { company_id: companyId, transporter_id: cleanTransportId, due_date: dueDate, notes, items };
     const editOrderIdEl = document.getElementById('edit-order-id');
     if (editOrderIdEl) {
       body.order_id = editOrderIdEl.value;

@@ -509,6 +509,7 @@ class AdminController extends Controller
                 products.rate,
                 stocks.stage,
                 stocks.grade,
+                products.sort_order,
                 IFNULL(stock_limits.alert_limit, products.threshold) as alert_limit,
                 SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
             ")
@@ -795,7 +796,7 @@ class AdminController extends Controller
     {
         $pos = PurchaseOrder::with(['user', 'product'])
             ->orderByDesc('created_at')
-            ->paginate(15);
+            ->paginate(100);
             
         return view('admin.po', ['pageData' => ['purchaseOrders' => $pos]]);
     }

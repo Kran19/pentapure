@@ -24,21 +24,22 @@
   font-size: 0.82rem;
   font-weight: 600;
   text-decoration: none;
-  color: var(--text-muted, #9ca3af);
+  color: #4b5563;
   transition: all 0.2s ease;
   white-space: nowrap;
 }
 .status-tab-btn:hover {
-  color: var(--text-main, #ffffff);
-  background: rgba(255, 255, 255, 0.05);
+  color: #111827;
+  background: #f3f4f6;
 }
 .status-tab-btn .tab-badge {
   font-size: 0.72rem;
   font-weight: 700;
   padding: 1px 6px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.12);
-  color: inherit;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  color: #4b5563;
 }
 
 /* Active Tab Styles */
@@ -48,7 +49,8 @@
   font-weight: 700;
 }
 .status-tab-btn.active-all .tab-badge {
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, 0.18);
+  border-color: transparent;
   color: #000000;
 }
 
@@ -58,7 +60,8 @@
   font-weight: 700;
 }
 .status-tab-btn.active-pending .tab-badge {
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.22);
+  border-color: transparent;
   color: #ffffff;
 }
 
@@ -68,7 +71,8 @@
   font-weight: 700;
 }
 .status-tab-btn.active-partial .tab-badge {
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.22);
+  border-color: transparent;
   color: #ffffff;
 }
 
@@ -78,7 +82,8 @@
   font-weight: 700;
 }
 .status-tab-btn.active-done .tab-badge {
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.22);
+  border-color: transparent;
   color: #ffffff;
 }
 
@@ -107,7 +112,7 @@
   </div>
 
   <!-- Filter Card with Search/Date on Left and Status Tabs on Right -->
-  <div class="card" style="padding:1rem 1.2rem; margin-bottom:1.5rem; background:var(--card-bg, rgba(255,255,255,0.03)); border:1px solid var(--glass-border, rgba(255,255,255,0.06)); border-radius:12px;">
+  <div class="card" style="padding:1rem 1.2rem; margin-bottom:1.5rem; background:var(--bg-card, #ffffff); border:1px solid var(--border-soft, #e5e7eb); border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
     <div class="dispatch-filter-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
       
       <!-- Left: Search and Date Filter Form -->
@@ -124,13 +129,13 @@
         </div>
         <div style="display:flex; gap:0.4rem;">
           <button type="submit" class="btn" style="width:auto; padding:0.55rem 1rem; font-size:0.85rem;">🔍 Filter</button>
-          <a href="{{ $activityRoute }}" class="btn" style="width:auto; padding:0.55rem 0.85rem; font-size:0.85rem; background:var(--glass-bg, rgba(255,255,255,0.05)); color:var(--text-main, #ffffff); text-decoration:none;">🔄 Reset</a>
+          <a href="{{ $activityRoute }}" class="btn" style="width:auto; padding:0.55rem 0.85rem; font-size:0.85rem; background:#ffffff; border:1px solid #e5e7eb; color:var(--text-main, #111827); text-decoration:none;">🔄 Reset</a>
         </div>
       </form>
 
       <!-- Right: Status Tabs (All, Pending, Partial, Fully Dispatched) -->
       <div style="display:flex; align-items:center; justify-content:flex-end;">
-        <div class="status-tabs-wrapper" style="display:inline-flex; align-items:center; background:rgba(0,0,0,0.22); padding:4px; border-radius:10px; border:1px solid var(--glass-border, rgba(255,255,255,0.08)); gap:4px; flex-wrap:wrap;">
+        <div class="status-tabs-wrapper" style="display:inline-flex; align-items:center; background:#ffffff; padding:4px; border-radius:10px; border:1px solid #e5e7eb; box-shadow:0 1px 3px rgba(0,0,0,0.04); gap:4px; flex-wrap:wrap;">
           <!-- All -->
           <a href="{{ request()->fullUrlWithQuery(['status' => 'ALL', 'page' => 1]) }}"
              class="status-tab-btn {{ in_array($currentStatus, ['', 'ALL']) ? 'active-all' : '' }}" title="Show All Orders">
@@ -159,7 +164,7 @@
 
   <!-- Orders Card Accordion List -->
   @if($pageData['orders']->isEmpty())
-    <div class="card" style="padding:3rem; text-align:center; color:var(--text-muted); border-radius:12px; background:var(--card-bg, rgba(255,255,255,0.03)); border:1px solid var(--glass-border, rgba(255,255,255,0.06));">
+    <div class="card" style="padding:3rem; text-align:center; color:var(--text-muted); border-radius:12px; background:var(--bg-card, #ffffff); border:1px solid var(--border-soft, #e5e7eb);">
       <p style="margin:0; font-size:1rem;">No orders found matching the selected filter criteria.</p>
     </div>
   @else
@@ -188,7 +193,7 @@
           $transportName = strtoupper($order->transporter?->name ?? 'N/A');
         @endphp
 
-        <div class="card dispatch-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--glass-border, rgba(255,255,255,0.06)); background:var(--card-bg, rgba(255,255,255,0.03)); transition:all 0.2s ease;">
+        <div class="card dispatch-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--border-soft, #e5e7eb); background:var(--bg-card, #ffffff); box-shadow:0 1px 3px rgba(0,0,0,0.04); transition:all 0.2s ease;">
           <!-- Clickable Header Row -->
           <div onclick="toggleReportAccordion('act-acc-{{ $order->id }}', this)" style="cursor:pointer; padding:1.1rem; display:flex; justify-content:space-between; align-items:center; user-select:none;">
             <div style="flex:1; padding-right:15px;">
@@ -196,11 +201,13 @@
                 ORDER #{{ $order->id }} - {{ $companyName }}
               </div>
               <div style="margin-top:6px; font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                <span>SALES BY: <strong style="color:var(--text-main, #ffffff);">{{ $salesPerson }}</strong></span>
+                <span>SALES BY: <strong style="color:var(--text-main, #111827);">{{ $salesPerson }}</strong></span>
                 <span>•</span>
                 <span>TRANSPORTER: {{ $transportName }}</span>
                 <span>•</span>
                 <span>ORDERED: {{ $orderDate ? $orderDate->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') : 'N/A' }}</span>
+                <span>•</span>
+                <span>DUE DATE: <strong style="color:{{ $order->due_date ? 'var(--primary, #D88A00)' : 'inherit' }}; font-weight:700;">{{ $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : 'N/A' }}</strong></span>
               </div>
             </div>
             <div style="display:flex; align-items:center; gap:12px; text-align:right; flex-wrap:nowrap;">
@@ -217,7 +224,7 @@
           </div>
 
           <!-- Expandable Details Dropdown / Collapsible -->
-          <div id="act-acc-{{ $order->id }}" class="act-accordion-content" style="display:none; padding:1.2rem; border-top:1px solid var(--glass-border, rgba(255,255,255,0.06)); background:rgba(0,0,0,0.02);">
+          <div id="act-acc-{{ $order->id }}" class="act-accordion-content" style="display:none; padding:1.2rem; border-top:1px solid #f3f4f6; background:#ffffff;">
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:1rem; margin-bottom:1rem;">
               <div>
                 <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Order ID</div>
@@ -233,12 +240,16 @@
                 <div style="font-size:0.85rem; font-weight:500;">{{ $orderDate ? $orderDate->timezone('Asia/Kolkata')->format('d-m-Y, h:i:s A') : 'N/A' }}</div>
               </div>
               <div>
+                <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Due Date</div>
+                <div style="font-size:0.85rem; font-weight:700; color:{{ $order->due_date ? 'var(--primary, #D88A00)' : 'inherit' }};">{{ $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : '—' }}</div>
+              </div>
+              <div>
                 <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Company</div>
                 <div style="font-weight:600; font-size:0.9rem;">{{ $companyName }}</div>
               </div>
               <div>
                 <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Sales By</div>
-                <div style="font-weight:600; font-size:0.9rem; color:var(--text-main, #ffffff);">{{ $salesPerson }}</div>
+                <div style="font-weight:600; font-size:0.9rem; color:var(--text-main, #111827);">{{ $salesPerson }}</div>
               </div>
               <div>
                 <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Transport</div>
@@ -269,7 +280,7 @@
               $lastLog = $order->dispatchLog ?? $order->dispatchLogs?->last();
             @endphp
             @if($lastLog)
-              <div style="margin-bottom:1rem; padding:8px 12px; background:rgba(255,255,255,0.03); border-radius:6px; display:flex; align-items:center; gap:16px; font-size:0.82rem; flex-wrap:wrap;">
+              <div style="margin-bottom:1rem; padding:8px 12px; background:#f9fafb; border:1px solid #f3f4f6; border-radius:6px; display:flex; align-items:center; gap:16px; font-size:0.82rem; flex-wrap:wrap;">
                 @if($lastLog->user)
                   <span style="color:var(--text-muted);">Dispatched by: <strong style="color:var(--text-main);">{{ $lastLog->user->name }}</strong></span>
                 @endif
@@ -288,15 +299,15 @@
                 <span style="font-size:1.1rem; line-height:1;">📝</span>
                 <div style="flex:1;">
                   <div style="color:var(--primary, #D88A00); font-size:0.75rem; text-transform:uppercase; font-weight:700; margin-bottom:3px; letter-spacing:0.3px;">Sales Note / Instructions</div>
-                  <div style="font-size:0.88rem; color:var(--text-main, #ffffff); line-height:1.45; word-break:break-word; white-space:pre-wrap;">{{ $order->notes }}</div>
+                  <div style="font-size:0.88rem; color:var(--text-main, #111827); line-height:1.45; word-break:break-word; white-space:pre-wrap;">{{ $order->notes }}</div>
                 </div>
               </div>
             @endif
 
             <!-- Ordered Items List -->
             @if($order->items && count($order->items) > 0)
-              <div style="margin-bottom:0.5rem; background:rgba(0,0,0,0.15); border-radius:8px; padding:12px; border-left:3px solid var(--primary, #D88A00);">
-                <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">Ordered Items List</div>
+              <div style="margin-bottom:0.5rem; background:#ffffff; border:1px solid #e5e7eb; border-radius:8px; padding:12px; border-left:3px solid var(--primary, #D88A00); box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                <div style="color:#6b7280; font-size:0.75rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">Ordered Items List</div>
                 @foreach($order->items as $item)
                   @php
                     $rawName = $item->product?->name ?? 'Unknown';
@@ -312,24 +323,24 @@
                     $rem = max(0, (float)$item->remainingQty());
                     $fmtQty = fn($val) => (floor($val) == $val ? number_format($val, 0) : number_format($val, 2)) . ' kg';
                   @endphp
-                  <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.88rem; flex-wrap:wrap; gap:12px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f3f4f6; font-size:0.88rem; flex-wrap:wrap; gap:12px;">
                     <div style="flex:1; min-width:200px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                      <span style="font-weight:600; color:var(--text-main, #ffffff);">{{ $pName }}</span>
+                      <span style="font-weight:600; color:#111827;">{{ $pName }}</span>
                       @if($gName)
                         <strong style="font-weight:800; color:var(--primary, #D88A00);">{{ $gName }}</strong>
                       @endif
-                      <span style="color:var(--text-muted, #9ca3af); font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
+                      <span style="color:#6b7280; font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
                     </div>
                     <div class="dispatch-item-badges" style="display:grid; grid-template-columns:135px 145px 145px; gap:8px; align-items:center; flex-shrink:0;">
-                      <span style="background:rgba(255,255,255,0.08); padding:4px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.15); font-weight:600; color:var(--text-main, #ffffff); width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
-                        <span style="color:var(--text-muted, #9ca3af); font-size:0.72rem; font-weight:700;">ORDER:</span>
+                      <span style="background:#f9fafb; padding:4px 8px; border-radius:6px; border:1px solid #e5e7eb; font-weight:600; color:#111827; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                        <span style="color:#6b7280; font-size:0.72rem; font-weight:700;">ORDER:</span>
                         <strong style="color:var(--primary, #D88A00);">{{ $fmtQty($tot) }}</strong>
                       </span>
-                      <span style="background:rgba(22,163,74,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(22,163,74,0.3); font-weight:700; color:#16a34a; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                      <span style="background:rgba(22,163,74,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(22,163,74,0.3); font-weight:700; color:#15803d; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
                         <span style="font-size:0.72rem;">DISPATCHED:</span>
                         <strong>{{ $fmtQty($disp) }}</strong>
                       </span>
-                      <span style="background:rgba(239,68,68,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(239,68,68,0.3); font-weight:700; color:#ef4444; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                      <span style="background:rgba(239,68,68,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(239,68,68,0.3); font-weight:700; color:#b91c1c; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
                         <span style="font-size:0.72rem;">PENDING:</span>
                         <strong>{{ $fmtQty($rem) }}</strong>
                       </span>

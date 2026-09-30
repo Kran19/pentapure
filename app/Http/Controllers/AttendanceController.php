@@ -250,26 +250,29 @@ class AttendanceController extends Controller
 
         $data = $workers->map(function($w) {
             $att = $w->attendances->first();
+            $isFixedSalary = in_array(strtoupper($w->salary_type ?? ''), ['FIXED_MONTHLY', 'FIX_MONTHLY', 'FIXED', 'FIXED_SALARY']);
             return [
-                'worker_id'    => $w->id,
-                'name'         => $w->name,
-                'department'   => $w->department->name ?? '—',
-                'shift_type'   => $w->shift_type,
-                'daily_salary' => (float)$w->daily_salary,
-                'status'       => $att?->status ?? 'ABSENT',
-                'in_time'      => $att?->in_time ? \Carbon\Carbon::parse($att->in_time)->format('H:i') : '',
-                'out_time'     => $att?->out_time ? \Carbon\Carbon::parse($att->out_time)->format('H:i') : '',
-                'break_in'     => $att?->break_in ? \Carbon\Carbon::parse($att->break_in)->format('H:i') : '',
-                'break_out'    => $att?->break_out ? \Carbon\Carbon::parse($att->break_out)->format('H:i') : '',
-                'total_hours'  => (float)($att?->total_hours ?? 0),
-                'overtime_hours'=> (float)($att?->overtime_hours ?? 0),
+                'worker_id'      => $w->id,
+                'name'           => $w->name,
+                'department'     => $w->department->name ?? '—',
+                'shift_type'     => $w->shift_type,
+                'salary_type'    => $w->salary_type,
+                'is_fixed_salary'=> $isFixedSalary,
+                'daily_salary'   => (float)$w->daily_salary,
+                'status'         => $att?->status ?? 'ABSENT',
+                'in_time'        => $att?->in_time ? \Carbon\Carbon::parse($att->in_time)->format('H:i') : '',
+                'out_time'       => $att?->out_time ? \Carbon\Carbon::parse($att->out_time)->format('H:i') : '',
+                'break_in'       => $att?->break_in ? \Carbon\Carbon::parse($att->break_in)->format('H:i') : '',
+                'break_out'      => $att?->break_out ? \Carbon\Carbon::parse($att->break_out)->format('H:i') : '',
+                'total_hours'    => (float)($att?->total_hours ?? 0),
+                'overtime_hours' => $isFixedSalary ? 0 : (float)($att?->overtime_hours ?? 0),
                 'calculated_wage'=> (float)($att?->calculated_wage ?? 0),
-                'shift_type'   => $att?->shift_type ?? $w->shift_type,
-                'ot_ut'        => $att?->ot_ut ?? 'NONE',
-                'ot_ut_hours'  => (float)($att?->ot_ut_hours ?? 0),
-                'advance'      => (float)($att?->advance ?? 0),
-                'remark'       => $att?->remark ?? '',
-                'is_finished'  => (bool)($att?->is_finished ?? false),
+                'shift_type'     => $att?->shift_type ?? $w->shift_type,
+                'ot_ut'          => $isFixedSalary ? 'NONE' : ($att?->ot_ut ?? 'NONE'),
+                'ot_ut_hours'    => $isFixedSalary ? 0 : (float)($att?->ot_ut_hours ?? 0),
+                'advance'        => (float)($att?->advance ?? 0),
+                'remark'         => $att?->remark ?? '',
+                'is_finished'    => (bool)($att?->is_finished ?? false),
             ];
         });
         return response()->json(['success' => true, 'workers' => $data, 'date' => $date]);
@@ -352,7 +355,12 @@ class AttendanceController extends Controller
                 $overtimeHrs = 0;
             }
 
-            if (($rec['ot_ut'] ?? 'NONE') === 'OT') {
+            $isFixedSalary = in_array(strtoupper($worker->salary_type ?? ''), ['FIXED_MONTHLY', 'FIX_MONTHLY', 'FIXED', 'FIXED_SALARY']);
+            if ($isFixedSalary) {
+                $overtimeHrs = 0;
+                $rec['ot_ut'] = 'NONE';
+                $rec['ot_ut_hours'] = 0;
+            } elseif (($rec['ot_ut'] ?? 'NONE') === 'OT') {
                 $overtimeHrs = (float)($rec['ot_ut_hours'] ?? 0);
             } elseif (($rec['ot_ut'] ?? 'NONE') === 'UT') {
                 $overtimeHrs = -(float)($rec['ot_ut_hours'] ?? 0);
@@ -396,8 +404,8 @@ class AttendanceController extends Controller
                     'status'          => $rec['status'],
                     'calculated_wage' => (float)max(0, $wage),
                     'shift_type'      => $rec['shift_type'] ?? null,
-                    'ot_ut'           => $rec['ot_ut'] ?? 'NONE',
-                    'ot_ut_hours'     => (float)($rec['ot_ut_hours'] ?? 0),
+                    'ot_ut'           => $isFixedSalary ? 'NONE' : ($rec['ot_ut'] ?? 'NONE'),
+                    'ot_ut_hours'     => $isFixedSalary ? 0 : (float)($rec['ot_ut_hours'] ?? 0),
                     'advance'         => (float)($rec['advance'] ?? 0),
                     'num_workers'     => isset($rec['num_workers']) && $rec['num_workers'] !== '' ? (int)$rec['num_workers'] : null,
                     'remark'          => $rec['remark'] ?? null,

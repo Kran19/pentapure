@@ -5,6 +5,37 @@
   $tab = request('tab', 'pending');
 @endphp
 
+<style>
+  .stock-scroll-row {
+    display: flex !important;
+    overflow-x: auto !important;
+    gap: 10px !important;
+    padding-bottom: 6px !important;
+    -webkit-overflow-scrolling: touch !important;
+    scroll-behavior: smooth !important;
+  }
+  .stock-scroll-row::-webkit-scrollbar {
+    height: 4px;
+  }
+  .stock-scroll-row::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 4px;
+  }
+  .stock-scroll-row::-webkit-scrollbar-thumb {
+    background: rgba(216, 138, 0, 0.35);
+    border-radius: 4px;
+  }
+  .stock-scroll-row::-webkit-scrollbar-thumb:hover {
+    background: var(--primary, #D88A00);
+  }
+  @media (max-width: 720px) {
+    .dispatch-item-badges {
+      grid-template-columns: repeat(3, 1fr) !important;
+      width: 100% !important;
+    }
+  }
+</style>
+
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
   <h2 style="margin:0;">Dispatches</h2>
 </div>
@@ -19,15 +50,7 @@
     <button type="button" onclick="document.getElementById('raw-stock-scroll').scrollBy({left:-200, behavior:'smooth'})" style="border:1px solid #444; background:transparent; color:#ccc; border-radius:4px; cursor:pointer; padding:2px 8px;">&larr;</button>
     <button type="button" onclick="document.getElementById('raw-stock-scroll').scrollBy({left:200, behavior:'smooth'})" style="border:1px solid #444; background:transparent; color:#ccc; border-radius:4px; cursor:pointer; padding:2px 8px;">&rarr;</button>
   </div>
-    <style>
-      #raw-stock-scroll::-webkit-scrollbar { display: none; }
-      @media (max-width: 720px) {
-        .dispatch-item-badges {
-          grid-template-columns: repeat(3, 1fr) !important;
-          width: 100% !important;
-        }
-      }
-    </style>
+  <div id="raw-stock-scroll" class="stock-scroll-row">
     @forelse($pageData['rawStock'] as $s)
       <div style="flex:0 0 150px; background:rgba(255,255,255,0.04); padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
         <div style="font-size:0.7rem; font-weight:700; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ $s->name }} <small class="text-muted">({{ $s->grade }})</small></div>
@@ -49,8 +72,7 @@
     <button type="button" onclick="document.getElementById('semi-stock-scroll').scrollBy({left:-200, behavior:'smooth'})" style="border:1px solid #444; background:transparent; color:#ccc; border-radius:4px; cursor:pointer; padding:2px 8px;">&larr;</button>
     <button type="button" onclick="document.getElementById('semi-stock-scroll').scrollBy({left:200, behavior:'smooth'})" style="border:1px solid #444; background:transparent; color:#ccc; border-radius:4px; cursor:pointer; padding:2px 8px;">&rarr;</button>
   </div>
-  <div id="semi-stock-scroll" style="display:flex; overflow-x:auto; gap:10px; padding-bottom:5px; scrollbar-width:none; -ms-overflow-style:none;">
-    <style>#semi-stock-scroll::-webkit-scrollbar { display: none; }</style>
+  <div id="semi-stock-scroll" class="stock-scroll-row">
     @forelse($pageData['semiStock'] as $s)
       <div style="flex:0 0 150px; background:rgba(255,255,255,0.04); padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
         <div style="font-size:0.7rem; font-weight:700; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ $s->name }} <small class="text-muted">({{ $s->grade }})</small></div>
@@ -72,8 +94,7 @@
     <button type="button" onclick="document.getElementById('finished-stock-scroll').scrollBy({left:-200, behavior:'smooth'})" style="border:1px solid #444; background:transparent; color:#ccc; border-radius:4px; cursor:pointer; padding:2px 8px;">&larr;</button>
     <button type="button" onclick="document.getElementById('finished-stock-scroll').scrollBy({left:200, behavior:'smooth'})" style="border:1px solid #444; background:transparent; color:#ccc; border-radius:4px; cursor:pointer; padding:2px 8px;">&rarr;</button>
   </div>
-  <div id="finished-stock-scroll" style="display:flex; overflow-x:auto; gap:10px; padding-bottom:5px; scrollbar-width:none; -ms-overflow-style:none;">
-    <style>#finished-stock-scroll::-webkit-scrollbar { display: none; }</style>
+  <div id="finished-stock-scroll" class="stock-scroll-row">
     @forelse($pageData['finishedStock'] as $s)
       <div style="flex:0 0 150px; background:rgba(255,255,255,0.04); padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
         <div style="font-size:0.7rem; font-weight:700; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ $s->name }} <small class="text-muted">({{ $s->grade }})</small></div>
@@ -370,6 +391,20 @@
       if (chevron) chevron.style.transform = 'rotate(0deg)';
     }
   }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    ['raw-stock-scroll', 'semi-stock-scroll', 'finished-stock-scroll'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('wheel', (e) => {
+          if (e.deltaY !== 0) {
+            e.preventDefault();
+            el.scrollLeft += e.deltaY;
+          }
+        }, { passive: false });
+      }
+    });
+  });
 </script>
 @endsection
 

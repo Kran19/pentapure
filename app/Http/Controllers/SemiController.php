@@ -115,12 +115,12 @@ class SemiController extends Controller
     {
         $user = $this->authUser();
         $pos = \App\Models\PurchaseOrder::with('product')
-            ->whereHas('product', function($q) { $q->where('type', 'SEMI'); })
+            ->whereHas('product', function($q) { $q->whereIn('type', ['SEMI', 'PACKAGING']); })
             ->where('user_id', $user['id'])
             ->orderByDesc('created_at')
             ->paginate(15);
 
-        $products = \App\Models\Product::where('type', 'SEMI')->active()->visibleTo($user['role'])->get();
+        $products = \App\Models\Product::whereIn('type', ['SEMI', 'PACKAGING'])->active()->visibleTo($user['role'])->get();
         $pageData = ['purchaseOrders' => $pos, 'products' => $products, 'type' => 'semi'];
         return view('raw.po', compact('pageData')); // Shares view with raw
     }

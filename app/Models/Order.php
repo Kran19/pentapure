@@ -10,10 +10,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Order extends Model
 {
     protected $fillable = [
-        'created_by', 'company_id', 'transporter_id', 'total', 'status', 'dispatch_status', 'notes'
+        'created_by', 'company_id', 'transporter_id', 'total', 'date', 'due_date', 'status', 'dispatch_status', 'notes'
     ];
 
-    protected $casts = ['total' => 'decimal:2'];
+    protected $casts = [
+        'total' => 'decimal:2',
+        'date' => 'datetime',
+        'due_date' => 'date',
+    ];
 
     public function creator(): BelongsTo
     {

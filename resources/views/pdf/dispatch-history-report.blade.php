@@ -56,9 +56,9 @@
         .section-header { background: #f8c300; color: #101828; padding: 4px 6px; font-weight: bold; font-size: 9px; border-radius: 3px 3px 0 0; text-transform: uppercase; margin-top: 6px; }
         
         /* Data table */
-        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; border: 1px solid #344054; }
-        .data-table th { background: #f8c300; color: #101828; padding: 6px 7px; font-weight: bold; text-align: left; font-size: 8.5px; border: 1px solid #344054; }
-        .data-table td { padding: 6px 7px; border: 1px solid #98a2b3; font-size: 8px; vertical-align: middle; }
+        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; border: 1px solid #344054; table-layout: fixed; }
+        .data-table th { background: #f8c300; color: #101828; padding: 5px 4px; font-weight: bold; text-align: left; font-size: 8px; border: 1px solid #344054; vertical-align: middle; }
+        .data-table td { padding: 5px 4px; border: 1px solid #98a2b3; font-size: 7.5px; vertical-align: middle; }
         .data-table tr.total-row td { font-weight: bold; background: #f9fafb; border-top: 1.5px solid #111c31; }
 
         /* Merged order cell borders - creates unified merged cells across multi-product orders without DomPDF page break corruption */
@@ -97,8 +97,22 @@
         
         .text-green { color: #027a48; font-weight: bold; }
         .text-red { color: #b42318; font-weight: bold; }
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
+        .nowrap { white-space: nowrap !important; }
+        .text-right,
+        .data-table th.text-right,
+        .data-table td.text-right,
+        .summary-subtable th.text-right,
+        .summary-subtable td.text-right { text-align: right !important; }
+        .text-center,
+        .data-table th.text-center,
+        .data-table td.text-center,
+        .summary-subtable th.text-center,
+        .summary-subtable td.text-center { text-align: center !important; }
+        .text-left,
+        .data-table th.text-left,
+        .data-table td.text-left,
+        .summary-subtable th.text-left,
+        .summary-subtable td.text-left { text-align: left !important; }
         
         .page-break { page-break-before: always; }
         .page-break-avoid { page-break-inside: avoid; }
@@ -165,20 +179,20 @@
         <thead>
             <tr>
                 <th style="width: 7%;">Dispatch ID</th>
-                <th style="width: 9%;">Order Date</th>
+                <th style="width: 7.5%;">Order Date</th>
                 @if($statusFilter !== 'FULLY_DISPATCHED' && $statusFilter !== 'FULLY DISPATCHED' && $statusFilter !== 'DONE')
-                    <th style="width: 8%;" class="text-center">Due Days</th>
+                    <th style="width: 6%; text-align: center;" class="text-center nowrap">Due Days</th>
                 @endif
                 @if($statusFilter !== 'PENDING')
-                    <th style="width: 9%;">Dispatched Date</th>
+                    <th style="width: 7.5%;">Dispatched Date</th>
                 @endif
                 <th style="width: 14%;">Customer</th>
-                <th style="width: 22%;">Product Details</th>
-                <th style="width: 7%; color: #027a48;" class="text-right">Ord. Qty</th>
-                <th style="width: 7%; color: #b37400;" class="text-right">Disp. Qty</th>
-                <th style="width: 6%; color: #b42318;" class="text-right">Pend. Qty</th>
-                <th style="width: 6%;" class="text-right">Revenue</th>
-                <th style="width: 5%;" class="text-center">Status</th>
+                <th style="width: 17%;">Product Details</th>
+                <th style="width: 8%; color: #027a48; text-align: right;" class="text-right nowrap">Ord. Qty</th>
+                <th style="width: 8%; color: #b37400; text-align: right;" class="text-right nowrap">Disp. Qty</th>
+                <th style="width: 8%; color: #b42318; text-align: right;" class="text-right nowrap">Pend. Qty</th>
+                <th style="width: 11%; text-align: right;" class="text-right nowrap">Amount</th>
+                <th style="width: 6%; text-align: center;" class="text-center nowrap">Status</th>
             </tr>
         </thead>
         <tbody>
@@ -264,19 +278,19 @@
                     <td class="{{ $itemClass }}">
                         <div style="font-weight: bold; color: #101828;">{{ $item['product'] }}</div>
                     </td>
-                    <td class="text-right text-green {{ $itemClass }}">
-                        <strong>{{ $item['ordered_qty_formatted'] ?? number_format($item['ordered_qty'] ?? 0) . ' KG' }}</strong>
+                    <td class="text-right text-green {{ $itemClass }} nowrap" style="text-align: right; white-space: nowrap;">
+                        <strong>{!! str_replace(' ', '&nbsp;', e($item['ordered_qty_formatted'] ?? (number_format($item['ordered_qty'] ?? 0) . ' KG'))) !!}</strong>
                     </td>
-                    <td class="text-right {{ $itemClass }}" style="color: #b37400;">
-                        <strong>{{ $item['dispatch_qty_formatted'] ?? number_format($item['qty'] ?? 0) . ' KG' }}</strong>
+                    <td class="text-right {{ $itemClass }} nowrap" style="color: #b37400; text-align: right; white-space: nowrap;">
+                        <strong>{!! str_replace(' ', '&nbsp;', e($item['dispatch_qty_formatted'] ?? (number_format($item['qty'] ?? 0) . ' KG'))) !!}</strong>
                     </td>
-                    <td class="text-right {{ $itemClass }}" style="color: #b42318;">
-                        <strong>{{ $item['pending_qty_formatted'] ?? number_format($item['pending_qty'] ?? 0) . ' KG' }}</strong>
+                    <td class="text-right {{ $itemClass }} nowrap" style="color: #b42318; text-align: right; white-space: nowrap;">
+                        <strong>{!! str_replace(' ', '&nbsp;', e($item['pending_qty_formatted'] ?? (number_format($item['pending_qty'] ?? 0) . ' KG'))) !!}</strong>
                     </td>
-                    <td class="text-right {{ $itemClass }}">
-                        <strong>Rs. {{ number_format($item['amount'], 2) }}</strong>
+                    <td class="text-right {{ $itemClass }} nowrap" style="text-align: right; white-space: nowrap;">
+                        <strong>Rs.&nbsp;{{ number_format($item['amount'], 2) }}</strong>
                     </td>
-                    <td class="text-center {{ $orderClass }}" style="vertical-align: top;">
+                    <td class="text-center {{ $orderClass }} nowrap" style="vertical-align: middle; text-align: center;">
                         @if($isFirst)
                             <span class="badge {{ $badgeClass }}">
                                 {{ $displayStatus }}
@@ -304,11 +318,11 @@
                 }
             @endphp
             <tr class="total-row">
-                <td colspan="{{ $labelColSpan }}">TOTAL</td>
-                <td class="text-right text-green">{{ number_format($totalOrderedQty ?? 0) }} KG</td>
-                <td class="text-right" style="color: #b37400;">{{ number_format($totalQuantity) }} KG</td>
-                <td class="text-right" style="color: {{ ($totalPendingQty ?? 0) > 0 ? '#b42318' : 'inherit' }};">{{ number_format($totalPendingQty ?? 0) }} KG</td>
-                <td class="text-right">Rs. {{ number_format($totalValue, 2) }}</td>
+                <td colspan="{{ $labelColSpan }}" style="text-align: right; padding-right: 8px;">TOTAL</td>
+                <td class="text-right text-green nowrap" style="text-align: right; white-space: nowrap;">{{ number_format($totalOrderedQty ?? 0) }}&nbsp;KG</td>
+                <td class="text-right nowrap" style="color: #b37400; text-align: right; white-space: nowrap;">{{ number_format($totalQuantity) }}&nbsp;KG</td>
+                <td class="text-right nowrap" style="color: {{ ($totalPendingQty ?? 0) > 0 ? '#b42318' : 'inherit' }}; text-align: right; white-space: nowrap;">{{ number_format($totalPendingQty ?? 0) }}&nbsp;KG</td>
+                <td class="text-right nowrap" style="text-align: right; white-space: nowrap;">Rs.&nbsp;{{ number_format($totalValue, 2) }}</td>
                 <td></td>
             </tr>
         @endif
@@ -326,8 +340,8 @@
                         <thead>
                             <tr>
                                 <th>Customer</th>
-                                <th style="width: 30%;" class="text-center">Dispatch Count</th>
-                                <th style="width: 35%;" class="text-right">Quantity</th>
+                                <th style="width: 30%; text-align: center;" class="text-center">Dispatch Count</th>
+                                <th style="width: 35%; text-align: right;" class="text-right">Quantity</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -362,8 +376,8 @@
                         <thead>
                             <tr>
                                 <th>Product</th>
-                                <th style="width: 30%;" class="text-center">Dispatch Count</th>
-                                <th style="width: 35%;" class="text-right">Quantity</th>
+                                <th style="width: 30%; text-align: center;" class="text-center">Dispatch Count</th>
+                                <th style="width: 35%; text-align: right;" class="text-right">Quantity</th>
                             </tr>
                         </thead>
                         <tbody>

@@ -133,10 +133,37 @@
 
   @php
     $typeFilter = request('type') ? strtoupper(request('type')) : null;
-    $rawItems      = collect($pageData['allStock'])->where('stage', 'RAW');
-    $semiItems     = collect($pageData['allStock'])->where('stage', 'SEMI');
-    $finishedItems = collect($pageData['allStock'])->where('stage', 'FINISHED');
-    $packagingItems = collect($pageData['allStock'])->where('stage', 'PACKAGING');
+
+    $sortStockByLow = function($collection) {
+        return $collection->sort(function($a, $b) {
+            $hasQtyA = (float) ($a->quantity ?? 0) > 0;
+            $alertA = (float) ($a->alert_limit ?? 0);
+            $isLowA = $alertA > 0 && (float) ($a->quantity ?? 0) <= $alertA;
+            $prioA = ($isLowA && $hasQtyA) ? 0 : ($isLowA ? 1 : 2);
+
+            $hasQtyB = (float) ($b->quantity ?? 0) > 0;
+            $alertB = (float) ($b->alert_limit ?? 0);
+            $isLowB = $alertB > 0 && (float) ($b->quantity ?? 0) <= $alertB;
+            $prioB = ($isLowB && $hasQtyB) ? 0 : ($isLowB ? 1 : 2);
+
+            if ($prioA !== $prioB) {
+                return $prioA <=> $prioB;
+            }
+
+            $sortA = isset($a->sort_order) ? (int)$a->sort_order : 9999;
+            $sortB = isset($b->sort_order) ? (int)$b->sort_order : 9999;
+            if ($sortA !== $sortB) {
+                return $sortA <=> $sortB;
+            }
+
+            return strcasecmp($a->name ?? '', $b->name ?? '');
+        })->values();
+    };
+
+    $rawItems       = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'RAW'));
+    $semiItems      = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'SEMI'));
+    $finishedItems  = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'FINISHED'));
+    $packagingItems = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'PACKAGING'));
     $adminAllGrades = \App\Models\Grade::orderBy('id')->get();
   @endphp
   <script>
@@ -479,6 +506,30 @@
     }
   </style>
 
+  <!-- Stock Stage Navigation Pills -->
+  <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1.2rem; align-items:center;">
+    <a href="{{ route(request()->segment(1) . '.stock') }}" class="btn" style="padding:0.45rem 1rem; font-size:0.85rem; font-weight:700; text-decoration:none; border-radius:8px; transition:all 0.15s ease; {{ !$typeFilter ? 'background:#f59e0b; color:#fff; border:none; box-shadow:0 2px 6px rgba(245, 158, 11, 0.35);' : 'background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;' }}">
+      ALL ({{ count($pageData['allStock']) }})
+    </a>
+    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'raw']) }}" class="btn" style="padding:0.45rem 1rem; font-size:0.85rem; font-weight:700; text-decoration:none; border-radius:8px; transition:all 0.15s ease; {{ $typeFilter === 'RAW' ? 'background:#059669; color:#fff; border:none; box-shadow:0 2px 6px rgba(5, 150, 105, 0.35);' : 'background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;' }}">
+      🌿 RAW ({{ $rawItems->count() }})
+    </a>
+    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'semi']) }}" class="btn" style="padding:0.45rem 1rem; font-size:0.85rem; font-weight:700; text-decoration:none; border-radius:8px; transition:all 0.15s ease; {{ $typeFilter === 'SEMI' ? 'background:#d97706; color:#fff; border:none; box-shadow:0 2px 6px rgba(217, 119, 6, 0.35);' : 'background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;' }}">
+      ⚗️ SEMI ({{ $semiItems->count() }})
+    </a>
+    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'finished']) }}" class="btn" style="padding:0.45rem 1rem; font-size:0.85rem; font-weight:700; text-decoration:none; border-radius:8px; transition:all 0.15s ease; {{ ($typeFilter === 'FINISHED' || $typeFilter === 'FG') ? 'background:#2563eb; color:#fff; border:none; box-shadow:0 2px 6px rgba(37, 99, 235, 0.35);' : 'background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;' }}">
+      ✅ FG ({{ $finishedItems->count() }})
+    </a>
+    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'packaging']) }}" class="btn" style="padding:0.45rem 1rem; font-size:0.85rem; font-weight:700; text-decoration:none; border-radius:8px; transition:all 0.15s ease; {{ ($typeFilter === 'PACKAGING' || $typeFilter === 'PKG') ? 'background:#0284c7; color:#fff; border:none; box-shadow:0 2px 6px rgba(2, 132, 199, 0.35);' : 'background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;' }}">
+      📦 PACKAGING ({{ $packagingItems->count() }})
+    </a>
+
+    <!-- Low Stock Only Quick Filter Toggle -->
+    <button type="button" id="toggle-low-stock-btn" onclick="toggleLowStockOnly()" class="btn" style="margin-left:auto; padding:0.45rem 1rem; font-size:0.85rem; font-weight:700; border-radius:8px; border:1.5px solid #dc2626; background:#fff; color:#dc2626; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.15s ease;">
+      <span>⚠</span> <span id="toggle-low-stock-label">Show Low Stock Only</span>
+    </button>
+  </div>
+
   <!-- Common Product Instant Search Bar -->
   <div class="card" style="padding:0.85rem 1.2rem; margin-bottom:1.5rem; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:10px;">
     <div style="display:flex; align-items:center; gap:0.75rem;">
@@ -490,7 +541,17 @@
   @if(!$typeFilter || $typeFilter === 'RAW')
   <!-- RAW Stock -->
   <div class="card" style="padding:1.2rem; margin-bottom:1rem;">
-    <div class="card-title" style="color:var(--primary-light);">🌿 Raw Material Stock ({{ $rawItems->count() }} items)</div>
+    @php
+      $rawLowCount = $rawItems->filter(fn($s) => (float)($s->alert_limit ?? 0) > 0 && (float)($s->quantity ?? 0) <= (float)($s->alert_limit ?? 0) && (float)($s->quantity ?? 0) > 0)->count();
+    @endphp
+    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; color:var(--primary-light);">
+      <span>🌿 Raw Material Stock ({{ $rawItems->count() }} items)</span>
+      @if($rawLowCount > 0)
+        <span style="font-size:0.78rem; font-weight:700; background:#dc2626; color:#ffffff; padding:3px 10px; border-radius:999px; box-shadow:0 2px 4px rgba(220, 38, 38, 0.25);">
+          ⚠ {{ $rawLowCount }} Low Stock on Top
+        </span>
+      @endif
+    </div>
     @if($rawItems->isEmpty())
       <p class="text-muted text-center">No raw stock recorded yet.</p>
     @else
@@ -552,7 +613,17 @@
   @if(!$typeFilter || $typeFilter === 'SEMI')
   <!-- SEMI Stock -->
   <div class="card" style="padding:1.2rem; margin-bottom:1rem;">
-    <div class="card-title" style="color:var(--warning);">⚗️ Semi-Finished Stock ({{ $semiItems->count() }} items)</div>
+    @php
+      $semiLowCount = $semiItems->filter(fn($s) => (float)($s->alert_limit ?? 0) > 0 && (float)($s->quantity ?? 0) <= (float)($s->alert_limit ?? 0) && (float)($s->quantity ?? 0) > 0)->count();
+    @endphp
+    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; color:var(--warning);">
+      <span>⚗️ Semi-Finished Stock ({{ $semiItems->count() }} items)</span>
+      @if($semiLowCount > 0)
+        <span style="font-size:0.78rem; font-weight:700; background:#dc2626; color:#ffffff; padding:3px 10px; border-radius:999px; box-shadow:0 2px 4px rgba(220, 38, 38, 0.25);">
+          ⚠ {{ $semiLowCount }} Low Stock on Top
+        </span>
+      @endif
+    </div>
     @if($semiItems->isEmpty())
       <p class="text-muted text-center">No semi stock recorded yet.</p>
     @else
@@ -614,7 +685,17 @@
   @if(!$typeFilter || $typeFilter === 'FINISHED')
   <!-- Finished Stock -->
   <div class="card" style="padding:1.2rem;">
-    <div class="card-title" style="color:var(--secondary);">✅ FG Stock ({{ $finishedItems->count() }} items)</div>
+    @php
+      $finishedLowCount = $finishedItems->filter(fn($s) => (float)($s->alert_limit ?? 0) > 0 && (float)($s->quantity ?? 0) <= (float)($s->alert_limit ?? 0) && (float)($s->quantity ?? 0) > 0)->count();
+    @endphp
+    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; color:var(--secondary);">
+      <span>✅ FG Stock ({{ $finishedItems->count() }} items)</span>
+      @if($finishedLowCount > 0)
+        <span style="font-size:0.78rem; font-weight:700; background:#dc2626; color:#ffffff; padding:3px 10px; border-radius:999px; box-shadow:0 2px 4px rgba(220, 38, 38, 0.25);">
+          ⚠ {{ $finishedLowCount }} Low Stock on Top
+        </span>
+      @endif
+    </div>
     @if($finishedItems->isEmpty())
       <p class="text-muted text-center">No FG stock recorded yet.</p>
     @else
@@ -676,7 +757,17 @@
   @if(!$typeFilter || $typeFilter === 'PACKAGING')
   <!-- Packaging Stock -->
   <div class="card" style="padding:1.2rem; margin-top:1rem;">
-    <div class="card-title" style="color:#0284c7;">📦 Packaging Material Stock ({{ $packagingItems->count() }} items)</div>
+    @php
+      $packagingLowCount = $packagingItems->filter(fn($s) => (float)($s->alert_limit ?? 0) > 0 && (float)($s->quantity ?? 0) <= (float)($s->alert_limit ?? 0) && (float)($s->quantity ?? 0) > 0)->count();
+    @endphp
+    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; color:#0284c7;">
+      <span>📦 Packaging Material Stock ({{ $packagingItems->count() }} items)</span>
+      @if($packagingLowCount > 0)
+        <span style="font-size:0.78rem; font-weight:700; background:#dc2626; color:#ffffff; padding:3px 10px; border-radius:999px; box-shadow:0 2px 4px rgba(220, 38, 38, 0.25);">
+          ⚠ {{ $packagingLowCount }} Low Stock on Top
+        </span>
+      @endif
+    </div>
     @if($packagingItems->isEmpty())
       <p class="text-muted text-center">No packaging stock recorded yet.</p>
     @else
@@ -1433,9 +1524,26 @@ function updateStockTables(stockData) {
 
     const items = grouped[stage];
     
-    // Update headers count (optional, but good for UI consistency if we have access, maybe skip for now or just replace table body)
+    // Sort items so low stock always appears at the top
+    items.sort((a, b) => {
+      const limitA = parseFloat(a.alert_limit) || 0;
+      const qtyA = parseFloat(a.quantity) || 0;
+      const hasQtyA = qtyA > 0;
+      const isLowA = (limitA > 0 && qtyA <= limitA && hasQtyA) ? 0 : ((limitA > 0 && qtyA <= limitA) ? 1 : 2);
+
+      const limitB = parseFloat(b.alert_limit) || 0;
+      const qtyB = parseFloat(b.quantity) || 0;
+      const hasQtyB = qtyB > 0;
+      const isLowB = (limitB > 0 && qtyB <= limitB && hasQtyB) ? 0 : ((limitB > 0 && qtyB <= limitB) ? 1 : 2);
+
+      if (isLowA !== isLowB) return isLowA - isLowB;
+      const sortA = a.sort_order !== undefined ? parseInt(a.sort_order) : 9999;
+      const sortB = b.sort_order !== undefined ? parseInt(b.sort_order) : 9999;
+      if (sortA !== sortB) return sortA - sortB;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
     if (items.length === 0) {
-      // Keep existing "No stock" message if handled by blade, or just leave empty table.
       tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">No stock recorded yet.</td></tr>`;
       continue;
     }
@@ -1500,6 +1608,54 @@ function updateStockTables(stockData) {
     tbody.innerHTML = html;
   }
   updateAllLocationLabels();
+  if (lowStockOnlyActive) {
+    applyLowStockFilter();
+  }
+  const searchInput = document.getElementById('global-product-search');
+  if (searchInput && searchInput.value) {
+    onGlobalProductSearch(searchInput.value);
+  }
+}
+
+let lowStockOnlyActive = false;
+function toggleLowStockOnly() {
+  lowStockOnlyActive = !lowStockOnlyActive;
+  const btn = document.getElementById('toggle-low-stock-btn');
+  const label = document.getElementById('toggle-low-stock-label');
+  if (btn && label) {
+    if (lowStockOnlyActive) {
+      btn.style.background = '#dc2626';
+      btn.style.color = '#ffffff';
+      btn.style.borderColor = '#b91c1c';
+      label.textContent = 'Showing Low Stock Only (Click to Show All)';
+    } else {
+      btn.style.background = '#ffffff';
+      btn.style.color = '#dc2626';
+      btn.style.borderColor = '#dc2626';
+      label.textContent = 'Show Low Stock Only';
+    }
+  }
+  applyLowStockFilter();
+}
+
+function applyLowStockFilter() {
+  ['raw-stock-tbody', 'semi-stock-tbody', 'finished-stock-tbody', 'packaging-stock-tbody'].forEach(tbodyId => {
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+    tbody.querySelectorAll('tr').forEach(tr => {
+      if (tr.children.length <= 1) return;
+      if (lowStockOnlyActive) {
+        if (tr.classList.contains('low-stock-row')) {
+          tr.style.display = '';
+        } else {
+          tr.style.display = 'none';
+        }
+      } else {
+        tr.style.display = '';
+      }
+    });
+  });
+
   const searchInput = document.getElementById('global-product-search');
   if (searchInput && searchInput.value) {
     onGlobalProductSearch(searchInput.value);
@@ -1514,7 +1670,11 @@ function onGlobalProductSearch(val) {
     if (!tbody) return;
     const rows = tbody.querySelectorAll('tr');
     rows.forEach(tr => {
-      if (!tr.children || tr.children.length === 0) return;
+      if (!tr.children || tr.children.length === 0 || tr.children.length <= 1) return;
+      if (lowStockOnlyActive && !tr.classList.contains('low-stock-row')) {
+        tr.style.display = 'none';
+        return;
+      }
       const text = (tr.children[0]?.textContent || tr.children[0]?.innerText || '').toUpperCase();
       if (tokens.length === 0 || tokens.every(token => text.indexOf(token) > -1)) {
         tr.style.display = '';
@@ -1920,11 +2080,14 @@ window.initBsProductSelect2 = function(selectElement) {
       if (stage === 'RAW') { badgeColor = '#065f46'; badgeBg = '#d1fae5'; badgeBorder = '#a7f3d0'; }
       else if (stage === 'SEMI') { badgeColor = '#1e40af'; badgeBg = '#dbeafe'; badgeBorder = '#bfdbfe'; }
       else if (stage === 'FINISHED' || stage === 'FG') { badgeColor = '#92400e'; badgeBg = '#fef3c7'; badgeBorder = '#fde68a'; }
+      else if (stage === 'PACKAGING' || stage === 'PKG') { badgeColor = '#0369a1'; badgeBg = '#e0f2fe'; badgeBorder = '#bae6fd'; }
 
       let gradeBadge = '';
       if (grade && !['NONE', 'N/A', 'NA', 'N / A'].includes(grade.trim().toUpperCase())) {
         gradeBadge = `<span class="prod-grade-badge" style="font-size:0.7rem; font-weight:700; padding:1px 6px; border-radius:4px; background:#e0e7ff; color:#3730a3; border:1px solid #c7d2fe; margin-left:4px;">${escapeHtml(grade)}</span>`;
       }
+
+      const displayStage = (stage === 'FINISHED' ? 'FG' : (stage === 'PACKAGING' ? 'PKG' : stage));
 
       return $(`
         <div class="prod-option-row" style="display:flex; justify-content:space-between; align-items:center; width:100%; padding:2px 0;">
@@ -1933,7 +2096,7 @@ window.initBsProductSelect2 = function(selectElement) {
             ${gradeBadge}
           </div>
           <div style="display:flex; align-items:center; gap:6px; flex-shrink:0; margin-left:8px;">
-            <span class="prod-stage-badge" style="font-size:0.68rem; font-weight:700; padding:1px 6px; border-radius:4px; background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder};">${stage === 'FINISHED' ? 'FG' : stage}</span>
+            <span class="prod-stage-badge" style="font-size:0.68rem; font-weight:700; padding:1px 6px; border-radius:4px; background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder};">${displayStage}</span>
             ${unit ? `<span class="prod-unit" style="font-size:0.72rem; color:#4b5563; font-weight:600;">(${escapeHtml(unit)})</span>` : ''}
           </div>
         </div>
@@ -2216,6 +2379,11 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Instantly update all location labels on page load
   updateAllLocationLabels();
+
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('low_stock') === '1' || urlParams.get('filter') === 'low') {
+    toggleLowStockOnly();
+  }
 
   if (sessionStorage.getItem('keepStockFormOpen') === 'true') {
     const el = document.getElementById('stock-form-card');

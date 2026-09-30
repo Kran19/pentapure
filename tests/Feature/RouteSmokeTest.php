@@ -60,6 +60,7 @@ class RouteSmokeTest extends TestCase
         $homeResponse->assertSee('type=semi');
         $homeResponse->assertSee('type=finished');
         $homeResponse->assertSee('type=packaging');
+        $homeResponse->assertDontSee('Total Revenue');
     }
 
     public function test_raw_routes_return_200(): void

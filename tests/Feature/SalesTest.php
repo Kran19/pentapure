@@ -119,6 +119,7 @@ namespace Tests\Feature;
             $response = $this->withSession($session)->postJson('/sales/order', [
                 'company_id' => $this->company->id,
                 'transporter_id' => $this->transporter->id,
+                'due_date' => '2026-10-20',
                 'items' => [
                     [
                         'product_id' => $this->product->id,
@@ -139,6 +140,9 @@ namespace Tests\Feature;
                 'dispatch_status' => 'PENDING',
                 'total' => 5050.00,
             ]);
+
+            $createdOrder = Order::latest('id')->first();
+            $this->assertEquals('2026-10-20', \Carbon\Carbon::parse($createdOrder->due_date)->format('Y-m-d'));
         }
 
         public function test_sales_order_creation_fails_when_grade_invalid_for_product(): void

@@ -224,12 +224,12 @@ class RawController extends Controller
     {
         $user = $this->authUser();
         $pos = PurchaseOrder::with('product')
-            ->whereHas('product', function($q) { $q->where('type', 'RAW'); })
+            ->whereHas('product', function($q) { $q->whereIn('type', ['RAW', 'PACKAGING']); })
             ->where('user_id', $user['id'])
             ->orderByDesc('created_at')
             ->paginate(15);
             
-        $products = Product::raw()->active()->visibleTo($user['role'])->get();
+        $products = Product::whereIn('type', ['RAW', 'PACKAGING'])->active()->visibleTo($user['role'])->get();
         $pageData = ['purchaseOrders' => $pos, 'products' => $products, 'type' => 'raw'];
         return view('raw.po', compact('pageData'));
     }

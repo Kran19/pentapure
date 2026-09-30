@@ -270,12 +270,12 @@ class FinishedController extends Controller
     {
         $user = $this->authUser();
         $pos = \App\Models\PurchaseOrder::with('product')
-            ->whereHas('product', function($q) { $q->where('type', 'FINISHED'); })
+            ->whereHas('product', function($q) { $q->whereIn('type', ['FINISHED', 'PACKAGING']); })
             ->where('user_id', $user['id'])
             ->orderByDesc('created_at')
             ->paginate(15);
 
-        $products = \App\Models\Product::where('type', 'FINISHED')->active()->visibleTo($user['role'])->get();
+        $products = \App\Models\Product::whereIn('type', ['FINISHED', 'PACKAGING'])->active()->visibleTo($user['role'])->get();
         $pageData = ['purchaseOrders' => $pos, 'products' => $products, 'type' => 'finished'];
         return view('raw.po', compact('pageData')); // Share view with raw
     }

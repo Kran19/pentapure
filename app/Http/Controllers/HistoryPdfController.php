@@ -428,6 +428,7 @@ class HistoryPdfController extends Controller
             'items' => $order->items,
             'orderNo' => 'ORD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT),
             'orderDate' => $order->created_at->format('d-m-Y'),
+            'dueDate' => $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : null,
             'generatedOn' => now()->format('d-m-Y h:i A'),
             'generatedBy' => $this->authUser()['name'] ?? 'System',
             'orderBy' => $order->creator?->name ?? 'N/A',

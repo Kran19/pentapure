@@ -11,54 +11,54 @@
   <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
     <!-- Raw Material Stock -->
     @if(($pageData['lowRawCount'] ?? 0) > 0)
-    <div style="background-color: #fff3cd; color: #856404; padding: 1rem; border-radius: 8px; border: 1px solid #ffeeba; display: flex; align-items: center; gap: 8px;">
-      <span style="font-size: 1.2rem;">⚠</span>
-      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'raw']) }}" style="font-size: 1.05rem; font-weight: bold; color: inherit; text-decoration: none;">Raw Material Low Stock: {{ $pageData['lowRawCount'] }}</a>
-    </div>
+    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'raw']) }}" style="background-color: #dc2626; color: #ffffff; padding: 1rem; border-radius: 8px; border: 1px solid #b91c1c; display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.25); transition: all 0.15s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 14px -1px rgba(220, 38, 38, 0.4)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 6px -1px rgba(220, 38, 38, 0.25)';">
+      <span style="font-size: 1.25rem;">⚠</span>
+      <span style="font-size: 1.05rem; font-weight: 700; color: #ffffff; letter-spacing: 0.2px;">Raw Material Low Stock: {{ $pageData['lowRawCount'] }}</span>
+    </a>
     @else
-    <div style="background-color: #d4edda; color: #155724; padding: 1rem; border-radius: 8px; border: 1px solid #c3e6cb; display: flex; align-items: center; gap: 8px;">
-      <span style="font-size: 1.2rem;">✅</span>
-      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'raw']) }}" style="font-size: 1.05rem; font-weight: bold; color: inherit; text-decoration: none;">Raw Material Low Stock: 0</a>
-    </div>
+    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'raw']) }}" style="background-color: #d4edda; color: #155724; padding: 1rem; border-radius: 8px; border: 1px solid #c3e6cb; display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer; transition: all 0.15s ease;">
+      <span style="font-size: 1.25rem;">✅</span>
+      <span style="font-size: 1.05rem; font-weight: 700; color: #155724;">Raw Material Low Stock: 0</span>
+    </a>
     @endif
 
     <!-- Semi-Finished Stock -->
     @if(($pageData['lowSemiCount'] ?? 0) > 0)
-    <div style="background-color: #fff3cd; color: #856404; padding: 1rem; border-radius: 8px; border: 1px solid #ffeeba; display: flex; align-items: center; gap: 8px;">
-      <span style="font-size: 1.2rem;">⚠</span>
-      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'semi']) }}" style="font-size: 1.05rem; font-weight: bold; color: inherit; text-decoration: none;">Semi-Finished Low Stock: {{ $pageData['lowSemiCount'] }}</a>
-    </div>
+    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'semi']) }}" style="background-color: #dc2626; color: #ffffff; padding: 1rem; border-radius: 8px; border: 1px solid #b91c1c; display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.25); transition: all 0.15s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 14px -1px rgba(220, 38, 38, 0.4)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 6px -1px rgba(220, 38, 38, 0.25)';">
+      <span style="font-size: 1.25rem;">⚠</span>
+      <span style="font-size: 1.05rem; font-weight: 700; color: #ffffff; letter-spacing: 0.2px;">Semi-Finished Low Stock: {{ $pageData['lowSemiCount'] }}</span>
+    </a>
     @else
-    <div style="background-color: #d4edda; color: #155724; padding: 1rem; border-radius: 8px; border: 1px solid #c3e6cb; display: flex; align-items: center; gap: 8px;">
-      <span style="font-size: 1.2rem;">✅</span>
-      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'semi']) }}" style="font-size: 1.05rem; font-weight: bold; color: inherit; text-decoration: none;">Semi-Finished Low Stock: 0</a>
-    </div>
+    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'semi']) }}" style="background-color: #d4edda; color: #155724; padding: 1rem; border-radius: 8px; border: 1px solid #c3e6cb; display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer; transition: all 0.15s ease;">
+      <span style="font-size: 1.25rem;">✅</span>
+      <span style="font-size: 1.05rem; font-weight: 700; color: #155724;">Semi-Finished Low Stock: 0</span>
+    </a>
     @endif
 
     <!-- FG Stock -->
     @if(($pageData['lowFinishedCount'] ?? 0) > 0)
-    <div style="background-color: #fff3cd; color: #856404; padding: 1rem; border-radius: 8px; border: 1px solid #ffeeba; display: flex; align-items: center; gap: 8px;">
-      <span style="font-size: 1.2rem;">⚠</span>
-      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'finished']) }}" style="font-size: 1.05rem; font-weight: bold; color: inherit; text-decoration: none;">FG Low Stock: {{ $pageData['lowFinishedCount'] }}</a>
-    </div>
+    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'finished']) }}" style="background-color: #dc2626; color: #ffffff; padding: 1rem; border-radius: 8px; border: 1px solid #b91c1c; display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.25); transition: all 0.15s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 14px -1px rgba(220, 38, 38, 0.4)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 6px -1px rgba(220, 38, 38, 0.25)';">
+      <span style="font-size: 1.25rem;">⚠</span>
+      <span style="font-size: 1.05rem; font-weight: 700; color: #ffffff; letter-spacing: 0.2px;">FG Low Stock: {{ $pageData['lowFinishedCount'] }}</span>
+    </a>
     @else
-    <div style="background-color: #d4edda; color: #155724; padding: 1rem; border-radius: 8px; border: 1px solid #c3e6cb; display: flex; align-items: center; gap: 8px;">
-      <span style="font-size: 1.2rem;">✅</span>
-      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'finished']) }}" style="font-size: 1.05rem; font-weight: bold; color: inherit; text-decoration: none;">FG Low Stock: 0</a>
-    </div>
+    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'finished']) }}" style="background-color: #d4edda; color: #155724; padding: 1rem; border-radius: 8px; border: 1px solid #c3e6cb; display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer; transition: all 0.15s ease;">
+      <span style="font-size: 1.25rem;">✅</span>
+      <span style="font-size: 1.05rem; font-weight: 700; color: #155724;">FG Low Stock: 0</span>
+    </a>
     @endif
 
     <!-- Packaging Stock -->
     @if(($pageData['lowPackagingCount'] ?? 0) > 0)
-    <div style="background-color: #fff3cd; color: #856404; padding: 1rem; border-radius: 8px; border: 1px solid #ffeeba; display: flex; align-items: center; gap: 8px;">
-      <span style="font-size: 1.2rem;">⚠</span>
-      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'packaging']) }}" style="font-size: 1.05rem; font-weight: bold; color: inherit; text-decoration: none;">Packaging Low Stock: {{ $pageData['lowPackagingCount'] }}</a>
-    </div>
+    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'packaging']) }}" style="background-color: #dc2626; color: #ffffff; padding: 1rem; border-radius: 8px; border: 1px solid #b91c1c; display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.25); transition: all 0.15s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 14px -1px rgba(220, 38, 38, 0.4)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 6px -1px rgba(220, 38, 38, 0.25)';">
+      <span style="font-size: 1.25rem;">⚠</span>
+      <span style="font-size: 1.05rem; font-weight: 700; color: #ffffff; letter-spacing: 0.2px;">Packaging Low Stock: {{ $pageData['lowPackagingCount'] }}</span>
+    </a>
     @else
-    <div style="background-color: #d4edda; color: #155724; padding: 1rem; border-radius: 8px; border: 1px solid #c3e6cb; display: flex; align-items: center; gap: 8px;">
-      <span style="font-size: 1.2rem;">✅</span>
-      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'packaging']) }}" style="font-size: 1.05rem; font-weight: bold; color: inherit; text-decoration: none;">Packaging Low Stock: 0</a>
-    </div>
+    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'packaging']) }}" style="background-color: #d4edda; color: #155724; padding: 1rem; border-radius: 8px; border: 1px solid #c3e6cb; display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer; transition: all 0.15s ease;">
+      <span style="font-size: 1.25rem;">✅</span>
+      <span style="font-size: 1.05rem; font-weight: 700; color: #155724;">Packaging Low Stock: 0</span>
+    </a>
     @endif
   </div>
 
@@ -96,12 +96,6 @@
       <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Total Sales Order</div>
     </a>
 
-    <a href="{{ route(request()->segment(1) . '.logs') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
-      <div style="font-size:1.6rem; font-weight:bold; color:var(--secondary); word-break:break-word;">
-        ₹{{ number_format($pageData['totalRevenue'] ?? 0, 0) }}
-      </div>
-      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Total Revenue</div>
-    </a>
     <a href="{{ route(request()->segment(1) . '.po') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
       <div style="font-size:1.6rem; font-weight:bold; color:var(--danger); word-break:break-word;">
         {{ $pageData['pendingPOs'] ?? 0 }}

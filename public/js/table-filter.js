@@ -66,7 +66,7 @@
     return btn;
   }
 
-  function createPageSizeSelect() {
+  function createPageSizeSelect(defaultSize = '10') {
     const select = document.createElement('select');
     select.className = 'btn-sm page-size-select';
     select.style.background = '#FFFFFF';
@@ -88,6 +88,9 @@
       const opt = document.createElement('option');
       opt.value = s.val;
       opt.textContent = s.label;
+      if (s.val === defaultSize) {
+        opt.selected = true;
+      }
       select.appendChild(opt);
     });
 
@@ -253,7 +256,8 @@
     filterBar.style.border = '1px solid #DDCFAF';
     filterBar.style.justifyContent = 'flex-end';
 
-    const pageSizeSelect = createPageSizeSelect();
+    const defaultPageSize = table.dataset.pageSize || '10';
+    const pageSizeSelect = createPageSizeSelect(defaultPageSize);
     const resetButton = createResetButton();
     filterBar.appendChild(pageSizeSelect);
     filterBar.appendChild(resetButton);

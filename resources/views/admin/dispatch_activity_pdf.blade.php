@@ -85,7 +85,12 @@
                 @endphp
                 <tr>
                     <td><strong>#{{ $order->id }}</strong></td>
-                    <td>{{ $orderDate ? $orderDate->format('d M Y, h:i A') : '—' }}</td>
+                    <td>
+                        {{ $orderDate ? $orderDate->format('d M Y, h:i A') : '—' }}
+                        @if($order->due_date)
+                            <div style="font-size:10px; color:#b45309; font-weight:bold; margin-top:2px;">Due: {{ \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') }}</div>
+                        @endif
+                    </td>
                     <td>
                         <strong>{{ $order->company?->name ?? 'N/A' }}</strong><br>
                         <span style="font-size:10px; color:#666;">By: {{ $order->creator?->name ?? 'System' }}</span>

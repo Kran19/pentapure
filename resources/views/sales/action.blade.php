@@ -1,6 +1,7 @@
 @extends(in_array(session('auth_user')['role'] ?? '', ['ADMIN', 'SUB_ADMIN', 'STOCK_MANAGER']) || str_contains(request()->path(), 'sub_admin') || str_contains(request()->path(), 'admin') ? 'layouts.admin' : 'layouts.app')
 
 @section('content')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
 /* Remove number input spinner arrows (increase/decrease) */
 input[type="number"]::-webkit-outer-spin-button,
@@ -46,6 +47,216 @@ input[type="number"],
   color: var(--text-main, #333) !important;
   font-size: 0.9rem !important;
   box-sizing: border-box !important;
+}
+
+/* Select2 Container & Selection Styling for Order Products */
+.order-product-row .select2-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: block !important;
+}
+
+.order-product-row .select2-container .select2-selection--single {
+  height: 44px !important;
+  min-height: 44px !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--border-soft, #DDCFAF) !important;
+  background: var(--input-bg, transparent) !important;
+  color: var(--text-main, #333) !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 0.5rem !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.order-product-row .select2-container--default.select2-container--focus .select2-selection--single,
+.order-product-row .select2-container--default.select2-container--open .select2-selection--single {
+  border-color: var(--primary, #D88A00) !important;
+  box-shadow: 0 0 0 2px rgba(216, 138, 0, 0.25) !important;
+  outline: none !important;
+}
+
+.order-product-row .select2-container .select2-selection--single .select2-selection__rendered {
+  color: var(--text-main, #333) !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  line-height: 42px !important;
+  padding-left: 0.35rem !important;
+  padding-right: 2rem !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.order-product-row .select2-container--default .select2-selection--single .select2-selection__placeholder {
+  color: var(--text-muted, #94a3b8) !important;
+  font-weight: 500 !important;
+}
+
+.order-product-row .select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 42px !important;
+  right: 8px !important;
+  top: 1px !important;
+}
+
+/* Dropdown Menu Styling */
+.order-prod-select2-dropdown.select2-dropdown {
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18) !important;
+  z-index: 999999 !important;
+  background: #ffffff !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  min-width: min(340px, calc(100vw - 24px)) !important;
+}
+
+.order-prod-select2-dropdown .select2-search--dropdown {
+  padding: 8px !important;
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.order-prod-select2-dropdown .select2-search--dropdown .select2-search__field {
+  border: 1.5px solid #cbd5e1 !important;
+  border-radius: 6px !important;
+  padding: 0.45rem 0.65rem !important;
+  font-size: 0.85rem !important;
+  outline: none !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.order-prod-select2-dropdown .select2-search--dropdown .select2-search__field:focus {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25) !important;
+}
+
+.order-prod-select2-dropdown .select2-results__group {
+  padding: 6px 10px !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  color: var(--primary, #D88A00) !important;
+  background: rgba(216, 138, 0, 0.08) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+.order-prod-select2-dropdown .select2-results__options {
+  max-height: 260px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 4px 0 !important;
+}
+
+.order-prod-select2-dropdown .select2-results__option {
+  font-size: 0.84rem !important;
+  padding: 0.55rem 0.8rem !important;
+  color: #0f172a !important;
+  line-height: 1.35 !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  cursor: pointer !important;
+  background-color: #ffffff !important;
+  transition: background-color 0.1s ease, color 0.1s ease !important;
+}
+
+.order-prod-select2-dropdown .select2-results__option:last-child {
+  border-bottom: none !important;
+}
+
+.order-prod-select2-dropdown .select2-results__option[aria-selected="true"] {
+  background-color: #fef9c3 !important;
+  border-left: 3px solid #eab308 !important;
+}
+
+.order-prod-select2-dropdown .select2-results__option[aria-selected="true"] .prod-name {
+  color: #854d0e !important;
+  font-weight: 700 !important;
+}
+
+.order-prod-select2-dropdown .select2-results__option--highlighted,
+.order-prod-select2-dropdown .select2-results__option--highlighted[aria-selected],
+.order-prod-select2-dropdown .select2-results__option--highlighted[aria-selected="true"],
+.order-prod-select2-dropdown .select2-results__option--highlighted[aria-selected="false"],
+.order-prod-select2-dropdown .select2-results__option:hover {
+  background-color: #fef08a !important;
+  color: #000000 !important;
+  border-left: 3px solid #ca8a04 !important;
+}
+
+.order-prod-select2-dropdown .select2-results__option--highlighted .prod-name,
+.order-prod-select2-dropdown .select2-results__option:hover .prod-name {
+  color: #000000 !important;
+  font-weight: 700 !important;
+}
+
+.order-prod-select2-dropdown .select2-results__option--highlighted .prod-stage-badge,
+.order-prod-select2-dropdown .select2-results__option:hover .prod-stage-badge {
+  border-color: rgba(0, 0, 0, 0.25) !important;
+  background-color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+/* Dark mode support */
+html.dark-mode .order-product-row .select2-container .select2-selection--single {
+  background: var(--input-bg, #1e293b) !important;
+  border-color: var(--border-soft, #475569) !important;
+  color: var(--text-main, #f8fafc) !important;
+}
+
+html.dark-mode .order-product-row .select2-container .select2-selection--single .select2-selection__rendered {
+  color: var(--text-main, #f8fafc) !important;
+}
+
+html.dark-mode .order-prod-select2-dropdown.select2-dropdown {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark-mode .order-prod-select2-dropdown .select2-search--dropdown {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+html.dark-mode .order-prod-select2-dropdown .select2-search--dropdown .select2-search__field {
+  background: #1e293b !important;
+  border-color: #475569 !important;
+  color: #f8fafc !important;
+}
+
+html.dark-mode .order-prod-select2-dropdown .select2-results__group {
+  background: rgba(251, 191, 36, 0.12) !important;
+  color: #fbbf24 !important;
+}
+
+html.dark-mode .order-prod-select2-dropdown .select2-results__option {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+html.dark-mode .order-prod-select2-dropdown .select2-results__option[aria-selected="true"] {
+  background-color: #3b3518 !important;
+}
+
+html.dark-mode .order-prod-select2-dropdown .select2-results__option[aria-selected="true"] .prod-name {
+  color: #fef08a !important;
+}
+
+html.dark-mode .order-prod-select2-dropdown .select2-results__option--highlighted,
+html.dark-mode .order-prod-select2-dropdown .select2-results__option:hover {
+  background-color: #fef08a !important;
+  color: #000000 !important;
+}
+
+html.dark-mode .order-prod-select2-dropdown .select2-results__option--highlighted .prod-name,
+html.dark-mode .order-prod-select2-dropdown .select2-results__option:hover .prod-name {
+  color: #000000 !important;
 }
 
 .order-product-row .order-product-inputs {
@@ -177,6 +388,11 @@ html.dark-mode .info-preview-box .info-label {
           @endforeach
         </select>
         <div id="transport-details" class="info-preview-box" style="display:none;"></div>
+      </div>
+
+      <div class="form-group" style="margin-top:1rem;">
+        <label>Expected Due Date</label>
+        <input type="date" id="order-due-date" value="{{ !empty($pageData['editOrder']) && $pageData['editOrder']->due_date ? \Carbon\Carbon::parse($pageData['editOrder']->due_date)->format('Y-m-d') : '' }}" style="width:100%; padding:0.65rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
       </div>
 
       <!-- Product Items -->

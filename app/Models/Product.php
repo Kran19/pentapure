@@ -26,7 +26,11 @@ class Product extends Model
         $name = strtoupper($this->name);
         $g = ($grade && $grade !== 'NONE' && $grade !== 'N/A') ? " " . strtoupper($grade) : '';
         $type = strtoupper($this->type ?? 'RAW');
-        $t = ($type === 'FINISHED') ? 'FG' : strtoupper($type);
+        $t = match($type) {
+            'FINISHED' => 'FG',
+            'PACKAGING' => 'PKG',
+            default => $type
+        };
         return "{$name}{$g} ({$t})";
     }
 
