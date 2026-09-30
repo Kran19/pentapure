@@ -51,6 +51,15 @@ class RouteSmokeTest extends TestCase
         $homeResponse->assertStatus(200);
         $homeResponse->assertSee('Total Sales Order');
         $homeResponse->assertSee('Pending Purchase Order');
+        $homeResponse->assertSee('Raw Material Low Stock');
+        $homeResponse->assertSee('Semi-Finished Low Stock');
+        $homeResponse->assertSee('FG Low Stock');
+        $homeResponse->assertSee('Packaging Low Stock');
+        $homeResponse->assertSee('Packaging Stock');
+        $homeResponse->assertSee('type=raw');
+        $homeResponse->assertSee('type=semi');
+        $homeResponse->assertSee('type=finished');
+        $homeResponse->assertSee('type=packaging');
     }
 
     public function test_raw_routes_return_200(): void

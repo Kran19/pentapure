@@ -179,7 +179,7 @@
             @endif
             @if($can('admin_dispatch_activity'))
             <a href="{{ url(request()->segment(1) . '/dispatch-activity') }}" class="nav-item {{ $seg=='dispatch-activity'?'active':'' }}">
-              <span>Dispatch Activity</span>
+              <span>Dispatch Overview</span>
               @if(($sidebarPendingDispatchCount ?? 0) > 0)
                 <span class="sidebar-badge badge-warning" title="{{ $sidebarPendingDispatchCount }} pending dispatch order(s)">{{ $sidebarPendingDispatchCount }}</span>
               @endif
@@ -247,7 +247,7 @@
 
             @if($can('admin_dispatch_activity'))
             <a href="{{ url(request()->segment(1) . '/dispatch-activity') }}" class="nav-item {{ $seg=='dispatch-activity'?'active':'' }}">
-              <span>Dispatch Activity</span>
+              <span>Dispatch Overview</span>
               @if(($sidebarPendingDispatchCount ?? 0) > 0)
                 <span class="sidebar-badge badge-warning" title="{{ $sidebarPendingDispatchCount }} pending dispatch order(s)">{{ $sidebarPendingDispatchCount }}</span>
               @endif

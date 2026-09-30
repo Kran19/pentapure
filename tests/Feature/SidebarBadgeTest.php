@@ -35,9 +35,9 @@ class SidebarBadgeTest extends TestCase
         $response = $this->withSession($session)->get('/admin/dashboard');
         $response->assertStatus(200);
 
-        // Assert Purchase Requests and Dispatch Activity are present, but badges are not shown
+        // Assert Purchase Requests and Dispatch Overview are present, but badges are not shown
         $response->assertSee('Purchase Requests');
-        $response->assertSee('Dispatch Activity');
+        $response->assertSee('Dispatch Overview');
         $response->assertDontSee('pending purchase request(s)');
         $response->assertDontSee('pending dispatch order(s)');
     }

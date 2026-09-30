@@ -256,6 +256,12 @@
                 <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Remaining Qty</div>
                 <div style="font-weight:700; font-size:0.95rem; color:#ef4444;">{{ number_format($totalRemainingQty, 3) }} kg</div>
               </div>
+              <div>
+                <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Sales Note</div>
+                <div style="font-weight:600; font-size:0.88rem; color:{{ !empty(trim((string)$order->notes)) ? 'var(--primary, #D88A00)' : 'var(--text-muted)' }};">
+                  {{ !empty(trim((string)$order->notes)) ? $order->notes : '—' }}
+                </div>
+              </div>
             </div>
 
             <!-- Dispatch User Info & LR Copy (if available) -->
@@ -276,10 +282,14 @@
               </div>
             @endif
 
-            <!-- Order Notes if available -->
-            @if($order->notes)
-              <div style="margin-bottom:1rem; font-size:0.8rem; color:var(--text-muted); font-style:italic; background:rgba(255,255,255,0.02); padding:6px 10px; border-radius:6px;">
-                Note: {{ $order->notes }}
+            <!-- Sales Note / Special Instructions -->
+            @if(!empty(trim((string)$order->notes)))
+              <div style="margin-bottom:1rem; padding:10px 14px; background:rgba(216,138,0,0.08); border-left:3px solid var(--primary, #D88A00); border-radius:6px; display:flex; gap:10px; align-items:flex-start;">
+                <span style="font-size:1.1rem; line-height:1;">📝</span>
+                <div style="flex:1;">
+                  <div style="color:var(--primary, #D88A00); font-size:0.75rem; text-transform:uppercase; font-weight:700; margin-bottom:3px; letter-spacing:0.3px;">Sales Note / Instructions</div>
+                  <div style="font-size:0.88rem; color:var(--text-main, #ffffff); line-height:1.45; word-break:break-word; white-space:pre-wrap;">{{ $order->notes }}</div>
+                </div>
               </div>
             @endif
 

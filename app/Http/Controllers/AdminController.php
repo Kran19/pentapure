@@ -24,36 +24,37 @@ class AdminController extends Controller
 {
     public function dashboard()
     {
-        $rawQty      = DB::table('stocks')->where('stage', 'RAW')
+        $rawQty       = DB::table('stocks')->where('stage', 'RAW')
             ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")->value('net') ?? 0;
-        $semiQty     = DB::table('stocks')->where('stage', 'SEMI')
+        $semiQty      = DB::table('stocks')->where('stage', 'SEMI')
             ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")->value('net') ?? 0;
-        $finishedQty = DB::table('stocks')->where('stage', 'FINISHED')
+        $finishedQty  = DB::table('stocks')->where('stage', 'FINISHED')
+            ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")->value('net') ?? 0;
+        $packagingQty = DB::table('stocks')->where('stage', 'PACKAGING')
             ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")->value('net') ?? 0;
 
-        $lowRawCount = DB::table('stocks')
-            ->join('products', 'stocks.product_id', '=', 'products.id')
-            ->select('stocks.product_id', 'stocks.stage', 'stocks.grade')
-            ->where('stocks.stage', 'RAW')
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.threshold')
-            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) < products.threshold")
-            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
-            ->havingRaw("products.threshold > 0")
-            ->get()
-            ->count();
+        $getLowCount = function (string $stage): int {
+            return DB::table('stocks')
+                ->join('products', 'stocks.product_id', '=', 'products.id')
+                ->leftJoin('stock_limits', function ($join) {
+                    $join->on('stocks.product_id', '=', 'stock_limits.product_id')
+                         ->on('stocks.stage', '=', 'stock_limits.stage')
+                         ->on('stocks.grade', '=', 'stock_limits.grade');
+                })
+                ->select('stocks.product_id', 'stocks.stage', 'stocks.grade')
+                ->where('stocks.stage', $stage)
+                ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.threshold', 'stock_limits.alert_limit')
+                ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) <= IFNULL(stock_limits.alert_limit, products.threshold)")
+                ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
+                ->havingRaw("IFNULL(stock_limits.alert_limit, products.threshold) > 0")
+                ->get()
+                ->count();
+        };
 
-        $lowSemiCount = 0; // Removed as per user request
-
-        $lowFinishedCount = DB::table('stocks')
-            ->join('products', 'stocks.product_id', '=', 'products.id')
-            ->select('stocks.product_id', 'stocks.stage', 'stocks.grade')
-            ->where('stocks.stage', 'FINISHED')
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.threshold')
-            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) < products.threshold")
-            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
-            ->havingRaw("products.threshold > 0")
-            ->get()
-            ->count();
+        $lowRawCount       = $getLowCount('RAW');
+        $lowSemiCount      = $getLowCount('SEMI');
+        $lowFinishedCount  = $getLowCount('FINISHED');
+        $lowPackagingCount = $getLowCount('PACKAGING');
 
         $totalOrders  = Order::count();
         $totalRevenue = Order::sum('total');
@@ -76,8 +77,8 @@ class AdminController extends Controller
         }
 
         $pageData = compact(
-            'rawQty', 'semiQty', 'finishedQty', 
-            'lowRawCount', 'lowSemiCount', 'lowFinishedCount', 
+            'rawQty', 'semiQty', 'finishedQty', 'packagingQty',
+            'lowRawCount', 'lowSemiCount', 'lowFinishedCount', 'lowPackagingCount',
             'totalOrders', 'totalRevenue', 'pendingPOs', 
             'totalWorkers', 'presentToday',
             'days', 'salesTrend', 'productionTrend'

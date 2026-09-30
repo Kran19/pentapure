@@ -147,4 +147,26 @@ class AdminDispatchActivityTest extends TestCase
         $res->assertSee('ORDER #' . $orderA->id . ' - ZETA LOGISTICS');
         $res->assertDontSee('ORDER #' . $orderB->id . ' - BETA FOOD');
     }
+
+    public function test_admin_dispatch_activity_displays_sales_note(): void
+    {
+        $admin = $this->createAdmin();
+        $session = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
+
+        $company = Company::create(['name' => 'Gamma Spices']);
+        $order = Order::create([
+            'created_by' => $admin->id,
+            'company_id' => $company->id,
+            'total' => 1500.00,
+            'status' => 'APPROVED',
+            'dispatch_status' => 'PENDING',
+            'notes' => 'Deliver before noon with fragile handling',
+        ]);
+
+        $res = $this->withSession($session)->get('/admin/dispatch-activity?status=ALL&q=&date_from=&date_to=');
+        $res->assertStatus(200);
+        $res->assertSee('Sales Note');
+        $res->assertSee('Deliver before noon with fragile handling');
+    }
 }
+
