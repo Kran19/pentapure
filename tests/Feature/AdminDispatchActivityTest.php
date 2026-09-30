@@ -68,7 +68,7 @@ class AdminDispatchActivityTest extends TestCase
         $response->assertSee('NEW TRUCK');
         $response->assertSee('SALES BY:');
         $response->assertSee('₹3,693,202.00');
-        $response->assertSee('ORDER PDF');
+        $response->assertSee('Order PDF');
         $response->assertSee('/admin/sales/order/pdf/' . $order->id);
         $response->assertSee('Pending');
         $response->assertSee('Partial');

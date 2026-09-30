@@ -175,11 +175,11 @@
 
           $statusBadge = '';
           if (in_array($rawSt, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED', 'FULLY_DISPATCHED']) || ($totalOrderQty > 0 && $totalRemainingQty <= 0)) {
-            $statusBadge = '<span class="badge" style="font-size:0.65rem; background:#16a34a; color:#ffffff !important; padding:2px 6px; border-radius:4px; font-weight:700;">FULLY DISPATCHED</span>';
+            $statusBadge = '<span class="badge" style="font-size:0.72rem; background:#16a34a; color:#ffffff !important; padding:3px 9px; border-radius:5px; font-weight:700; letter-spacing:0.3px;">FULLY DISPATCHED</span>';
           } elseif (in_array($rawSt, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIAL PENDING', 'PARTIAL_PENDING', 'PARTIAL_DISPATCH', 'PARTIALLY DISPATCHED']) || ($totalDispatchedQty > 0 && $totalRemainingQty > 0)) {
-            $statusBadge = '<span class="badge" style="font-size:0.65rem; background:#f59e0b; color:#ffffff !important; padding:2px 6px; border-radius:4px; font-weight:700;">PARTIAL</span>';
+            $statusBadge = '<span class="badge" style="font-size:0.72rem; background:#f59e0b; color:#ffffff !important; padding:3px 9px; border-radius:5px; font-weight:700; letter-spacing:0.3px;">PARTIAL</span>';
           } else {
-            $statusBadge = '<span class="badge" style="font-size:0.65rem; background:#ef4444; color:#ffffff !important; padding:2px 6px; border-radius:4px; font-weight:700;">PENDING</span>';
+            $statusBadge = '<span class="badge" style="font-size:0.72rem; background:#ef4444; color:#ffffff !important; padding:3px 9px; border-radius:5px; font-weight:700; letter-spacing:0.3px;">PENDING</span>';
           }
 
           $orderTotal = (float)($order->total ?: $order->items->sum(fn($i) => (float)$i->quantity * (float)$i->price));
@@ -196,8 +196,6 @@
                 ORDER #{{ $order->id }} - {{ $companyName }}
               </div>
               <div style="margin-top:6px; font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                {!! $statusBadge !!}
-                <span>•</span>
                 <span>SALES BY: <strong style="color:var(--text-main, #ffffff);">{{ $salesPerson }}</strong></span>
                 <span>•</span>
                 <span>TRANSPORTER: {{ $transportName }}</span>
@@ -205,12 +203,10 @@
                 <span>ORDERED: {{ $orderDate ? $orderDate->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') : 'N/A' }}</span>
               </div>
             </div>
-            <div style="display:flex; align-items:center; gap:10px; text-align:right; flex-wrap:nowrap;">
+            <div style="display:flex; align-items:center; gap:12px; text-align:right; flex-wrap:nowrap;">
               <div style="display:flex; flex-direction:column; gap:5px; align-items:flex-end;">
                 <div style="font-weight:700; font-size:1.1rem; color:var(--primary, #D88A00);">₹{{ number_format($orderTotal, 2) }}</div>
-                <a href="{{ url(request()->segment(1) . '/sales/order/pdf/' . $order->id) }}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm" style="width:auto; padding:0.3rem 0.75rem; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-weight:600; background:var(--primary, #D88A00); color:#000000; white-space:nowrap; border-radius:4px;">
-                  📄 ORDER PDF
-                </a>
+                {!! $statusBadge !!}
               </div>
               <div class="acc-chevron" style="transition:transform 0.25s ease; color:var(--text-muted); display:flex; align-items:center;">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -225,7 +221,12 @@
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:1rem; margin-bottom:1rem;">
               <div>
                 <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Order ID</div>
-                <div style="font-weight:700;">#{{ $order->id }}</div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="font-weight:700;">#{{ $order->id }}</span>
+                  <a href="{{ url(request()->segment(1) . '/sales/order/pdf/' . $order->id) }}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm" style="width:auto; padding:0.2rem 0.55rem; font-size:0.72rem; text-decoration:none; display:inline-flex; align-items:center; gap:3px; font-weight:600; background:var(--primary, #D88A00); color:#000000; border-radius:4px;">
+                    📄 Order PDF
+                  </a>
+                </div>
               </div>
               <div>
                 <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Date & Time</div>
