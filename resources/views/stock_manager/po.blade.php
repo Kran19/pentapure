@@ -18,7 +18,7 @@
         <tr>
           <th>Date</th>
           <th>Material</th>
-          <th>Order Quantity (kg)</th>
+          <th>Order Quantity</th>
           <th>Note</th>
           <th>Status</th>
           <th>Action</th>
@@ -34,7 +34,7 @@
             @endif
           </td>
           <td style="font-weight:600;">{{ $po->product ? $po->product->formatName() : 'Unknown' }}</td>
-          <td style="color:var(--primary-light); font-weight:bold;">{{ number_format($po->quantity, 1) }} {{ $po->product?->unit ?? 'kg' }}</td>
+          <td style="color:var(--primary-light); font-weight:bold;">{{ number_format($po->quantity, 1) }}{{ $po->product?->unit ? ' ' . $po->product->unit : '' }}</td>
           <td style="font-size:0.85rem; color:var(--text-muted); max-width:250px;">
             <div style="word-break:break-word; white-space:normal; line-height:1.35;">
               {{ $po->note ?? '—' }}
@@ -415,14 +415,13 @@
         <input type="text" id="po-product-name" readonly class="po-input-control" style="background-color:#f8fafc; color:#475569;">
       </div>
 
-      <!-- Quantity Input Group with Integrated Unit Badge -->
+      <!-- Quantity Input Group -->
       <div class="form-group" style="margin-bottom:1.15rem;">
         <label for="po-quantity" class="po-field-label">
-          <span>Order Quantity (<span id="po-unit-label">kg</span>) <span style="color:#ef4444;">*</span></span>
+          <span>Order Quantity <span id="po-unit-label" style="font-weight:normal; color:#64748b; font-size:0.8rem;"></span> <span style="color:#ef4444;">*</span></span>
         </label>
-        <div style="position:relative; display:flex; align-items:center;">
-          <input type="number" id="po-quantity" name="quantity" step="0.001" min="0.001" required placeholder="Enter quantity..." class="po-input-control" style="padding-right:4.2rem;">
-          <span id="po-unit-badge" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:#f1f5f9; border:1px solid #e2e8f0; color:#475569; font-size:0.75rem; font-weight:700; padding:4px 9px; border-radius:6px; text-transform:uppercase; pointer-events:none; letter-spacing:0.02em;">KG</span>
+        <div>
+          <input type="number" id="po-quantity" name="quantity" step="0.001" min="0.001" required placeholder="Enter quantity..." class="po-input-control">
         </div>
       </div>
 
@@ -584,9 +583,7 @@ function initPoSelect2() {
       const type = (selectedOption.getAttribute('data-type') || 'RAW').toUpperCase();
 
       const unitLabel = document.getElementById('po-unit-label');
-      if (unitLabel) unitLabel.textContent = unit;
-      const unitBadge = document.getElementById('po-unit-badge');
-      if (unitBadge) unitBadge.textContent = unit;
+      if (unitLabel) unitLabel.textContent = unit ? `(${unit})` : '';
 
       const availHint = document.getElementById('po-avail-hint');
       if (availHint) {
@@ -627,9 +624,7 @@ function openNewPoModal() {
   document.getElementById('po-quantity').value = '';
   document.getElementById('po-note').value = '';
   document.getElementById('po-avail-hint').style.display = 'none';
-  document.getElementById('po-unit-label').textContent = 'kg';
-  const unitBadge = document.getElementById('po-unit-badge');
-  if (unitBadge) unitBadge.textContent = 'kg';
+  document.getElementById('po-unit-label').textContent = '';
 
   const btn = document.getElementById('po-submit-btn');
   btn.textContent = 'Submit Request';
