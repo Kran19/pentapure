@@ -51,16 +51,52 @@ class RouteSmokeTest extends TestCase
         $homeResponse->assertStatus(200);
         $homeResponse->assertSee('Total Sales Order');
         $homeResponse->assertSee('Pending Purchase Order');
-        $homeResponse->assertSee('Raw Material Low Stock');
-        $homeResponse->assertSee('Semi-Finished Low Stock');
-        $homeResponse->assertSee('FG Low Stock');
-        $homeResponse->assertSee('Packaging Low Stock');
         $homeResponse->assertSee('Packaging Stock');
         $homeResponse->assertSee('type=raw');
         $homeResponse->assertSee('type=semi');
         $homeResponse->assertSee('type=finished');
         $homeResponse->assertSee('type=packaging');
         $homeResponse->assertDontSee('Total Revenue');
+        // When low stock count is 0, zero-stock cards are hidden
+        $homeResponse->assertDontSee('Raw Material Low Stock: 0');
+        $homeResponse->assertDontSee('Packaging Low Stock: 0');
+    }
+
+    public function test_admin_dashboard_shows_only_positive_low_stock_cards_with_filter_link(): void
+    {
+        $admin = $this->createUser('ADMIN');
+        $session = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
+
+        $product = \App\Models\Product::create([
+            'name' => 'Tomato Puree',
+            'type' => 'SEMI',
+            'unit' => 'kg',
+            'threshold' => 100,
+            'is_active' => true,
+        ]);
+
+        $loc = \App\Models\Location::create(['name' => 'Cold Storage']);
+
+        \App\Models\Stock::create([
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'stage' => 'SEMI',
+            'location_id' => $loc->id,
+            'quantity' => 20,
+            'transaction_type' => 'IN',
+        ]);
+
+        $response = $this->withSession($session)->get('/admin/home');
+        $response->assertStatus(200);
+
+        // Shows semi-finished low stock card with count 1
+        $response->assertSee('Semi-Finished Low Stock: 1');
+        $response->assertSee('low_stock=1');
+
+        // Does not show raw, finished, or packaging since their count is 0
+        $response->assertDontSee('Raw Material Low Stock');
+        $response->assertDontSee('FG Low Stock');
+        $response->assertDontSee('Packaging Low Stock');
     }
 
     public function test_raw_routes_return_200(): void
