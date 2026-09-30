@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('order_id')->constrained()->onDelete('cascade');
-            $table->foreignId('transporter_id')->constrained()->onDelete('cascade');
+            $table->foreignId('transporter_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('lr_image_path')->nullable(); // stored file path
             $table->timestamps();
         });

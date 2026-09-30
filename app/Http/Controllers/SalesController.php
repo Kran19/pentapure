@@ -107,9 +107,16 @@ class SalesController extends Controller
             return $this->updateOrder($request, $orderId);
         }
 
+        // Allow NA / empty transporter
+        $transporterId = $request->input('transporter_id');
+        if (in_array(strtoupper(trim((string)$transporterId)), ['', 'NA', 'N/A', 'NONE', 'NULL'], true)) {
+            $transporterId = null;
+        }
+        $request->merge(['transporter_id' => $transporterId]);
+
         $request->validate([
             'company_id'      => 'required|exists:companies,id',
-            'transporter_id'  => 'required|exists:transporters,id',
+            'transporter_id'  => 'nullable|exists:transporters,id',
             'items'           => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.grade'      => 'required|string',
@@ -456,9 +463,16 @@ class SalesController extends Controller
             return response()->json(['success' => false, 'message' => 'Fully dispatched or closed orders cannot be edited.'], 422);
         }
 
+        // Allow NA / empty transporter
+        $transporterId = $request->input('transporter_id');
+        if (in_array(strtoupper(trim((string)$transporterId)), ['', 'NA', 'N/A', 'NONE', 'NULL'], true)) {
+            $transporterId = null;
+        }
+        $request->merge(['transporter_id' => $transporterId]);
+
         $request->validate([
             'company_id'      => 'required|exists:companies,id',
-            'transporter_id'  => 'required|exists:transporters,id',
+            'transporter_id'  => 'nullable|exists:transporters,id',
             'items'           => 'required|array|min:1',
             'items.*.id'      => 'nullable|exists:order_items,id',
             'items.*.product_id' => 'required|exists:products,id',

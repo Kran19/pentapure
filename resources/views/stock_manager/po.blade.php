@@ -1,4 +1,4 @@
-@extends(in_array(session('auth_user')['role'] ?? '', ['ADMIN', 'SUB_ADMIN', 'STOCK_MANAGER']) || str_contains(request()->path(), 'sub_admin') || str_contains(request()->path(), 'admin') ? 'layouts.admin' : 'layouts.app')
+@extends(in_array(session('auth_user')['role'] ?? '', ['ADMIN', 'SUB_ADMIN', 'STOCK_MANAGER']) || str_contains(request()->path(), 'stock_manager') || str_contains(request()->path(), 'stock-manager') || str_contains(request()->path(), 'sub_admin') || str_contains(request()->path(), 'admin') ? 'layouts.admin' : 'layouts.app')
 
 @section('content')
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem;">
@@ -84,30 +84,145 @@
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
 <style>
-/* Modern Select2 Styling for PO Modal */
+/* Modern Premium Styling for Request Material Modal */
+#po-modal.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.65) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1050;
+  padding: 1rem;
+  box-sizing: border-box;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+#po-modal.modal-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+#po-modal .modal-content.po-modal-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.3), 0 0 1px rgba(0, 0, 0, 0.1) !important;
+  max-width: 520px !important;
+  width: 100% !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  transform: translateY(12px) scale(0.98);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+}
+#po-modal.modal-overlay.active .modal-content.po-modal-card {
+  transform: translateY(0) scale(1) !important;
+}
+
+/* Modal Header */
+.po-modal-header {
+  padding: 1.25rem 1.5rem 1rem 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.po-modal-icon-badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  color: #b45309;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
+  flex-shrink: 0;
+}
+.po-modal-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  line-height: 1;
+  transition: all 0.15s ease;
+}
+.po-modal-close-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* Modal Form Controls */
+.po-modal-body {
+  padding: 1.25rem 1.5rem 1.5rem 1.5rem;
+}
+.po-field-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.45rem;
+  font-weight: 600;
+  font-size: 0.86rem;
+  color: #334155;
+}
+.po-input-control {
+  width: 100%;
+  height: 44px;
+  padding: 0.55rem 0.85rem;
+  border-radius: 8px;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #0f172a;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.po-input-control:focus {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2) !important;
+}
+
+/* Select2 Container & Dropdown Styling */
 #po-modal .select2-container {
   width: 100% !important;
 }
 #po-modal .select2-container .select2-selection--single {
   background-color: #ffffff !important;
-  border: 1px solid #d1d5db !important;
-  height: 2.6rem !important;
+  border: 1.5px solid #cbd5e1 !important;
+  height: 44px !important;
   border-radius: 8px !important;
   display: flex !important;
   align-items: center !important;
-  padding: 0 0.5rem !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  padding: 0 0.65rem !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
 }
-#po-modal .select2-container--default .select2-selection--single:focus,
+#po-modal .select2-container--default.select2-container--focus .select2-selection--single,
 #po-modal .select2-container--default.select2-container--open .select2-selection--single {
   border-color: #f59e0b !important;
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2) !important;
+  outline: none !important;
 }
 #po-modal .select2-container .select2-selection--single .select2-selection__rendered {
-  color: #111827 !important;
+  color: #0f172a !important;
   font-weight: 600 !important;
-  font-size: 0.9rem !important;
-  line-height: 2.6rem !important;
+  font-size: 0.88rem !important;
+  line-height: 44px !important;
   padding-left: 0.2rem !important;
   padding-right: 1.8rem !important;
   white-space: nowrap !important;
@@ -115,113 +230,177 @@
   text-overflow: ellipsis !important;
 }
 #po-modal .select2-container--default .select2-selection--single .select2-selection__placeholder {
-  color: #9ca3af !important;
+  color: #94a3b8 !important;
   font-weight: 500 !important;
 }
 #po-modal .select2-container--default .select2-selection--single .select2-selection__arrow {
-  height: 2.6rem !important;
+  height: 44px !important;
   right: 8px !important;
 }
+
+/* Dropdown Menu attached to #po-modal */
 .po-select2-dropdown.select2-dropdown {
-  border: 1px solid #d1d5db !important;
-  border-radius: 8px !important;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18) !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.2) !important;
   z-index: 999999 !important;
   background: #ffffff !important;
   overflow: hidden !important;
+  box-sizing: border-box !important;
 }
 .po-select2-dropdown .select2-search--dropdown {
   padding: 8px !important;
-  background: #f9fafb !important;
-  border-bottom: 1px solid #e5e7eb !important;
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
 }
 .po-select2-dropdown .select2-search--dropdown .select2-search__field {
-  border: 1px solid #d1d5db !important;
-  border-radius: 6px !important;
+  border: 1.5px solid #cbd5e1 !important;
+  border-radius: 7px !important;
   padding: 0.45rem 0.65rem !important;
-  font-size: 0.88rem !important;
+  font-size: 0.86rem !important;
   outline: none !important;
   background: #ffffff !important;
-  color: #111827 !important;
+  color: #0f172a !important;
   width: 100% !important;
   box-sizing: border-box !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
 }
 .po-select2-dropdown .select2-search--dropdown .select2-search__field:focus {
   border-color: #f59e0b !important;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25) !important;
 }
 .po-select2-dropdown .select2-results__options {
-  max-height: 260px !important;
+  max-height: 250px !important;
   overflow-y: auto !important;
+  overflow-x: hidden !important;
   padding: 4px 0 !important;
 }
 .po-select2-dropdown .select2-results__option {
-  font-size: 0.86rem !important;
-  padding: 0.55rem 0.75rem !important;
-  color: #374151 !important;
+  font-size: 0.84rem !important;
+  padding: 0.55rem 0.8rem !important;
+  color: #0f172a !important;
   line-height: 1.35 !important;
-  border-bottom: 1px solid #f3f4f6 !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  cursor: pointer !important;
+  background-color: #ffffff !important;
+  transition: background-color 0.1s ease, color 0.1s ease !important;
 }
 .po-select2-dropdown .select2-results__option:last-child {
   border-bottom: none !important;
 }
-.po-select2-dropdown .select2-results__option--highlighted[aria-selected] {
-  background-color: #f59e0b !important;
-  color: #ffffff !important;
-}
-.po-select2-dropdown .select2-results__option--highlighted[aria-selected] * {
-  color: #ffffff !important;
-}
+
+/* Selected state */
 .po-select2-dropdown .select2-results__option[aria-selected="true"] {
-  background-color: #fef3c7 !important;
-  color: #92400e !important;
+  background-color: #fef9c3 !important;
+  border-left: 3px solid #eab308 !important;
+}
+.po-select2-dropdown .select2-results__option[aria-selected="true"] .prod-name {
+  color: #854d0e !important;
+  font-weight: 700 !important;
+}
+
+/* High-Contrast Hover & Highlight state (matches admin/stock!) */
+.po-select2-dropdown .select2-results__option--highlighted,
+.po-select2-dropdown .select2-results__option--highlighted[aria-selected],
+.po-select2-dropdown .select2-results__option--highlighted[aria-selected="true"],
+.po-select2-dropdown .select2-results__option--highlighted[aria-selected="false"],
+.po-select2-dropdown .select2-results__option:hover {
+  background-color: #fef08a !important;
+  color: #000000 !important;
+  border-left: 3px solid #ca8a04 !important;
+}
+.po-select2-dropdown .select2-results__option--highlighted .prod-name,
+.po-select2-dropdown .select2-results__option:hover .prod-name {
+  color: #000000 !important;
+  font-weight: 700 !important;
+}
+.po-select2-dropdown .select2-results__option--highlighted .prod-stage-badge,
+.po-select2-dropdown .select2-results__option:hover .prod-stage-badge {
+  border-color: rgba(0, 0, 0, 0.25) !important;
+  background-color: #ffffff !important;
+  font-weight: 700 !important;
+}
+.po-select2-dropdown .select2-results__option--highlighted .prod-avail,
+.po-select2-dropdown .select2-results__option:hover .prod-avail {
+  color: #15803d !important;
   font-weight: 700 !important;
 }
 </style>
 
 <!-- Add PO Modal -->
 <div id="po-modal" class="modal-overlay" onclick="if(event.target==this) closeModal()">
-  <div class="modal-content card" style="max-width:480px; width:100%; border-radius:12px; padding:1.5rem;">
-    <div class="card-title" id="po-modal-title" style="margin-bottom:1.2rem; font-weight:700; font-size:1.15rem; color:#111827;">Request Material</div>
-    <form action="" method="POST" id="po-form" onsubmit="handlePoSubmit(event, this)">
+  <div class="modal-content po-modal-card">
+    <!-- Header -->
+    <div class="po-modal-header">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div class="po-modal-icon-badge">📦</div>
+        <div>
+          <div id="po-modal-title" style="font-weight:700; font-size:1.15rem; color:#0f172a; line-height:1.2;">Request Material</div>
+          <div style="font-size:0.78rem; color:#64748b; margin-top:2px;">Submit purchase request for factory stock</div>
+        </div>
+      </div>
+      <button type="button" class="po-modal-close-btn" onclick="closeModal()" title="Close">&times;</button>
+    </div>
+
+    <!-- Body -->
+    <form action="" method="POST" id="po-form" class="po-modal-body" onsubmit="handlePoSubmit(event, this)">
       @csrf
       <input type="hidden" id="po-id" name="po_id" value="">
       
-      <div class="form-group" id="product-select-group" style="margin-bottom:1.2rem;">
-        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:#374151;">Select Material *</label>
+      <!-- Material Select Group -->
+      <div class="form-group" id="product-select-group" style="margin-bottom:1.15rem;">
+        <label for="po-product-id" class="po-field-label">
+          <span>Select Material <span style="color:#ef4444;">*</span></span>
+          <span style="font-size:0.72rem; color:#94a3b8; font-weight:500;">Smart Search</span>
+        </label>
         <select name="product_id" id="po-product-id" style="width:100%;">
-            <option value="" disabled selected>-- Search &amp; Select Material --</option>
-            @foreach($pageData['products'] as $rm)
-                @php
-                    $typeDisp = strtoupper($rm->type ?? 'RAW');
-                    $availQty = (float) $rm->totalAvailableStock();
-                    $unit = $rm->unit ?? 'kg';
-                @endphp
-                <option value="{{ $rm->id }}" data-name="{{ $rm->name }}" data-type="{{ $typeDisp }}" data-unit="{{ $unit }}" data-avail="{{ $availQty }}">
-                  {{ $rm->name }} [{{ $typeDisp }}] (Avail: {{ number_format($availQty, 1) }} {{ $unit }})
-                </option>
-            @endforeach
+          <option value="" disabled selected>-- Search &amp; Select Material --</option>
+          @foreach($pageData['products'] as $rm)
+            @php
+              $typeDisp = strtoupper($rm->type ?? 'RAW');
+              $availQty = (float) $rm->totalAvailableStock();
+              $unit = $rm->unit ?? 'kg';
+            @endphp
+            <option value="{{ $rm->id }}" data-name="{{ $rm->name }}" data-type="{{ $typeDisp }}" data-unit="{{ $unit }}" data-avail="{{ $availQty }}">
+              {{ $rm->name }} [{{ $typeDisp }}] (Avail: {{ number_format($availQty, 1) }} {{ $unit }})
+            </option>
+          @endforeach
         </select>
-        <div id="po-avail-hint" style="font-size:0.8rem; color:#059669; font-weight:600; margin-top:0.4rem; display:none;"></div>
+        <!-- Dynamic Stock Hint Card -->
+        <div id="po-avail-hint" style="margin-top:0.5rem; padding:0.55rem 0.8rem; border-radius:8px; font-size:0.8rem; font-weight:600; display:none; transition:all 0.2s ease;"></div>
       </div>
 
-      <div class="form-group" id="product-name-group" style="margin-bottom:1.2rem; display:none;">
-        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:#374151;">Material</label>
-        <input type="text" id="po-product-name" readonly style="width:100%; padding:0.55rem; border-radius:8px; border:1px solid #d1d5db; background-color: #f3f4f6; color:#111827;">
+      <!-- Static Material Display (for edit mode if needed) -->
+      <div class="form-group" id="product-name-group" style="margin-bottom:1.15rem; display:none;">
+        <label for="po-product-name" class="po-field-label">
+          <span>Material</span>
+        </label>
+        <input type="text" id="po-product-name" readonly class="po-input-control" style="background-color:#f8fafc; color:#475569;">
       </div>
 
-      <div class="form-group" style="margin-bottom:1.2rem;">
-        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:#374151;">Order Quantity (<span id="po-unit-label">kg</span>) *</label>
-        <input type="number" id="po-quantity" name="quantity" step="0.001" min="0.001" required placeholder="Enter quantity..." style="width:100%; padding:0.55rem; border-radius:8px; border:1px solid #d1d5db; font-size:0.95rem; font-weight:600; color:#111827;">
+      <!-- Quantity Input Group with Integrated Unit Badge -->
+      <div class="form-group" style="margin-bottom:1.15rem;">
+        <label for="po-quantity" class="po-field-label">
+          <span>Order Quantity (<span id="po-unit-label">kg</span>) <span style="color:#ef4444;">*</span></span>
+        </label>
+        <div style="position:relative; display:flex; align-items:center;">
+          <input type="number" id="po-quantity" name="quantity" step="0.001" min="0.001" required placeholder="Enter quantity..." class="po-input-control" style="padding-right:4.2rem;">
+          <span id="po-unit-badge" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:#f1f5f9; border:1px solid #e2e8f0; color:#475569; font-size:0.75rem; font-weight:700; padding:4px 9px; border-radius:6px; text-transform:uppercase; pointer-events:none; letter-spacing:0.02em;">KG</span>
+        </div>
       </div>
 
-      <div class="form-group" style="margin-bottom:1.5rem;">
-        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:#374151;">Note <span style="font-weight:400; color:#9ca3af;">(Optional)</span></label>
-        <textarea id="po-note" name="note" placeholder="Add optional purchase notes..." style="width:100%; padding:0.55rem; border-radius:8px; border:1px solid #d1d5db; font-size:0.88rem; color:#111827; height:65px; resize:vertical;"></textarea>
+      <!-- Notes Field -->
+      <div class="form-group" style="margin-bottom:1.4rem;">
+        <label for="po-note" class="po-field-label">
+          <span>Note <span style="font-weight:400; color:#94a3b8; font-size:0.78rem;">(Optional)</span></span>
+        </label>
+        <textarea id="po-note" name="note" placeholder="Add optional purchase notes, specifications, or urgency..." style="width:100%; height:68px; padding:0.6rem 0.85rem; border-radius:8px; border:1.5px solid #cbd5e1; font-size:0.86rem; color:#0f172a; resize:vertical; box-sizing:border-box; outline:none; transition:border-color 0.15s ease, box-shadow 0.15s ease;" onfocus="this.style.borderColor='#f59e0b'; this.style.boxShadow='0 0 0 3px rgba(245, 158, 11, 0.2)';" onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';"></textarea>
       </div>
 
-      <div style="display:flex; gap:10px;">
-        <button type="submit" id="po-submit-btn" class="btn btn-primary" style="flex:1; padding:0.7rem; font-weight:700; border-radius:8px; background:#f59e0b; color:#fff; border:none; cursor:pointer;">Submit Request</button>
-        <button type="button" class="btn btn-secondary" style="flex:1; padding:0.7rem; font-weight:600; border-radius:8px;" onclick="closeModal()">Cancel</button>
+      <!-- Action Buttons -->
+      <div style="display:flex; gap:12px;">
+        <button type="button" class="btn" style="flex:1; height:42px; padding:0 1rem; font-weight:600; font-size:0.88rem; border-radius:8px; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; cursor:pointer; transition:all 0.15s ease;" onmouseover="this.style.background='#e2e8f0'; this.style.color='#1e293b';" onmouseout="this.style.background='#f1f5f9'; this.style.color='#475569';" onclick="closeModal()">Cancel</button>
+        <button type="submit" id="po-submit-btn" class="btn" style="flex:1.4; height:42px; padding:0 1.2rem; font-weight:700; font-size:0.88rem; border-radius:8px; background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color:#ffffff; border:none; cursor:pointer; box-shadow:0 3px 10px rgba(245, 158, 11, 0.35); transition:all 0.15s ease;" onmouseover="this.style.filter='brightness(1.06)';" onmouseout="this.style.filter='none';">Submit Request</button>
       </div>
     </form>
   </div>
@@ -235,120 +414,124 @@ function escapeHtml(text) {
   return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function ensureDependencies(callback) {
-  if (typeof jQuery === 'undefined') {
-    const s = document.createElement('script');
-    s.src = 'https://code.jquery.com/jquery-3.7.1.min.js';
-    s.onload = () => loadSelect2(callback);
-    document.head.appendChild(s);
-  } else {
-    loadSelect2(callback);
-  }
-}
-
-function loadSelect2(callback) {
-  if (typeof jQuery.fn.select2 === 'undefined') {
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js';
-    s.onload = () => { if (callback) callback(); };
-    document.head.appendChild(s);
-  } else {
-    if (callback) callback();
-  }
-}
-
 function initPoSelect2() {
-  ensureDependencies(() => {
-    const $select = $('#po-product-id');
-    if ($select.hasClass('select2-hidden-accessible')) {
+  if (typeof jQuery === 'undefined' || typeof jQuery.fn.select2 === 'undefined') {
+    setTimeout(initPoSelect2, 50);
+    return;
+  }
+
+  const $select = $('#po-product-id');
+  if (!$select.length) return;
+
+  if ($select.hasClass('select2-hidden-accessible')) {
+    try {
       $select.select2('destroy');
-    }
+    } catch(e) {}
+  }
 
-    $select.select2({
-      dropdownParent: $('#po-modal .modal-content'),
-      dropdownCssClass: 'po-select2-dropdown',
-      placeholder: '-- Search & Select Material --',
-      allowClear: false,
-      width: '100%',
-      matcher: function(params, data) {
-        if ($.trim(params.term) === '') {
-          return data;
-        }
-
-        const terms = $.trim(params.term).toLowerCase().split(/\s+/);
-        const text = (data.text || '').toLowerCase();
-        const allMatched = terms.every(t => text.indexOf(t) > -1);
-
-        if (allMatched) {
-          return data;
-        }
+  $select.select2({
+    dropdownParent: $('#po-modal'),
+    dropdownCssClass: 'po-select2-dropdown',
+    placeholder: '-- Search & Select Material --',
+    allowClear: false,
+    width: '100%',
+    matcher: function(params, data) {
+      if (!params.term || $.trim(params.term) === '') {
+        return data;
+      }
+      if (!data.text) {
         return null;
-      },
-      templateResult: function(state) {
-        if (!state.id) return state.text;
-        const $el = $(state.element);
-        const type = $el.data('type') || '';
-        const unit = $el.data('unit') || 'kg';
-        const avail = parseFloat($el.data('avail') || 0);
-        const name = $el.data('name') || state.text;
-
-        let typeColor = '#f59e0b';
-        if (type === 'SEMI') typeColor = '#3b82f6';
-        if (type === 'FINISHED' || type === 'FG') typeColor = '#10b981';
-
-        const availFormatted = avail.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
-        const availColor = avail > 0 ? '#059669' : '#9ca3af';
-
-        return $(`
-          <div style="display:flex; justify-content:space-between; align-items:center; width:100%; padding:2px 0;">
-            <div style="font-weight:600; color:#111827; display:flex; align-items:center; gap:6px;">
-              <span>${escapeHtml(name)}</span>
-              <span style="font-size:0.68rem; font-weight:700; padding:1px 6px; border-radius:4px; background:${typeColor}20; color:${typeColor}; border:1px solid ${typeColor}40;">${escapeHtml(type)}</span>
-            </div>
-            <div style="font-size:0.75rem; font-weight:700; color:${availColor}; white-space:nowrap; margin-left:12px;">
-              Avail: ${availFormatted} ${escapeHtml(unit)}
-            </div>
-          </div>
-        `);
-      },
-      templateSelection: function(state) {
-        if (!state.id) return state.text;
-        const $el = $(state.element);
-        const type = $el.data('type') || '';
-        const unit = $el.data('unit') || 'kg';
-        const avail = parseFloat($el.data('avail') || 0);
-        const name = $el.data('name') || state.text;
-        const availFormatted = avail.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
-        return `${name} [${type}] (Avail: ${availFormatted} ${unit})`;
       }
-    });
-
-    $select.off('change.po').on('change.po', function() {
-      const selectedOption = this.options[this.selectedIndex];
-      if (selectedOption && selectedOption.value) {
-        const unit = selectedOption.getAttribute('data-unit') || 'kg';
-        const avail = parseFloat(selectedOption.getAttribute('data-avail') || 0);
-
-        const unitLabel = document.getElementById('po-unit-label');
-        if (unitLabel) unitLabel.textContent = unit;
-
-        const availHint = document.getElementById('po-avail-hint');
-        if (availHint) {
-          availHint.innerHTML = `✅ Current Available Stock: <strong>${avail.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${unit}</strong>`;
-          availHint.style.display = 'block';
+      const term = params.term.toLowerCase().trim();
+      const text = data.text.toLowerCase();
+      const tokens = term.split(/\s+/).filter(Boolean);
+      for (let i = 0; i < tokens.length; i++) {
+        if (text.indexOf(tokens[i]) === -1) {
+          return null;
         }
-      } else {
-        const availHint = document.getElementById('po-avail-hint');
-        if (availHint) availHint.style.display = 'none';
       }
-    });
+      return data;
+    },
+    templateResult: function(state) {
+      if (!state.id) return $(`<span style="color:#94a3b8; font-weight:500;">${escapeHtml(state.text)}</span>`);
+      const $el = $(state.element);
+      const type = ($el.data('type') || 'RAW').toUpperCase();
+      const unit = $el.data('unit') || 'kg';
+      const avail = parseFloat($el.data('avail') || 0);
+      const name = $el.data('name') || state.text;
 
-    $select.off('select2:open').on('select2:open', function() {
-      setTimeout(() => {
-        const searchField = document.querySelector('.po-select2-dropdown .select2-search__field');
-        if (searchField) searchField.focus();
-      }, 50);
-    });
+      let badgeBg = '#d1fae5';
+      let badgeColor = '#065f46';
+      let badgeBorder = '#a7f3d0';
+      if (type === 'SEMI') { badgeBg = '#dbeafe'; badgeColor = '#1e40af'; badgeBorder = '#bfdbfe'; }
+      else if (type === 'FINISHED' || type === 'FG') { badgeBg = '#fef3c7'; badgeColor = '#92400e'; badgeBorder = '#fde68a'; }
+
+      const availFormatted = avail.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+      const availColor = avail > 0 ? '#15803d' : '#94a3b8';
+
+      return $(`
+        <div class="prod-option-row" style="display:flex; justify-content:space-between; align-items:center; width:100%; padding:2px 0;">
+          <div style="display:flex; align-items:center; gap:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+            <span class="prod-name" style="font-weight:700; color:#0f172a;">${escapeHtml(name)}</span>
+            <span class="prod-stage-badge" style="font-size:0.68rem; font-weight:700; padding:1px 6px; border-radius:4px; background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder};">${escapeHtml(type)}</span>
+          </div>
+          <div class="prod-avail" style="font-size:0.75rem; font-weight:700; color:${availColor}; white-space:nowrap; margin-left:12px;">
+            Avail: ${availFormatted} ${escapeHtml(unit)}
+          </div>
+        </div>
+      `);
+    },
+    templateSelection: function(state) {
+      if (!state.id) return state.text;
+      const $el = $(state.element);
+      const type = ($el.data('type') || 'RAW').toUpperCase();
+      const unit = $el.data('unit') || 'kg';
+      const avail = parseFloat($el.data('avail') || 0);
+      const name = $el.data('name') || state.text;
+      const availFormatted = avail.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+      return `${name} [${type}] (Avail: ${availFormatted} ${unit})`;
+    }
+  });
+
+  $select.off('change.po').on('change.po', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    if (selectedOption && selectedOption.value) {
+      const unit = selectedOption.getAttribute('data-unit') || 'kg';
+      const avail = parseFloat(selectedOption.getAttribute('data-avail') || 0);
+      const type = (selectedOption.getAttribute('data-type') || 'RAW').toUpperCase();
+
+      const unitLabel = document.getElementById('po-unit-label');
+      if (unitLabel) unitLabel.textContent = unit;
+      const unitBadge = document.getElementById('po-unit-badge');
+      if (unitBadge) unitBadge.textContent = unit;
+
+      const availHint = document.getElementById('po-avail-hint');
+      if (availHint) {
+        const availFormatted = avail.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+        if (avail > 0) {
+          availHint.style.background = '#f0fdf4';
+          availHint.style.border = '1px solid #bbf7d0';
+          availHint.style.color = '#15803d';
+          availHint.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><span>✅ Current Available Stock: <strong>${availFormatted} ${escapeHtml(unit)}</strong></span><span style="font-size:0.7rem; background:#dcfce7; padding:2px 6px; border-radius:4px; font-weight:700;">IN STOCK</span></div>`;
+        } else {
+          availHint.style.background = '#fef2f2';
+          availHint.style.border = '1px solid #fecaca';
+          availHint.style.color = '#b91c1c';
+          availHint.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><span>⚠️ Factory Stock: <strong>0.0 ${escapeHtml(unit)}</strong></span><span style="font-size:0.7rem; background:#fee2e2; padding:2px 6px; border-radius:4px; font-weight:700;">ZERO STOCK</span></div>`;
+        }
+        availHint.style.display = 'block';
+      }
+    } else {
+      const availHint = document.getElementById('po-avail-hint');
+      if (availHint) availHint.style.display = 'none';
+    }
+  });
+
+  $select.off('select2:open.poFocus').on('select2:open.poFocus', function() {
+    setTimeout(() => {
+      const searchField = document.querySelector('.po-select2-dropdown .select2-search__field');
+      if (searchField) searchField.focus();
+    }, 20);
   });
 }
 
@@ -362,6 +545,8 @@ function openNewPoModal() {
   document.getElementById('po-note').value = '';
   document.getElementById('po-avail-hint').style.display = 'none';
   document.getElementById('po-unit-label').textContent = 'kg';
+  const unitBadge = document.getElementById('po-unit-badge');
+  if (unitBadge) unitBadge.textContent = 'kg';
 
   const btn = document.getElementById('po-submit-btn');
   btn.textContent = 'Submit Request';
@@ -373,9 +558,9 @@ function openNewPoModal() {
   // Reset and initialize Select2 with smart search
   const $select = $('#po-product-id');
   if ($select.length) {
-    $select.val('');
+    $select.val('').trigger('change.po');
   }
-  initPoSelect2();
+  setTimeout(initPoSelect2, 20);
 }
 
 function closeModal() {
@@ -384,6 +569,15 @@ function closeModal() {
     $('#po-product-id').select2('close');
   }
 }
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const poModal = document.getElementById('po-modal');
+    if (poModal && poModal.classList.contains('active')) {
+      closeModal();
+    }
+  }
+});
 
 function handlePoSubmit(e, form) {
   const isSelectVisible = document.getElementById('product-select-group').style.display !== 'none';

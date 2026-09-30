@@ -1560,7 +1560,7 @@ const app = {
     const transportId = document.getElementById('order-transport').value;
     const notes       = document.getElementById('order-notes').value;
 
-    if (!companyId || !transportId) return this.toast('Select Company and Transport', 'error');
+    if (!companyId) return this.toast('Select Company', 'error');
 
     const items = [];
     document.querySelectorAll('#order-products .dynamic-row').forEach(row => {
@@ -1580,7 +1580,8 @@ const app = {
 
     if (items.length === 0) return this.toast('Add valid products and grades', 'error');
 
-    const body = { company_id: companyId, transporter_id: transportId, notes, items };
+    const cleanTransportId = (transportId && transportId !== 'NA' && transportId !== '') ? transportId : null;
+    const body = { company_id: companyId, transporter_id: cleanTransportId, notes, items };
     const editOrderIdEl = document.getElementById('edit-order-id');
     if (editOrderIdEl) {
       body.order_id = editOrderIdEl.value;

@@ -165,11 +165,11 @@ html.dark-mode .info-preview-box .info-label {
 
       <div class="form-group">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-          <label style="margin-bottom:0;">Select Transport *</label>
+          <label style="margin-bottom:0;">Select Transport</label>
           <button type="button" class="btn btn-sm" onclick="app.openAddTransportModal()" style="padding:0.35rem 0.8rem; font-size:0.78rem; font-weight:700; width:auto; border-radius:6px; letter-spacing:0.3px;">+ ADD TRANSPORT</button>
         </div>
         <select id="order-transport" onchange="app.onSalesTransportSelect(this.value)">
-          <option value="" disabled {{ empty($pageData['editOrder']) ? 'selected' : '' }}>NA</option>
+          <option value="" {{ (empty($pageData['editOrder']) || empty($pageData['editOrder']->transporter_id)) ? 'selected' : '' }}>NA</option>
           @foreach($pageData['transportCompanies'] as $t)
             <option value="{{ $t['id'] }}" {{ (!empty($pageData['editOrder']) && $pageData['editOrder']->transporter_id == $t['id']) ? 'selected' : '' }}>
               {{ $t['name'] }}

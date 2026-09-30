@@ -1166,7 +1166,7 @@ const app = {
     const transportId = document.getElementById('order-transport').value;
     const notes = document.getElementById('order-notes').value;
 
-    if(!companyId || !transportId) return this.toast('Select Company and Transport', 'error');
+    if(!companyId) return this.toast('Select Company', 'error');
 
     const products = [];
     document.querySelectorAll('#order-products .dynamic-row').forEach(row => {
@@ -1181,11 +1181,12 @@ const app = {
 
     const total = products.reduce((sum, p) => sum + (p.qty * p.price), 0);
 
+    const cleanTransportId = (transportId && transportId !== 'NA' && transportId !== '') ? transportId : null;
     const orders = DB.get('orders');
     orders.push({
       id: DB.generateId(),
       companyId,
-      transportId,
+      transportId: cleanTransportId,
       products,
       notes,
       total,

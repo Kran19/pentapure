@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
             $table->foreignId('company_id')->constrained()->onDelete('cascade');
-            $table->foreignId('transporter_id')->constrained()->onDelete('cascade');
+            $table->foreignId('transporter_id')->nullable()->constrained()->onDelete('cascade');
             $table->decimal('total', 14, 2)->default(0);
             $table->timestamp('date')->useCurrent();
             $table->enum('status', ['OPEN', 'CLOSED'])->default('OPEN');
