@@ -250,6 +250,7 @@ function adminAddStock() {
           <option value="RAW">RAW</option>
           <option value="SEMI">SEMI</option>
           <option value="FINISHED">FINISHED</option>
+          <option value="PACKAGING">PACKAGING</option>
         </select>
 
         <label style="font-size:0.82rem; font-weight:600; color:#6b7280;">Product</label>
@@ -279,8 +280,8 @@ function adminAddStock() {
       window.onStockStageChange = function() {
         const stage = document.getElementById('add-stock-stage').value;
         const productSelect = document.getElementById('add-stock-product');
-        const targetType = stage === 'RAW' ? 'RAW' : 'FINISHED';
-        const filteredProducts = adminStockProducts.filter(p => p.type === targetType && p.is_active);
+        const targetType = (stage === 'FG' ? 'FINISHED' : stage);
+        const filteredProducts = adminStockProducts.filter(p => (p.type === targetType || (targetType === 'FINISHED' && p.type === 'FG')) && p.is_active);
         
         productSelect.innerHTML = filteredProducts.map(p => {
           let t = stage.toLowerCase() === 'finished' ? 'fg' : stage.toLowerCase();
@@ -348,7 +349,7 @@ async function adminAdjustStock(productId, stage, grade, productName = '', curre
   if (window.isReadOnly) {
     return Swal.fire('View-Only Mode', 'You have View-Only permission. Stock adjustment is disabled.', 'warning');
   }
-  const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG' }[stage] || stage;
+  const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG', PACKAGING: '📦 Packaging' }[stage] || stage;
   const isDefGrade = !grade || ['NONE', 'N/A', 'NA', 'N / A'].includes(grade.trim().toUpperCase());
   const displayGrade = !isDefGrade ? ` &nbsp;·&nbsp; Grade: <strong style="color:#333;">${grade}</strong>` : '';
 
@@ -617,7 +618,7 @@ function adminSetLimit(productId, stage, grade, currentLimit, productName = '') 
   if (window.isReadOnly) {
     return Swal.fire('View-Only Mode', 'You have View-Only permission. Setting alert limit is disabled.', 'warning');
   }
-  const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG' }[stage] || stage;
+  const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG', PACKAGING: '📦 Packaging' }[stage] || stage;
   const isDefGrade = !grade || ['NONE', 'N/A', 'NA', 'N / A'].includes(grade.trim().toUpperCase());
   const displayGrade = !isDefGrade ? ` &nbsp;·&nbsp; Grade: <strong style="color:#333;">${grade}</strong>` : '';
 

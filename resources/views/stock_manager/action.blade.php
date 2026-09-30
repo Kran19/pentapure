@@ -144,10 +144,11 @@ input[type=number].no-spinners {
     <div class="form-group" style="margin-bottom:1.2rem;">
       <label>Stage *</label>
       <select id="sm-stage" onchange="onStageChange(this.value)" style="padding:0.75rem; width:100%; font-size:1rem; font-weight:600; cursor:pointer;">
-        <option value="ALL" selected>ALL (RAW, SEMI, FINISHED)</option>
+        <option value="ALL" selected>ALL (RAW, SEMI, FINISHED, PACKAGING)</option>
         <option value="RAW">RAW</option>
         <option value="SEMI">SEMI</option>
         <option value="FINISHED">FINISHED</option>
+        <option value="PACKAGING">PACKAGING</option>
       </select>
     </div>
 
