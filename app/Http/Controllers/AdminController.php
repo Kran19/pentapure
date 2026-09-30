@@ -871,67 +871,78 @@ class AdminController extends Controller
 
     public function logs()
     {
+        $clearedAt = \Illuminate\Support\Facades\Cache::get('admin_logs_cleared_at');
+
         // 1. Production Logs (Raw/Semi/Finished)
-        $prodLogs = ProductionLog::with(['user', 'outputProduct'])
-            ->orderByDesc('created_at')->get()->map(fn($l) => [
-                'category'    => 'Production',
-                'date'        => $l->created_at->toISOString(),
-                'description' => "Produced {$l->output_qty}kg of " . ($l->outputProduct ? $l->outputProduct->formatName($l->output_grade) : 'Unknown'),
-                'by'          => $l->user?->name,
-                'role'        => $l->user?->role,
-            ]);
+        $prodQuery = ProductionLog::with(['user', 'outputProduct'])->orderByDesc('created_at');
+        if ($clearedAt) $prodQuery->where('created_at', '>', $clearedAt);
+        $prodLogs = $prodQuery->get()->map(fn($l) => [
+            'category'    => 'Production',
+            'date'        => $l->created_at->toISOString(),
+            'description' => "Produced {$l->output_qty}kg of " . ($l->outputProduct ? $l->outputProduct->formatName($l->output_grade) : 'Unknown'),
+            'by'          => $l->user?->name,
+            'role'        => $l->user?->role,
+        ]);
 
         // 2. Dispatch Logs
-        $dispLogs = DispatchLog::with(['user', 'order.company'])
-            ->orderByDesc('created_at')->get()->map(fn($d) => [
-                'category'    => 'Dispatch',
-                'date'        => $d->created_at->toISOString(),
-                'description' => "Dispatched Order #{$d->order_id} to {$d->order?->company?->name}",
-                'by'          => $d->user?->name,
-                'role'        => 'DISPATCH',
-            ]);
+        $dispQuery = DispatchLog::with(['user', 'order.company'])->orderByDesc('created_at');
+        if ($clearedAt) $dispQuery->where('created_at', '>', $clearedAt);
+        $dispLogs = $dispQuery->get()->map(fn($d) => [
+            'category'    => 'Dispatch',
+            'date'        => $d->created_at->toISOString(),
+            'description' => "Dispatched Order #{$d->order_id} to {$d->order?->company?->name}",
+            'by'          => $d->user?->name,
+            'role'        => 'DISPATCH',
+        ]);
 
         // 3. Sales Orders
-        $salesLogs = Order::with(['creator', 'company'])
-            ->orderByDesc('created_at')->get()->map(fn($o) => [
-                'category'    => 'Sales',
-                'date'        => $o->created_at->toISOString(),
-                'description' => "Created Order #{$o->id} for {$o->company?->name} (Total: ₹{$o->total})",
-                'by'          => $o->creator?->name,
-                'role'        => 'SALES',
-            ]);
+        $salesQuery = Order::with(['creator', 'company'])->orderByDesc('created_at');
+        if ($clearedAt) $salesQuery->where('created_at', '>', $clearedAt);
+        $salesLogs = $salesQuery->get()->map(fn($o) => [
+            'category'    => 'Sales',
+            'date'        => $o->created_at->toISOString(),
+            'description' => "Created Order #{$o->id} for {$o->company?->name} (Total: ₹{$o->total})",
+            'by'          => $o->creator?->name,
+            'role'        => 'SALES',
+        ]);
 
         // 4. Purchase Orders
-        $poLogs = PurchaseOrder::with(['user', 'product'])
-            ->orderByDesc('created_at')->get()->map(fn($p) => [
-                'category'    => 'Purchase',
-                'date'        => $p->created_at->toISOString(),
-                'description' => "Requested {$p->quantity}kg of {$p->product?->name} (Status: {$p->status})",
-                'by'          => $p->user?->name,
-                'role'        => $p->user?->role,
-            ]);
+        $poQuery = PurchaseOrder::with(['user', 'product'])->orderByDesc('created_at');
+        if ($clearedAt) $poQuery->where('created_at', '>', $clearedAt);
+        $poLogs = $poQuery->get()->map(fn($p) => [
+            'category'    => 'Purchase',
+            'date'        => $p->created_at->toISOString(),
+            'description' => "Requested {$p->quantity}kg of {$p->product?->name} (Status: {$p->status})",
+            'by'          => $p->user?->name,
+            'role'        => $p->user?->role,
+        ]);
 
         // 5. Stock Adjustments & Inwards
-        $stockLogs = Stock::with(['user', 'product'])
-            ->whereIn('notes', ['Manual admin adjustment', 'PO approved & auto-inwarded'])
-            ->orWhere('transaction_type', 'IN')
-            ->orderByDesc('created_at')->get()->map(fn($s) => [
-                'category'    => 'Inventory',
-                'date'        => $s->created_at->toISOString(),
-                'description' => "{$s->transaction_type}ward: {$s->quantity}kg of {$s->product?->name} ({$s->stage}). Notes: {$s->notes}",
-                'by'          => $s->user?->name,
-                'role'        => $s->user?->role,
-            ]);
+        $stockQuery = Stock::with(['user', 'product'])
+            ->where(function($q) {
+                $q->whereIn('notes', ['Manual admin adjustment', 'PO approved & auto-inwarded'])
+                  ->orWhere('transaction_type', 'IN');
+            })
+            ->orderByDesc('created_at');
+        if ($clearedAt) $stockQuery->where('created_at', '>', $clearedAt);
+        $stockLogs = $stockQuery->get()->map(fn($s) => [
+            'category'    => 'Inventory',
+            'date'        => $s->created_at->toISOString(),
+            'description' => "{$s->transaction_type}ward: {$s->quantity}kg of {$s->product?->name} ({$s->stage}). Notes: {$s->notes}",
+            'by'          => $s->user?->name,
+            'role'        => $s->user?->role,
+        ]);
 
         // 6. Cashier Transactions (New)
-        $cashLogs = \App\Models\Transaction::with('user')
-            ->orderByDesc('created_at')->get()->map(fn($t) => [
-                'category'    => 'Cashier',
-                'date'        => $t->created_at->toISOString(),
-                'description' => "Cash {$t->type}: ₹{$t->amount} for {$t->category}. Note: {$t->note}",
-                'by'          => $t->user?->name,
-                'role'        => 'CASHIER',
-            ]);
+        $cashQuery = \App\Models\Transaction::with('user')->orderByDesc('created_at');
+        if ($clearedAt) $cashQuery->where('created_at', '>', $clearedAt);
+        $cashLogs = $cashQuery->get()->map(fn($t) => [
+            'category'    => 'Cashier',
+            'date'        => $t->created_at->toISOString(),
+            'description' => "Cash {$t->type}: ₹{$t->amount} for {$t->category}. Note: {$t->note}",
+            'by'          => $t->user?->name,
+            'role'        => 'CASHIER',
+        ]);
 
         $allLogs = $prodLogs->concat($dispLogs)->concat($salesLogs)->concat($poLogs)->concat($stockLogs)->concat($cashLogs)
             ->sortByDesc('date')->values();
