@@ -296,6 +296,15 @@ function submitWorkerForm(e) {
     });
 }
 
+@php
+  $currentAttSlug = auth()->user()?->login_slug 
+      ?? (request()->segment(1) === 'public' ? request()->segment(2) : request()->segment(1)) 
+      ?: 'attendance';
+  $attendanceClearUrl = $currentAttSlug === 'admin'
+      ? (Route::has('admin.attendance.clear') ? route('admin.attendance.clear') : url('admin/attendance/clear'))
+      : (Route::has($currentAttSlug . '.clear') ? route($currentAttSlug . '.clear') : url($currentAttSlug . '/clear'));
+@endphp
+
 function confirmClearAttendance() {
     Swal.fire({
         title: 'Clear All Attendance?',
@@ -307,7 +316,7 @@ function confirmClearAttendance() {
         cancelButtonText: 'Cancel'
     }).then((result) => {
         if (result.isConfirmed) {
-            const clearUrl = '{{ request()->segment(1) == "admin" ? route(request()->segment(1) . ".attendance.clear") : route(request()->segment(1) . ".clear") }}';
+            const clearUrl = @json($attendanceClearUrl);
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = clearUrl;

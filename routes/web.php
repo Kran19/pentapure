@@ -85,6 +85,9 @@ Route::middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CA
     Route::post('/api/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);
     Route::get('/api/locations', [\App\Http\Controllers\AdminController::class, 'getLocationsApi']);
     Route::get('/api/stock/locations', [\App\Http\Controllers\AdminController::class, 'stockLocationsBreakdownApi']);
+    Route::post('/admin/logs/clear', [\App\Http\Controllers\AdminController::class, 'clearLogs']);
+    Route::post('/admin/attendance/clear', [\App\Http\Controllers\AttendanceController::class, 'clearAllAttendanceData']);
+    Route::post('/attendance/clear', [\App\Http\Controllers\AttendanceController::class, 'clearAllAttendanceData']);
 });
 Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE,STOCK_MANAGER')->group(function() {
     Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout']);

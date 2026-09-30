@@ -100,11 +100,20 @@ function resetBladeFilters() {
   applyBladeFilters();
 }
 
+@php
+  $currentSlug = auth()->user()?->login_slug 
+      ?? (request()->segment(1) === 'public' ? request()->segment(2) : request()->segment(1)) 
+      ?: 'admin';
+  $clearUrl = Route::has($currentSlug . '.logs.clear') 
+      ? route($currentSlug . '.logs.clear') 
+      : (Route::has('admin.logs.clear') ? route('admin.logs.clear') : url('admin/logs/clear'));
+@endphp
+
 function confirmClearLogs() {
   if (!confirm('Are you sure you want to permanently clear all activity logs? This action will clear the logs view while keeping current stock balances, users, and products 100% intact.')) {
     return;
   }
-  const clearUrl = '{{ route(request()->segment(1) . ".logs.clear") }}';
+  const clearUrl = @json($clearUrl);
   const form = document.createElement('form');
   form.method = 'POST';
   form.action = clearUrl;
