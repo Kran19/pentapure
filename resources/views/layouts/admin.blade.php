@@ -17,6 +17,10 @@
   <link rel="apple-touch-icon" href="{{ asset('logo.png') }}?v=1">
   <link rel="stylesheet" href="{{ asset('css/style.css') }}?v={{ filemtime(public_path('css/style.css')) }}">
   <link rel="stylesheet" href="{{ asset('css/tabulator-custom.css') }}">
+  <!-- Cropper.js -->
+  <link rel="stylesheet" href="{{ asset('vendor/cropperjs/cropper.min.css') }}">
+  <script src="{{ asset('vendor/cropperjs/cropper.min.js') }}"></script>
+  <script src="{{ asset('js/image-cropper.js') }}?v={{ filemtime(public_path('js/image-cropper.js')) }}"></script>
   <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

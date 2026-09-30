@@ -2300,11 +2300,11 @@ const app = {
       return this.toast('Only JPG, JPEG, PNG, and WEBP images are allowed.', 'error');
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
+    const doUpload = (dataUrl) => {
       const currentSlug = this.getCurrentSlug('dispatch');
       const endpoint = `${this.getBaseUrl()}/${currentSlug}/update-lr`;
 
+      this.toast('Uploading cropped LR Copy...', 'info');
       fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -2314,7 +2314,7 @@ const app = {
         },
         body: JSON.stringify({
           log_id: logId,
-          lr_image: reader.result
+          lr_image: dataUrl
         })
       })
       .then(r => r.json())
@@ -2328,7 +2328,104 @@ const app = {
       })
       .catch(() => this.toast('Network error uploading LR copy.', 'error'));
     };
-    reader.readAsDataURL(file);
+
+    if (window.ImageCropper) {
+      window.ImageCropper.open({
+        file: file,
+        title: '✂️ Crop LR Copy',
+        originalName: file.name,
+        onDone: (result) => {
+          doUpload(result.dataUrl);
+        },
+        onCancel: () => {
+          event.target.value = '';
+        }
+      });
+    } else {
+      const reader = new FileReader();
+      reader.onload = () => doUpload(reader.result);
+      reader.readAsDataURL(file);
+    }
+  },
+
+  handleDispatchLRPick(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      return this.toast('Only JPG, JPEG, PNG, and WEBP images are allowed.', 'error');
+    }
+
+    window._originalDispatchLRFile = file;
+
+    if (window.ImageCropper) {
+      window.ImageCropper.open({
+        file: file,
+        title: '✂️ Crop LR Copy',
+        originalName: file.name,
+        onDone: (result) => {
+          window._currentDispatchLRDataUrl = result.dataUrl;
+          const img = document.getElementById('lr-preview');
+          const wrap = document.getElementById('dispatch-lr-preview-container');
+          const nameEl = document.getElementById('dispatch-lr-filename');
+
+          if (img) img.src = result.dataUrl;
+          if (wrap) wrap.style.display = 'inline-flex';
+          if (nameEl) nameEl.textContent = result.name || 'Cropped LR Copy.jpg';
+          this.toast('LR Copy cropped and attached!', 'success');
+        },
+        onCancel: () => {
+          event.target.value = '';
+        }
+      });
+    } else {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        window._currentDispatchLRDataUrl = e.target.result;
+        const img = document.getElementById('lr-preview');
+        const wrap = document.getElementById('dispatch-lr-preview-container');
+        const nameEl = document.getElementById('dispatch-lr-filename');
+
+        if (img) img.src = e.target.result;
+        if (wrap) wrap.style.display = 'inline-flex';
+        if (nameEl) nameEl.textContent = file.name;
+      };
+      reader.readAsDataURL(file);
+    }
+  },
+
+  recropDispatchLR() {
+    const file = window._originalDispatchLRFile || window._currentDispatchLRDataUrl;
+    if (!file) return;
+
+    if (window.ImageCropper) {
+      window.ImageCropper.open({
+        file: file,
+        title: '✂️ Re-crop LR Copy',
+        onDone: (result) => {
+          window._currentDispatchLRDataUrl = result.dataUrl;
+          const img = document.getElementById('lr-preview');
+          if (img) img.src = result.dataUrl;
+          this.toast('LR Copy updated!', 'success');
+        }
+      });
+    }
+  },
+
+  removeDispatchLR() {
+    window._originalDispatchLRFile = null;
+    window._currentDispatchLRDataUrl = null;
+    const img = document.getElementById('lr-preview');
+    const wrap = document.getElementById('dispatch-lr-preview-container');
+    const camInp = document.getElementById('dispatch-lr-cam');
+    const fileInp = document.getElementById('dispatch-lr-file');
+
+    if (img) img.src = '';
+    if (wrap) wrap.style.display = 'none';
+    if (camInp) camInp.value = '';
+    if (fileInp) fileInp.value = '';
+    this.toast('LR Copy removed.');
   },
 
   addNewExpenseCategory() {
@@ -3183,19 +3280,22 @@ const app = {
         <div style="margin-bottom:1rem;">
           <div style="color:var(--text-muted); font-size:0.8rem; margin-bottom:0.5rem;">LR Copy</div>
           <img src="${d.lrImage}" style="width:100%; border-radius:10px; max-height:200px; object-fit:contain; cursor:pointer;" onclick="app.viewImage(this.src)">
-          <div id="late-lr-preview-container">
-            <button class="btn btn-sm btn-secondary mt-1" style="width:100%; font-size:0.7rem;" onclick="document.getElementById('late-lr-input').click()">Update LR Copy</button>
+          <div id="late-lr-preview-container" style="display:flex; gap:8px; margin-top:8px;">
+            <button class="btn btn-sm btn-secondary" style="flex:1; font-size:0.8rem;" onclick="document.getElementById('late-lr-cam').click()">📷 Camera</button>
+            <button class="btn btn-sm btn-secondary" style="flex:1; font-size:0.8rem;" onclick="document.getElementById('late-lr-input').click()">📁 Update LR</button>
           </div>
         </div>
       ` : `
-        <div style="margin-bottom:1rem; padding:1.5rem; background:rgba(255,165,0,0.05); border:1px dashed rgba(255,165,0,0.3); border-radius:12px; text-align:center;">
+        <div style="margin-bottom:1rem; padding:1.2rem; background:rgba(255,165,0,0.05); border:1px dashed rgba(255,165,0,0.3); border-radius:12px; text-align:center;">
           <div style="color:var(--warning); font-weight:600; font-size:0.9rem; margin-bottom:10px;">LR Copy Pending</div>
-          <div id="late-lr-preview-container">
-            <button class="btn btn-secondary" style="width:100%;" onclick="document.getElementById('late-lr-input').click()">Upload LR Now</button>
+          <div id="late-lr-preview-container" style="display:flex; gap:8px;">
+            <button class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('late-lr-cam').click()">📷 Camera</button>
+            <button class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('late-lr-input').click()">📁 Upload LR Now</button>
           </div>
         </div>
       `}
-      <input type="file" id="late-lr-input" accept=".jpg,.jpeg,.png,.webp" style="display:none;" onchange="app.handleLateLRUpload(event, ${d.id}, ${idx})">
+      <input type="file" id="late-lr-cam" accept="image/*" capture="environment" style="display:none;" onchange="app.handleLateLRUpload(event, ${d.id}, ${idx})">
+      <input type="file" id="late-lr-input" accept=".jpg,.jpeg,.png,.webp,image/*" style="display:none;" onchange="app.handleLateLRUpload(event, ${d.id}, ${idx})">
       <a href="/dispatch/pdf/${d.id}" target="_blank" class="btn mt-1 mb-1" style="width:100%; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px;">
         📄 Download Dispatch PDF
       </a>

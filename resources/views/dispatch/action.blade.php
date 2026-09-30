@@ -99,6 +99,31 @@ input[type=number].no-spinners {
       <input type="text" id="dispatch-vehicle-no" placeholder="e.g. GJ-01-AB-1234 (Optional)" style="padding:0.7rem; width:100%; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
     </div>
 
+    <div class="form-group" style="margin-top:1.2rem;">
+      <label>LR Copy (Optional)</label>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('dispatch-lr-cam').click()" style="width:auto; padding:0.55rem 0.9rem; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px; font-weight:600; background:#334155; color:#f8fafc; border:1px solid rgba(255,255,255,0.15); border-radius:8px;" title="Take LR photo with camera">
+          📷 Camera
+        </button>
+        <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('dispatch-lr-file').click()" style="width:auto; padding:0.55rem 0.9rem; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px; font-weight:600; background:#334155; color:#f8fafc; border:1px solid rgba(255,255,255,0.15); border-radius:8px;" title="Choose photo from device">
+          📁 Choose Photo
+        </button>
+        <input type="file" id="dispatch-lr-cam" accept="image/*" capture="environment" style="display:none;" onchange="app.handleDispatchLRPick(event)">
+        <input type="file" id="dispatch-lr-file" accept="image/*" style="display:none;" onchange="app.handleDispatchLRPick(event)">
+
+        <div id="dispatch-lr-preview-container" style="display:none; align-items:center; gap:12px; margin-top:8px; width:100%; padding:8px 12px; background:rgba(0,0,0,0.25); border-radius:8px; border:1px solid rgba(245,158,11,0.3);">
+          <img id="lr-preview" src="" style="width:65px; height:65px; object-fit:cover; border-radius:6px; border:2px solid #f59e0b; cursor:pointer;" onclick="app.viewImage(this.src)" title="View Cropped Image">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <span id="dispatch-lr-filename" style="font-size:0.85rem; font-weight:600; color:var(--text-main);"></span>
+            <div style="display:flex; gap:6px;">
+              <button type="button" class="btn btn-sm btn-secondary" onclick="app.recropDispatchLR()" style="width:auto; padding:4px 8px; font-size:0.75rem;">✂️ Re-crop</button>
+              <button type="button" class="btn btn-sm btn-danger" onclick="app.removeDispatchLR()" style="width:auto; padding:4px 8px; font-size:0.75rem; background:#dc2626; color:#fff; border:none;">🗑️ Remove</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
   
   <button class="btn mt-2" onclick="app.submitDispatch()">Dispatch Items</button>

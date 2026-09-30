@@ -316,17 +316,22 @@
           <div style="margin-bottom:1rem;">
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:0.5rem;">LR Copy</div>
             <img src="{{ $d['lrImage'] }}" style="width:100%; border-radius:10px; max-height:200px; object-fit:contain; cursor:pointer; background:rgba(0,0,0,0.2);" onclick="app.viewImage(this.src)">
-            <div style="margin-top:8px;">
-              <button class="btn btn-sm btn-secondary" style="width:auto; font-size:0.75rem;" onclick="document.getElementById('late-lr-input-{{ $d['id'] }}').click()">Update LR Copy</button>
+            <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-sm btn-secondary" style="width:auto; font-size:0.75rem; display:inline-flex; align-items:center; gap:5px;" onclick="document.getElementById('late-lr-cam-{{ $d['id'] }}').click()">📷 Camera</button>
+              <button type="button" class="btn btn-sm btn-secondary" style="width:auto; font-size:0.75rem; display:inline-flex; align-items:center; gap:5px;" onclick="document.getElementById('late-lr-input-{{ $d['id'] }}').click()">📁 Update LR</button>
             </div>
           </div>
         @else
           <div style="margin-bottom:1rem; padding:1.2rem; background:rgba(220,38,38,0.06); border:1px dashed rgba(220,38,38,0.3); border-radius:10px; text-align:center;">
             <div style="color:#ef4444; font-weight:700; font-size:0.88rem; margin-bottom:8px;">LR Copy Pending</div>
-            <button class="btn btn-sm btn-secondary" style="width:auto; font-size:0.8rem; border-color:#ef4444; color:#ef4444;" onclick="document.getElementById('late-lr-input-{{ $d['id'] }}').click()">Upload LR Now</button>
+            <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-sm btn-secondary" style="width:auto; font-size:0.8rem; border-color:#ef4444; color:#ef4444; display:inline-flex; align-items:center; gap:5px;" onclick="document.getElementById('late-lr-cam-{{ $d['id'] }}').click()">📷 Camera</button>
+              <button type="button" class="btn btn-sm btn-secondary" style="width:auto; font-size:0.8rem; border-color:#ef4444; color:#ef4444; display:inline-flex; align-items:center; gap:5px;" onclick="document.getElementById('late-lr-input-{{ $d['id'] }}').click()">📁 Upload LR Now</button>
+            </div>
           </div>
         @endif
-        <input type="file" id="late-lr-input-{{ $d['id'] }}" accept=".jpg,.jpeg,.png,.webp" style="display:none;" onchange="app.handleLateLRUpload(event, {{ $d['id'] }}, {{ $idx }})">
+        <input type="file" id="late-lr-cam-{{ $d['id'] }}" accept="image/*" capture="environment" style="display:none;" onchange="app.handleLateLRUpload(event, {{ $d['id'] }}, {{ $idx }})">
+        <input type="file" id="late-lr-input-{{ $d['id'] }}" accept=".jpg,.jpeg,.png,.webp,image/*" style="display:none;" onchange="app.handleLateLRUpload(event, {{ $d['id'] }}, {{ $idx }})">
       </div>
     </div>
   @empty

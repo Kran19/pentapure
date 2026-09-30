@@ -151,48 +151,165 @@ input[type="number"],
     });
   }
 
-  function handleBillChange(input) {
+  function triggerRowCamera(btn) {
+    const container = btn.closest('.bill-attach-container');
+    const camInput = container.querySelector('.tx-bill-camera');
+    if (camInput) camInput.click();
+  }
+
+  function triggerRowGallery(btn) {
+    const container = btn.closest('.bill-attach-container');
+    const fileInput = container.querySelector('.tx-bill');
+    if (fileInput) fileInput.click();
+  }
+
+  function handleBillFileInput(input) {
     const container = input.closest('.bill-attach-container');
-    const previewArea = container.querySelector('.bill-file-actions');
-    const fileNameSpan = container.querySelector('.bill-file-name');
-    
-    if (input.files && input.files[0]) {
-      const file = input.files[0];
-      fileNameSpan.textContent = file.name;
-      previewArea.style.display = 'inline-flex';
+    const row = input.closest('.cashier-tx-row');
+    const file = input.files && input.files[0];
+    if (!file) return;
+
+    if (file.type.startsWith('image/')) {
+      row._originalImageFile = file;
+
+      if (window.ImageCropper) {
+        window.ImageCropper.open({
+          file: file,
+          title: '✂️ Crop Bill / Receipt',
+          originalName: file.name,
+          onDone: function(result) {
+            row._attachedFile = result.file;
+            row._attachedDataUrl = result.dataUrl;
+
+            updateBillUI(container, {
+              isImage: true,
+              name: result.name,
+              thumbUrl: result.dataUrl
+            });
+          },
+          onCancel: function() {
+            input.value = '';
+          }
+        });
+      } else {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          row._attachedFile = file;
+          row._attachedDataUrl = e.target.result;
+          updateBillUI(container, {
+            isImage: true,
+            name: file.name,
+            thumbUrl: e.target.result
+          });
+        };
+        reader.readAsDataURL(file);
+      }
+    } else if (file.type === 'application/pdf') {
+      row._attachedFile = file;
+      row._attachedDataUrl = null;
+      row._originalImageFile = null;
+
+      updateBillUI(container, {
+        isImage: false,
+        isPdf: true,
+        name: file.name
+      });
     } else {
-      fileNameSpan.textContent = '';
-      previewArea.style.display = 'none';
+      app.toast('Only JPG, PNG, WEBP images or PDF files are allowed.', 'error');
+      input.value = '';
+    }
+  }
+
+  function updateBillUI(container, data) {
+    const actions = container.querySelector('.bill-file-actions');
+    const nameSpan = container.querySelector('.bill-file-name');
+    const thumb = container.querySelector('.bill-thumb-preview');
+    const pdfIcon = container.querySelector('.bill-pdf-icon');
+    const recropBtn = container.querySelector('.btn-recrop-bill');
+    const btnCam = container.querySelector('.btn-bill-camera');
+    const btnGal = container.querySelector('.btn-bill-gallery');
+
+    actions.style.display = 'inline-flex';
+    nameSpan.textContent = data.name;
+
+    if (btnCam) btnCam.style.display = 'none';
+    if (btnGal) btnGal.style.display = 'none';
+
+    if (data.isImage) {
+      thumb.src = data.thumbUrl;
+      thumb.style.display = 'inline-block';
+      pdfIcon.style.display = 'none';
+      recropBtn.style.display = 'inline-flex';
+    } else {
+      thumb.style.display = 'none';
+      pdfIcon.style.display = 'inline-block';
+      recropBtn.style.display = 'none';
     }
   }
 
   function removeBillFile(btn) {
     const container = btn.closest('.bill-attach-container');
-    const input = container.querySelector('.tx-bill');
-    input.value = '';
-    handleBillChange(input);
+    const row = btn.closest('.cashier-tx-row');
+    row._attachedFile = null;
+    row._attachedDataUrl = null;
+    row._originalImageFile = null;
+
+    container.querySelectorAll('input[type="file"]').forEach(inp => inp.value = '');
+    container.querySelector('.bill-file-actions').style.display = 'none';
+    container.querySelector('.bill-thumb-preview').src = '';
+    container.querySelector('.bill-file-name').textContent = '';
+
+    const btnCam = container.querySelector('.btn-bill-camera');
+    const btnGal = container.querySelector('.btn-bill-gallery');
+    if (btnCam) btnCam.style.display = 'inline-flex';
+    if (btnGal) btnGal.style.display = 'inline-flex';
+  }
+
+  function recropBillFile(btn) {
+    const row = btn.closest('.cashier-tx-row');
+    const container = btn.closest('.bill-attach-container');
+    const fileToCrop = row._originalImageFile || row._attachedFile || row._attachedDataUrl;
+    if (!fileToCrop) return;
+
+    if (window.ImageCropper) {
+      window.ImageCropper.open({
+        file: fileToCrop,
+        title: '✂️ Re-crop Bill / Receipt',
+        originalName: (row._attachedFile && row._attachedFile.name) || 'bill.jpg',
+        onDone: function(result) {
+          row._attachedFile = result.file;
+          row._attachedDataUrl = result.dataUrl;
+
+          updateBillUI(container, {
+            isImage: true,
+            name: result.name,
+            thumbUrl: result.dataUrl
+          });
+        }
+      });
+    }
   }
 
   function previewBillFile(btn) {
-    const container = btn.closest('.bill-attach-container');
-    const input = container.querySelector('.tx-bill');
-    if (input.files && input.files[0]) {
-      const file = input.files[0];
+    const row = btn.closest('.cashier-tx-row');
+    const file = row._attachedFile || row.querySelector('.tx-bill')?.files[0];
+    const dataUrl = row._attachedDataUrl;
+
+    if (dataUrl || (file && file.type && file.type.startsWith('image/'))) {
+      const url = dataUrl || URL.createObjectURL(file);
+      Swal.fire({
+        title: (file && file.name) ? file.name : 'Attached Bill',
+        imageUrl: url,
+        imageAlt: 'Attached Bill Preview',
+        confirmButtonColor: '#f59e0b',
+        confirmButtonText: 'Close',
+        width: 'min(92vw, 680px)'
+      });
+    } else if (file && file.type === 'application/pdf') {
       const fileUrl = URL.createObjectURL(file);
-      
-      if (file.type.startsWith('image/')) {
-        Swal.fire({
-          title: file.name,
-          imageUrl: fileUrl,
-          imageAlt: 'Attached Bill Preview',
-          confirmButtonColor: '#f59e0b',
-          width: '600px'
-        });
-      } else if (file.type === 'application/pdf') {
-        window.open(fileUrl, '_blank');
-      } else {
-        Swal.fire('File Preview', file.name, 'info');
-      }
+      window.open(fileUrl, '_blank');
+    } else {
+      Swal.fire('File Preview', file ? file.name : 'No file attached', 'info');
     }
   }
 
@@ -265,16 +382,34 @@ input[type="number"],
           <input type="text" class="tx-ref" placeholder="e.g. INV-001">
         </div>
 
-        <div class="form-group bill-attach-container" style="flex:1 1 200px;">
+        <div class="form-group bill-attach-container" style="flex:1.8 1 240px;">
           <label>Attach Bill (optional)</label>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <input type="file" class="tx-bill" accept="image/jpeg,image/png,application/pdf" onchange="handleBillChange(this)">
-            <div class="bill-file-actions" style="display:none; align-items:center; gap:4px; font-size:0.8rem; font-weight:600; white-space:nowrap;">
-              <span class="bill-file-name" style="max-width:90px; overflow:hidden; text-overflow:ellipsis; display:inline-block; color:#f59e0b;"></span>
-              <button type="button" onclick="previewBillFile(this)" title="View Attached File" style="background:#f59e0b; color:#fff; border:none; border-radius:6px; padding:6px 9px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-height:42px;">
+            <!-- Mobile Camera Button -->
+            <button type="button" class="btn btn-sm btn-secondary btn-bill-camera" onclick="triggerRowCamera(this)" style="width:auto; padding:0.55rem 0.85rem; font-size:0.85rem; display:inline-flex; align-items:center; gap:5px; font-weight:600; background:#334155; color:#f8fafc; border:1px solid rgba(255,255,255,0.15); border-radius:8px;" title="Take photo with camera">
+              📷 Camera
+            </button>
+            <!-- File Gallery Button -->
+            <button type="button" class="btn btn-sm btn-secondary btn-bill-gallery" onclick="triggerRowGallery(this)" style="width:auto; padding:0.55rem 0.85rem; font-size:0.85rem; display:inline-flex; align-items:center; gap:5px; font-weight:600; background:#334155; color:#f8fafc; border:1px solid rgba(255,255,255,0.15); border-radius:8px;" title="Choose image or PDF from storage">
+              📁 Choose File
+            </button>
+
+            <!-- Hidden Inputs -->
+            <input type="file" class="tx-bill-camera" accept="image/*" capture="environment" style="display:none;" onchange="handleBillFileInput(this)">
+            <input type="file" class="tx-bill" accept="image/jpeg,image/png,image/webp,application/pdf" style="display:none;" onchange="handleBillFileInput(this)">
+
+            <!-- Attached preview & actions -->
+            <div class="bill-file-actions" style="display:none; align-items:center; gap:6px; font-size:0.8rem; font-weight:600; padding:4px 8px; background:rgba(0,0,0,0.25); border-radius:8px; border:1px solid rgba(245,158,11,0.4); max-width:100%; box-sizing:border-box;">
+              <img class="bill-thumb-preview" src="" style="width:34px; height:34px; object-fit:cover; border-radius:6px; border:1.5px solid #f59e0b; display:none; cursor:pointer;" onclick="previewBillFile(this)" title="Click to enlarge">
+              <span class="bill-pdf-icon" style="font-size:1.4rem; display:none;">📄</span>
+              <span class="bill-file-name" style="max-width:105px; overflow:hidden; text-overflow:ellipsis; display:inline-block; color:#f59e0b; white-space:nowrap;"></span>
+              <button type="button" onclick="previewBillFile(this)" title="View Attached File" style="background:#f59e0b; color:#000; border:none; border-radius:6px; padding:5px 8px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; font-weight:bold;">
                 👁️
               </button>
-              <button type="button" onclick="removeBillFile(this)" title="Delete Attached File" style="background:#e11d48; color:#fff; border:none; border-radius:6px; padding:6px 9px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;">
+              <button type="button" class="btn-recrop-bill" onclick="recropBillFile(this)" title="Re-crop Image" style="background:#3b82f6; color:#fff; border:none; border-radius:6px; padding:5px 8px; cursor:pointer; display:none; align-items:center; justify-content:center; font-weight:bold;">
+                ✂️
+              </button>
+              <button type="button" onclick="removeBillFile(this)" title="Delete Attached File" style="background:#e11d48; color:#fff; border:none; border-radius:6px; padding:5px 8px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;">
                 🗑️
               </button>
             </div>
@@ -304,7 +439,7 @@ input[type="number"],
       const amount = Number(row.querySelector('.tx-amount').value);
       const note = row.querySelector('.tx-note').value;
       const reference = row.querySelector('.tx-ref').value;
-      const file = row.querySelector('.tx-bill').files[0];
+      const file = row._attachedFile || row.querySelector('.tx-bill')?.files[0];
 
       if (!amount || amount <= 0) {
         app.toast(`Enter a valid amount for row ${idx + 1}`, 'error');
