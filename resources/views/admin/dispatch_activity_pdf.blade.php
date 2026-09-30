@@ -88,7 +88,19 @@
                     <td>
                         {{ $orderDate ? $orderDate->format('d M Y, h:i A') : '—' }}
                         @if($order->due_date)
-                            <div style="font-size:10px; color:#b45309; font-weight:bold; margin-top:2px;">Due: {{ \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') }}</div>
+                            @php
+                                $rawSt = strtoupper(trim((string)($order->dispatch_status ?? 'PENDING')));
+                                $diffDays = (int) now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($order->due_date)->startOfDay(), false);
+                                $overdueText = '';
+                                if (!in_array($rawSt, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED', 'FULLY_DISPATCHED'])) {
+                                    if ($diffDays < 0) {
+                                        $overdueText = ' (' . abs($diffDays) . 'd overdue)';
+                                    } elseif ($diffDays === 0) {
+                                        $overdueText = ' (Due today)';
+                                    }
+                                }
+                            @endphp
+                            <div style="font-size:10px; color:{{ $diffDays < 0 ? '#dc2626' : '#b45309' }}; font-weight:bold; margin-top:2px;">Due: {{ \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') }}{{ $overdueText }}</div>
                         @endif
                     </td>
                     <td>

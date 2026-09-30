@@ -191,6 +191,18 @@
           $companyName = strtoupper($order->company?->name ?? 'N/A');
           $salesPerson = strtoupper($order->creator?->name ?? 'N/A');
           $transportName = strtoupper($order->transporter?->name ?? 'N/A');
+
+          $diffDays = null;
+          $overdueBadge = '';
+          if ($order->due_date && !in_array($rawSt, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED', 'FULLY_DISPATCHED'])) {
+              $diffDays = (int) now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($order->due_date)->startOfDay(), false);
+              if ($diffDays < 0) {
+                  $days = abs($diffDays);
+                  $overdueBadge = '<span style="display:inline-block; font-size:0.72rem; padding:2px 6px; border-radius:4px; background:#fef2f2; border:1px solid #fecaca; color:#dc2626; font-weight:700; margin-left:4px;">' . $days . ' ' . ($days === 1 ? 'day' : 'days') . ' overdue</span>';
+              } elseif ($diffDays === 0) {
+                  $overdueBadge = '<span style="display:inline-block; font-size:0.72rem; padding:2px 6px; border-radius:4px; background:#fffbeb; border:1px solid #fde68a; color:#b45309; font-weight:700; margin-left:4px;">Due today</span>';
+              }
+          }
         @endphp
 
         <div class="card dispatch-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--border-soft, #e5e7eb); background:var(--bg-card, #ffffff); box-shadow:0 1px 3px rgba(0,0,0,0.04); transition:all 0.2s ease;">
@@ -207,7 +219,7 @@
                 <span>•</span>
                 <span>ORDERED: {{ $orderDate ? $orderDate->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') : 'N/A' }}</span>
                 <span>•</span>
-                <span>DUE DATE: <strong style="color:{{ $order->due_date ? 'var(--primary, #D88A00)' : 'inherit' }}; font-weight:700;">{{ $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : 'N/A' }}</strong></span>
+                <span>DUE DATE: <strong style="color:{{ $order->due_date ? 'var(--primary, #D88A00)' : 'inherit' }}; font-weight:700;">{{ $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : 'N/A' }}</strong>{!! $overdueBadge !!}</span>
               </div>
             </div>
             <div style="display:flex; align-items:center; gap:12px; text-align:right; flex-wrap:nowrap;">
@@ -241,7 +253,7 @@
               </div>
               <div>
                 <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Due Date</div>
-                <div style="font-size:0.85rem; font-weight:700; color:{{ $order->due_date ? 'var(--primary, #D88A00)' : 'inherit' }};">{{ $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : '—' }}</div>
+                <div style="font-size:0.85rem; font-weight:700; color:{{ $order->due_date ? 'var(--primary, #D88A00)' : 'inherit' }};">{{ $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : '—' }} {!! $overdueBadge !!}</div>
               </div>
               <div>
                 <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Company</div>

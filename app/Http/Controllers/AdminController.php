@@ -1372,12 +1372,31 @@ class AdminController extends Controller
     // ── DISPATCH ACTIVITY ───────────────────────────────────────────────────
     public function dispatchActivity(Request $request)
     {
+        $statusPriority = "CASE 
+            WHEN TRIM(COALESCE(orders.dispatch_status, '')) IN ('', 'PENDING', 'OPEN', 'UNASSIGNED') THEN 1
+            WHEN orders.dispatch_status IN ('PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED') THEN 2
+            WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN 3
+            ELSE 4
+        END";
+
+        $pendingDueSort = "CASE 
+            WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN '9999-12-31'
+            ELSE COALESCE(orders.due_date, orders.date, orders.created_at)
+        END";
+
+        $completedDateSort = "CASE 
+            WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN COALESCE(orders.date, orders.created_at)
+            ELSE '1970-01-01'
+        END";
+
         $query = Order::with(['company', 'items.product', 'dispatchLog.user', 'dispatchLogs.user', 'transporter', 'creator'])
             ->select('orders.*')
             ->addSelect(['dispatch_logs_count' => DispatchLog::selectRaw('COUNT(*)')
                 ->whereColumn('order_id', 'orders.id')
             ])
-            ->orderByRaw('COALESCE(orders.date, orders.created_at) DESC')
+            ->orderByRaw("{$statusPriority} ASC")
+            ->orderByRaw("{$pendingDueSort} ASC")
+            ->orderByRaw("{$completedDateSort} DESC")
             ->orderByDesc('orders.id');
 
         // Search Filter (Order ID, Company, Salesperson, Transporter, Product name)
@@ -1468,12 +1487,31 @@ class AdminController extends Controller
 
     public function dispatchActivityPdf(Request $request)
     {
+        $statusPriority = "CASE 
+            WHEN TRIM(COALESCE(orders.dispatch_status, '')) IN ('', 'PENDING', 'OPEN', 'UNASSIGNED') THEN 1
+            WHEN orders.dispatch_status IN ('PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED') THEN 2
+            WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN 3
+            ELSE 4
+        END";
+
+        $pendingDueSort = "CASE 
+            WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN '9999-12-31'
+            ELSE COALESCE(orders.due_date, orders.date, orders.created_at)
+        END";
+
+        $completedDateSort = "CASE 
+            WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN COALESCE(orders.date, orders.created_at)
+            ELSE '1970-01-01'
+        END";
+
         $query = Order::with(['company', 'items.product', 'dispatchLog.user', 'dispatchLogs.user', 'transporter', 'creator'])
             ->select('orders.*')
             ->addSelect(['dispatch_logs_count' => DispatchLog::selectRaw('COUNT(*)')
                 ->whereColumn('order_id', 'orders.id')
             ])
-            ->orderByRaw('COALESCE(orders.date, orders.created_at) DESC')
+            ->orderByRaw("{$statusPriority} ASC")
+            ->orderByRaw("{$pendingDueSort} ASC")
+            ->orderByRaw("{$completedDateSort} DESC")
             ->orderByDesc('orders.id');
 
         if ($request->filled('q')) {
