@@ -169,14 +169,17 @@
         </tr>
         <tr>
           <td style="border:2px solid #000; padding:8px;">
-            <div style="display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%;">
-                <span class="pencil-icon">✏️</span>
-                <input type="text" class="allowance-label-input" value="{{ ($adjustment?->other_allowance_label && !in_array($adjustment->other_allowance_label, ['PETROL / FOODS', 'OTHER'])) ? $adjustment->other_allowance_label : '' }}" 
-                       placeholder=""
-                       oninput="syncAllowanceLabel(this.value)"
-                       onchange="quickSaveAllowance(this.value, null)"
-                       style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:4px 12px; font-weight:bold; font-size:0.85rem; text-align:center; text-transform:uppercase; width:100%; max-width:320px; color:#0f172a; outline:none;"
-                       title="Click to edit allowance label">
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                <span style="color:#000;">OTHER</span>
+                <div style="display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%;">
+                    <span class="pencil-icon">✏️</span>
+                    <input type="text" class="allowance-label-input" value="{{ ($adjustment?->other_allowance_label && !in_array($adjustment->other_allowance_label, ['PETROL / FOODS', 'OTHER'])) ? $adjustment->other_allowance_label : '' }}" 
+                           placeholder=""
+                           oninput="syncAllowanceLabel(this.value)"
+                           onchange="quickSaveAllowance(this.value, null)"
+                           style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:4px 12px; font-weight:bold; font-size:0.85rem; text-align:center; text-transform:uppercase; width:100%; max-width:320px; color:#0f172a; outline:none;"
+                           title="Click to edit allowance label">
+                </div>
             </div>
           </td>
           <td style="border:2px solid #000; padding:8px; text-align:right;">
@@ -224,7 +227,8 @@
           <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($otUtAdjustment, 2) }}</td>
         </tr>
         <tr>
-          <td colspan="4" style="border:2px solid #000; padding:6px 8px; text-align:center;">
+          <td style="border:2px solid #000; padding:6px 8px; text-align:center;">OTHER</td>
+          <td colspan="3" style="border:2px solid #000; padding:6px 8px; text-align:center;">
             <div style="display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%;">
                 <span class="pencil-icon">✏️</span>
                 <input type="text" class="allowance-label-input" value="{{ ($adjustment?->other_allowance_label && !in_array($adjustment->other_allowance_label, ['PETROL / FOODS', 'OTHER'])) ? $adjustment->other_allowance_label : '' }}" 
@@ -284,7 +288,8 @@
         </tr>
         <!-- Row 4 -->
         <tr>
-          <td colspan="4" style="border:2px solid #000; padding:6px 8px; text-align:center;">
+          <td style="border:2px solid #000; padding:6px 8px; text-align:center;">OTHER</td>
+          <td colspan="3" style="border:2px solid #000; padding:6px 8px; text-align:center;">
             <div style="display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%;">
                 <span class="pencil-icon">✏️</span>
                 <input type="text" class="allowance-label-input" value="{{ ($adjustment?->other_allowance_label && !in_array($adjustment->other_allowance_label, ['PETROL / FOODS', 'OTHER'])) ? $adjustment->other_allowance_label : '' }}" 

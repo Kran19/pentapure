@@ -177,8 +177,11 @@
           <td style="border:2px solid #000; padding:6px; text-align:right; width:25%;">{{ number_format($worker->salary_amount, 2) }}</td>
         </tr>
         <tr>
-          <td style="border:2px solid #000; padding:6px; text-align:center;">
-            {{ ($adjustment->other_allowance_label && !in_array($adjustment->other_allowance_label, ['PETROL / FOODS', 'OTHER'])) ? strtoupper($adjustment->other_allowance_label) : '' }}
+          <td style="border:2px solid #000; padding:6px;">
+            <div style="display:inline-block; width:45%; color:#000;">OTHER</div>
+            <div style="display:inline-block; width:50%; text-align:center;">
+              {{ ($adjustment->other_allowance_label && !in_array($adjustment->other_allowance_label, ['PETROL / FOODS', 'OTHER'])) ? strtoupper($adjustment->other_allowance_label) : '' }}
+            </div>
           </td>
           <td style="border:2px solid #000; padding:6px; text-align:right;">
             {{ $adjustment->petrol_food_amount > 0 ? '+' : '' }}{{ number_format($adjustment->petrol_food_amount, 2) }}
@@ -218,7 +221,8 @@
           <td style="border:2px solid #000; padding:6px; text-align:right;">{{ $otUtAdjustment >= 0 ? '' : '' }}{{ number_format($otUtAdjustment, 2) }}</td>
         </tr>
         <tr>
-          <td colspan="4" style="border:2px solid #000; padding:6px; text-align:center;">{{ ($adjustment->other_allowance_label && !in_array($adjustment->other_allowance_label, ['PETROL / FOODS', 'OTHER'])) ? strtoupper($adjustment->other_allowance_label) : '' }}</td>
+          <td style="border:2px solid #000; padding:6px; text-align:center;">OTHER</td>
+          <td colspan="3" style="border:2px solid #000; padding:6px; text-align:center;">{{ ($adjustment->other_allowance_label && !in_array($adjustment->other_allowance_label, ['PETROL / FOODS', 'OTHER'])) ? strtoupper($adjustment->other_allowance_label) : '' }}</td>
           <td style="border:2px solid #000; padding:6px; text-align:right;">{{ $adjustment->petrol_food_amount > 0 ? '+' : '' }}{{ number_format($adjustment->petrol_food_amount, 2) }}</td>
         </tr>
         <tr>
@@ -259,7 +263,8 @@
         </tr>
         <!-- Row 4 -->
         <tr>
-          <td colspan="4" style="border:2px solid #000; padding:6px; text-align:center;">{{ ($adjustment->other_allowance_label && !in_array($adjustment->other_allowance_label, ['PETROL / FOODS', 'OTHER'])) ? strtoupper($adjustment->other_allowance_label) : '' }}</td>
+          <td style="border:2px solid #000; padding:6px; text-align:center;">OTHER</td>
+          <td colspan="3" style="border:2px solid #000; padding:6px; text-align:center;">{{ ($adjustment->other_allowance_label && !in_array($adjustment->other_allowance_label, ['PETROL / FOODS', 'OTHER'])) ? strtoupper($adjustment->other_allowance_label) : '' }}</td>
           <td style="border:2px solid #000; padding:6px; text-align:right;">{{ number_format($adjustment->petrol_food_amount, 2) }}</td>
         </tr>
         <!-- Row 5 -->

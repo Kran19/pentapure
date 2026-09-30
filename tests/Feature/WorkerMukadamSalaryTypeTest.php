@@ -166,8 +166,8 @@ class WorkerMukadamSalaryTypeTest extends TestCase
         $response->assertStatus(200);
         $content = $response->getContent();
 
-        // Ensure there is no static OTHER cell or pretyped OTHER value in the allowance row
-        $this->assertStringNotContainsString('<td style="border:2px solid #000; padding:6px 8px; text-align:center;">OTHER</td>', $content);
+        // Ensure static OTHER cell is present before the input box, but no pretyped OTHER value in the input field
+        $this->assertStringContainsString('<td style="border:2px solid #000; padding:6px 8px; text-align:center;">OTHER</td>', $content);
         $this->assertStringNotContainsString('value="OTHER"', $content);
         $this->assertStringNotContainsString('placeholder="OTHER"', $content);
 

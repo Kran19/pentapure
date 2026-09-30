@@ -528,7 +528,9 @@ class AttendanceController extends Controller
                 } elseif ($w->salary_type === 'DAILY') {
                     $totalWage += $att->calculated_wage;
                 } else {
-                    $hourly = ($w->daily_salary ?? 0) / 9;
+                    $mDays = \Carbon\Carbon::parse($month)->daysInMonth;
+                    $perDay = $w->salary_type === 'MONTHLY' ? ($w->salary_amount / $mDays) : ($w->daily_salary ?? 0);
+                    $hourly = $w->per_hour_salary > 0 ? $w->per_hour_salary : ($perDay / 12);
                     $otPay = $att->overtime_hours * ($hourly * 1.5);
                     $totalWage += $otPay;
                 }
@@ -728,7 +730,9 @@ class AttendanceController extends Controller
                 } elseif ($w->salary_type === 'DAILY') {
                     $totalWage += $att->calculated_wage;
                 } else {
-                    $hourly = ($w->daily_salary ?? 0) / 9;
+                    $mDays = \Carbon\Carbon::parse($month)->daysInMonth;
+                    $perDay = $w->salary_type === 'MONTHLY' ? ($w->salary_amount / $mDays) : ($w->daily_salary ?? 0);
+                    $hourly = $w->per_hour_salary > 0 ? $w->per_hour_salary : ($perDay / 12);
                     $otPay = $att->overtime_hours * ($hourly * 1.5);
                     $totalWage += $otPay;
                 }
@@ -825,7 +829,7 @@ class AttendanceController extends Controller
             $perDaySalary = $worker->salary_amount / $daysInMonth;
             $attendanceSalary = $presentDays * $perDaySalary;
             
-            $hourlyRate = $worker->per_hour_salary > 0 ? $worker->per_hour_salary : (($worker->daily_salary ?? ($worker->salary_amount / 30)) / 9);
+            $hourlyRate = $worker->per_hour_salary > 0 ? $worker->per_hour_salary : ($perDaySalary / 12);
             $otUtAdjustment = $totalOT * $hourlyRate;
             
             $totalWage = $attendanceSalary + $otUtAdjustment + $adjustment->petrol_food_amount;
@@ -841,11 +845,11 @@ class AttendanceController extends Controller
             foreach ($attendances as $att) {
                 $attendanceSalary += $att->calculated_wage;
             }
-            $hourlyRate = $worker->per_hour_salary > 0 ? $worker->per_hour_salary : (($worker->daily_salary ?? 0) / 9);
+            $perDaySalary = $worker->daily_salary ?? 0;
+            $hourlyRate = $worker->per_hour_salary > 0 ? $worker->per_hour_salary : ($perDaySalary / 12);
             $otUtAdjustment = $totalOT * $hourlyRate;
             // Assuming calculated_wage already handles OT for daily workers normally, we'll keep existing logic or just use attendanceSalary
             $totalWage = $attendanceSalary + $adjustment->petrol_food_amount;
-            $perDaySalary = $worker->daily_salary ?? 0;
         }
 
         $totalAdvance = $dailyAdvanceTotal + (float)($adjustment->advance ?? 0);
