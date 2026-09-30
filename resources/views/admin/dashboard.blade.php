@@ -53,55 +53,110 @@
 
   <!-- KPI Cards -->
   <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:1rem; margin-bottom:2rem;">
-    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'raw']) }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
-      <div style="font-size:1.6rem; font-weight:bold; color:var(--primary-light); word-break:break-word;">
-        {{ number_format($pageData['rawQty'] ?? 0, 1) }}
+    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'raw']) }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+      <div style="min-height:2.4rem; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:2px;">
+        @if(!empty($pageData['rawStockUnits']) && count($pageData['rawStockUnits']) > 0)
+          @foreach($pageData['rawStockUnits'] as $u)
+            <div style="font-size:{{ count($pageData['rawStockUnits']) > 1 ? '1.2rem' : '1.6rem' }}; font-weight:bold; color:var(--primary-light); word-break:break-word; line-height:1.2;">
+              {{ number_format($u['quantity'], (floor($u['quantity']) == $u['quantity'] && in_array(strtoupper($u['unit']), ['PCS','NOS','BOX','BAG','PKT','PIECES'])) ? 0 : 1) }}
+              <span style="font-size:0.55em; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">{{ $u['unit'] ?: 'KG' }}</span>
+            </div>
+          @endforeach
+        @else
+          <div style="font-size:1.6rem; font-weight:bold; color:var(--primary-light); word-break:break-word; line-height:1.2;">
+            {{ number_format($pageData['rawQty'] ?? 0, 1) }} <span style="font-size:0.55em; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">KG</span>
+          </div>
+        @endif
       </div>
-      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Raw Stock (kg)</div>
-    </a>
-    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'semi']) }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
-      <div style="font-size:1.6rem; font-weight:bold; color:var(--secondary); word-break:break-word;">
-        {{ number_format($pageData['semiQty'] ?? 0, 1) }}
-      </div>
-      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Semi Stock (kg)</div>
-    </a>
-    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'finished']) }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
-      <div style="font-size:1.6rem; font-weight:bold; color:var(--warning); word-break:break-word;">
-        {{ number_format($pageData['finishedQty'] ?? 0, 1) }}
-      </div>
-      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">FG Stock (kg)</div>
-    </a>
-    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'packaging']) }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
-      <div style="font-size:1.6rem; font-weight:bold; color:#0284c7; word-break:break-word;">
-        {{ number_format($pageData['packagingQty'] ?? 0, 1) }}
-      </div>
-      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Packaging Stock</div>
+      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:6px;">Raw Stock</div>
     </a>
 
-    <a href="{{ route(request()->segment(1) . '.dispatch.activity') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
-      <div style="font-size:1.6rem; font-weight:bold; color:var(--text-main); word-break:break-word;">
-        {{ $pageData['totalOrders'] ?? 0 }}
+    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'semi']) }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+      <div style="min-height:2.4rem; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:2px;">
+        @if(!empty($pageData['semiStockUnits']) && count($pageData['semiStockUnits']) > 0)
+          @foreach($pageData['semiStockUnits'] as $u)
+            <div style="font-size:{{ count($pageData['semiStockUnits']) > 1 ? '1.2rem' : '1.6rem' }}; font-weight:bold; color:var(--secondary); word-break:break-word; line-height:1.2;">
+              {{ number_format($u['quantity'], (floor($u['quantity']) == $u['quantity'] && in_array(strtoupper($u['unit']), ['PCS','NOS','BOX','BAG','PKT','PIECES'])) ? 0 : 1) }}
+              <span style="font-size:0.55em; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">{{ $u['unit'] ?: 'KG' }}</span>
+            </div>
+          @endforeach
+        @else
+          <div style="font-size:1.6rem; font-weight:bold; color:var(--secondary); word-break:break-word; line-height:1.2;">
+            {{ number_format($pageData['semiQty'] ?? 0, 1) }} <span style="font-size:0.55em; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">KG</span>
+          </div>
+        @endif
       </div>
-      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Total Sales Order</div>
+      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:6px;">Semi Stock</div>
     </a>
 
-    <a href="{{ route(request()->segment(1) . '.po') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
-      <div style="font-size:1.6rem; font-weight:bold; color:var(--danger); word-break:break-word;">
-        {{ $pageData['pendingPOs'] ?? 0 }}
+    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'finished']) }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+      <div style="min-height:2.4rem; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:2px;">
+        @if(!empty($pageData['finishedStockUnits']) && count($pageData['finishedStockUnits']) > 0)
+          @foreach($pageData['finishedStockUnits'] as $u)
+            <div style="font-size:{{ count($pageData['finishedStockUnits']) > 1 ? '1.2rem' : '1.6rem' }}; font-weight:bold; color:var(--warning); word-break:break-word; line-height:1.2;">
+              {{ number_format($u['quantity'], (floor($u['quantity']) == $u['quantity'] && in_array(strtoupper($u['unit']), ['PCS','NOS','BOX','BAG','PKT','PIECES'])) ? 0 : 1) }}
+              <span style="font-size:0.55em; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">{{ $u['unit'] ?: 'KG' }}</span>
+            </div>
+          @endforeach
+        @else
+          <div style="font-size:1.6rem; font-weight:bold; color:var(--warning); word-break:break-word; line-height:1.2;">
+            {{ number_format($pageData['finishedQty'] ?? 0, 1) }} <span style="font-size:0.55em; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">KG</span>
+          </div>
+        @endif
       </div>
-      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Pending Purchase Order</div>
+      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:6px;">FG Stock</div>
     </a>
-    <a href="{{ route(request()->segment(1) . '.attendance.workers') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
-      <div style="font-size:1.6rem; font-weight:bold; color:var(--info); word-break:break-word;">
-        {{ $pageData['totalWorkers'] ?? 0 }}
+
+    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'packaging']) }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+      <div style="min-height:2.4rem; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:2px;">
+        @if(!empty($pageData['packagingStockUnits']) && count($pageData['packagingStockUnits']) > 0)
+          @foreach($pageData['packagingStockUnits'] as $u)
+            <div style="font-size:{{ count($pageData['packagingStockUnits']) > 1 ? '1.2rem' : '1.6rem' }}; font-weight:bold; color:#0284c7; word-break:break-word; line-height:1.2;">
+              {{ number_format($u['quantity'], (floor($u['quantity']) == $u['quantity'] && in_array(strtoupper($u['unit']), ['PCS','NOS','BOX','BAG','PKT','PIECES'])) ? 0 : 1) }}
+              <span style="font-size:0.55em; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">{{ $u['unit'] ?: 'PCS' }}</span>
+            </div>
+          @endforeach
+        @else
+          <div style="font-size:1.6rem; font-weight:bold; color:#0284c7; word-break:break-word; line-height:1.2;">
+            {{ number_format($pageData['packagingQty'] ?? 0, 1) }} <span style="font-size:0.55em; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">PCS</span>
+          </div>
+        @endif
       </div>
-      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Total Employees</div>
+      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:6px;">Packaging Stock</div>
     </a>
-    <a href="{{ route(request()->segment(1) . '.attendance.daily') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
-      <div style="font-size:1.6rem; font-weight:bold; color:var(--secondary); word-break:break-word;">
-        {{ $pageData['presentToday'] ?? 0 }}
+
+    <a href="{{ route(request()->segment(1) . '.dispatch.activity') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+      <div style="min-height:2.4rem; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+        <div style="font-size:1.6rem; font-weight:bold; color:var(--text-main); word-break:break-word; line-height:1.2;">
+          {{ $pageData['totalOrders'] ?? 0 }}
+        </div>
       </div>
-      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Present Today</div>
+      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:6px;">Total Sales Order</div>
+    </a>
+
+    <a href="{{ route(request()->segment(1) . '.po') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+      <div style="min-height:2.4rem; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+        <div style="font-size:1.6rem; font-weight:bold; color:var(--danger); word-break:break-word; line-height:1.2;">
+          {{ $pageData['pendingPOs'] ?? 0 }}
+        </div>
+      </div>
+      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:6px;">Pending Purchase Order</div>
+    </a>
+    <a href="{{ route(request()->segment(1) . '.attendance.workers') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+      <div style="min-height:2.4rem; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+        <div style="font-size:1.6rem; font-weight:bold; color:var(--info); word-break:break-word; line-height:1.2;">
+          {{ $pageData['totalWorkers'] ?? 0 }}
+        </div>
+      </div>
+      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:6px;">Total Employees</div>
+    </a>
+    <a href="{{ route(request()->segment(1) . '.attendance.daily') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+      <div style="min-height:2.4rem; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+        <div style="font-size:1.6rem; font-weight:bold; color:var(--secondary); word-break:break-word; line-height:1.2;">
+          {{ $pageData['presentToday'] ?? 0 }}
+        </div>
+      </div>
+      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:6px;">Present Today</div>
     </a>
   </div>
 

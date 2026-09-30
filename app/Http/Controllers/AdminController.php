@@ -24,14 +24,41 @@ class AdminController extends Controller
 {
     public function dashboard()
     {
-        $rawQty       = DB::table('stocks')->where('stage', 'RAW')
-            ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")->value('net') ?? 0;
-        $semiQty      = DB::table('stocks')->where('stage', 'SEMI')
-            ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")->value('net') ?? 0;
-        $finishedQty  = DB::table('stocks')->where('stage', 'FINISHED')
-            ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")->value('net') ?? 0;
-        $packagingQty = DB::table('stocks')->where('stage', 'PACKAGING')
-            ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")->value('net') ?? 0;
+        $getStockByUnits = function (string $stage) {
+            return DB::table('stocks')
+                ->leftJoin('products', 'stocks.product_id', '=', 'products.id')
+                ->where('stocks.stage', $stage)
+                ->selectRaw("
+                    products.unit,
+                    SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as net
+                ")
+                ->groupBy('products.unit')
+                ->havingRaw('net > 0')
+                ->orderByDesc('net')
+                ->get()
+                ->map(fn($r) => [
+                    'unit'     => strtoupper(trim($r->unit ?: 'KG')),
+                    'quantity' => (float) $r->net,
+                ])
+                ->groupBy('unit')
+                ->map(fn($group, $unit) => [
+                    'unit'     => $unit,
+                    'quantity' => (float) $group->sum('quantity'),
+                ])
+                ->sortByDesc('quantity')
+                ->values()
+                ->toArray();
+        };
+
+        $rawStockUnits       = $getStockByUnits('RAW');
+        $semiStockUnits      = $getStockByUnits('SEMI');
+        $finishedStockUnits  = $getStockByUnits('FINISHED');
+        $packagingStockUnits = $getStockByUnits('PACKAGING');
+
+        $rawQty       = count($rawStockUnits) > 0 ? array_sum(array_column($rawStockUnits, 'quantity')) : 0;
+        $semiQty      = count($semiStockUnits) > 0 ? array_sum(array_column($semiStockUnits, 'quantity')) : 0;
+        $finishedQty  = count($finishedStockUnits) > 0 ? array_sum(array_column($finishedStockUnits, 'quantity')) : 0;
+        $packagingQty = count($packagingStockUnits) > 0 ? array_sum(array_column($packagingStockUnits, 'quantity')) : 0;
 
         $getLowCount = function (string $stage): int {
             return DB::table('stocks')
@@ -78,6 +105,7 @@ class AdminController extends Controller
 
         $pageData = compact(
             'rawQty', 'semiQty', 'finishedQty', 'packagingQty',
+            'rawStockUnits', 'semiStockUnits', 'finishedStockUnits', 'packagingStockUnits',
             'lowRawCount', 'lowSemiCount', 'lowFinishedCount', 'lowPackagingCount',
             'totalOrders', 'totalRevenue', 'pendingPOs', 
             'totalWorkers', 'presentToday',
