@@ -268,33 +268,36 @@ class PdfGenerationTest extends TestCase
 
         foreach ($dataTable->getElementsByTagName('tbody') as $tbody) {
             $rows = $tbody->getElementsByTagName('tr');
-            if ($rows->length === 0) {
-                continue;
+            $orderRows = [];
+            foreach ($rows as $tr) {
+                if ($tr->getAttribute('class') === 'total-row') {
+                    continue;
+                }
+                $orderRows[] = $tr;
+                $tds = $tr->getElementsByTagName('td');
+                // Every row must have exactly the header column count so DomPDF page breaks never shift columns
+                $this->assertEquals($headerCount, $tds->length, 'Every row must have exactly the header column count to prevent DomPDF page break shift');
             }
 
-            $firstRow = $rows->item(0);
-            if ($firstRow->getAttribute('class') === 'total-row') {
-                continue;
-            }
+            // Verify that multi-item orders merge order-level cells visually without repeating text
+            if (count($orderRows) > 1) {
+                $firstRowTds = $orderRows[0]->getElementsByTagName('td');
+                // Row 1 displays Dispatch ID and Customer
+                $this->assertNotEmpty(trim($firstRowTds->item(0)->textContent));
+                $this->assertNotEmpty(trim($firstRowTds->item(4)->textContent));
+                $this->assertStringContainsString('cell-merge-first', $firstRowTds->item(0)->getAttribute('class'));
 
-            // Each order block must avoid page breaks inside to protect rowspan layout
-            $this->assertStringContainsString('page-break-inside: avoid', (string) $tbody->getAttribute('style'));
-
-            $firstRowTds = $firstRow->getElementsByTagName('td');
-            $this->assertEquals($headerCount, $firstRowTds->length, 'First row of an order must contain full header count');
-
-            if ($rows->length > 1) {
-                // Verify order id and customer are merged with rowspan matching the item count
-                $dispatchIdTd = $firstRowTds->item(0);
-                $this->assertEquals((string) $rows->length, $dispatchIdTd->getAttribute('rowspan'), 'Dispatch ID should merge across all items of the order');
-
-                $customerTd = $firstRowTds->item(4);
-                $this->assertEquals((string) $rows->length, $customerTd->getAttribute('rowspan'), 'Customer cell should merge across all items of the order');
-
-                // Subsequent item rows should contain only the 5 item-specific columns
-                for ($r = 1; $r < $rows->length; $r++) {
-                    $subRowTds = $rows->item($r)->getElementsByTagName('td');
-                    $this->assertEquals(5, $subRowTds->length, 'Subsequent item rows should have item columns while order-level cells are merged via rowspan');
+                // Subsequent rows omit repeated text and have merged border classes
+                for ($r = 1; $r < count($orderRows); $r++) {
+                    $subTds = $orderRows[$r]->getElementsByTagName('td');
+                    $this->assertEmpty(trim($subTds->item(0)->textContent), 'Subsequent rows must not repeat Dispatch ID');
+                    $this->assertEmpty(trim($subTds->item(4)->textContent), 'Subsequent rows must not repeat Customer');
+                    $this->assertTrue(
+                        strpos($subTds->item(0)->getAttribute('class'), 'cell-merge-mid') !== false ||
+                        strpos($subTds->item(0)->getAttribute('class'), 'cell-merge-last') !== false
+                    );
+                    // Product detail cell displays product name
+                    $this->assertNotEmpty(trim($subTds->item(5)->textContent));
                 }
             }
         }
