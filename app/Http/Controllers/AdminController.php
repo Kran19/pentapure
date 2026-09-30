@@ -1325,13 +1325,58 @@ class AdminController extends Controller
     // ── DISPATCH ACTIVITY ───────────────────────────────────────────────────
     public function dispatchActivity(Request $request)
     {
-        $query = Order::with(['company', 'items.product', 'dispatchLog.user', 'transporter', 'creator'])
+        $query = Order::with(['company', 'items.product', 'dispatchLog.user', 'dispatchLogs.user', 'transporter', 'creator'])
             ->select('orders.*')
             ->addSelect(['dispatch_logs_count' => DispatchLog::selectRaw('COUNT(*)')
                 ->whereColumn('order_id', 'orders.id')
             ])
             ->orderByRaw('COALESCE(orders.date, orders.created_at) DESC')
             ->orderByDesc('orders.id');
+
+        // Search Filter (Order ID, Company, Salesperson, Transporter, Product name)
+        if ($request->filled('q')) {
+            $searchTerm = trim($request->q);
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('orders.id', 'LIKE', "%{$searchTerm}%")
+                  ->orWhereHas('company', function($compQ) use ($searchTerm) {
+                      $compQ->where('name', 'LIKE', "%{$searchTerm}%");
+                  })
+                  ->orWhereHas('creator', function($userQ) use ($searchTerm) {
+                      $userQ->where('name', 'LIKE', "%{$searchTerm}%");
+                  })
+                  ->orWhereHas('transporter', function($transQ) use ($searchTerm) {
+                      $transQ->where('name', 'LIKE', "%{$searchTerm}%");
+                  })
+                  ->orWhereHas('items.product', function($prodQ) use ($searchTerm) {
+                      $prodQ->where('name', 'LIKE', "%{$searchTerm}%");
+                  });
+            });
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '<=', $request->date_to);
+        }
+
+        // Compute status counts before applying specific status filter
+        $countQuery = clone $query;
+        $statusCounts = [
+            'ALL' => (clone $countQuery)->count(),
+            'PENDING' => (clone $countQuery)->where(function($q) {
+                $q->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED'])
+                  ->orWhereNull('dispatch_status');
+            })->count(),
+            'PARTIAL' => (clone $countQuery)->where(function($q) {
+                $q->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED'])
+                  ->orWhere(function($sub) {
+                      $sub->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED'])
+                          ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) > 1');
+                  });
+            })->count(),
+            'FULLY_DISPATCH' => (clone $countQuery)->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED'])->count(),
+        ];
 
         $status = strtoupper(trim((string)$request->status));
         if ($status && $status !== 'ALL') {
@@ -1357,21 +1402,17 @@ class AdminController extends Controller
                 $query->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED']);
             }
         }
-        if ($request->date_from) {
-            $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '>=', $request->date_from);
-        }
-        if ($request->date_to) {
-            $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '<=', $request->date_to);
-        }
 
         $orders = $query->paginate(20)->withQueryString();
 
         $pageData = [
             'orders' => $orders,
+            'statusCounts' => $statusCounts,
             'filters' => [
-                'status' => $request->status,
+                'status' => $request->status ?: 'ALL',
                 'date_from' => $request->date_from,
                 'date_to' => $request->date_to,
+                'q' => $request->q,
             ]
         ];
 
@@ -1380,13 +1421,32 @@ class AdminController extends Controller
 
     public function dispatchActivityPdf(Request $request)
     {
-        $query = Order::with(['company', 'items.product', 'dispatchLog.user', 'transporter', 'creator'])
+        $query = Order::with(['company', 'items.product', 'dispatchLog.user', 'dispatchLogs.user', 'transporter', 'creator'])
             ->select('orders.*')
             ->addSelect(['dispatch_logs_count' => DispatchLog::selectRaw('COUNT(*)')
                 ->whereColumn('order_id', 'orders.id')
             ])
             ->orderByRaw('COALESCE(orders.date, orders.created_at) DESC')
             ->orderByDesc('orders.id');
+
+        if ($request->filled('q')) {
+            $searchTerm = trim($request->q);
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('orders.id', 'LIKE', "%{$searchTerm}%")
+                  ->orWhereHas('company', function($compQ) use ($searchTerm) {
+                      $compQ->where('name', 'LIKE', "%{$searchTerm}%");
+                  })
+                  ->orWhereHas('creator', function($userQ) use ($searchTerm) {
+                      $userQ->where('name', 'LIKE', "%{$searchTerm}%");
+                  })
+                  ->orWhereHas('transporter', function($transQ) use ($searchTerm) {
+                      $transQ->where('name', 'LIKE', "%{$searchTerm}%");
+                  })
+                  ->orWhereHas('items.product', function($prodQ) use ($searchTerm) {
+                      $prodQ->where('name', 'LIKE', "%{$searchTerm}%");
+                  });
+            });
+        }
 
         $status = strtoupper(trim((string)$request->status));
         if ($status && $status !== 'ALL') {
@@ -1412,10 +1472,10 @@ class AdminController extends Controller
                 $query->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED']);
             }
         }
-        if ($request->date_from) {
+        if ($request->filled('date_from')) {
             $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '>=', $request->date_from);
         }
-        if ($request->date_to) {
+        if ($request->filled('date_to')) {
             $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '<=', $request->date_to);
         }
 
