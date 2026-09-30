@@ -1,6 +1,6 @@
-    <?php
+<?php
 
-    namespace Tests\Feature;
+namespace Tests\Feature;
 
     use App\Models\Company;
     use App\Models\Grade;

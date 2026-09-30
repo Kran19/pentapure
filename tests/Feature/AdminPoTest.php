@@ -147,4 +147,27 @@ class AdminPoTest extends TestCase
         $responseAfterOrder->assertDontSee('adminOrderPO(' . $po->id . ', this)', false);
         $responseAfterOrder->assertSee('adminDeletePO(' . $po->id . ')', false);
     }
+
+    public function test_admin_po_table_displays_receive_date(): void
+    {
+        $po = PurchaseOrder::create([
+            'user_id' => $this->stockManagerUser->id,
+            'product_id' => $this->product->id,
+            'quantity' => 120.0,
+            'status' => 'RECEIVED',
+            'date' => '2026-09-29 10:00:00',
+        ]);
+
+        $session = ['auth_user' => [
+            'id' => $this->adminUser->id,
+            'name' => $this->adminUser->name,
+            'role' => 'ADMIN',
+        ]];
+
+        $response = $this->withSession($session)->get('/admin/po');
+        $response->assertStatus(200);
+        $response->assertSee('Rec: 29-09-2026');
+        $response->assertSee('swal-receive-date');
+    }
 }
+

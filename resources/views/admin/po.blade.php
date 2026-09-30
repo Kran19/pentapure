@@ -27,7 +27,12 @@
         <tbody>
           @foreach($pageData['purchaseOrders'] as $po)
           <tr id="po-row-{{ $po->id }}">
-            <td style="font-size:0.8rem; white-space:nowrap;">{{ $po->created_at->format('d-m-Y') }}</td>
+            <td style="font-size:0.8rem; color:var(--text-muted); white-space:nowrap;">
+              <div style="font-weight:600; color:var(--text-main);">{{ $po->created_at->format('d-m-Y') }}</div>
+              @if($po->status === 'RECEIVED' && ($po->date || $po->updated_at))
+                <div style="font-size:0.72rem; color:#059669; font-weight:600;">Rec: {{ \Carbon\Carbon::parse($po->date ?? $po->updated_at)->format('d-m-Y') }}</div>
+              @endif
+            </td>
             <td>
               <div style="font-weight:600;">{{ $po->user?->name }}</div>
               <div style="font-size:0.75rem; color:var(--text-muted);">{{ $po->user?->role }}</div>
@@ -204,35 +209,108 @@ function adminRejectPO(id, btn) {
 }
 
 function adminReceivePO(id, btn) {
-  Swal.fire({
-    title: 'Mark as Received?',
-    text: "This will acknowledge the physical receipt of the order.",
-    input: 'text',
-    inputPlaceholder: 'Add optional note...',
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'Yes, mark as received'
-  }).then((result) => {
-    if (result.isConfirmed) {
-      const note = result.value || '';
-      btn.disabled = true;
-      btn.textContent = 'Processing...';
+  const todayStr = new Date().toISOString().split('T')[0];
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      title: 'Mark as Received?',
+      html: `
+        <div style="text-align: left; padding: 0.2rem 0.4rem;">
+          <p style="color: #4b5563; font-size: 0.88rem; margin: 0 0 1rem 0;">Confirm that this order has been received.</p>
+          
+          <div style="margin-bottom: 1rem;">
+            <label for="swal-receive-date" style="display: block; font-weight: 600; font-size: 0.85rem; color: #374151; margin-bottom: 0.35rem;">
+              Received Date *
+            </label>
+            <input type="date" id="swal-receive-date" class="swal2-input" value="${todayStr}" max="${todayStr}" style="width: 100%; height: 2.6rem; margin: 0; box-sizing: border-box; font-size: 0.9rem; border: 1px solid #d1d5db; border-radius: 6px; padding: 0 0.75rem;">
+          </div>
+          
+          <div style="margin-bottom: 0.5rem;">
+            <label for="swal-receive-note" style="display: block; font-weight: 600; font-size: 0.85rem; color: #374151; margin-bottom: 0.35rem;">
+              Note <span style="font-weight: 400; color: #9ca3af;">(Optional)</span>
+            </label>
+            <textarea id="swal-receive-note" class="swal2-textarea" placeholder="Add optional note..." style="width: 100%; height: 65px; margin: 0; box-sizing: border-box; font-size: 0.88rem; border: 1px solid #d1d5db; border-radius: 6px; padding: 0.5rem; resize: vertical;"></textarea>
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Received!',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#6b7280',
+      focusConfirm: false,
+      didOpen: () => {
+        const dateInput = document.getElementById('swal-receive-date');
+        if (dateInput) dateInput.focus();
+      },
+      preConfirm: () => {
+        const dateVal = document.getElementById('swal-receive-date').value;
+        if (!dateVal) {
+          Swal.showValidationMessage('Please select a received date');
+          return false;
+        }
+        const noteVal = document.getElementById('swal-receive-note').value;
+        return { date: dateVal, note: noteVal };
+      }
+    }).then((result) => {
+      if (result.isConfirmed && result.value) {
+        const { date, note } = result.value;
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = 'Processing...';
+        }
+        fetch(window.baseUrl + '/' + window.userSlug + '/po/receive', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+          body: JSON.stringify({ po_id: id, date: date, note: note })
+        }).then(r => r.json()).then(d => {
+          if (d.success) {
+            Swal.fire({
+              icon: 'success',
+              title: 'Received!',
+              text: d.message || 'PO marked as received successfully!',
+              timer: 1500,
+              showConfirmButton: false
+            }).then(() => location.reload());
+          } else {
+            Swal.fire('Error!', d.message || 'Error', 'error');
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = '📦 Mark as Received';
+            }
+          }
+        }).catch(err => {
+          Swal.fire('Error!', 'An error occurred while updating the order status.', 'error');
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = '📦 Mark as Received';
+          }
+        });
+      }
+    });
+  } else {
+    const dateVal = prompt('Enter Received Date (YYYY-MM-DD):', todayStr);
+    if (dateVal !== null) {
+      const note = prompt('Add optional note:') || '';
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Processing...';
+      }
       fetch(window.baseUrl + '/' + window.userSlug + '/po/receive', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-        body: JSON.stringify({ po_id: id, note: note })
+        body: JSON.stringify({ po_id: id, date: dateVal, note: note })
       }).then(r => r.json()).then(d => {
-        if (d.success) {
-          Swal.fire('Received!', d.message, 'success');
-          setTimeout(() => location.reload(), 800);
-        } else {
-          Swal.fire('Error!', d.message || 'Error', 'error');
-          btn.disabled = false;
-          btn.textContent = '📦 Mark as Received';
+        if (d.success) location.reload();
+        else {
+          alert(d.message || 'Error updating status');
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = '📦 Mark as Received';
+          }
         }
       });
     }
-  });
+  }
 }
 
 </script>
