@@ -52,6 +52,7 @@ class ImageCropperIntegrationTest extends TestCase
         $response = $this->withSession($session)->get('/cashier/action');
         $response->assertStatus(200);
         $response->assertSee('btn-bill-camera');
+        $response->assertSee('btn-bill-gallery');
         $response->assertSee('tx-bill-camera');
         $response->assertSee('image-cropper.js');
         $response->assertSee('cropper.min.js');
@@ -67,6 +68,8 @@ class ImageCropperIntegrationTest extends TestCase
 
         $actionRes = $this->withSession($session)->get('/dispatch/action');
         $actionRes->assertStatus(200);
+        $actionRes->assertSee('btn-media-camera');
+        $actionRes->assertSee('btn-media-gallery');
         $actionRes->assertSee('dispatch-lr-cam');
         $actionRes->assertSee('lr-preview');
         $actionRes->assertSee('image-cropper.js');
@@ -86,6 +89,8 @@ class ImageCropperIntegrationTest extends TestCase
         $historyRes = $this->withSession($session)->get('/dispatch/history');
         $historyRes->assertStatus(200);
         $historyRes->assertSee('image-cropper.js');
+        $historyRes->assertSee('btn-media-camera');
+        $historyRes->assertSee('btn-media-gallery');
         $historyRes->assertSee('late-lr-cam');
     }
 

@@ -1827,6 +1827,73 @@ img, svg {
   justify-content: center;
 }
 
+/* Unified Media Picker Buttons (Camera & Gallery) */
+.btn-media-camera,
+.btn-bill-camera {
+  background: #f59e0b !important;
+  color: #1e293b !important;
+  -webkit-text-fill-color: #1e293b !important;
+  border: 1.5px solid #d97706 !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+  padding: 0.55rem 0.95rem !important;
+  font-size: 0.85rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  box-shadow: 0 2px 5px rgba(245, 158, 11, 0.25) !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  white-space: nowrap !important;
+  user-select: none !important;
+  width: auto !important;
+}
+.btn-media-camera:hover,
+.btn-bill-camera:hover {
+  background: #fbbf24 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(245, 158, 11, 0.35) !important;
+}
+.btn-media-camera *,
+.btn-bill-camera * {
+  color: #1e293b !important;
+  -webkit-text-fill-color: #1e293b !important;
+}
+
+.btn-media-gallery,
+.btn-bill-gallery {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  -webkit-text-fill-color: #1e293b !important;
+  border: 1.5px solid #cbd5e1 !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+  padding: 0.55rem 0.95rem !important;
+  font-size: 0.85rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  white-space: nowrap !important;
+  user-select: none !important;
+  width: auto !important;
+}
+.btn-media-gallery:hover,
+.btn-bill-gallery:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  transform: translateY(-1px);
+}
+.btn-media-gallery *,
+.btn-bill-gallery * {
+  color: #1e293b !important;
+  -webkit-text-fill-color: #1e293b !important;
+}
+
 /* --------------------------------------------------------------------------
    MOBILE SCREENS (< 768px)
    -------------------------------------------------------------------------- */

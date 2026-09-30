@@ -3281,16 +3281,16 @@ const app = {
           <div style="color:var(--text-muted); font-size:0.8rem; margin-bottom:0.5rem;">LR Copy</div>
           <img src="${d.lrImage}" style="width:100%; border-radius:10px; max-height:200px; object-fit:contain; cursor:pointer;" onclick="app.viewImage(this.src)">
           <div id="late-lr-preview-container" style="display:flex; gap:8px; margin-top:8px;">
-            <button class="btn btn-sm btn-secondary" style="flex:1; font-size:0.8rem;" onclick="document.getElementById('late-lr-cam').click()">📷 Camera</button>
-            <button class="btn btn-sm btn-secondary" style="flex:1; font-size:0.8rem;" onclick="document.getElementById('late-lr-input').click()">📁 Update LR</button>
+            <button class="btn btn-sm btn-media-camera" style="flex:1; font-size:0.8rem;" onclick="document.getElementById('late-lr-cam').click()">📷 Camera</button>
+            <button class="btn btn-sm btn-media-gallery" style="flex:1; font-size:0.8rem;" onclick="document.getElementById('late-lr-input').click()">📁 Update LR</button>
           </div>
         </div>
       ` : `
         <div style="margin-bottom:1rem; padding:1.2rem; background:rgba(255,165,0,0.05); border:1px dashed rgba(255,165,0,0.3); border-radius:12px; text-align:center;">
           <div style="color:var(--warning); font-weight:600; font-size:0.9rem; margin-bottom:10px;">LR Copy Pending</div>
           <div id="late-lr-preview-container" style="display:flex; gap:8px;">
-            <button class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('late-lr-cam').click()">📷 Camera</button>
-            <button class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('late-lr-input').click()">📁 Upload LR Now</button>
+            <button class="btn btn-media-camera" style="flex:1;" onclick="document.getElementById('late-lr-cam').click()">📷 Camera</button>
+            <button class="btn btn-media-gallery" style="flex:1;" onclick="document.getElementById('late-lr-input').click()">📁 Upload LR Now</button>
           </div>
         </div>
       `}

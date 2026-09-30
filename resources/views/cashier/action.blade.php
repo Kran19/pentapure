@@ -74,6 +74,84 @@ input[type="number"],
   font-size: 0.85rem;
   box-sizing: border-box;
 }
+
+/* Media button styling for Cashier Action */
+.btn-bill-camera {
+  background: #f59e0b !important;
+  color: #1e293b !important;
+  -webkit-text-fill-color: #1e293b !important;
+  border: 1.5px solid #d97706 !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+  padding: 0.55rem 0.95rem !important;
+  font-size: 0.85rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  box-shadow: 0 2px 5px rgba(245, 158, 11, 0.25) !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  white-space: nowrap !important;
+  width: auto !important;
+}
+.btn-bill-camera:hover {
+  background: #fbbf24 !important;
+  transform: translateY(-1px);
+}
+.btn-bill-camera * {
+  color: #1e293b !important;
+  -webkit-text-fill-color: #1e293b !important;
+}
+
+.btn-bill-gallery {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  -webkit-text-fill-color: #1e293b !important;
+  border: 1.5px solid #cbd5e1 !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+  padding: 0.55rem 0.95rem !important;
+  font-size: 0.85rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  white-space: nowrap !important;
+  width: auto !important;
+}
+.btn-bill-gallery:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  transform: translateY(-1px);
+}
+.btn-bill-gallery * {
+  color: #1e293b !important;
+  -webkit-text-fill-color: #1e293b !important;
+}
+
+@media (max-width: 600px) {
+  .bill-attach-container {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+  .bill-attach-container > div {
+    display: flex !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+  .btn-bill-camera,
+  .btn-bill-gallery {
+    flex: 1 1 calc(50% - 4px) !important;
+    width: calc(50% - 4px) !important;
+    padding: 0.65rem 0.4rem !important;
+    font-size: 0.82rem !important;
+    box-sizing: border-box !important;
+  }
+}
 </style>
 
 <div class="card" style="padding:2rem;">
@@ -386,11 +464,11 @@ input[type="number"],
           <label>Attach Bill (optional)</label>
           <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-height:42px;">
             <!-- Mobile Camera Button -->
-            <button type="button" class="btn btn-sm btn-secondary btn-bill-camera" onclick="triggerRowCamera(this)" style="width:auto; padding:0.55rem 0.85rem; font-size:0.85rem; display:inline-flex; align-items:center; gap:5px; font-weight:600; background:#334155; color:#f8fafc; border:1px solid rgba(255,255,255,0.15); border-radius:8px;" title="Take photo with camera">
+            <button type="button" class="btn btn-sm btn-bill-camera" onclick="triggerRowCamera(this)" title="Take photo with camera">
               📷 Camera
             </button>
             <!-- File Gallery Button -->
-            <button type="button" class="btn btn-sm btn-secondary btn-bill-gallery" onclick="triggerRowGallery(this)" style="width:auto; padding:0.55rem 0.85rem; font-size:0.85rem; display:inline-flex; align-items:center; gap:5px; font-weight:600; background:#334155; color:#f8fafc; border:1px solid rgba(255,255,255,0.15); border-radius:8px;" title="Choose image or PDF from storage">
+            <button type="button" class="btn btn-sm btn-bill-gallery" onclick="triggerRowGallery(this)" title="Choose image or PDF from storage">
               📁 Choose File
             </button>
 
@@ -399,17 +477,17 @@ input[type="number"],
             <input type="file" class="tx-bill" accept="image/jpeg,image/png,image/webp,application/pdf" style="display:none;" onchange="handleBillFileInput(this)">
 
             <!-- Attached preview & actions -->
-            <div class="bill-file-actions" style="display:none; align-items:center; gap:6px; font-size:0.8rem; font-weight:600; padding:4px 8px; background:rgba(0,0,0,0.25); border-radius:8px; border:1px solid rgba(245,158,11,0.4); max-width:100%; box-sizing:border-box;">
+            <div class="bill-file-actions" style="display:none;">
               <img class="bill-thumb-preview" src="" style="width:34px; height:34px; object-fit:cover; border-radius:6px; border:1.5px solid #f59e0b; display:none; cursor:pointer;" onclick="previewBillFile(this)" title="Click to enlarge">
               <span class="bill-pdf-icon" style="font-size:1.4rem; display:none;">📄</span>
-              <span class="bill-file-name" style="max-width:105px; overflow:hidden; text-overflow:ellipsis; display:inline-block; color:#f59e0b; white-space:nowrap;"></span>
-              <button type="button" onclick="previewBillFile(this)" title="View Attached File" style="background:#f59e0b; color:#000; border:none; border-radius:6px; padding:5px 8px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; font-weight:bold;">
+              <span class="bill-file-name" style="max-width:120px; overflow:hidden; text-overflow:ellipsis; display:inline-block; color:#92400e; font-weight:700; white-space:nowrap;"></span>
+              <button type="button" onclick="previewBillFile(this)" title="View Attached File" style="background:#f59e0b; color:#1e293b; border:none; border-radius:6px; padding:5px 8px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; font-weight:bold;">
                 👁️
               </button>
-              <button type="button" class="btn-recrop-bill" onclick="recropBillFile(this)" title="Re-crop Image" style="background:#3b82f6; color:#fff; border:none; border-radius:6px; padding:5px 8px; cursor:pointer; display:none; align-items:center; justify-content:center; font-weight:bold;">
+              <button type="button" class="btn-recrop-bill" onclick="recropBillFile(this)" title="Re-crop Image" style="background:#0284c7; color:#fff; border:none; border-radius:6px; padding:5px 8px; cursor:pointer; display:none; align-items:center; justify-content:center; font-weight:bold;">
                 ✂️
               </button>
-              <button type="button" onclick="removeBillFile(this)" title="Delete Attached File" style="background:#e11d48; color:#fff; border:none; border-radius:6px; padding:5px 8px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;">
+              <button type="button" onclick="removeBillFile(this)" title="Delete Attached File" style="background:#ef4444; color:#fff; border:none; border-radius:6px; padding:5px 8px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;">
                 🗑️
               </button>
             </div>

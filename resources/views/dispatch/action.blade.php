@@ -102,22 +102,22 @@ input[type=number].no-spinners {
     <div class="form-group" style="margin-top:1.2rem;">
       <label>LR Copy (Optional)</label>
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-        <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('dispatch-lr-cam').click()" style="width:auto; padding:0.55rem 0.9rem; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px; font-weight:600; background:#334155; color:#f8fafc; border:1px solid rgba(255,255,255,0.15); border-radius:8px;" title="Take LR photo with camera">
+        <button type="button" class="btn btn-sm btn-media-camera" onclick="document.getElementById('dispatch-lr-cam').click()" title="Take LR photo with camera">
           📷 Camera
         </button>
-        <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('dispatch-lr-file').click()" style="width:auto; padding:0.55rem 0.9rem; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px; font-weight:600; background:#334155; color:#f8fafc; border:1px solid rgba(255,255,255,0.15); border-radius:8px;" title="Choose photo from device">
+        <button type="button" class="btn btn-sm btn-media-gallery" onclick="document.getElementById('dispatch-lr-file').click()" title="Choose photo from device">
           📁 Choose Photo
         </button>
         <input type="file" id="dispatch-lr-cam" accept="image/*" capture="environment" style="display:none;" onchange="app.handleDispatchLRPick(event)">
         <input type="file" id="dispatch-lr-file" accept="image/*" style="display:none;" onchange="app.handleDispatchLRPick(event)">
 
-        <div id="dispatch-lr-preview-container" style="display:none; align-items:center; gap:12px; margin-top:8px; width:100%; padding:8px 12px; background:rgba(0,0,0,0.25); border-radius:8px; border:1px solid rgba(245,158,11,0.3);">
-          <img id="lr-preview" src="" style="width:65px; height:65px; object-fit:cover; border-radius:6px; border:2px solid #f59e0b; cursor:pointer;" onclick="app.viewImage(this.src)" title="View Cropped Image">
-          <div style="display:flex; flex-direction:column; gap:4px;">
-            <span id="dispatch-lr-filename" style="font-size:0.85rem; font-weight:600; color:var(--text-main);"></span>
-            <div style="display:flex; gap:6px;">
-              <button type="button" class="btn btn-sm btn-secondary" onclick="app.recropDispatchLR()" style="width:auto; padding:4px 8px; font-size:0.75rem;">✂️ Re-crop</button>
-              <button type="button" class="btn btn-sm btn-danger" onclick="app.removeDispatchLR()" style="width:auto; padding:4px 8px; font-size:0.75rem; background:#dc2626; color:#fff; border:none;">🗑️ Remove</button>
+        <div id="dispatch-lr-preview-container" style="display:none; align-items:center; gap:12px; margin-top:8px; width:100%; padding:10px 14px; background:#fffbeb; border-radius:10px; border:1.5px solid #fde68a;">
+          <img id="lr-preview" src="" style="width:65px; height:65px; object-fit:cover; border-radius:8px; border:2px solid #f59e0b; cursor:pointer;" onclick="app.viewImage(this.src)" title="View Cropped Image">
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <span id="dispatch-lr-filename" style="font-size:0.88rem; font-weight:700; color:#1e293b;"></span>
+            <div style="display:flex; gap:8px;">
+              <button type="button" class="btn btn-sm" onclick="app.recropDispatchLR()" style="width:auto; padding:5px 10px; font-size:0.78rem; background:#0284c7; color:#fff !important; font-weight:600; border:none; border-radius:6px;">✂️ Re-crop</button>
+              <button type="button" class="btn btn-sm btn-danger" onclick="app.removeDispatchLR()" style="width:auto; padding:5px 10px; font-size:0.78rem; background:#dc2626; color:#fff !important; border:none; border-radius:6px;">🗑️ Remove</button>
             </div>
           </div>
         </div>
