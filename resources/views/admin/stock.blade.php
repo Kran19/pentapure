@@ -2,12 +2,91 @@
 
 @section('content')
 
+@php
+  $typeFilter = request('type') ? strtoupper(request('type')) : null;
+
+  $sortStockByLow = function($collection) {
+      return $collection->sort(function($a, $b) {
+          $hasQtyA = (float) ($a->quantity ?? 0) > 0;
+          $alertA = (float) ($a->alert_limit ?? 0);
+          $isLowA = $alertA > 0 && (float) ($a->quantity ?? 0) <= $alertA;
+          $prioA = ($isLowA && $hasQtyA) ? 0 : ($isLowA ? 1 : 2);
+
+          $hasQtyB = (float) ($b->quantity ?? 0) > 0;
+          $alertB = (float) ($b->alert_limit ?? 0);
+          $isLowB = $alertB > 0 && (float) ($b->quantity ?? 0) <= $alertB;
+          $prioB = ($isLowB && $hasQtyB) ? 0 : ($isLowB ? 1 : 2);
+
+          if ($prioA !== $prioB) {
+              return $prioA <=> $prioB;
+          }
+
+          $sortA = isset($a->sort_order) ? (int)$a->sort_order : 9999;
+          $sortB = isset($b->sort_order) ? (int)$b->sort_order : 9999;
+          if ($sortA !== $sortB) {
+              return $sortA <=> $sortB;
+          }
+
+          return strcasecmp($a->name ?? '', $b->name ?? '');
+      })->values();
+  };
+
+  $rawItems       = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'RAW'));
+  $semiItems      = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'SEMI'));
+  $finishedItems  = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'FINISHED'));
+  $packagingItems = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'PACKAGING'));
+  $adminAllGrades = \App\Models\Grade::orderBy('id')->get();
+@endphp
+
 <div style="padding:0.25rem 0 1rem 0;">
-  <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem;">
-    <h2 style="margin:0;">📦 Live Stock Overview</h2>
-    <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
-      <button class="btn btn-secondary" onclick="adminExportStockPdf()" style="width:auto; padding:0.65rem 1.2rem; border-color:#DDCFAF !important;">📄 Generate PDF Report</button>
-      <button class="btn" onclick="toggleStockFormCard()" style="width:auto; padding:0.65rem 1.2rem;">+ Add Stock</button>
+  <!-- Modern Redesigned Stock Header -->
+  <div class="stock-page-header">
+    <div class="stock-header-left">
+      <div class="stock-breadcrumb">
+        <span>INVENTORY</span>
+        <span class="stock-bc-sep">/</span>
+        <span class="stock-bc-current">
+          @if(!$typeFilter)
+            ALL STAGES
+          @elseif($typeFilter === 'FINISHED' || $typeFilter === 'FG')
+            FINISHED GOODS (FG)
+          @elseif($typeFilter === 'RAW')
+            RAW MATERIALS (RAW)
+          @elseif($typeFilter === 'SEMI')
+            SEMI-FINISHED (SEMI)
+          @elseif($typeFilter === 'PACKAGING' || $typeFilter === 'PKG')
+            PACKAGING MATERIAL (PKG)
+          @endif
+        </span>
+      </div>
+      <div class="stock-header-title-wrap">
+        <h2 class="stock-header-title">
+          @if($typeFilter === 'FINISHED' || $typeFilter === 'FG')
+            ✅ Finished Goods Stock
+          @elseif($typeFilter === 'RAW')
+            🌿 Raw Materials Stock
+          @elseif($typeFilter === 'SEMI')
+            ⚗️ Semi-Finished Stock
+          @elseif($typeFilter === 'PACKAGING' || $typeFilter === 'PKG')
+            📦 Packaging Materials Stock
+          @else
+            📦 Live Stock Overview
+          @endif
+        </h2>
+        <span class="live-status-pill">
+          <span class="pulse-dot"></span> Live
+        </span>
+      </div>
+    </div>
+    <div class="stock-header-actions">
+      <button type="button" class="btn btn-secondary stock-action-btn-secondary" onclick="adminExportStockPdf()" title="Export PDF report for selected stages">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        Generate PDF Report
+      </button>
+      <button type="button" class="btn stock-action-btn-primary" onclick="toggleStockFormCard()" title="Add or record incoming stock">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        + Add Stock
+      </button>
     </div>
   </div>
 
@@ -131,41 +210,6 @@
     </div>
   </template>
 
-  @php
-    $typeFilter = request('type') ? strtoupper(request('type')) : null;
-
-    $sortStockByLow = function($collection) {
-        return $collection->sort(function($a, $b) {
-            $hasQtyA = (float) ($a->quantity ?? 0) > 0;
-            $alertA = (float) ($a->alert_limit ?? 0);
-            $isLowA = $alertA > 0 && (float) ($a->quantity ?? 0) <= $alertA;
-            $prioA = ($isLowA && $hasQtyA) ? 0 : ($isLowA ? 1 : 2);
-
-            $hasQtyB = (float) ($b->quantity ?? 0) > 0;
-            $alertB = (float) ($b->alert_limit ?? 0);
-            $isLowB = $alertB > 0 && (float) ($b->quantity ?? 0) <= $alertB;
-            $prioB = ($isLowB && $hasQtyB) ? 0 : ($isLowB ? 1 : 2);
-
-            if ($prioA !== $prioB) {
-                return $prioA <=> $prioB;
-            }
-
-            $sortA = isset($a->sort_order) ? (int)$a->sort_order : 9999;
-            $sortB = isset($b->sort_order) ? (int)$b->sort_order : 9999;
-            if ($sortA !== $sortB) {
-                return $sortA <=> $sortB;
-            }
-
-            return strcasecmp($a->name ?? '', $b->name ?? '');
-        })->values();
-    };
-
-    $rawItems       = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'RAW'));
-    $semiItems      = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'SEMI'));
-    $finishedItems  = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'FINISHED'));
-    $packagingItems = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'PACKAGING'));
-    $adminAllGrades = \App\Models\Grade::orderBy('id')->get();
-  @endphp
   <script>
     const adminAllGrades = {!! json_encode($adminAllGrades) !!};
   </script>
@@ -504,56 +548,545 @@
     .stock-table tbody td:first-child div {
       white-space: nowrap !important;
     }
+
+    /* ── REDESIGNED STOCK UI STYLES ─────────────────────────────────────── */
+    .stock-page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.25rem;
+    }
+    .stock-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--text-muted, #64748b);
+      margin-bottom: 4px;
+    }
+    .stock-bc-sep {
+      color: var(--border-color, #cbd5e1);
+    }
+    .stock-bc-current {
+      color: var(--primary-light, #8a5a00);
+    }
+    .stock-header-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .stock-header-title {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: var(--text-main, #0f172a);
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+    .live-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: #ecfdf5;
+      color: #047857;
+      border: 1px solid #a7f3d0;
+    }
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.4);
+      animation: pulseLiveDot 2s infinite ease-in-out;
+    }
+    @keyframes pulseLiveDot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.3); opacity: 0.6; }
+    }
+    .stock-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .stock-action-btn-secondary {
+      width: auto !important;
+      padding: 0.6rem 1.15rem !important;
+      border-radius: 10px !important;
+      font-size: 0.85rem !important;
+      font-weight: 600 !important;
+      border: 1px solid #DDCFAF !important;
+      background: #ffffff !important;
+      color: #5A4A2A !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+      transition: all 0.15s ease !important;
+    }
+    .stock-action-btn-secondary:hover {
+      background: #F8F6F1 !important;
+      transform: translateY(-1px) !important;
+    }
+    .stock-action-btn-primary {
+      width: auto !important;
+      padding: 0.6rem 1.25rem !important;
+      border-radius: 10px !important;
+      font-size: 0.85rem !important;
+      font-weight: 700 !important;
+      background: var(--primary, #f59e0b) !important;
+      color: var(--dark-brand, #2b241c) !important;
+      border: none !important;
+      box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25) !important;
+      transition: all 0.15s ease !important;
+    }
+    .stock-action-btn-primary:hover {
+      background: var(--primary-hover, #d97706) !important;
+      transform: translateY(-1px) !important;
+      box-shadow: 0 4px 10px rgba(245, 158, 11, 0.35) !important;
+    }
+
+    /* ── SEGMENTED NAVIGATION PILLS BAR ────────────────────────────────── */
+    .stock-nav-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      width: 100%;
+    }
+    .stock-tabs-container {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px;
+      background: var(--bg-hover, #f1f5f9);
+      border: 1px solid var(--border-soft, #e2e8f0);
+      border-radius: 12px;
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
+    }
+    .stock-tabs-container::-webkit-scrollbar { display: none; }
+
+    .stock-tab {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 7px !important;
+      padding: 7px 15px !important;
+      font-size: 0.82rem !important;
+      font-weight: 700 !important;
+      color: var(--text-secondary, #475569) !important;
+      background: transparent !important;
+      border-radius: 8px !important;
+      text-decoration: none !important;
+      white-space: nowrap !important;
+      width: auto !important;
+      flex: 0 0 auto !important;
+      border: 1px solid transparent !important;
+      cursor: pointer !important;
+      transition: all 0.15s ease !important;
+      user-select: none !important;
+    }
+    .stock-tab:hover {
+      background: #ffffff !important;
+      color: var(--text-main, #0f172a) !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+    }
+    .stock-tab .stock-tab-badge {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 1px 7px !important;
+      border-radius: 999px !important;
+      font-size: 0.72rem !important;
+      font-weight: 700 !important;
+      background: #ffffff !important;
+      color: #64748b !important;
+      border: 1px solid #cbd5e1 !important;
+      line-height: 1.25 !important;
+    }
+
+    /* Active Tab Themes */
+    .stock-tab.active {
+      color: #ffffff !important;
+    }
+    .stock-tab.active .stock-tab-badge {
+      background: rgba(255, 255, 255, 0.25) !important;
+      color: #ffffff !important;
+      border-color: rgba(255, 255, 255, 0.35) !important;
+    }
+    .stock-tab.active.is-all {
+      background: #1e293b !important;
+      box-shadow: 0 2px 6px rgba(30, 41, 59, 0.35) !important;
+    }
+    .stock-tab.active.is-raw {
+      background: #059669 !important;
+      box-shadow: 0 2px 8px rgba(5, 150, 105, 0.35) !important;
+    }
+    .stock-tab.active.is-semi {
+      background: #d97706 !important;
+      box-shadow: 0 2px 8px rgba(217, 119, 6, 0.35) !important;
+    }
+    .stock-tab.active.is-fg {
+      background: #2563eb !important;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4) !important;
+    }
+    .stock-tab.active.is-pkg {
+      background: #0284c7 !important;
+      box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35) !important;
+    }
+
+    /* Quick Action Button for Low Stock */
+    .stock-quick-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .stock-low-toggle-btn {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 7px !important;
+      padding: 0.55rem 1rem !important;
+      font-size: 0.82rem !important;
+      font-weight: 700 !important;
+      border-radius: 8px !important;
+      border: 1.5px solid #dc2626 !important;
+      background: #ffffff !important;
+      color: #dc2626 !important;
+      cursor: pointer !important;
+      width: auto !important;
+      flex: 0 0 auto !important;
+      white-space: nowrap !important;
+      transition: all 0.15s ease !important;
+      box-shadow: 0 1px 3px rgba(220, 38, 38, 0.08) !important;
+      user-select: none !important;
+    }
+    .stock-low-toggle-btn:hover {
+      background: #fef2f2 !important;
+      border-color: #b91c1c !important;
+      color: #b91c1c !important;
+    }
+    .stock-low-toggle-btn.is-active {
+      background: #dc2626 !important;
+      color: #ffffff !important;
+      border-color: #b91c1c !important;
+      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.35) !important;
+    }
+    .stock-low-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #dc2626;
+      color: #ffffff;
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 1px 7px;
+      border-radius: 999px;
+      min-width: 18px;
+    }
+    .stock-low-toggle-btn.is-active .stock-low-badge {
+      background: #ffffff;
+      color: #dc2626;
+    }
+
+    /* ── INTEGRATED SEARCH & INFO TOOLBAR ──────────────────────────────── */
+    .stock-toolbar-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.85rem;
+      flex-wrap: wrap;
+      padding: 0.65rem 0.85rem;
+      margin-bottom: 1.25rem;
+      background: var(--bg-card, #ffffff);
+      border: 1px solid var(--border-soft, #e2e8f0);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    }
+    .stock-search-wrap {
+      position: relative;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      min-width: 240px;
+    }
+    .stock-search-icon {
+      position: absolute;
+      left: 12px;
+      color: var(--text-muted, #94a3b8);
+      pointer-events: none;
+    }
+    .stock-search-wrap input {
+      width: 100% !important;
+      padding: 0.55rem 2.2rem 0.55rem 2.4rem !important;
+      border-radius: 8px !important;
+      font-size: 0.87rem !important;
+      border: 1px solid var(--border-soft, #d1d5db) !important;
+      background: var(--bg-hover, #f8fafc) !important;
+      color: var(--text-main, #1e293b) !important;
+      outline: none !important;
+      transition: all 0.15s ease !important;
+    }
+    .stock-search-wrap input:focus {
+      border-color: #2563eb !important;
+      background: #ffffff !important;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+    }
+    .stock-search-clear-btn {
+      position: absolute;
+      right: 10px;
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: none;
+    }
+    .stock-search-clear-btn:hover {
+      color: #dc2626;
+      background: #fee2e2;
+    }
+    .stock-toolbar-info {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+    .stock-count-chip {
+      font-size: 0.8rem;
+      color: var(--text-secondary, #64748b);
+      background: var(--bg-hover, #f1f5f9);
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border-soft, #e2e8f0);
+    }
+    .stock-count-chip strong {
+      color: var(--text-main, #0f172a);
+    }
+
+    /* ── STOCK TABLE CARD & HEADERS ────────────────────────────────────── */
+    .stock-table-card {
+      background: var(--bg-card, #ffffff) !important;
+      border: 1px solid var(--border-soft, #e2e8f0) !important;
+      border-radius: 12px !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+      padding: 1.25rem !important;
+      margin-bottom: 1.25rem !important;
+    }
+    .stock-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-soft, #f1f5f9);
+    }
+    .stock-card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .stock-stage-pill {
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+    .stock-stage-pill.is-raw  { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+    .stock-stage-pill.is-semi { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .stock-stage-pill.is-fg   { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+    .stock-stage-pill.is-pkg  { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+
+    .stock-card-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-main, #0f172a);
+      margin: 0;
+    }
+    .stock-card-count-pill {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted, #64748b);
+      background: var(--bg-hover, #f1f5f9);
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border-soft, #e2e8f0);
+    }
+    .stock-low-alert-banner {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      background: #dc2626;
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
+    }
+
+    .stock-empty-state {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: var(--text-muted, #64748b);
+    }
+    .stock-empty-state .empty-icon {
+      font-size: 2.2rem;
+      display: block;
+      margin-bottom: 0.5rem;
+      opacity: 0.7;
+    }
+
+    /* Location Column Hover & Chip */
+    .table-container table.stock-table td.location-col {
+      cursor: pointer;
+      color: var(--primary-light, #8a5a00) !important;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+    .table-container table.stock-table td.location-col:hover {
+      color: #2563eb !important;
+      text-decoration: underline;
+    }
+
+    /* Dark Mode Adjustments */
+    html.dark-mode .stock-header-title { color: #f8fafc; }
+    html.dark-mode .stock-tabs-container { background: #0f172a; border-color: #334155; }
+    html.dark-mode .stock-tab { color: #94a3b8 !important; }
+    html.dark-mode .stock-tab:hover { background: #1e293b !important; color: #f8fafc !important; }
+    html.dark-mode .stock-tab .stock-tab-badge { background: #1e293b !important; color: #94a3b8 !important; border-color: #334155 !important; }
+    html.dark-mode .stock-toolbar-card { background: #1e293b; border-color: #334155; }
+    html.dark-mode .stock-search-wrap input { background: #0f172a !important; border-color: #334155 !important; color: #f8fafc !important; }
+    html.dark-mode .stock-count-chip { background: #0f172a; border-color: #334155; color: #94a3b8; }
+    html.dark-mode .stock-count-chip strong { color: #f8fafc; }
+    html.dark-mode .stock-table-card { background: #1e293b !important; border-color: #334155 !important; }
+    html.dark-mode .stock-card-header { border-bottom-color: #334155; }
+    html.dark-mode .stock-card-title { color: #f8fafc; }
+    html.dark-mode .stock-card-count-pill { background: #0f172a; border-color: #334155; color: #94a3b8; }
+    html.dark-mode .stock-action-btn-secondary { background: #1e293b !important; border-color: #334155 !important; color: #f8fafc !important; }
+    html.dark-mode .stock-action-btn-secondary:hover { background: #334155 !important; }
+    html.dark-mode .stock-low-toggle-btn { background: #1e293b !important; border-color: #ef4444 !important; color: #ef4444 !important; }
+    html.dark-mode .stock-low-toggle-btn:hover { background: #2d1820 !important; }
+    html.dark-mode .stock-low-toggle-btn.is-active { background: #dc2626 !important; color: #ffffff !important; }
   </style>
 
-  <!-- Stock Stage Navigation Pills -->
-  <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1.2rem; align-items:center;">
-    <a href="{{ route(request()->segment(1) . '.stock') }}" class="btn" style="padding:0.45rem 1rem; font-size:0.85rem; font-weight:700; text-decoration:none; border-radius:8px; transition:all 0.15s ease; {{ !$typeFilter ? 'background:#f59e0b; color:#fff; border:none; box-shadow:0 2px 6px rgba(245, 158, 11, 0.35);' : 'background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;' }}">
-      ALL ({{ count($pageData['allStock']) }})
-    </a>
-    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'raw']) }}" class="btn" style="padding:0.45rem 1rem; font-size:0.85rem; font-weight:700; text-decoration:none; border-radius:8px; transition:all 0.15s ease; {{ $typeFilter === 'RAW' ? 'background:#059669; color:#fff; border:none; box-shadow:0 2px 6px rgba(5, 150, 105, 0.35);' : 'background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;' }}">
-      🌿 RAW ({{ $rawItems->count() }})
-    </a>
-    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'semi']) }}" class="btn" style="padding:0.45rem 1rem; font-size:0.85rem; font-weight:700; text-decoration:none; border-radius:8px; transition:all 0.15s ease; {{ $typeFilter === 'SEMI' ? 'background:#d97706; color:#fff; border:none; box-shadow:0 2px 6px rgba(217, 119, 6, 0.35);' : 'background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;' }}">
-      ⚗️ SEMI ({{ $semiItems->count() }})
-    </a>
-    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'finished']) }}" class="btn" style="padding:0.45rem 1rem; font-size:0.85rem; font-weight:700; text-decoration:none; border-radius:8px; transition:all 0.15s ease; {{ ($typeFilter === 'FINISHED' || $typeFilter === 'FG') ? 'background:#2563eb; color:#fff; border:none; box-shadow:0 2px 6px rgba(37, 99, 235, 0.35);' : 'background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;' }}">
-      ✅ FG ({{ $finishedItems->count() }})
-    </a>
-    <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'packaging']) }}" class="btn" style="padding:0.45rem 1rem; font-size:0.85rem; font-weight:700; text-decoration:none; border-radius:8px; transition:all 0.15s ease; {{ ($typeFilter === 'PACKAGING' || $typeFilter === 'PKG') ? 'background:#0284c7; color:#fff; border:none; box-shadow:0 2px 6px rgba(2, 132, 199, 0.35);' : 'background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;' }}">
-      📦 PACKAGING ({{ $packagingItems->count() }})
-    </a>
+  <!-- Modern Segmented Navigation & Filter Toolbar -->
+  <div class="stock-nav-bar">
+    <div class="stock-tabs-container">
+      <a href="{{ route(request()->segment(1) . '.stock') }}" class="stock-tab {{ !$typeFilter ? 'active is-all' : '' }}">
+        <span class="stock-tab-icon">🌐</span>
+        <span class="stock-tab-label">ALL</span>
+        <span class="stock-tab-badge">{{ count($pageData['allStock']) }}</span>
+      </a>
+      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'raw']) }}" class="stock-tab {{ $typeFilter === 'RAW' ? 'active is-raw' : '' }}">
+        <span class="stock-tab-icon">🌿</span>
+        <span class="stock-tab-label">RAW</span>
+        <span class="stock-tab-badge">{{ $rawItems->count() }}</span>
+      </a>
+      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'semi']) }}" class="stock-tab {{ $typeFilter === 'SEMI' ? 'active is-semi' : '' }}">
+        <span class="stock-tab-icon">⚗️</span>
+        <span class="stock-tab-label">SEMI</span>
+        <span class="stock-tab-badge">{{ $semiItems->count() }}</span>
+      </a>
+      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'finished']) }}" class="stock-tab {{ ($typeFilter === 'FINISHED' || $typeFilter === 'FG') ? 'active is-fg' : '' }}">
+        <span class="stock-tab-icon">✅</span>
+        <span class="stock-tab-label">FG</span>
+        <span class="stock-tab-badge">{{ $finishedItems->count() }}</span>
+      </a>
+      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'packaging']) }}" class="stock-tab {{ ($typeFilter === 'PACKAGING' || $typeFilter === 'PKG') ? 'active is-pkg' : '' }}">
+        <span class="stock-tab-icon">📦</span>
+        <span class="stock-tab-label">PACKAGING</span>
+        <span class="stock-tab-badge">{{ $packagingItems->count() }}</span>
+      </a>
+    </div>
 
-    <!-- Low Stock Only Quick Filter Toggle -->
-    <button type="button" id="toggle-low-stock-btn" onclick="toggleLowStockOnly()" class="btn" style="margin-left:auto; padding:0.45rem 1rem; font-size:0.85rem; font-weight:700; border-radius:8px; border:1.5px solid #dc2626; background:#fff; color:#dc2626; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.15s ease;">
-      <span>⚠</span> <span id="toggle-low-stock-label">Show Low Stock Only</span>
-    </button>
+    @php
+      $relevantForLow = match($typeFilter) {
+        'RAW' => $rawItems,
+        'SEMI' => $semiItems,
+        'FINISHED', 'FG' => $finishedItems,
+        'PACKAGING', 'PKG' => $packagingItems,
+        default => $rawItems->concat($semiItems)->concat($finishedItems)->concat($packagingItems)
+      };
+      $currentLowStockCount = $relevantForLow->filter(fn($s) => (float)($s->alert_limit ?? 0) > 0 && (float)($s->quantity ?? 0) <= (float)($s->alert_limit ?? 0) && (float)($s->quantity ?? 0) > 0)->count();
+    @endphp
+
+    <div class="stock-quick-actions">
+      <!-- Low Stock Only Quick Filter Toggle -->
+      <button type="button" id="toggle-low-stock-btn" onclick="toggleLowStockOnly()" class="stock-low-toggle-btn" title="Filter to only products that need replenishment">
+        <span class="low-stock-icon">⚠</span>
+        <span id="toggle-low-stock-label">Show Low Stock Only</span>
+        @if($currentLowStockCount > 0)
+          <span class="stock-low-badge" id="stock-low-badge-count">{{ $currentLowStockCount }}</span>
+        @endif
+      </button>
+    </div>
   </div>
 
   <!-- Common Product Instant Search Bar -->
-  <div class="card" style="padding:0.85rem 1.2rem; margin-bottom:1.5rem; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:10px;">
-    <div style="display:flex; align-items:center; gap:0.75rem;">
-      <span style="font-size:1.1rem; color:var(--text-muted);">🔍</span>
-      <input type="text" id="global-product-search" placeholder="Search product name across RAW, SEMI, FG, and PACKAGING..." oninput="onGlobalProductSearch(this.value)" style="width:100%; padding:0.6rem 0.9rem; border-radius:8px; font-size:0.9rem; border:1px solid var(--border-soft); background:var(--bg-hover); color:var(--text-main); outline:none;">
+  <div class="stock-toolbar-card">
+    <div class="stock-search-wrap">
+      <svg class="stock-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" id="global-product-search" placeholder="Search product name in {{ $typeFilter ? ($typeFilter === 'FINISHED' ? 'FG' : $typeFilter) : 'all stock' }}..." oninput="onGlobalProductSearch(this.value)">
+      <button type="button" id="stock-search-clear-btn" class="stock-search-clear-btn" onclick="clearStockSearch()" title="Clear search">✕</button>
+    </div>
+    <div class="stock-toolbar-info">
+      <span class="stock-count-chip">
+        @if(!$typeFilter)
+          Showing <strong>{{ count($pageData['allStock']) }}</strong> Total Products
+        @elseif($typeFilter === 'FINISHED' || $typeFilter === 'FG')
+          Showing <strong>{{ $finishedItems->count() }}</strong> Finished Goods (FG)
+        @elseif($typeFilter === 'RAW')
+          Showing <strong>{{ $rawItems->count() }}</strong> Raw Materials
+        @elseif($typeFilter === 'SEMI')
+          Showing <strong>{{ $semiItems->count() }}</strong> Semi-Finished Items
+        @elseif($typeFilter === 'PACKAGING' || $typeFilter === 'PKG')
+          Showing <strong>{{ $packagingItems->count() }}</strong> Packaging Items
+        @endif
+      </span>
     </div>
   </div>
 
   @if(!$typeFilter || $typeFilter === 'RAW')
   <!-- RAW Stock -->
-  <div class="card" style="padding:1.2rem; margin-bottom:1rem;">
+  <div class="card stock-table-card">
     @php
       $rawLowCount = $rawItems->filter(fn($s) => (float)($s->alert_limit ?? 0) > 0 && (float)($s->quantity ?? 0) <= (float)($s->alert_limit ?? 0) && (float)($s->quantity ?? 0) > 0)->count();
     @endphp
-    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; color:var(--primary-light);">
-      <span>🌿 Raw Material Stock ({{ $rawItems->count() }} items)</span>
+    <div class="stock-card-header">
+      <div class="stock-card-title-group">
+        <span class="stock-stage-pill is-raw">RAW</span>
+        <h3 class="stock-card-title">🌿 Raw Material Stock</h3>
+        <span class="stock-card-count-pill">{{ $rawItems->count() }} items</span>
+      </div>
       @if($rawLowCount > 0)
-        <span style="font-size:0.78rem; font-weight:700; background:#dc2626; color:#ffffff; padding:3px 10px; border-radius:999px; box-shadow:0 2px 4px rgba(220, 38, 38, 0.25);">
-          ⚠ {{ $rawLowCount }} Low Stock on Top
-        </span>
+        <div class="stock-low-alert-banner">
+          <span class="alert-icon">⚠</span>
+          <span><strong>{{ $rawLowCount }}</strong> Low Stock Ranked on Top</span>
+        </div>
       @endif
     </div>
     @if($rawItems->isEmpty())
-      <p class="text-muted text-center">No raw stock recorded yet.</p>
+      <div class="stock-empty-state">
+        <span class="empty-icon">🌿</span>
+        <p>No raw stock recorded yet.</p>
+      </div>
     @else
     <div class="table-container">
       <table class="stock-table">
@@ -612,20 +1145,28 @@
 
   @if(!$typeFilter || $typeFilter === 'SEMI')
   <!-- SEMI Stock -->
-  <div class="card" style="padding:1.2rem; margin-bottom:1rem;">
+  <div class="card stock-table-card">
     @php
       $semiLowCount = $semiItems->filter(fn($s) => (float)($s->alert_limit ?? 0) > 0 && (float)($s->quantity ?? 0) <= (float)($s->alert_limit ?? 0) && (float)($s->quantity ?? 0) > 0)->count();
     @endphp
-    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; color:var(--warning);">
-      <span>⚗️ Semi-Finished Stock ({{ $semiItems->count() }} items)</span>
+    <div class="stock-card-header">
+      <div class="stock-card-title-group">
+        <span class="stock-stage-pill is-semi">SEMI</span>
+        <h3 class="stock-card-title">⚗️ Semi-Finished Stock</h3>
+        <span class="stock-card-count-pill">{{ $semiItems->count() }} items</span>
+      </div>
       @if($semiLowCount > 0)
-        <span style="font-size:0.78rem; font-weight:700; background:#dc2626; color:#ffffff; padding:3px 10px; border-radius:999px; box-shadow:0 2px 4px rgba(220, 38, 38, 0.25);">
-          ⚠ {{ $semiLowCount }} Low Stock on Top
-        </span>
+        <div class="stock-low-alert-banner">
+          <span class="alert-icon">⚠</span>
+          <span><strong>{{ $semiLowCount }}</strong> Low Stock Ranked on Top</span>
+        </div>
       @endif
     </div>
     @if($semiItems->isEmpty())
-      <p class="text-muted text-center">No semi stock recorded yet.</p>
+      <div class="stock-empty-state">
+        <span class="empty-icon">⚗️</span>
+        <p>No semi-finished stock recorded yet.</p>
+      </div>
     @else
     <div class="table-container">
       <table class="stock-table">
@@ -682,22 +1223,30 @@
   </div>
   @endif
 
-  @if(!$typeFilter || $typeFilter === 'FINISHED')
+  @if(!$typeFilter || $typeFilter === 'FINISHED' || $typeFilter === 'FG')
   <!-- Finished Stock -->
-  <div class="card" style="padding:1.2rem;">
+  <div class="card stock-table-card">
     @php
       $finishedLowCount = $finishedItems->filter(fn($s) => (float)($s->alert_limit ?? 0) > 0 && (float)($s->quantity ?? 0) <= (float)($s->alert_limit ?? 0) && (float)($s->quantity ?? 0) > 0)->count();
     @endphp
-    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; color:var(--secondary);">
-      <span>✅ FG Stock ({{ $finishedItems->count() }} items)</span>
+    <div class="stock-card-header">
+      <div class="stock-card-title-group">
+        <span class="stock-stage-pill is-fg">FG</span>
+        <h3 class="stock-card-title">✅ Finished Goods (FG) Stock</h3>
+        <span class="stock-card-count-pill">{{ $finishedItems->count() }} items</span>
+      </div>
       @if($finishedLowCount > 0)
-        <span style="font-size:0.78rem; font-weight:700; background:#dc2626; color:#ffffff; padding:3px 10px; border-radius:999px; box-shadow:0 2px 4px rgba(220, 38, 38, 0.25);">
-          ⚠ {{ $finishedLowCount }} Low Stock on Top
-        </span>
+        <div class="stock-low-alert-banner">
+          <span class="alert-icon">⚠</span>
+          <span><strong>{{ $finishedLowCount }}</strong> Low Stock Ranked on Top</span>
+        </div>
       @endif
     </div>
     @if($finishedItems->isEmpty())
-      <p class="text-muted text-center">No FG stock recorded yet.</p>
+      <div class="stock-empty-state">
+        <span class="empty-icon">✅</span>
+        <p>No Finished Goods (FG) stock recorded yet.</p>
+      </div>
     @else
     <div class="table-container">
       <table class="stock-table">
@@ -754,22 +1303,30 @@
   </div>
   @endif
 
-  @if(!$typeFilter || $typeFilter === 'PACKAGING')
+  @if(!$typeFilter || $typeFilter === 'PACKAGING' || $typeFilter === 'PKG')
   <!-- Packaging Stock -->
-  <div class="card" style="padding:1.2rem; margin-top:1rem;">
+  <div class="card stock-table-card" style="margin-top:1.25rem;">
     @php
       $packagingLowCount = $packagingItems->filter(fn($s) => (float)($s->alert_limit ?? 0) > 0 && (float)($s->quantity ?? 0) <= (float)($s->alert_limit ?? 0) && (float)($s->quantity ?? 0) > 0)->count();
     @endphp
-    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; color:#0284c7;">
-      <span>📦 Packaging Material Stock ({{ $packagingItems->count() }} items)</span>
+    <div class="stock-card-header">
+      <div class="stock-card-title-group">
+        <span class="stock-stage-pill is-pkg">PKG</span>
+        <h3 class="stock-card-title">📦 Packaging Material Stock</h3>
+        <span class="stock-card-count-pill">{{ $packagingItems->count() }} items</span>
+      </div>
       @if($packagingLowCount > 0)
-        <span style="font-size:0.78rem; font-weight:700; background:#dc2626; color:#ffffff; padding:3px 10px; border-radius:999px; box-shadow:0 2px 4px rgba(220, 38, 38, 0.25);">
-          ⚠ {{ $packagingLowCount }} Low Stock on Top
-        </span>
+        <div class="stock-low-alert-banner">
+          <span class="alert-icon">⚠</span>
+          <span><strong>{{ $packagingLowCount }}</strong> Low Stock Ranked on Top</span>
+        </div>
       @endif
     </div>
     @if($packagingItems->isEmpty())
-      <p class="text-muted text-center">No packaging stock recorded yet.</p>
+      <div class="stock-empty-state">
+        <span class="empty-icon">📦</span>
+        <p>No packaging stock recorded yet.</p>
+      </div>
     @else
     <div class="table-container">
       <table class="stock-table">
@@ -1624,11 +2181,13 @@ function toggleLowStockOnly() {
   const label = document.getElementById('toggle-low-stock-label');
   if (btn && label) {
     if (lowStockOnlyActive) {
+      btn.classList.add('is-active');
       btn.style.background = '#dc2626';
       btn.style.color = '#ffffff';
       btn.style.borderColor = '#b91c1c';
-      label.textContent = 'Showing Low Stock Only (Click to Show All)';
+      label.textContent = 'Showing Low Stock (Click for All)';
     } else {
+      btn.classList.remove('is-active');
       btn.style.background = '#ffffff';
       btn.style.color = '#dc2626';
       btn.style.borderColor = '#dc2626';
@@ -1636,6 +2195,19 @@ function toggleLowStockOnly() {
     }
   }
   applyLowStockFilter();
+}
+
+function clearStockSearch() {
+  const searchInput = document.getElementById('global-product-search');
+  const clearBtn = document.getElementById('stock-search-clear-btn');
+  if (searchInput) {
+    searchInput.value = '';
+    onGlobalProductSearch('');
+    searchInput.focus();
+  }
+  if (clearBtn) {
+    clearBtn.style.display = 'none';
+  }
 }
 
 function applyLowStockFilter() {
@@ -1663,6 +2235,10 @@ function applyLowStockFilter() {
 }
 
 function onGlobalProductSearch(val) {
+  const clearBtn = document.getElementById('stock-search-clear-btn');
+  if (clearBtn) {
+    clearBtn.style.display = (val && val.trim().length > 0) ? 'inline-flex' : 'none';
+  }
   const q = (val || '').trim().toUpperCase();
   const tokens = q.split(/\s+/).filter(Boolean);
   ['raw-stock-tbody', 'semi-stock-tbody', 'finished-stock-tbody', 'packaging-stock-tbody'].forEach(tbodyId => {
