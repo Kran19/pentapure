@@ -6,7 +6,7 @@
         <h2 style="margin:0;">💰 Cashier Overview</h2>
         <div style="display:flex; gap:0.5rem;">
             <button class="btn btn-secondary" onclick="location.reload()" style="width:auto; padding:0.6rem 1rem;">🔄 Refresh</button>
-            <a href="{{ route(request()->segment(1) . '.cashier.logs') }}" class="btn" style="width:auto; padding:0.6rem 1rem; background-color:var(--primary-light); text-decoration:none; display:flex; align-items:center; gap:5px;">
+            <a href="{{ route(request()->segment(1) . '.cashier.logs') }}" class="btn" style="width:auto; padding:0.6rem 1rem; background-color:#eab308 !important; color:#000000 !important; font-weight:700; text-decoration:none; display:flex; align-items:center; gap:5px; border-radius:12px;" onmouseover="this.style.backgroundColor='#ca8a04'" onmouseout="this.style.backgroundColor='#eab308'">
                 📝 View Edit Logs
             </a>
             <button type="button" class="btn" onclick="window.downloadPdfAsync('{{ route(request()->segment(1) . '.cashier_overview.pdf') }}', { cashier_id: '{{ request('cashier_id') }}', type: '{{ request('type') ?: request('status') }}' }, this)" style="width:auto; padding:0.6rem 1rem; display:flex; align-items:center; gap:5px; cursor:pointer;">
