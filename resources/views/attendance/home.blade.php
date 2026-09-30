@@ -2,6 +2,13 @@
 
 @section('content')
 <div style="padding:1.5rem;">
+  @if(session('success'))
+    <div style="background:#dcfce7; border:1px solid #86efac; color:#166534; padding:0.8rem 1.2rem; border-radius:8px; margin-bottom:1rem; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+      <span>✓ {{ session('success') }}</span>
+      <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:#166534; font-size:1.1rem; cursor:pointer;">&times;</button>
+    </div>
+  @endif
+
   <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px;">
     <h2 style="margin:0;">📊 Attendance Dashboard</h2>
     <button class="btn" onclick="openAddWorkerModal()" style="width:auto; padding:0.6rem 1.5rem;">+ Add Worker</button>
@@ -41,7 +48,14 @@
 
   <!-- Recent Attendance Status -->
   <div class="card" style="margin-top:1.5rem; padding:1.5rem;">
-    <h3 style="margin-top:0; margin-bottom:1rem;">📅 Recent Attendance Status</h3>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
+      <h3 style="margin:0;">📅 Recent Attendance Status</h3>
+      @if(isset($recentSubmissions) && $recentSubmissions->count() > 0)
+        <button type="button" class="btn btn-sm" onclick="confirmClearAttendance()" style="background:#dc2626; border:1px solid #dc2626; color:#ffffff !important; font-weight:700; padding:5px 12px; border-radius:6px; cursor:pointer; width:auto;" title="Clear all attendance records">
+          🗑️ Clear All Attendance Records
+        </button>
+      @endif
+    </div>
     @if(isset($recentSubmissions) && $recentSubmissions->count() > 0)
     <div style="overflow-x:auto;">
       <table style="width:100%; border-collapse:collapse; text-align:left;">
@@ -279,6 +293,34 @@ function submitWorkerForm(e) {
     })
     .catch(err => {
         Swal.fire('Error', 'An unexpected error occurred', 'error');
+    });
+}
+
+function confirmClearAttendance() {
+    Swal.fire({
+        title: 'Clear All Attendance?',
+        text: 'Are you sure you want to permanently clear all attendance records and submissions? Worker profiles and departments will remain 100% intact.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        confirmButtonText: 'Yes, clear all',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const clearUrl = '{{ url(request()->segment(1) . (request()->segment(1) == "admin" ? "/attendance/clear" : "/clear")) }}';
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = clearUrl;
+            
+            const csrf = document.createElement('input');
+            csrf.type = 'hidden';
+            csrf.name = '_token';
+            csrf.value = '{{ csrf_token() }}';
+            form.appendChild(csrf);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
     });
 }
 </script>

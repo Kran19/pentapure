@@ -53,6 +53,34 @@ class AttendanceController extends Controller
         ]);
     }
 
+    public function clearAttendanceData(Request $request)
+    {
+        \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
+
+        $tables = [
+            'attendances',
+            'attendance_submissions',
+            'worker_monthly_adjustments',
+        ];
+
+        foreach ($tables as $table) {
+            if (\Illuminate\Support\Facades\Schema::hasTable($table)) {
+                \Illuminate\Support\Facades\DB::table($table)->truncate();
+            }
+        }
+
+        \Illuminate\Support\Facades\Schema::enableForeignKeyConstraints();
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'All attendance records and submissions have been successfully cleared!'
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'All attendance records and submissions have been successfully cleared!');
+    }
+
     // --- DEPARTMENTS ---
     public function departments(Request $request)
     {
