@@ -794,7 +794,17 @@ class AdminController extends Controller
     // ── PURCHASE ORDERS ────────────────────────────────────────────────────
     public function po()
     {
+        $statusPriority = "CASE 
+            WHEN status = 'PENDING' THEN 1
+            WHEN status = 'READ' THEN 2
+            WHEN status = 'ORDERED' THEN 3
+            WHEN status IN ('RECEIVED', 'DONE', 'COMPLETED') THEN 4
+            WHEN status = 'REJECTED' THEN 5
+            ELSE 6
+        END";
+
         $pos = PurchaseOrder::with(['user', 'product'])
+            ->orderByRaw($statusPriority)
             ->orderByDesc('created_at')
             ->paginate(100);
             
