@@ -13,7 +13,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('product_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade'); // who did the action
-            $table->enum('stage', ['RAW', 'SEMI', 'FINISHED']); // which stockroom
+            $table->enum('stage', ['RAW', 'SEMI', 'FINISHED', 'PACKAGING']); // which stockroom
             $table->string('grade')->default('NONE');
             $table->decimal('quantity', 12, 3); // positive = IN, negative = OUT
             $table->enum('transaction_type', ['IN', 'OUT']);

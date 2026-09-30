@@ -17,6 +17,7 @@ class Product extends Model
     ];
 
     public function scopeRaw($query)   { return $query->where('type', 'RAW'); }
+    public function scopePackaging($query) { return $query->where('type', 'PACKAGING'); }
     public function scopeTarget($query){ return $query; }
     public function scopeActive($query){ return $query->where('is_active', true); }
 

@@ -312,6 +312,18 @@ class AdminController extends Controller
             $p->gradeNames = $p->grades->pluck('name')->toArray();
             return $p;
         });
+
+        $packagingProducts = Product::with('grades')
+            ->withCount($withCounts)
+            ->where('type', 'PACKAGING')
+            ->orderBy('sort_order')
+            ->get();
+
+        $packagingProducts->transform(function($p) {
+            $p->gradeIds = $p->grades->pluck('id')->toArray();
+            $p->gradeNames = $p->grades->pluck('name')->toArray();
+            return $p;
+        });
             
         $allActiveGrades = \App\Models\Grade::where('is_active', true)->orderByRaw("CASE WHEN UPPER(name) IN ('NONE', 'N/A') THEN 0 ELSE 1 END")->orderBy('id')->get();
         
@@ -319,6 +331,7 @@ class AdminController extends Controller
             'rawProducts' => $rawProducts,
             'semiProducts' => $semiProducts,
             'finishedProducts' => $finishedProducts,
+            'packagingProducts' => $packagingProducts,
             'allGrades' => $allActiveGrades,
         ];
         return view('admin.products', compact('pageData'));
@@ -350,10 +363,21 @@ class AdminController extends Controller
             return $p;
         });
 
+        $packagingProducts = Product::with('grades')
+            ->where('type', 'PACKAGING')
+            ->orderBy('sort_order')
+            ->get();
+            
+        $packagingProducts->transform(function($p) {
+            $p->gradeNames = $p->grades->pluck('name')->toArray();
+            return $p;
+        });
+
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.products_pdf', [
             'rawProducts' => $rawProducts,
             'semiProducts' => $semiProducts,
             'finishedProducts' => $finishedProducts,
+            'packagingProducts' => $packagingProducts,
         ])->setPaper('A4', 'portrait');
 
         return $pdf->download('PentaPure_Products_List_' . now()->format('Ymd_His') . '.pdf');
@@ -363,7 +387,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'type' => 'required|in:RAW,SEMI,FINISHED',
+            'type' => 'required|in:RAW,SEMI,FINISHED,PACKAGING',
             'rate' => 'nullable|numeric|min:0',
             'threshold' => 'nullable|numeric|min:0',
             'grades' => 'nullable', // Could be stringified JSON or array
@@ -547,7 +571,7 @@ class AdminController extends Controller
 
     public function downloadStockPdf(Request $request)
     {
-        $stages = $request->input('stages', ['RAW', 'SEMI', 'FINISHED']);
+        $stages = $request->input('stages', ['RAW', 'SEMI', 'FINISHED', 'PACKAGING']);
         if (!is_array($stages)) {
             $stages = explode(',', $stages);
         }
@@ -1043,7 +1067,7 @@ class AdminController extends Controller
 
         $request->validate([
             'product_id'      => 'required|exists:products,id',
-            'stage'           => 'required|in:RAW,SEMI,FINISHED,FG',
+            'stage'           => 'required|in:RAW,SEMI,FINISHED,FG,PACKAGING',
             'grade'           => 'required',
             'date'            => 'nullable|date',
             'quantity'        => 'nullable|numeric|min:0',
@@ -1262,7 +1286,7 @@ class AdminController extends Controller
             'date'               => 'nullable|date',
             'items'              => 'required|array',
             'items.*.product_id' => 'required|exists:products,id',
-            'items.*.stage'      => 'required|in:RAW,SEMI,FINISHED,FG',
+            'items.*.stage'      => 'required|in:RAW,SEMI,FINISHED,FG,PACKAGING',
             'items.*.grade'      => 'required',
             'items.*.date'       => 'nullable|date',
             'items.*.alert_limit'=> 'nullable|numeric|min:0',

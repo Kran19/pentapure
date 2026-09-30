@@ -74,7 +74,7 @@ class StockManagerController extends Controller
         $request->validate([
             'product_id' => 'required|exists:products,id',
             'quantity'   => 'nullable|numeric|min:0.001',
-            'stage'      => 'nullable|string|in:RAW,SEMI,FINISHED',
+            'stage'      => 'nullable|string|in:RAW,SEMI,FINISHED,PACKAGING',
             'grade'      => 'nullable|string|max:50',
             'location'   => 'nullable|string',
             'notes'      => 'nullable|string',
@@ -157,7 +157,7 @@ class StockManagerController extends Controller
 
         $user = $this->authUser();
         $product = Product::findOrFail($request->product_id);
-        $stage = ($request->stage && in_array($request->stage, ['RAW', 'SEMI', 'FINISHED'])) ? $request->stage : ($product->type ?: 'RAW');
+        $stage = ($request->stage && in_array($request->stage, ['RAW', 'SEMI', 'FINISHED', 'PACKAGING'])) ? $request->stage : ($product->type ?: 'RAW');
         $grade = (!empty($request->grade) && strtoupper($request->grade) !== 'ALL') ? $request->grade : null;
 
         $locationSplits = $request->location_splits;

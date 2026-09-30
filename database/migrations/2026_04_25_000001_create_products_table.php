@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('products', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->enum('type', ['RAW', 'SEMI', 'FINISHED']); // RAW = materials, SEMI = target, FINISHED = final pack
+            $table->enum('type', ['RAW', 'SEMI', 'FINISHED', 'PACKAGING']); // RAW = materials, SEMI = target, FINISHED = final pack, PACKAGING = packing
             $table->string('unit')->default('kg');
             $table->string('image_url')->nullable();
             $table->boolean('is_active')->default(true);

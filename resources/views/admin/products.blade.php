@@ -23,6 +23,7 @@
           <option value="RAW">RAW</option>
           <option value="SEMI">SEMI</option>
           <option value="FINISHED">FINISHED</option>
+          <option value="PACKAGING">PACKAGING</option>
         </select>
       </div>
       <div class="form-group">
@@ -72,7 +73,7 @@
   <div class="card" style="padding:0.85rem 1.2rem; margin-bottom:1.5rem; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:10px;">
     <div style="display:flex; align-items:center; gap:0.75rem;">
       <span style="font-size:1.1rem; color:var(--text-muted);">🔍</span>
-      <input type="text" id="global-product-search" placeholder="Search product name across RAW, SEMI, and FINISHED stock types..." oninput="onGlobalProductSearch(this.value)" style="width:100%; padding:0.6rem 0.9rem; border-radius:8px; font-size:0.9rem; border:1px solid var(--border-soft); background:var(--bg-hover); color:var(--text-main); outline:none;">
+      <input type="text" id="global-product-search" placeholder="Search product name across RAW, SEMI, FINISHED, and PACKAGING..." oninput="onGlobalProductSearch(this.value)" style="width:100%; padding:0.6rem 0.9rem; border-radius:8px; font-size:0.9rem; border:1px solid var(--border-soft); background:var(--bg-hover); color:var(--text-main); outline:none;">
     </div>
   </div>
 
@@ -80,6 +81,7 @@
     $rawProds = $pageData['rawProducts'];
     $semiProds = $pageData['semiProducts'];
     $finishedProds = $pageData['finishedProducts'];
+    $packagingProds = $pageData['packagingProducts'] ?? collect();
   @endphp
 
   <!-- RAW Products -->
@@ -307,6 +309,78 @@
     </div>
   </div>
 
+  <!-- PACKAGING Products -->
+  <div id="pkg-section" class="card" style="padding:1.2rem; margin-bottom:1.5rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+      <div class="card-title" style="color:#0284c7; margin:0;">📦 PACKAGING Materials ({{ $packagingProds->count() }})</div>
+    </div>
+    <div class="table-container">
+      <table class="product-table" data-filterable="false">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Grades</th>
+            <th>Unit</th><th>Active</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="pkg-tbody">
+          @foreach($packagingProds as $p)
+          <tr>
+            <td>{{ $loop->iteration }}</td>
+            <td class="prod-name" style="font-weight:400;">{{ $p['name'] }}</td>
+            <td style="white-space:normal; min-width:200px;">
+                @if(!empty($p['gradeNames']))
+                  @foreach($p['gradeNames'] as $gn)
+                      @if(in_array(strtoupper(trim($gn)), ['NONE', 'N/A', 'NA', 'N / A'], true)) @continue @endif
+                      <span style="font-size:0.75rem; background:var(--bg-hover); color:#0284c7; padding:4px 8px; border-radius:6px; margin:2px; display:inline-block; border:1px solid #0284c7; font-weight:600;">{{ $gn }}</span>
+                  @endforeach
+                @endif
+            </td>
+            <td>{{ $p['unit'] }}</td>
+
+            <td>
+              <label class="switch">
+                <input type="checkbox" {{ $p['is_active'] ? 'checked' : '' }} onchange="adminToggleProduct({{ $p['id'] }})">
+                <span class="slider"></span>
+              </label>
+            </td>
+            <td>
+              @php
+                $hasStock = ($p->stocks_count ?? 0) > 0;
+                $hasGrades = ($p->custom_grades_count ?? 0) > 0;
+                $isInUse = $hasStock || $hasGrades;
+                $reasons = [];
+                if ($hasStock) $reasons[] = "recorded in Stock ({$p->stocks_count} " . \Illuminate\Support\Str::plural('entry', $p->stocks_count) . ")";
+                if ($hasGrades) $reasons[] = "assigned in Grades master ({$p->custom_grades_count} " . \Illuminate\Support\Str::plural('grade', $p->custom_grades_count) . ")";
+                $cannotDeleteTitle = "Cannot delete: Product is " . implode(' and ', $reasons);
+              @endphp
+              <div class="action-btns">
+                <button class="btn-icon edit" onclick="adminEditProduct({{ json_encode($p) }})" title="Edit">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+                </button>
+                @if($isInUse)
+                  <button class="btn-icon delete is-disabled" disabled style="opacity:0.35; cursor:not-allowed;" title="{{ $cannotDeleteTitle }}">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  </button>
+                @else
+                  <button class="btn-icon delete" onclick="adminDeleteProduct({{ $p['id'] }})" title="Delete">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  </button>
+                @endif
+              </div>
+            </td>
+          </tr>
+          @endforeach
+        </tbody>
+      </table>
+    </div>
+    <div id="packaging-pagination" style="display:flex; justify-content:space-between; align-items:center; margin-top:1.2rem; flex-wrap:wrap; gap:10px; padding-top:0.8rem; border-top:1px solid rgba(255,255,255,0.05);">
+      <div class="pagination-info" style="font-size:0.85rem; color:var(--text-muted);"></div>
+      <div class="pagination-controls" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;"></div>
+    </div>
+  </div>
+
 
 
 
@@ -439,6 +513,7 @@ function onGlobalProductSearch(val) {
   if (paginationInstances['raw-tbody']) paginationInstances['raw-tbody'].filter(val);
   if (paginationInstances['semi-tbody']) paginationInstances['semi-tbody'].filter(val);
   if (paginationInstances['fin-tbody']) paginationInstances['fin-tbody'].filter(val);
+  if (paginationInstances['pkg-tbody']) paginationInstances['pkg-tbody'].filter(val);
 }
 
 function filterTable(input, tbodyId) {
@@ -450,7 +525,7 @@ function filterTable(input, tbodyId) {
 function toggleGradeDisplay() {
     const type = document.getElementById('p-type').value;
     const area = document.getElementById('grade-selection-area');
-    area.style.display = (type === 'RAW') ? 'none' : 'block';
+    area.style.display = (type === 'RAW' || type === 'PACKAGING') ? 'none' : 'block';
 }
 
 function toggleCustomUnitInput() {
@@ -525,10 +600,11 @@ function adminEditProduct(prod) {
         <div style="display:flex; gap:1rem;">
           <div class="form-group" style="flex:1;">
             <label style="font-size:0.85rem; font-weight:600; color:#6b7280; display:block; margin-bottom:4px;">Type *</label>
-            <select id="swal-p-type" style="width:100%; padding:0.65rem; border-radius:8px; border:1px solid #d1d5db; background:#fff; color:#333;" onchange="document.getElementById('swal-grades-area').style.display = this.value === 'RAW' ? 'none' : 'block'">
+            <select id="swal-p-type" style="width:100%; padding:0.65rem; border-radius:8px; border:1px solid #d1d5db; background:#fff; color:#333;" onchange="document.getElementById('swal-grades-area').style.display = (this.value === 'RAW' || this.value === 'PACKAGING') ? 'none' : 'block'">
               <option value="RAW" ${prod.type === 'RAW' ? 'selected' : ''}>RAW</option>
               <option value="SEMI" ${prod.type === 'SEMI' ? 'selected' : ''}>SEMI</option>
               <option value="FINISHED" ${prod.type === 'FINISHED' ? 'selected' : ''}>FINISHED</option>
+              <option value="PACKAGING" ${prod.type === 'PACKAGING' ? 'selected' : ''}>PACKAGING</option>
             </select>
           </div>
           
@@ -546,7 +622,7 @@ function adminEditProduct(prod) {
           <input type="text" id="swal-p-unit-custom" value="${isCustomUnit ? unitUpper : ''}" placeholder="Type custom unit (e.g. BOTTLE)" style="display:${isCustomUnit ? 'block' : 'none'}; width:100%; padding:0.65rem; margin-top:8px; border-radius:8px; border:1px solid #d1d5db; background:#fff; color:#333;">
         </div>
 
-        <div id="swal-grades-area" style="display:${prod.type === 'RAW' ? 'none' : 'block'}; margin-top:0.5rem;">
+        <div id="swal-grades-area" style="display:${(prod.type === 'RAW' || prod.type === 'PACKAGING') ? 'none' : 'block'}; margin-top:0.5rem;">
           <label style="font-size:0.85rem; font-weight:600; color:#6b7280; display:block; margin-bottom:8px;">Select Allowed Grades</label>
           <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:8px;">
             ${gradesHtml}
@@ -717,6 +793,7 @@ document.addEventListener('DOMContentLoaded', function() {
   initTablePagination('raw-tbody', 'raw-pagination', 10);
   initTablePagination('semi-tbody', 'semi-pagination', 10);
   initTablePagination('fin-tbody', 'finished-pagination', 10);
+  initTablePagination('pkg-tbody', 'packaging-pagination', 10);
 
   if (sessionStorage.getItem('keepProdFormOpen') === 'true') {
     document.getElementById('prod-form').style.display = 'block';

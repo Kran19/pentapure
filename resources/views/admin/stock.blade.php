@@ -34,6 +34,7 @@
                     <option value="RAW">RAW</option>
                     <option value="SEMI">SEMI</option>
                     <option value="FINISHED">FG</option>
+                    <option value="PACKAGING">PACKAGING</option>
                 </select>
             </div>
             
@@ -135,6 +136,7 @@
     $rawItems      = collect($pageData['allStock'])->where('stage', 'RAW');
     $semiItems     = collect($pageData['allStock'])->where('stage', 'SEMI');
     $finishedItems = collect($pageData['allStock'])->where('stage', 'FINISHED');
+    $packagingItems = collect($pageData['allStock'])->where('stage', 'PACKAGING');
     $adminAllGrades = \App\Models\Grade::orderBy('id')->get();
   @endphp
   <script>
@@ -481,7 +483,7 @@
   <div class="card" style="padding:0.85rem 1.2rem; margin-bottom:1.5rem; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:10px;">
     <div style="display:flex; align-items:center; gap:0.75rem;">
       <span style="font-size:1.1rem; color:var(--text-muted);">🔍</span>
-      <input type="text" id="global-product-search" placeholder="Search product name across RAW, SEMI, and FG stock types..." oninput="onGlobalProductSearch(this.value)" style="width:100%; padding:0.6rem 0.9rem; border-radius:8px; font-size:0.9rem; border:1px solid var(--border-soft); background:var(--bg-hover); color:var(--text-main); outline:none;">
+      <input type="text" id="global-product-search" placeholder="Search product name across RAW, SEMI, FG, and PACKAGING..." oninput="onGlobalProductSearch(this.value)" style="width:100%; padding:0.6rem 0.9rem; border-radius:8px; font-size:0.9rem; border:1px solid var(--border-soft); background:var(--bg-hover); color:var(--text-main); outline:none;">
     </div>
   </div>
 
@@ -670,6 +672,68 @@
     @endif
   </div>
   @endif
+
+  @if(!$typeFilter || $typeFilter === 'PACKAGING')
+  <!-- Packaging Stock -->
+  <div class="card" style="padding:1.2rem; margin-top:1rem;">
+    <div class="card-title" style="color:#0284c7;">📦 Packaging Material Stock ({{ $packagingItems->count() }} items)</div>
+    @if($packagingItems->isEmpty())
+      <p class="text-muted text-center">No packaging stock recorded yet.</p>
+    @else
+    <div class="table-container">
+      <table class="stock-table">
+        <thead><tr><th>Product</th><th>Total Qty</th><th>Unit</th><th>Rate (Ref)</th><th>min_qty</th><th>Location</th><th>Action</th></tr></thead>
+        <tbody id="packaging-stock-tbody">
+          @foreach($packagingItems as $s)
+          @php 
+            $hasQty = (float) $s->quantity > 0;
+            $isLow = $s->alert_limit > 0 && $s->quantity <= $s->alert_limit;
+          @endphp
+          <tr @if($isLow && $hasQty) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
+            <td style="font-weight:400;">
+              <div style="font-weight:normal; color:var(--text-color);">
+                {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span style='font-weight:bold;'>(PKG)</span>
+              </div>
+            </td>
+            <td style="font-weight:bold; color:var(--secondary);">{{ number_format($s->quantity, 2) }}</td>
+            <td>{{ $s->unit }}</td>
+            <td style="font-weight:bold;">
+              ₹{{ number_format($s->rate ?? 0, 2) }}
+              <button class="btn-icon edit" onclick="adminUpdateRate('{{ $s->productId }}', '{{ $s->rate ?? 0 }}', '{{ addslashes($s->name) }}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+              </button>
+            </td>
+            <td style="font-weight:bold; color:var(--text-color);">
+              {{ number_format($s->alert_limit, 2) }}
+              <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+              </button>
+            </td>
+            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="PACKAGING" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
+            <td>
+              <div style="display:flex; align-items:center; gap:0.4rem;">
+                 <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }})" title="Adjust Stock">
+                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+                 </button>
+                 @if($hasQty)
+                   <button class="btn-icon delete is-disabled" disabled style="opacity:0.35; cursor:not-allowed;" title="Cannot delete: Stock has quantity ({{ number_format($s->quantity, 2) }} {{ $s->unit }}). Quantity must be 0 to delete.">
+                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                   </button>
+                 @else
+                   <button class="btn-icon delete" onclick="adminDeleteStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}')" title="Delete Stock Entry">
+                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                   </button>
+                 @endif
+              </div>
+            </td>
+          </tr>
+          @endforeach
+        </tbody>
+      </table>
+    </div>
+    @endif
+  </div>
+  @endif
 </div>
 
 <script>
@@ -730,6 +794,7 @@ function adminAddStock() {
           <option value="RAW">RAW</option>
           <option value="SEMI">SEMI</option>
           <option value="FINISHED">FG</option>
+          <option value="PACKAGING">PACKAGING</option>
         </select>
 
         <label style="font-size:0.82rem; font-weight:600; color:#6b7280;">Product</label>
@@ -849,7 +914,7 @@ function adminAddStock() {
 }
 
 function adminAdjustStock(productId, stage, grade, productName = '', currentQty = 0) {
-  const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG' }[stage] || stage;
+  const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG', PACKAGING: '📦 Packaging' }[stage] || stage;
   const isDefGrade = !grade || ['NONE', 'N/A', 'NA', 'N / A'].includes(grade.trim().toUpperCase());
   const displayGrade = !isDefGrade ? ` &nbsp;·&nbsp; Grade: <strong style="color:#333;">${grade}</strong>` : '';
 
@@ -1246,7 +1311,7 @@ function adminUpdateRate(productId, currentRate, name) {
 }
 
 function adminSetLimit(productId, stage, grade, currentLimit, productName = '') {
-  const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG' }[stage] || stage;
+  const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG', PACKAGING: '📦 Packaging' }[stage] || stage;
   const isDefGrade = !grade || ['NONE', 'N/A', 'NA', 'N / A'].includes(grade.trim().toUpperCase());
   const displayGrade = !isDefGrade ? ` &nbsp;·&nbsp; Grade: <strong style="color:#333;">${grade}</strong>` : '';
 
@@ -1354,10 +1419,10 @@ function fetchLiveStock() {
 setInterval(fetchLiveStock, 30000);
 
 function updateStockTables(stockData) {
-  const stages = { 'RAW': 'raw-stock-tbody', 'SEMI': 'semi-stock-tbody', 'FINISHED': 'finished-stock-tbody' };
+  const stages = { 'RAW': 'raw-stock-tbody', 'SEMI': 'semi-stock-tbody', 'FINISHED': 'finished-stock-tbody', 'PACKAGING': 'packaging-stock-tbody' };
   
   // Group data by stage
-  const grouped = { 'RAW': [], 'SEMI': [], 'FINISHED': [] };
+  const grouped = { 'RAW': [], 'SEMI': [], 'FINISHED': [], 'PACKAGING': [] };
   stockData.forEach(s => {
     if (grouped[s.stage]) grouped[s.stage].push(s);
   });
@@ -1444,7 +1509,7 @@ function updateStockTables(stockData) {
 function onGlobalProductSearch(val) {
   const q = (val || '').trim().toUpperCase();
   const tokens = q.split(/\s+/).filter(Boolean);
-  ['raw-stock-tbody', 'semi-stock-tbody', 'finished-stock-tbody'].forEach(tbodyId => {
+  ['raw-stock-tbody', 'semi-stock-tbody', 'finished-stock-tbody', 'packaging-stock-tbody'].forEach(tbodyId => {
     const tbody = document.getElementById(tbodyId);
     if (!tbody) return;
     const rows = tbody.querySelectorAll('tr');
