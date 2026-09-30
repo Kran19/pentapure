@@ -61,7 +61,7 @@
       <div style="font-size:1.6rem; font-weight:bold; color:var(--text-main); word-break:break-word;">
         {{ $pageData['totalOrders'] ?? 0 }}
       </div>
-      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Total Orders</div>
+      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Total Sales Order</div>
     </a>
 
     <a href="{{ route(request()->segment(1) . '.logs') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
@@ -74,7 +74,7 @@
       <div style="font-size:1.6rem; font-weight:bold; color:var(--danger); word-break:break-word;">
         {{ $pageData['pendingPOs'] ?? 0 }}
       </div>
-      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Pending POs</div>
+      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Pending Purchase Order</div>
     </a>
     <a href="{{ route(request()->segment(1) . '.attendance.workers') }}" class="card clickable-card" style="text-align:center; padding:1.2rem; overflow:hidden;">
       <div style="font-size:1.6rem; font-weight:bold; color:var(--info); word-break:break-word;">

@@ -46,6 +46,11 @@ class RouteSmokeTest extends TestCase
             $response = $this->withSession($session)->get($uri);
             $response->assertStatus(200);
         }
+
+        $homeResponse = $this->withSession($session)->get('/admin/home');
+        $homeResponse->assertStatus(200);
+        $homeResponse->assertSee('Total Sales Order');
+        $homeResponse->assertSee('Pending Purchase Order');
     }
 
     public function test_raw_routes_return_200(): void
