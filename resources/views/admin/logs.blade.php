@@ -104,7 +104,7 @@ function confirmClearLogs() {
   if (!confirm('Are you sure you want to permanently clear all activity logs? This action will clear the logs view while keeping current stock balances, users, and products 100% intact.')) {
     return;
   }
-  const clearUrl = '{{ url(request()->segment(1) . "/logs/clear") }}';
+  const clearUrl = '{{ route(request()->segment(1) . ".logs.clear") }}';
   const form = document.createElement('form');
   form.method = 'POST';
   form.action = clearUrl;

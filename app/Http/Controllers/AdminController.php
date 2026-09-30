@@ -922,7 +922,11 @@ class AdminController extends Controller
     public static function setLogsClearedAt(?string $val = null): string
     {
         $ts = $val ?: now()->toDateTimeString();
-        @file_put_contents(storage_path('app/admin_logs_cleared_at.txt'), $ts);
+        $file = storage_path('app/admin_logs_cleared_at.txt');
+        if (!is_dir(dirname($file))) {
+            @mkdir(dirname($file), 0755, true);
+        }
+        @file_put_contents($file, $ts);
         \Illuminate\Support\Facades\Cache::forever('admin_logs_cleared_at', $ts);
         return $ts;
     }

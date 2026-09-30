@@ -307,7 +307,7 @@ function confirmClearAttendance() {
         cancelButtonText: 'Cancel'
     }).then((result) => {
         if (result.isConfirmed) {
-            const clearUrl = '{{ url(request()->segment(1) . (request()->segment(1) == "admin" ? "/attendance/clear" : "/clear")) }}';
+            const clearUrl = '{{ request()->segment(1) == "admin" ? route(request()->segment(1) . ".attendance.clear") : route(request()->segment(1) . ".clear") }}';
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = clearUrl;
