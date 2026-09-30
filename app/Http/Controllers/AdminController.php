@@ -879,9 +879,63 @@ class AdminController extends Controller
         return view('admin.cashier_logs', ['pageData' => ['logs' => $logs]]);
     }
 
+    public static function getLogsClearedAt(): ?string
+    {
+        $file = storage_path('app/admin_logs_cleared_at.txt');
+        if (file_exists($file)) {
+            $val = trim((string)@file_get_contents($file));
+            if (!empty($val)) {
+                return $val;
+            }
+        }
+        return \Illuminate\Support\Facades\Cache::get('admin_logs_cleared_at');
+    }
+
+    public static function setLogsClearedAt(?string $val = null): string
+    {
+        $ts = $val ?: now()->toDateTimeString();
+        @file_put_contents(storage_path('app/admin_logs_cleared_at.txt'), $ts);
+        \Illuminate\Support\Facades\Cache::forever('admin_logs_cleared_at', $ts);
+        return $ts;
+    }
+
+    public function clearLogs(Request $request)
+    {
+        \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
+
+        $tables = [
+            'production_log_inputs',
+            'production_logs',
+            'transaction_logs',
+            'notifications',
+            'dispatch_logs',
+            'dispatch_log_items',
+            'dispatch_item_locations',
+        ];
+
+        foreach ($tables as $table) {
+            if (\Illuminate\Support\Facades\Schema::hasTable($table)) {
+                \Illuminate\Support\Facades\DB::table($table)->truncate();
+            }
+        }
+
+        \Illuminate\Support\Facades\Schema::enableForeignKeyConstraints();
+
+        self::setLogsClearedAt();
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'All system activity logs have been cleared successfully!'
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'All system activity logs have been cleared successfully!');
+    }
+
     public function logs()
     {
-        $clearedAt = \Illuminate\Support\Facades\Cache::get('admin_logs_cleared_at');
+        $clearedAt = self::getLogsClearedAt();
 
         // 1. Production Logs (Raw/Semi/Finished)
         $prodQuery = ProductionLog::with(['user', 'outputProduct'])->orderByDesc('created_at');

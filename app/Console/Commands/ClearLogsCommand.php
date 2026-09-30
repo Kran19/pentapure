@@ -41,6 +41,9 @@ class ClearLogsCommand extends Command
             'production_logs',
             'transaction_logs',
             'notifications',
+            'dispatch_logs',
+            'dispatch_log_items',
+            'dispatch_item_locations',
         ];
 
         foreach ($tables as $table) {
@@ -53,8 +56,8 @@ class ClearLogsCommand extends Command
         Schema::enableForeignKeyConstraints();
         $this->info('Foreign key constraints re-enabled.');
 
-        // Record cutoff timestamp so dynamic activity logs (e.g. inventory adjustments) start fresh
-        Cache::forever('admin_logs_cleared_at', now()->toDateTimeString());
+        // Record persistent cutoff timestamp so dynamic activity logs start fresh
+        \App\Http\Controllers\AdminController::setLogsClearedAt();
 
         $this->newLine();
         $this->info('✓ System activity logs (https://pentapureadmin.in/public/admin/logs) have been successfully cleared.');

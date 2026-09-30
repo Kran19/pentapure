@@ -15,6 +15,20 @@ class ClearLogsCommandTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        @unlink(storage_path('app/admin_logs_cleared_at.txt'));
+        Cache::forget('admin_logs_cleared_at');
+    }
+
+    protected function tearDown(): void
+    {
+        @unlink(storage_path('app/admin_logs_cleared_at.txt'));
+        Cache::forget('admin_logs_cleared_at');
+        parent::tearDown();
+    }
+
     public function test_clear_logs_command_clears_production_logs_and_sets_cutoff_without_losing_stock(): void
     {
         $initialUserCount = User::count();
@@ -77,5 +91,60 @@ class ClearLogsCommandTest extends TestCase
 
         // Cache cutoff is set
         $this->assertNotNull(Cache::get('admin_logs_cleared_at'));
+        $this->assertNotNull(\App\Http\Controllers\AdminController::getLogsClearedAt());
+
+        // File persistence survives cache flush
+        Cache::flush();
+        $this->assertNull(Cache::get('admin_logs_cleared_at'));
+        $this->assertNotNull(\App\Http\Controllers\AdminController::getLogsClearedAt());
+    }
+
+    public function test_admin_logs_clear_web_route_clears_logs_and_shows_empty_state(): void
+    {
+        $admin = User::create([
+            'name' => 'Admin User',
+            'email' => 'admin@example.com',
+            'password' => 'secret123',
+            'role' => 'ADMIN',
+            'status' => 'ACTIVE',
+        ]);
+
+        $product = Product::create([
+            'name' => 'Finished Starch',
+            'type' => 'FINISHED',
+            'unit' => 'kg',
+            'is_active' => true,
+        ]);
+
+        ProductionLog::create([
+            'user_id' => $admin->id,
+            'type' => 'FINISHED',
+            'output_product_id' => $product->id,
+            'output_grade' => 'NONE',
+            'output_qty' => 50,
+        ]);
+
+        $session = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
+
+        // Ensure production log is currently visible
+        $responseBefore = $this->withSession($session)->get('/admin/logs');
+        $responseBefore->assertStatus(200);
+        $responseBefore->assertSee('FINISHED STARCH');
+
+        // Clear logs via POST web endpoint
+        $clearResponse = $this->withSession($session)->post('/admin/logs/clear');
+        $clearResponse->assertRedirect();
+        $clearResponse->assertSessionHas('success');
+
+        // Check logs view after clear
+        $responseAfter = $this->withSession($session)->get('/admin/logs');
+        $responseAfter->assertStatus(200);
+        $responseAfter->assertDontSee('FINISHED STARCH');
+        $responseAfter->assertSee('No activity logs found.');
+
+        // Verify products and users are unaffected
+        $this->assertDatabaseHas('products', ['id' => $product->id]);
+        $this->assertDatabaseHas('users', ['id' => $admin->id]);
     }
 }
+

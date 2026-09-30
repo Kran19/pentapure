@@ -392,6 +392,7 @@ foreach ($adminSlugs as $slug) {
     Route::post('/po/receive',        'receivePO');
     Route::delete('/po/{id}',         'destroyPO');
     Route::get('/logs',               'logs')->name($slug.'.logs');
+    Route::post('/logs/clear',        'clearLogs')->name($slug.'.logs.clear');
     Route::get('/cashier-logs',       'cashierActivityLogs')->name($slug.'.cashier.logs');
     Route::get('/grades',             'grades')->name($slug.'.grades');
     Route::post('/grades',            'storeGrade');
