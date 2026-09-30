@@ -195,15 +195,15 @@
         </tr>
         <tr>
           <td style="border:2px solid #000; padding:8px;">TOTAL SALARY</td>
-          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($totalWage, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format(round($totalWage), 2) }}</td>
         </tr>
         <tr>
           <td style="border:2px solid #000; padding:8px;">ADVANCE</td>
-          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($totalAdvance, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format(round($totalAdvance), 2) }}</td>
         </tr>
         <tr>
           <td style="border:2px solid #000; padding:8px;">PAYABLE SALARY</td>
-          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($payableSalary, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format(round($payableSalary), 2) }}</td>
         </tr>
       </table>
       @elseif($worker->salary_type === 'LABOUR_MUKADAM')
@@ -217,14 +217,14 @@
           <td style="border:2px solid #000; padding:8px; text-align:center; width:12.5%;">{{ number_format($presentDays, 1) }}</td>
           <td style="border:2px solid #000; padding:8px; text-align:center; width:20%;">PER LABOUR</td>
           <td style="border:2px solid #000; padding:8px; text-align:center; width:17.5%;">{{ number_format($perDaySalary, 2) }}</td>
-          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($attendanceSalary, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format(round($attendanceSalary), 2) }}</td>
         </tr>
         <tr>
           <td style="border:2px solid #000; padding:8px; text-align:center;">ADD OT / DEDUCT UT</td>
           <td style="border:2px solid #000; padding:8px; text-align:center;">{{ number_format($totalOT ?? 0, 1) }}</td>
           <td style="border:2px solid #000; padding:8px; text-align:center;">PER HOUR</td>
           <td style="border:2px solid #000; padding:8px; text-align:center;">{{ number_format($hourlyRate, 2) }}</td>
-          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($otUtAdjustment, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format(round($otUtAdjustment), 2) }}</td>
         </tr>
         <tr>
           <td style="border:2px solid #000; padding:6px 8px; text-align:center;">OTHER</td>
@@ -252,15 +252,15 @@
         </tr>
         <tr>
           <td colspan="4" style="border:2px solid #000; padding:8px; text-align:center;">TOTAL SALARY</td>
-          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($totalWage, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format(round($totalWage), 2) }}</td>
         </tr>
         <tr>
           <td colspan="4" style="border:2px solid #000; padding:8px; text-align:center;">ADVANCE</td>
-          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($totalAdvance, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format(round($totalAdvance), 2) }}</td>
         </tr>
         <tr>
           <td colspan="4" style="border:2px solid #000; padding:8px; text-align:center;">PAYABLE SALARY</td>
-          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($payableSalary, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format(round($payableSalary), 2) }}</td>
         </tr>
       </table>
       @else
@@ -276,7 +276,7 @@
           <td style="border:2px solid #000; padding:8px; text-align:center; width:12.5%;">{{ number_format($presentDays, 1) }}</td>
           <td style="border:2px solid #000; padding:8px; text-align:center; width:20%;">PER DAY</td>
           <td style="border:2px solid #000; padding:8px; text-align:center; width:17.5%;">{{ number_format($perDaySalary, 2) }}</td>
-          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($attendanceSalary, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format(round($attendanceSalary), 2) }}</td>
         </tr>
         <!-- Row 3 -->
         <tr>
@@ -284,7 +284,7 @@
           <td style="border:2px solid #000; padding:8px; text-align:center;">{{ number_format($totalOT ?? 0, 1) }}</td>
           <td style="border:2px solid #000; padding:8px; text-align:center;">PER HOUR</td>
           <td style="border:2px solid #000; padding:8px; text-align:center;">{{ number_format($hourlyRate, 2) }}</td>
-          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($otUtAdjustment, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format(round($otUtAdjustment), 2) }}</td>
         </tr>
         <!-- Row 4 -->
         <tr>
@@ -314,17 +314,17 @@
         <!-- Row 5 -->
         <tr>
           <td colspan="4" style="border:2px solid #000; padding:8px; text-align:center;">TOTAL SALARY</td>
-          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($totalWage, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format(round($totalWage), 2) }}</td>
         </tr>
         <!-- Row 6 -->
         <tr>
           <td colspan="4" style="border:2px solid #000; padding:8px; text-align:center;">ADVANCE</td>
-          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($totalAdvance, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format(round($totalAdvance), 2) }}</td>
         </tr>
         <!-- Row 7 -->
         <tr>
           <td colspan="4" style="border:2px solid #000; padding:8px; text-align:center;">PAYABLE SALARY</td>
-          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format($payableSalary, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format(round($payableSalary), 2) }}</td>
         </tr>
       </table>
       @endif

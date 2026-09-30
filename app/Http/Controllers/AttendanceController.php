@@ -824,7 +824,9 @@ class AttendanceController extends Controller
         }
 
         if ($worker->salary_type === 'FIXED_MONTHLY') {
-            $totalWage = $worker->salary_amount + $adjustment->petrol_food_amount;
+            $attendanceSalary = $worker->salary_amount;
+            $otUtAdjustment = 0;
+            $totalWage = $worker->salary_amount + ($adjustment->petrol_food_amount ?? 0);
         } elseif ($worker->salary_type === 'LABOUR_MUKADAM') {
             $perDaySalary = $worker->salary_amount ?? 0;
             $attendanceSalary = $presentDays * $perDaySalary;
@@ -832,15 +834,15 @@ class AttendanceController extends Controller
             $hourlyRate = $worker->per_hour_salary ?? 0;
             $otUtAdjustment = $totalOT * $hourlyRate;
             
-            $totalWage = $attendanceSalary + $otUtAdjustment + $adjustment->petrol_food_amount;
+            $totalWage = $attendanceSalary + $otUtAdjustment + ($adjustment->petrol_food_amount ?? 0);
         } elseif ($worker->salary_type === 'MONTHLY') {
             $perDaySalary = $worker->salary_amount / $daysInMonth;
-            $attendanceSalary = $presentDays * $perDaySalary;
+            $attendanceSalary = ($presentDays >= $daysInMonth) ? $worker->salary_amount : ($presentDays * $perDaySalary);
             
             $hourlyRate = $worker->per_hour_salary > 0 ? $worker->per_hour_salary : ($perDaySalary / 12);
             $otUtAdjustment = $totalOT * $hourlyRate;
             
-            $totalWage = $attendanceSalary + $otUtAdjustment + $adjustment->petrol_food_amount;
+            $totalWage = $attendanceSalary + $otUtAdjustment + ($adjustment->petrol_food_amount ?? 0);
         } elseif ($worker->salary_type === 'DAILY') {
             $perDaySalary = $worker->salary_amount ?? 0;
             $attendanceSalary = $presentDays * $perDaySalary;
@@ -848,7 +850,7 @@ class AttendanceController extends Controller
             $hourlyRate = $worker->per_hour_salary ?? 0;
             $otUtAdjustment = $totalOT * $hourlyRate;
             
-            $totalWage = $attendanceSalary + $otUtAdjustment + $adjustment->petrol_food_amount;
+            $totalWage = $attendanceSalary + $otUtAdjustment + ($adjustment->petrol_food_amount ?? 0);
         } else {
             foreach ($attendances as $att) {
                 $attendanceSalary += $att->calculated_wage;
@@ -857,11 +859,14 @@ class AttendanceController extends Controller
             $hourlyRate = $worker->per_hour_salary > 0 ? $worker->per_hour_salary : ($perDaySalary / 12);
             $otUtAdjustment = $totalOT * $hourlyRate;
             // Assuming calculated_wage already handles OT for daily workers normally, we'll keep existing logic or just use attendanceSalary
-            $totalWage = $attendanceSalary + $adjustment->petrol_food_amount;
+            $totalWage = $attendanceSalary + ($adjustment->petrol_food_amount ?? 0);
         }
 
-        $totalAdvance = $dailyAdvanceTotal + (float)($adjustment->advance ?? 0);
-        $payableSalary = $totalWage - $totalAdvance;
+        $attendanceSalary = round($attendanceSalary);
+        $otUtAdjustment   = round($otUtAdjustment);
+        $totalWage        = round($attendanceSalary + $otUtAdjustment + (float)($adjustment->petrol_food_amount ?? 0));
+        $totalAdvance     = round($dailyAdvanceTotal + (float)($adjustment->advance ?? 0));
+        $payableSalary    = round($totalWage - $totalAdvance);
 
         return compact(
             'worker', 'workerNumber', 'attendances', 'month', 'start', 'end', 'daysInMonth',
