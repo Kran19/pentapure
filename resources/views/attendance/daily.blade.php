@@ -103,20 +103,39 @@
             $isAdmin = ($authUser['role'] === 'ADMIN');
             $disableInputs = $isLocked; // Normal users are locked if SUBMITTED. Admin can always edit.
             $isFixedSalary = in_array(strtoupper($w->salary_type ?? ''), ['FIXED_MONTHLY', 'FIX_MONTHLY', 'FIXED', 'FIXED_SALARY']);
+            $rawSalType = strtoupper(trim((string)($w->salary_type ?? 'DAILY')));
+            if (empty($rawSalType)) {
+                $rawSalType = 'DAILY';
+            }
+
+            if (in_array($rawSalType, ['FIXED_MONTHLY', 'FIX_MONTHLY', 'FIXED', 'FIXED_SALARY'])) {
+                $salaryBadgeLabel = 'FIXED SALARY';
+                $salaryBadgeStyle = 'background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;';
+            } elseif ($rawSalType === 'MONTHLY') {
+                $salaryBadgeLabel = 'MONTHLY';
+                $salaryBadgeStyle = 'background:#f3e8ff; color:#7e22ce; border:1px solid #e9d5ff;';
+            } elseif ($rawSalType === 'LABOUR_MUKADAM') {
+                $salaryBadgeLabel = 'LABOUR MUKADAM';
+                $salaryBadgeStyle = 'background:#fef3c7; color:#b45309; border:1px solid #fde68a;';
+            } elseif ($rawSalType === 'DAILY') {
+                $salaryBadgeLabel = 'DAILY';
+                $salaryBadgeStyle = 'background:#ecfdf5; color:#047857; border:1px solid #a7f3d0;';
+            } else {
+                $salaryBadgeLabel = str_replace('_', ' ', $rawSalType);
+                $salaryBadgeStyle = 'background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;';
+            }
           @endphp
         
-        <div class="card worker-card" style="padding:1rem; border-left:4px solid {{ $status === 'ABSENT' ? '#e74c3c' : '#2ecc71' }};" data-name="{{ strtolower($w->name) }}" data-dept="{{ strtolower($w->department->name ?? '') }}">
+        <div class="card worker-card" style="padding:1rem; border-left:4px solid {{ $status === 'ABSENT' ? '#e74c3c' : '#2ecc71' }};" data-name="{{ strtolower($w->name) }}" data-dept="{{ strtolower($w->department->name ?? '') }}" data-salary="{{ strtolower($salaryBadgeLabel) }}">
           <input type="hidden" name="attendances[{{$index}}][worker_id]" value="{{ $w->id }}">
           
           <!-- Header -->
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem; border-bottom:1px solid #eee; padding-bottom:0.5rem;">
             <div>
               <div style="font-weight:bold; font-size:1.1rem;">{{ $w->name }}</div>
-              <div style="font-size:0.85rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+              <div style="font-size:0.85rem; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:2px;">
                 <span>{{ $w->department->name ?? 'N/A' }}</span>
-                @if($isFixedSalary)
-                  <span style="font-size:0.68rem; font-weight:700; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; padding:1px 6px; border-radius:4px;">FIXED SALARY</span>
-                @endif
+                <span style="font-size:0.68rem; font-weight:700; padding:1px 6px; border-radius:4px; {{ $salaryBadgeStyle }}">{{ $salaryBadgeLabel }}</span>
               </div>
             </div>
             <div style="text-align:right;">
@@ -265,10 +284,11 @@ function filterWorkers() {
         const groupDept = group.getAttribute('data-group-dept');
         
         group.querySelectorAll('.worker-card').forEach(card => {
-            const name = card.getAttribute('data-name');
-            const dept = card.getAttribute('data-dept');
+            const name = card.getAttribute('data-name') || '';
+            const dept = card.getAttribute('data-dept') || '';
+            const salary = card.getAttribute('data-salary') || '';
             
-            let matchesTerm = name.includes(term) || dept.includes(term);
+            let matchesTerm = name.includes(term) || dept.includes(term) || salary.includes(term);
             let matchesDept = deptFilter === "" || groupDept === deptFilter;
             
             if (matchesTerm && matchesDept) {
