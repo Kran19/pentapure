@@ -209,7 +209,7 @@
             <span>•</span>
             <span>Ordered: {{ \Carbon\Carbon::parse($d['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }}</span>
             <span>•</span>
-            <span>Due Date: <strong style="color:{{ !empty($d['dueDate']) ? 'var(--primary, #D88A00)' : 'inherit' }}; font-weight:700;">{{ $d['dueDate'] ?? 'N/A' }}</strong></span>
+            <span>Due Date: <strong style="color:var(--text-main, #111827); font-weight:700;">{{ $d['dueDate'] ?? 'N/A' }}</strong></span>
           </div>
         </div>
         <div style="display:flex; align-items:center; gap:10px; text-align:right; flex-wrap:nowrap;">
@@ -240,7 +240,7 @@
           </div>
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Due Date</div>
-            <div style="font-size:0.85rem; font-weight:700; color:{{ !empty($d['dueDate']) ? 'var(--primary, #D88A00)' : 'inherit' }};">{{ $d['dueDate'] ?? '—' }}</div>
+            <div style="font-size:0.85rem; font-weight:700; color:var(--text-main, #111827);">{{ $d['dueDate'] ?? '—' }}</div>
           </div>
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Company</div>

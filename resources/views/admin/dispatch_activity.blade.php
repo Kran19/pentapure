@@ -219,7 +219,7 @@
                 <span>•</span>
                 <span>ORDERED: {{ $orderDate ? $orderDate->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') : 'N/A' }}</span>
                 <span>•</span>
-                <span>DUE DATE: <strong style="color:{{ $order->due_date ? 'var(--primary, #D88A00)' : 'inherit' }}; font-weight:700;">{{ $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : 'N/A' }}</strong>{!! $overdueBadge !!}</span>
+                <span>DUE DATE: <strong style="color:var(--text-main, #111827); font-weight:700;">{{ $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : 'N/A' }}</strong>{!! $overdueBadge !!}</span>
               </div>
             </div>
             <div style="display:flex; align-items:center; gap:12px; text-align:right; flex-wrap:nowrap;">
@@ -253,7 +253,7 @@
               </div>
               <div>
                 <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Due Date</div>
-                <div style="font-size:0.85rem; font-weight:700; color:{{ $order->due_date ? 'var(--primary, #D88A00)' : 'inherit' }};">{{ $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : '—' }} {!! $overdueBadge !!}</div>
+                <div style="font-size:0.85rem; font-weight:700; color:var(--text-main, #111827);">{{ $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : '—' }} {!! $overdueBadge !!}</div>
               </div>
               <div>
                 <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Company</div>
