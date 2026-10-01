@@ -768,7 +768,7 @@ class AdminController extends Controller
         ];
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.live-stock', $pdfData)
-            ->setPaper('A4', 'landscape')
+            ->setPaper('A4', 'portrait')
             ->setOption('isRemoteEnabled', true)
             ->setOption('isHtml5ParserEnabled', true)
             ->setOption('isFontSubsettingEnabled', true);
