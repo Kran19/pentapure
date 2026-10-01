@@ -205,10 +205,14 @@ class StockManagerActionTest extends TestCase
         $csvResponse->sendContent();
         $csvContent = ob_get_clean();
 
-        $this->assertStringContainsString('Stage', $csvContent);
+        $this->assertStringContainsString('PENTAPURE LIVE STOCK AS ON DATE', $csvContent);
+        $this->assertStringContainsString('Included Stages:', $csvContent);
         $this->assertStringContainsString('Product Name', $csvContent);
+        $this->assertStringContainsString('Location Breakdown', $csvContent);
+        $this->assertStringContainsString('Available Qty', $csvContent);
         $this->assertStringContainsString('DEHYDRATED AMCHUR FLAKES (FG)', $csvContent);
         $this->assertStringContainsString('Main Warehouse', $csvContent);
+        $this->assertStringContainsString('TOTAL STOCK VALUATION (REF):', $csvContent);
     }
 
     public function test_stock_manager_home_shows_low_stock_alerts_when_stock_is_low(): void
@@ -285,6 +289,28 @@ class StockManagerActionTest extends TestCase
         $posLow = strpos($content, 'Low Stock Amchur');
         $posNormal = strpos($content, 'Adequate Stock Garlic');
         $this->assertTrue($posLow !== false && $posNormal !== false && $posLow < $posNormal, 'Low stock product should be sorted before normal product');
+    }
+
+    public function test_stock_manager_stock_csv_export_hides_financial_valuation_columns(): void
+    {
+        $csvResponse = $this->withSession([
+            'auth_user' => $this->stockManager->toArray(),
+        ])->post('/stock_manager/stock/csv', [
+            'stages' => 'FINISHED',
+        ]);
+        $csvResponse->assertStatus(200);
+
+        ob_start();
+        $csvResponse->sendContent();
+        $csvContent = ob_get_clean();
+
+        $this->assertStringContainsString('PENTAPURE LIVE STOCK AS ON DATE', $csvContent);
+        $this->assertStringContainsString('Live Stock Report', $csvContent);
+        $this->assertStringContainsString('Product Name', $csvContent);
+        $this->assertStringContainsString('Location Breakdown', $csvContent);
+        $this->assertStringContainsString('TOTAL QUANTITY:', $csvContent);
+        $this->assertStringNotContainsString('TOTAL STOCK VALUATION (REF):', $csvContent);
+        $this->assertStringNotContainsString('Rate (Ref Rs.)', $csvContent);
     }
 }
 

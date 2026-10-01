@@ -691,7 +691,7 @@ class AdminController extends Controller
             ->whereIn('stocks.stage', $stages);
 
         if ($date) {
-            $locQuery->where('stocks.created_at', '<=', $date . ' 23:59:59');
+            $locQuery->whereRaw('COALESCE(stocks.date, stocks.created_at) <= ?', [$date . ' 23:59:59']);
         }
 
         $allLocations = $locQuery->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'stocks.location_id', 'locations.name')
@@ -794,11 +794,6 @@ class AdminController extends Controller
 
         $stockQuery = DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
-            ->leftJoin('stock_limits', function($join) {
-                $join->on('stocks.product_id', '=', 'stock_limits.product_id')
-                     ->on('stocks.stage', '=', 'stock_limits.stage')
-                     ->on('stocks.grade', '=', 'stock_limits.grade');
-            })
             ->whereIn('stocks.stage', $stages);
 
         if ($date) {
@@ -812,9 +807,7 @@ class AdminController extends Controller
                 'products.name',
                 'products.unit',
                 'products.rate',
-                'products.sort_order',
-                'products.threshold',
-                'stock_limits.alert_limit'
+                'products.sort_order'
             )
             ->selectRaw("
                 stocks.product_id as productId,
@@ -824,10 +817,9 @@ class AdminController extends Controller
                 stocks.stage,
                 stocks.grade,
                 products.sort_order,
-                IFNULL(stock_limits.alert_limit, products.threshold) as alert_limit,
                 SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
             ")
-            ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) >= 0")
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
             ->orderBy('stocks.stage')
             ->orderBy('products.sort_order')
             ->orderBy('products.name')
@@ -860,6 +852,10 @@ class AdminController extends Controller
             $locsByKey[$key][] = $l;
         }
 
+        $authUser = session('auth_user');
+        $userRole = strtoupper($authUser['role'] ?? '');
+        $isStockManager = ($userRole === 'STOCK_MANAGER') || str_contains($request->path(), 'stock-manager') || str_contains($request->path(), 'stock_manager');
+
         $asOnDate = $date ? \Carbon\Carbon::parse($date)->format('d-m-Y') : now()->format('d-m-Y');
         $filename = 'PentaPure_Live_Stock_As_On_Date_' . $asOnDate . '.csv';
 
@@ -871,83 +867,177 @@ class AdminController extends Controller
             'Expires' => '0'
         ];
 
-        $callback = function() use ($stockData, $locsByKey) {
+        $callback = function() use ($stockData, $locsByKey, $stages, $date, $asOnDate, $isStockManager) {
             $handle = fopen('php://output', 'w');
-            // Write UTF-8 BOM so Excel opens it with proper encoding
+            // Write UTF-8 BOM so Excel opens it with proper UTF-8 encoding
             fputs($handle, "\xEF\xBB\xBF");
 
-            // Header row
+            // Header Section: Matches PDF Report Title and Metadata
+            fputcsv($handle, ['PENTAPURE LIVE STOCK AS ON DATE ' . $asOnDate]);
             fputcsv($handle, [
-                'Stage',
-                'Product Name',
-                'Grade',
-                'Total Quantity',
-                'Unit',
-                'Rate (Ref Rs.)',
-                'Valuation Amount (Rs.)',
-                'Min Qty Alert',
-                'Stock Status',
-                'Locations Breakdown'
+                $date 
+                    ? 'Historical Stock Valuation Report as on ' . \Carbon\Carbon::parse($date)->format('d M Y')
+                    : 'Real-Time Live Stock Inventory Status'
             ]);
+            fputcsv($handle, ['PentaPure FOOD & SPICES PVT. LTD.', '', '', 'Email: info@pentapure.com', 'Phone: +91 98765 43210', 'Web: www.pentapure.com']);
+            
+            $stageLabels = array_map(function($st) {
+                $st = strtoupper(trim($st));
+                return $st === 'FINISHED' ? 'FG' : ($st === 'PACKAGING' ? 'PKG' : $st);
+            }, $stages);
+            $stageLabelsStr = implode(', ', $stageLabels);
+            $reportType = $isStockManager ? 'Live Stock Report' : ($date ? 'Stock Valuation (Historical)' : 'Stock Valuation (Live)');
+            $valuationRef = $isStockManager ? 'N/A' : 'Internal Product Reference Rates';
 
-            $totalValuation = 0.0;
-            $totalQty = 0.0;
+            fputcsv($handle, ['Generated On:', now()->format('d M Y, h:i A'), '', 'Included Stages:', $stageLabelsStr]);
+            fputcsv($handle, ['Report Type:', $reportType, '', 'Valuation Ref:', $valuationRef]);
 
+            // Summary Stats (matching PDF summary cards)
+            $totalItemsCount = count($stockData);
+            $totalQtySum = 0.0;
+            $totalValuationSum = 0.0;
+            foreach ($stockData as $s) {
+                $qty = (float) $s->quantity;
+                $rate = (float) ($s->rate ?? 0.0);
+                $totalQtySum += $qty;
+                $totalValuationSum += round($qty * $rate, 2);
+            }
+
+            if (!$isStockManager) {
+                fputcsv($handle, [
+                    'Total Items:', $totalItemsCount,
+                    'Total Stock Qty:', round($totalQtySum, 3),
+                    'Total Valuation (Ref):', 'Rs. ' . number_format($totalValuationSum, 2),
+                    'Report Mode:', empty($date) ? 'LIVE' : 'HISTORICAL'
+                ]);
+            } else {
+                fputcsv($handle, [
+                    'Total Items:', $totalItemsCount,
+                    'Total Stock Qty:', round($totalQtySum, 3),
+                    'Active Stages:', count($stages) . ' Stages',
+                    'Report Mode:', empty($date) ? 'LIVE' : 'HISTORICAL'
+                ]);
+            }
+
+            // Blank row before data table
+            fputcsv($handle, []);
+
+            // Data Table Headers
+            if (!$isStockManager) {
+                fputcsv($handle, [
+                    '#',
+                    'Product Name',
+                    'Grade',
+                    'Stage',
+                    'Location Breakdown',
+                    'Available Qty',
+                    'Unit',
+                    'Rate (Ref Rs.)',
+                    'Valuation (Rs.)'
+                ]);
+            } else {
+                fputcsv($handle, [
+                    '#',
+                    'Product Name',
+                    'Grade',
+                    'Stage',
+                    'Location Breakdown',
+                    'Available Qty',
+                    'Unit'
+                ]);
+            }
+
+            // Data Rows
+            $srNo = 1;
             foreach ($stockData as $s) {
                 $key = "{$s->productId}_{$s->stage}_{$s->grade}";
                 $itemLocs = $locsByKey[$key] ?? [];
 
                 $locStrings = [];
-                $assignedSum = 0;
+                $assignedSum = 0.0;
                 foreach ($itemLocs as $l) {
                     if ($l->location_id) {
-                        $locStrings[] = "{$l->name}: " . round((float)$l->quantity, 3) . " {$s->unit}";
+                        $locStrings[] = "{$l->name} (" . round((float)$l->quantity, 3) . " {$s->unit})";
                         $assignedSum += (float) $l->quantity;
                     }
                 }
                 $unassigned = (float)$s->quantity - $assignedSum;
                 if ($unassigned > 0.01) {
-                    $locStrings[] = "Unspecified: " . round($unassigned, 3) . " {$s->unit}";
+                    $locStrings[] = "Unspecified (" . round($unassigned, 3) . " {$s->unit})";
                 }
                 $locText = !empty($locStrings) ? implode(' | ', $locStrings) : 'Not Specified';
 
                 $qty = (float) $s->quantity;
                 $rate = (float) ($s->rate ?? 0.00);
                 $amount = round($qty * $rate, 2);
-                $alertLimit = (float) ($s->alert_limit ?? 0);
-                $status = ($alertLimit > 0 && $qty <= $alertLimit && $qty > 0) ? 'LOW STOCK' : ($qty == 0 ? 'OUT OF STOCK' : 'NORMAL');
 
-                $totalValuation += $amount;
-                $totalQty += $qty;
+                $stageRaw = strtoupper($s->stage ?? '');
+                $stageLabel = $stageRaw === 'FINISHED' ? 'FG' : ($stageRaw === 'PACKAGING' ? 'PKG' : $stageRaw);
+                $hasGrade = !empty($s->grade) && !in_array(strtoupper($s->grade), ['NONE', 'N/A', 'DEFAULT', '-']);
+                $gradeText = $hasGrade ? strtoupper($s->grade) : '-';
 
-                fputcsv($handle, [
-                    $s->stage,
-                    $s->name,
-                    $s->grade ?: '-',
-                    round($qty, 3),
-                    $s->unit,
-                    round($rate, 2),
-                    round($amount, 2),
-                    $alertLimit > 0 ? round($alertLimit, 3) : '-',
-                    $status,
-                    $locText
-                ]);
+                if (!$isStockManager) {
+                    fputcsv($handle, [
+                        $srNo++,
+                        $s->name,
+                        $gradeText,
+                        $stageLabel,
+                        $locText,
+                        round($qty, 3),
+                        $s->unit,
+                        round($rate, 2),
+                        round($amount, 2)
+                    ]);
+                } else {
+                    fputcsv($handle, [
+                        $srNo++,
+                        $s->name,
+                        $gradeText,
+                        $stageLabel,
+                        $locText,
+                        round($qty, 3),
+                        $s->unit
+                    ]);
+                }
             }
 
             // Blank line followed by Total Row
             fputcsv($handle, []);
-            fputcsv($handle, [
-                'TOTAL',
-                '',
-                '',
-                round($totalQty, 3),
-                '',
-                '',
-                round($totalValuation, 2),
-                '',
-                '',
-                ''
-            ]);
+            if (!$isStockManager) {
+                fputcsv($handle, [
+                    'TOTAL',
+                    'Total Items: ' . $totalItemsCount,
+                    '',
+                    '',
+                    'TOTAL STOCK VALUATION (REF):',
+                    round($totalQtySum, 3),
+                    '',
+                    '',
+                    round($totalValuationSum, 2)
+                ]);
+            } else {
+                fputcsv($handle, [
+                    'TOTAL',
+                    'Total Items: ' . $totalItemsCount,
+                    '',
+                    '',
+                    'TOTAL QUANTITY:',
+                    round($totalQtySum, 3),
+                    ''
+                ]);
+            }
+
+            // Blank line followed by Notes
+            fputcsv($handle, []);
+            if (!$isStockManager) {
+                fputcsv($handle, ['* Note: Rates and valuation amounts listed above are based on internal stock reference costs and are not linked to sales panels.']);
+            }
+            if ($date) {
+                fputcsv($handle, ['* Stock quantities and estimated valuations reflect recorded transactions up to ' . \Carbon\Carbon::parse($date)->format('d M Y') . '.']);
+            } else {
+                fputcsv($handle, ['* Stock quantities reflect real-time live inventory recorded in the system.']);
+            }
+            fputcsv($handle, ['* PentaPure Live Stock Inventory System - Automated Export']);
 
             fclose($handle);
         };
