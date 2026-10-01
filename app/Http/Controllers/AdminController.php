@@ -1164,296 +1164,341 @@ class AdminController extends Controller
 
     public function adjustStock(Request $request)
     {
-        if ($request->input('stage') === 'FG') {
-            $request->merge(['stage' => 'FINISHED']);
-        }
-        if ($request->input('stage') === 'ALL' && $request->filled('product_id')) {
-            $prod = Product::find($request->product_id);
-            if ($prod) {
-                $request->merge(['stage' => $prod->type]);
+        try {
+            if ($request->input('stage') === 'FG') {
+                $request->merge(['stage' => 'FINISHED']);
             }
-        }
+            if ($request->input('stage') === 'ALL' && $request->filled('product_id')) {
+                $prod = Product::find($request->product_id);
+                if ($prod) {
+                    $request->merge(['stage' => $prod->type]);
+                }
+            }
 
-        $request->validate([
-            'product_id'      => 'required|exists:products,id',
-            'stage'           => 'required|in:RAW,SEMI,FINISHED,FG,PACKAGING',
-            'grade'           => 'required',
-            'date'            => 'nullable|date',
-            'quantity'        => 'nullable|numeric|min:0',
-            'adjust_type'     => 'nullable|in:set,add,subtract',
-            'reason'          => 'nullable|string|max:255',
-            'location'        => 'nullable|string',
-            'min_qty'         => 'nullable|numeric|min:0',
-            'location_splits' => 'nullable|array',
-            'location_splits.*.location' => 'required_with:location_splits|string',
-            'location_splits.*.quantity' => 'required_with:location_splits|numeric|min:0',
-        ]);
+            $request->validate([
+                'product_id'      => 'required|exists:products,id',
+                'stage'           => 'required|in:RAW,SEMI,FINISHED,FG,PACKAGING',
+                'grade'           => 'required',
+                'date'            => 'nullable|date',
+                'quantity'        => 'nullable|numeric|min:0',
+                'adjust_type'     => 'nullable|in:set,add,subtract',
+                'reason'          => 'nullable|string|max:255',
+                'location'        => 'nullable|string',
+                'min_qty'         => 'nullable|numeric|min:0',
+                'location_splits' => 'nullable|array',
+                'location_splits.*.location' => 'required_with:location_splits|string',
+                'location_splits.*.quantity' => 'required_with:location_splits|numeric|min:0',
+            ]);
 
-        if ($request->has('min_qty') && $request->min_qty !== null) {
-            \App\Models\StockLimit::updateOrCreate(
-                ['product_id' => $request->product_id, 'stage' => $request->stage, 'grade' => $request->grade],
-                ['alert_limit' => $request->min_qty]
-            );
-        }
+            if ($request->has('min_qty') && $request->min_qty !== null) {
+                \App\Models\StockLimit::updateOrCreate(
+                    ['product_id' => $request->product_id, 'stage' => $request->stage, 'grade' => $request->grade],
+                    ['alert_limit' => $request->min_qty]
+                );
+            }
 
-        $type      = $request->input('adjust_type', 'add');
-        $reason    = trim($request->input('reason', ''));
-        $userId    = session('auth_user')['id'] ?? auth()->id();
-        $stockDate = $request->filled('date') ? \Carbon\Carbon::parse($request->date)->setTime(now()->hour, now()->minute, now()->second) : now();
+            $type      = $request->input('adjust_type', 'add');
+            $reason    = trim($request->input('reason', ''));
+            $userId    = session('auth_user')['id'] ?? auth()->id() ?? User::first()?->id ?? 1;
+            $stockDate = $request->filled('date') ? Carbon::parse($request->date)->setTime(now()->hour, now()->minute, now()->second) : now();
 
-        // Handle multiple location splits if provided
-        $splits = $request->input('location_splits');
-        if (!empty($splits) && is_array($splits)) {
-            $summaries = [];
-            DB::transaction(function() use ($request, $type, $reason, $userId, $splits, &$summaries) {
-                foreach ($splits as $split) {
-                    $locName = trim($split['location']);
-                    $splitQty = (float) $split['quantity'];
-                    if ($splitQty <= 0 && $type !== 'set') continue;
+            // Handle multiple location splits if provided
+            $splits = $request->input('location_splits');
+            if (!empty($splits) && is_array($splits)) {
+                $summaries = [];
+                DB::transaction(function() use ($request, $type, $reason, $userId, $splits, &$summaries, $stockDate) {
+                    foreach ($splits as $split) {
+                        $locName = trim($split['location']);
+                        $splitQty = (float) $split['quantity'];
+                        if ($splitQty <= 0 && $type !== 'set') continue;
 
-                    $locId = Location::firstOrCreate(['name' => $locName])->id;
-                    $note = "Manual adjustment at location '{$locName}'" . ($reason ? " — {$reason}" : '');
+                        $locId = Location::firstOrCreate(['name' => $locName])->id;
+                        $note = "Manual adjustment at location '{$locName}'" . ($reason ? " — {$reason}" : '');
 
-                    $locAvail = (float) (DB::table('stocks')
-                        ->where('product_id', $request->product_id)
-                        ->where('stage', $request->stage)
-                        ->where('grade', $request->grade)
-                        ->where('location_id', $locId)
-                        ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
-                        ->value('net') ?? 0);
+                        $locAvail = (float) (DB::table('stocks')
+                            ->where('product_id', $request->product_id)
+                            ->where('stage', $request->stage)
+                            ->where('grade', $request->grade)
+                            ->where('location_id', $locId)
+                            ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
+                            ->value('net') ?? 0);
 
-                    $createStockTxn = function($txnQty, $txnType, $summary) use ($request, $userId, $locId, $stockDate, $note) {
-                        $stock = new Stock([
-                            'product_id'       => $request->product_id,
-                            'user_id'          => $userId,
-                            'stage'            => $request->stage,
-                            'grade'            => $request->grade,
-                            'location_id'      => $locId,
-                            'quantity'         => $txnQty,
-                            'transaction_type' => $txnType,
-                            'date'             => $stockDate,
-                            'notes'            => "{$note} [{$summary}]",
-                        ]);
-                        $stock->created_at = $stockDate;
-                        $stock->updated_at = $stockDate;
-                        $stock->save();
-                    };
+                        $createStockTxn = function($txnQty, $txnType, $summary) use ($request, $userId, $locId, $stockDate, $note) {
+                            $stock = new Stock([
+                                'product_id'       => $request->product_id,
+                                'user_id'          => $userId,
+                                'stage'            => $request->stage,
+                                'grade'            => $request->grade,
+                                'location_id'      => $locId,
+                                'quantity'         => $txnQty,
+                                'transaction_type' => $txnType,
+                                'date'             => $stockDate,
+                                'notes'            => "{$note} [{$summary}]",
+                            ]);
+                            $stock->created_at = $stockDate;
+                            $stock->updated_at = $stockDate;
+                            $stock->save();
+                        };
 
-                    if ($type === 'set') {
-                        $diff = $splitQty - $locAvail;
-                        if ($diff != 0) {
-                            $txnQty  = abs($diff);
-                            $txnType = $diff > 0 ? 'IN' : 'OUT';
-                            $summary = "Set '{$locName}' to {$splitQty} kg (was {$locAvail} kg)";
-                            $createStockTxn($txnQty, $txnType, $summary);
-                            $summaries[] = $summary;
-                        }
-                    } elseif ($type === 'add') {
-                        if ($splitQty > 0) {
-                            $summary = "Added {$splitQty} kg to '{$locName}'";
-                            $createStockTxn($splitQty, 'IN', $summary);
-                            $summaries[] = $summary;
-                        }
-                    } else { // subtract
-                        if ($splitQty > 0) {
-                            if ($splitQty > $locAvail) {
-                                throw new \Exception("Cannot subtract {$splitQty} kg from location '{$locName}' — only {$locAvail} kg available.");
+                        if ($type === 'set') {
+                            $diff = $splitQty - $locAvail;
+                            if ($diff != 0) {
+                                $txnQty  = abs($diff);
+                                $txnType = $diff > 0 ? 'IN' : 'OUT';
+                                $summary = "Set '{$locName}' to {$splitQty} kg (was {$locAvail} kg)";
+                                $createStockTxn($txnQty, $txnType, $summary);
+                                $summaries[] = $summary;
                             }
-                            $summary = "Subtracted {$splitQty} kg from '{$locName}'";
-                            $createStockTxn($splitQty, 'OUT', $summary);
-                            $summaries[] = $summary;
+                        } elseif ($type === 'add') {
+                            if ($splitQty > 0) {
+                                $summary = "Added {$splitQty} kg to '{$locName}'";
+                                $createStockTxn($splitQty, 'IN', $summary);
+                                $summaries[] = $summary;
+                            }
+                        } else { // subtract
+                            if ($splitQty > 0) {
+                                if ($splitQty > $locAvail) {
+                                    throw new \Exception("Cannot subtract {$splitQty} kg from location '{$locName}' — only {$locAvail} kg available.");
+                                }
+                                $summary = "Subtracted {$splitQty} kg from '{$locName}'";
+                                $createStockTxn($splitQty, 'OUT', $summary);
+                                $summaries[] = $summary;
+                            }
                         }
                     }
+                });
+
+                if (empty($summaries)) {
+                    return response()->json(['success' => true, 'message' => 'No stock changes were needed.']);
                 }
+
+                return response()->json(['success' => true, 'message' => 'Stock updated! ' . implode(' | ', $summaries)]);
+            }
+
+            // Single location fallback
+            $qty          = (float) $request->quantity;
+            $locationName = $request->input('location') ? trim($request->location) : 'Main Warehouse';
+            $locationId   = Location::firstOrCreate(['name' => $locationName])->id;
+            $note = "Manual adjustment at location '{$locationName}'" . ($reason ? " — {$reason}" : '');
+
+            $locAvailable = (float) (DB::table('stocks')
+                ->where('product_id', $request->product_id)
+                ->where('stage', $request->stage)
+                ->where('grade', $request->grade)
+                ->where('location_id', $locationId)
+                ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
+                ->value('net') ?? 0);
+
+            if ($type === 'set') {
+                $diff = $qty - $locAvailable;
+                if ($diff == 0) {
+                    return response()->json(['success' => true, 'message' => "Stock at location '{$locationName}' is already {$qty} kg — no change made."]);
+                }
+                $txnQty  = abs($diff);
+                $txnType = $diff > 0 ? 'IN' : 'OUT';
+                $summary = "Set location '{$locationName}' to {$qty} kg (was {$locAvailable} kg)";
+            } elseif ($type === 'add') {
+                if ($qty == 0) {
+                    return response()->json(['success' => true, 'message' => 'Nothing to add — quantity is 0.']);
+                }
+                $txnQty  = $qty;
+                $txnType = 'IN';
+                $summary = "Added {$qty} kg to '{$locationName}' (location stock was {$locAvailable} kg)";
+            } else { // subtract
+                if ($qty == 0) {
+                    return response()->json(['success' => true, 'message' => 'Nothing to subtract — quantity is 0.']);
+                }
+                if ($qty > $locAvailable) {
+                    return response()->json(['success' => false, 'message' => "Cannot subtract {$qty} kg from location '{$locationName}' — only {$locAvailable} kg available in this location."]);
+                }
+                $txnQty  = $qty;
+                $txnType = 'OUT';
+                $summary = "Subtracted {$qty} kg from '{$locationName}' (location stock was {$locAvailable} kg)";
+            }
+
+            DB::transaction(function () use ($request, $locationId, $txnQty, $txnType, $note, $summary, $userId, $stockDate) {
+                $stock = new Stock([
+                    'product_id'       => $request->product_id,
+                    'user_id'          => $userId,
+                    'stage'            => $request->stage,
+                    'grade'            => $request->grade,
+                    'location_id'      => $locationId,
+                    'quantity'         => $txnQty,
+                    'transaction_type' => $txnType,
+                    'date'             => $stockDate,
+                    'notes'            => "{$note} [{$summary}]",
+                ]);
+                $stock->created_at = $stockDate;
+                $stock->updated_at = $stockDate;
+                $stock->save();
             });
 
-            return response()->json(['success' => true, 'message' => 'Stock updated! ' . implode(' | ', $summaries)]);
+            return response()->json(['success' => true, 'message' => "Stock updated! {$summary}."]);
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            return response()->json([
+                'success' => false,
+                'message' => $ve->validator->errors()->first()
+            ], 422);
+        } catch (\Throwable $e) {
+            \Log::error('Stock adjust error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
         }
-
-        // Single location fallback
-        $qty          = (float) $request->quantity;
-        $locationName = $request->input('location') ? trim($request->location) : 'Main Warehouse';
-        $locationId   = Location::firstOrCreate(['name' => $locationName])->id;
-        $note = "Manual adjustment at location '{$locationName}'" . ($reason ? " — {$reason}" : '');
-
-        $locAvailable = (float) (DB::table('stocks')
-            ->where('product_id', $request->product_id)
-            ->where('stage', $request->stage)
-            ->where('grade', $request->grade)
-            ->where('location_id', $locationId)
-            ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
-            ->value('net') ?? 0);
-
-        if ($type === 'set') {
-            $diff = $qty - $locAvailable;
-            if ($diff == 0) {
-                return response()->json(['success' => true, 'message' => "Stock at location '{$locationName}' is already {$qty} kg — no change made."]);
-            }
-            $txnQty  = abs($diff);
-            $txnType = $diff > 0 ? 'IN' : 'OUT';
-            $summary = "Set location '{$locationName}' to {$qty} kg (was {$locAvailable} kg)";
-        } elseif ($type === 'add') {
-            if ($qty == 0) {
-                return response()->json(['success' => true, 'message' => 'Nothing to add — quantity is 0.']);
-            }
-            $txnQty  = $qty;
-            $txnType = 'IN';
-            $summary = "Added {$qty} kg to '{$locationName}' (location stock was {$locAvailable} kg)";
-        } else { // subtract
-            if ($qty == 0) {
-                return response()->json(['success' => true, 'message' => 'Nothing to subtract — quantity is 0.']);
-            }
-            if ($qty > $locAvailable) {
-                return response()->json(['success' => false, 'message' => "Cannot subtract {$qty} kg from location '{$locationName}' — only {$locAvailable} kg available in this location."]);
-            }
-            $txnQty  = $qty;
-            $txnType = 'OUT';
-            $summary = "Subtracted {$qty} kg from '{$locationName}' (location stock was {$locAvailable} kg)";
-        }
-
-        DB::transaction(function () use ($request, $locationId, $txnQty, $txnType, $note, $summary, $userId) {
-            Stock::create([
-                'product_id'       => $request->product_id,
-                'user_id'          => $userId,
-                'stage'            => $request->stage,
-                'grade'            => $request->grade,
-                'location_id'      => $locationId,
-                'quantity'         => $txnQty,
-                'transaction_type' => $txnType,
-                'notes'            => "{$note} [{$summary}]",
-            ]);
-        });
-
-        return response()->json(['success' => true, 'message' => "Stock updated! {$summary}."]);
     }
 
     public function deleteStock(Request $request)
     {
-        $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'stage'      => 'required|in:RAW,SEMI,FINISHED',
-            'grade'      => 'required',
-        ]);
+        try {
+            $request->validate([
+                'product_id' => 'required|exists:products,id',
+                'stage'      => 'required|in:RAW,SEMI,FINISHED',
+                'grade'      => 'required',
+            ]);
 
-        $product = Product::findOrFail($request->product_id);
+            $product = Product::findOrFail($request->product_id);
 
-        // Check current net quantity across all locations
-        $currentQty = (float) (DB::table('stocks')
-            ->where('product_id', $request->product_id)
-            ->where('stage', $request->stage)
-            ->where('grade', $request->grade)
-            ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
-            ->value('net') ?? 0);
+            // Check current net quantity across all locations
+            $currentQty = (float) (DB::table('stocks')
+                ->where('product_id', $request->product_id)
+                ->where('stage', $request->stage)
+                ->where('grade', $request->grade)
+                ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
+                ->value('net') ?? 0);
 
-        if ($currentQty > 0) {
+            if ($currentQty > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Cannot delete stock entry: current quantity is " . number_format($currentQty, 2) . " {$product->unit}. Stock quantity must be 0 to delete."
+                ], 422);
+            }
+
+            DB::transaction(function() use ($request) {
+                // Delete all stock logs for this specific product, stage, and grade
+                DB::table('stocks')
+                    ->where('product_id', $request->product_id)
+                    ->where('stage', $request->stage)
+                    ->where('grade', $request->grade)
+                    ->delete();
+
+                // Also clean up any custom stock_limits entry for this product, stage, grade
+                DB::table('stock_limits')
+                    ->where('product_id', $request->product_id)
+                    ->where('stage', $request->stage)
+                    ->where('grade', $request->grade)
+                    ->delete();
+            });
+
+            return response()->json(['success' => true, 'message' => 'Stock entry deleted successfully.']);
+        } catch (\Illuminate\Validation\ValidationException $ve) {
             return response()->json([
                 'success' => false,
-                'message' => "Cannot delete stock entry: current quantity is " . number_format($currentQty, 2) . " {$product->unit}. Stock quantity must be 0 to delete."
+                'message' => $ve->validator->errors()->first()
             ], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
         }
-
-        DB::transaction(function() use ($request) {
-            // Delete all stock logs for this specific product, stage, and grade
-            DB::table('stocks')
-                ->where('product_id', $request->product_id)
-                ->where('stage', $request->stage)
-                ->where('grade', $request->grade)
-                ->delete();
-
-            // Also clean up any custom stock_limits entry for this product, stage, grade
-            DB::table('stock_limits')
-                ->where('product_id', $request->product_id)
-                ->where('stage', $request->stage)
-                ->where('grade', $request->grade)
-                ->delete();
-        });
-
-        return response()->json(['success' => true, 'message' => 'Stock entry deleted successfully.']);
     }
 
     public function bulkAddStock(Request $request)
     {
-        if ($request->has('items') && is_array($request->items)) {
-            $items = $request->items;
-            foreach ($items as &$item) {
-                if (isset($item['stage'])) {
-                    if ($item['stage'] === 'FG') {
-                        $item['stage'] = 'FINISHED';
-                    } elseif ($item['stage'] === 'ALL' && !empty($item['product_id'])) {
-                        $prod = Product::find($item['product_id']);
-                        if ($prod) {
-                            $item['stage'] = $prod->type;
+        try {
+            if ($request->has('items') && is_array($request->items)) {
+                $items = $request->items;
+                foreach ($items as &$item) {
+                    if (isset($item['stage'])) {
+                        if ($item['stage'] === 'FG') {
+                            $item['stage'] = 'FINISHED';
+                        } elseif ($item['stage'] === 'ALL' && !empty($item['product_id'])) {
+                            $prod = Product::find($item['product_id']);
+                            if ($prod) {
+                                $item['stage'] = $prod->type;
+                            }
                         }
                     }
                 }
+                unset($item);
+                $request->merge(['items' => $items]);
             }
-            unset($item);
-            $request->merge(['items' => $items]);
-        }
 
-        $request->validate([
-            'date'               => 'nullable|date',
-            'items'              => 'required|array',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.stage'      => 'required|in:RAW,SEMI,FINISHED,FG,PACKAGING',
-            'items.*.grade'      => 'required',
-            'items.*.date'       => 'nullable|date',
-            'items.*.alert_limit'=> 'nullable|numeric|min:0',
-            'items.*.rate'       => 'nullable|numeric|min:0',
-            'items.*.locations'  => 'required|array',
-            'items.*.locations.*.name' => 'required|string',
-            'items.*.locations.*.qty'  => 'required|numeric|min:0.01',
-            'items.*.note'       => 'nullable|string|max:255',
-        ]);
+            $request->validate([
+                'date'               => 'nullable|date',
+                'items'              => 'required|array',
+                'items.*.product_id' => 'required|exists:products,id',
+                'items.*.stage'      => 'required|in:RAW,SEMI,FINISHED,FG,PACKAGING',
+                'items.*.grade'      => 'required',
+                'items.*.date'       => 'nullable|date',
+                'items.*.alert_limit'=> 'nullable|numeric|min:0',
+                'items.*.rate'       => 'nullable|numeric|min:0',
+                'items.*.locations'  => 'required|array',
+                'items.*.locations.*.name' => 'required|string',
+                'items.*.locations.*.qty'  => 'required|numeric|min:0.01',
+                'items.*.note'       => 'nullable|string|max:255',
+            ]);
 
-        DB::transaction(function () use ($request) {
-            foreach ($request->items as $item) {
-                $productId = $item['product_id'];
-                $stage = $item['stage'];
-                $grade = $item['grade'];
-                $noteText = 'Bulk stock entry' . (!empty($item['note']) ? " — {$item['note']}" : '');
-                $userId = session('auth_user')['id'] ?? auth()->id();
+            DB::transaction(function () use ($request) {
+                foreach ($request->items as $item) {
+                    $productId = $item['product_id'];
+                    $stage = $item['stage'];
+                    $grade = $item['grade'];
+                    $noteText = 'Bulk stock entry' . (!empty($item['note']) ? " — {$item['note']}" : '');
+                    $userId = session('auth_user')['id'] ?? auth()->id() ?? User::first()?->id ?? 1;
 
-                $entryDate = !empty($item['date']) ? $item['date'] : ($request->input('date') ?: now()->toDateString());
-                $stockDate = \Carbon\Carbon::parse($entryDate)->setTime(now()->hour, now()->minute, now()->second);
+                    $entryDate = !empty($item['date']) ? $item['date'] : ($request->input('date') ?: now()->toDateString());
+                    $stockDate = Carbon::parse($entryDate)->setTime(now()->hour, now()->minute, now()->second);
 
-                if (isset($item['alert_limit'])) {
-                    \App\Models\StockLimit::updateOrCreate(
-                        ['product_id' => $productId, 'stage' => $stage, 'grade' => $grade],
-                        ['alert_limit' => $item['alert_limit']]
-                    );
-                }
+                    if (isset($item['alert_limit'])) {
+                        \App\Models\StockLimit::updateOrCreate(
+                            ['product_id' => $productId, 'stage' => $stage, 'grade' => $grade],
+                            ['alert_limit' => $item['alert_limit']]
+                        );
+                    }
 
-                if (isset($item['rate']) && $item['rate'] > 0) {
-                    $product = Product::find($productId);
-                    if ($product) {
-                        $product->update(['rate' => $item['rate']]);
+                    if (isset($item['rate']) && $item['rate'] > 0) {
+                        $product = Product::find($productId);
+                        if ($product) {
+                            $product->update(['rate' => $item['rate']]);
+                        }
+                    }
+
+                    foreach ($item['locations'] as $loc) {
+                        $locationId = Location::firstOrCreate(['name' => $loc['name']])->id;
+                        $qty = (float) $loc['qty'];
+
+                        $stock = new Stock([
+                            'product_id'       => $productId,
+                            'user_id'          => $userId,
+                            'stage'            => $stage,
+                            'grade'            => $grade,
+                            'location_id'      => $locationId,
+                            'quantity'         => $qty,
+                            'transaction_type' => 'IN',
+                            'date'             => $stockDate,
+                            'notes'            => "{$noteText} [Added {$qty} kg]",
+                        ]);
+                        $stock->created_at = $stockDate;
+                        $stock->updated_at = $stockDate;
+                        $stock->save();
                     }
                 }
+            });
 
-                foreach ($item['locations'] as $loc) {
-                    $locationId = Location::firstOrCreate(['name' => $loc['name']])->id;
-                    $qty = (float) $loc['qty'];
-
-                    $stock = new Stock([
-                        'product_id'       => $productId,
-                        'user_id'          => $userId,
-                        'stage'            => $stage,
-                        'grade'            => $grade,
-                        'location_id'      => $locationId,
-                        'quantity'         => $qty,
-                        'transaction_type' => 'IN',
-                        'date'             => $stockDate,
-                        'notes'            => "{$noteText} [Added {$qty} kg]",
-                    ]);
-                    $stock->created_at = $stockDate;
-                    $stock->updated_at = $stockDate;
-                    $stock->save();
-                }
-            }
-        });
-
-        return response()->json(['success' => true, 'message' => 'Stock entries added successfully!']);
+            return response()->json(['success' => true, 'message' => 'Stock entries added successfully!']);
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            return response()->json([
+                'success' => false,
+                'message' => $ve->validator->errors()->first()
+            ], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
     }
     // ── DISPATCH ACTIVITY ───────────────────────────────────────────────────
     public function dispatchActivity(Request $request)

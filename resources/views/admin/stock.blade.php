@@ -1412,10 +1412,22 @@ function adminDeleteStock(productId, stage, grade, productName = '') {
     if (result.isConfirmed) {
       fetch(window.baseUrl + '/' + window.userSlug + '/stock/delete', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': csrfToken
+        },
         body: JSON.stringify({ product_id: productId, stage, grade })
       })
-      .then(r => r.json())
+      .then(async r => {
+        const data = await r.json().catch(() => null);
+        if (!data) {
+          if (r.status === 419) throw new Error('Session expired. Please refresh the page.');
+          throw new Error(`Server returned status ${r.status}`);
+        }
+        return data;
+      })
       .then(d => {
         if (d.success) {
           Swal.fire('Deleted!', d.message || 'Stock entry deleted successfully.', 'success');
@@ -1423,6 +1435,9 @@ function adminDeleteStock(productId, stage, grade, productName = '') {
         } else {
           Swal.fire('Error!', d.message || 'Could not delete stock.', 'error');
         }
+      })
+      .catch(e => {
+        Swal.fire('Error!', 'Failed to delete: ' + e.message, 'error');
       });
     }
   });
@@ -1547,16 +1562,31 @@ function adminAddStock() {
     if (!result.isConfirmed) return;
     fetch(window.baseUrl + '/' + window.userSlug + '/stock/adjust', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': csrfToken
+      },
       body: JSON.stringify(result.value)
     })
-    .then(r => r.json())
+    .then(async r => {
+      const data = await r.json().catch(() => null);
+      if (!data) {
+        if (r.status === 419) throw new Error('Session expired. Please refresh the page.');
+        throw new Error(`Server returned status ${r.status}`);
+      }
+      return data;
+    })
     .then(d => {
       if (d.success) {
         Swal.fire('Saved', d.message || 'Stock added.', 'success').then(() => location.reload());
       } else {
         Swal.fire('Error', d.message || 'Could not add stock.', 'error');
       }
+    })
+    .catch(e => {
+      Swal.fire('Error', 'Failed to communicate with server: ' + e.message, 'error');
     });
   });
 }
@@ -1736,10 +1766,22 @@ function adminAdjustStock(productId, stage, grade, productName = '', currentQty 
 
     fetch(window.baseUrl + '/' + window.userSlug + '/stock/adjust', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': csrfToken
+      },
       body: JSON.stringify(payload)
     })
-    .then(r => r.json())
+    .then(async r => {
+      const data = await r.json().catch(() => null);
+      if (!data) {
+        if (r.status === 419) throw new Error('Session expired. Please refresh the page.');
+        throw new Error(`Server returned status ${r.status}`);
+      }
+      return data;
+    })
     .then(d => {
       if (d.success) {
         Swal.fire({
