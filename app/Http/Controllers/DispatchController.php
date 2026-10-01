@@ -328,12 +328,23 @@ class DispatchController extends Controller
                 $lrPath    = 'lr_images/' . uniqid('LR_') . '.jpg';
                 file_put_contents(public_path($lrPath), $imageData);
             }
+            $dispatchTransporterId = $request->transporter_id ?? $order->transporter_id;
+            if (!$dispatchTransporterId) {
+                try {
+                    DB::statement("ALTER TABLE `dispatch_logs` MODIFY `transporter_id` BIGINT UNSIGNED NULL");
+                } catch (\Throwable $e) {
+                    try {
+                        $fallback = \App\Models\Transporter::firstOrCreate(['name' => 'N/A'], ['contact' => '—', 'gst' => '—']);
+                        $dispatchTransporterId = $fallback->id;
+                    } catch (\Throwable $ignored) {}
+                }
+            }
 
             // Create dispatch log for this round
             $dispatchLog = DispatchLog::create([
                 'user_id'        => $user['id'],
                 'order_id'       => $order->id,
-                'transporter_id' => $request->transporter_id ?? $order->transporter_id,
+                'transporter_id' => $dispatchTransporterId,
                 'lr_image_path'  => $lrPath,
                 'driver_no'      => $request->driver_no,
                 'lr_no'          => $request->lr_no,

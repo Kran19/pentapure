@@ -8,13 +8,21 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->unsignedBigInteger('transporter_id')->nullable()->change();
-        });
+        try {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `orders` MODIFY `transporter_id` BIGINT UNSIGNED NULL");
+        } catch (\Throwable $e) {
+            Schema::table('orders', function (Blueprint $table) {
+                $table->unsignedBigInteger('transporter_id')->nullable()->change();
+            });
+        }
 
-        Schema::table('dispatch_logs', function (Blueprint $table) {
-            $table->unsignedBigInteger('transporter_id')->nullable()->change();
-        });
+        try {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `dispatch_logs` MODIFY `transporter_id` BIGINT UNSIGNED NULL");
+        } catch (\Throwable $e) {
+            Schema::table('dispatch_logs', function (Blueprint $table) {
+                $table->unsignedBigInteger('transporter_id')->nullable()->change();
+            });
+        }
     }
 
     public function down(): void

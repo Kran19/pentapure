@@ -40,6 +40,38 @@ class SalesController extends Controller
         }
     }
 
+    private function resolveTransporterId($transporterId): ?int
+    {
+        if (!empty($transporterId) && is_numeric($transporterId)) {
+            return (int) $transporterId;
+        }
+
+        // Transporter not specified or N/A: ensure column is nullable
+        static $ensuredNullable = null;
+        if ($ensuredNullable === null) {
+            try {
+                DB::statement("ALTER TABLE `orders` MODIFY `transporter_id` BIGINT UNSIGNED NULL");
+                DB::statement("ALTER TABLE `dispatch_logs` MODIFY `transporter_id` BIGINT UNSIGNED NULL");
+                $ensuredNullable = true;
+            } catch (\Throwable $e) {
+                $ensuredNullable = false;
+            }
+        }
+
+        // If the database still requires NOT NULL, provide an "N/A" fallback record
+        if ($ensuredNullable === false) {
+            try {
+                $fallback = Transporter::firstOrCreate(
+                    ['name' => 'N/A'],
+                    ['contact' => '—', 'gst' => '—']
+                );
+                return $fallback->id;
+            } catch (\Throwable $e) {}
+        }
+
+        return null;
+    }
+
     public function home()
     {
         $user = $this->authUser();
@@ -173,12 +205,13 @@ class SalesController extends Controller
         }
         $total = collect($request->items)->sum(fn($i) => $i['quantity'] * $i['price']);
         $hasDueDate = $this->ensureDueDateColumnExists();
+        $finalTransporterId = $this->resolveTransporterId($request->transporter_id);
 
-        DB::transaction(function () use ($request, $user, $total, $hasDueDate) {
+        DB::transaction(function () use ($request, $user, $total, $hasDueDate, $finalTransporterId) {
             $orderAttributes = [
                 'created_by'      => $user['id'],
                 'company_id'      => $request->company_id,
-                'transporter_id'  => $request->transporter_id,
+                'transporter_id'  => $finalTransporterId,
                 'total'           => $total,
                 'status'          => 'OPEN',
                 'dispatch_status' => 'PENDING',
@@ -552,11 +585,12 @@ class SalesController extends Controller
 
         $total = collect($request->items)->sum(fn($i) => $i['quantity'] * $i['price']);
         $hasDueDate = $this->ensureDueDateColumnExists();
+        $finalTransporterId = $this->resolveTransporterId($request->transporter_id);
 
-        DB::transaction(function () use ($request, $order, $total, $hasDueDate) {
+        DB::transaction(function () use ($request, $order, $total, $hasDueDate, $finalTransporterId) {
             $updateAttributes = [
                 'company_id'     => $request->company_id,
-                'transporter_id' => $request->transporter_id,
+                'transporter_id' => $finalTransporterId,
                 'total'          => $total,
                 'notes'          => $request->notes,
             ];
