@@ -328,9 +328,9 @@
         <span class="stock-tab-label">FG</span>
         <span class="stock-tab-badge">{{ $finishedItems->count() }}</span>
       </a>
-      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'packaging']) }}" class="stock-tab {{ ($typeFilter === 'PACKAGING' || $typeFilter === 'PKG') ? 'active is-pkg' : '' }}">
+      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'packaging']) }}" class="stock-tab {{ ($typeFilter === 'PACKAGING' || $typeFilter === 'PKG' || $typeFilter === 'PM') ? 'active is-pkg' : '' }}">
         <span class="stock-tab-icon">📦</span>
-        <span class="stock-tab-label">PACKAGING</span>
+        <span class="stock-tab-label">PM</span>
         <span class="stock-tab-badge">{{ $packagingItems->count() }}</span>
       </a>
     </div>
@@ -513,7 +513,7 @@
           <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ number_format($alertLimit, 2) }}" @endif>
             <td style="font-weight:400;">
               <div style="font-weight:normal; color:var(--text-color);">
-                {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span>(FINISHED)</span>
+                {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span style="font-weight:bold;">(FG)</span>
               </div>
             </td>
             <td style="font-weight:bold;">
@@ -547,7 +547,7 @@
       $packagingLowCount = $packagingItems->filter($isStockItemLow)->count();
     @endphp
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border-soft);">
-      <div class="card-title" style="color:#0284c7; margin:0;">📦 Packaging Materials Stock ({{ $packagingItems->count() }} items)</div>
+      <div class="card-title" style="color:#0284c7; margin:0;">📦 PM Stock (Packaging Material) ({{ $packagingItems->count() }} items)</div>
       @if($packagingLowCount > 0)
         <div style="display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:999px; font-size:0.78rem; font-weight:700; background:#dc2626; color:#ffffff; box-shadow:0 2px 6px rgba(220, 38, 38, 0.25);">
           <span>⚠</span>
@@ -571,7 +571,7 @@
           <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ number_format($alertLimit, 2) }}" @endif>
             <td style="font-weight:400;">
               <div style="font-weight:normal; color:var(--text-color);">
-                {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span>(PKG)</span>
+                {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span style="font-weight:bold;">(PM)</span>
               </div>
             </td>
             <td style="font-weight:bold;">
@@ -739,7 +739,7 @@ async function adminAdjustStock(productId, stage, grade, productName = '', curre
   if (window.isReadOnly) {
     return Swal.fire('View-Only Mode', 'You have View-Only permission. Stock adjustment is disabled.', 'warning');
   }
-  const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG', PACKAGING: '📦 Packaging' }[stage] || stage;
+  const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG', PACKAGING: '📦 PM' }[stage] || stage;
   const isDefGrade = !grade || ['NONE', 'N/A', 'NA', 'N / A'].includes(grade.trim().toUpperCase());
   const displayGrade = !isDefGrade ? ` &nbsp;·&nbsp; Grade: <strong style="color:#333;">${grade}</strong>` : '';
 
@@ -1020,7 +1020,7 @@ function adminSetLimit(productId, stage, grade, currentLimit, productName = '') 
   if (window.isReadOnly) {
     return Swal.fire('View-Only Mode', 'You have View-Only permission. Setting alert limit is disabled.', 'warning');
   }
-  const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG', PACKAGING: '📦 Packaging' }[stage] || stage;
+  const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG', PACKAGING: '📦 PM' }[stage] || stage;
   const isDefGrade = !grade || ['NONE', 'N/A', 'NA', 'N / A'].includes(grade.trim().toUpperCase());
   const displayGrade = !isDefGrade ? ` &nbsp;·&nbsp; Grade: <strong style="color:#333;">${grade}</strong>` : '';
 
@@ -1188,7 +1188,7 @@ function updateStockTables(stockData) {
         <tr class="${rowClass}" ${titleAttr}>
           <td>
             <div style="font-weight:normal; color:var(--text-color);">
-              ${s.name}${(s.grade && !['NONE', 'N/A', 'NA', 'N / A'].includes(s.grade.trim().toUpperCase())) ? '_<strong>' + escapeHtml(s.grade) + '</strong>' : ''}(${s.stage === 'FINISHED' ? 'FG' : (s.stage === 'PACKAGING' ? 'PKG' : s.stage)})
+              ${s.name}${(s.grade && !['NONE', 'N/A', 'NA', 'N / A'].includes(s.grade.trim().toUpperCase())) ? '_<strong>' + escapeHtml(s.grade) + '</strong>' : ''} <span style="font-weight:bold;">(${s.stage === 'FINISHED' || s.stage === 'FG' ? 'FG' : (s.stage === 'PACKAGING' || s.stage === 'PKG' ? 'PM' : s.stage)})</span>
             </div>
           </td>
           <td style="font-weight:bold;">${qtyContent}</td>

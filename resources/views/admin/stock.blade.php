@@ -54,8 +54,8 @@
             RAW MATERIALS (RAW)
           @elseif($typeFilter === 'SEMI')
             SEMI-FINISHED (SEMI)
-          @elseif($typeFilter === 'PACKAGING' || $typeFilter === 'PKG')
-            PACKAGING MATERIAL (PKG)
+          @elseif($typeFilter === 'PACKAGING' || $typeFilter === 'PKG' || $typeFilter === 'PM')
+            PACKAGING MATERIAL (PM)
           @endif
         </span>
       </div>
@@ -1344,7 +1344,7 @@
           <tr @if($isLow && $hasQty) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:400;">
               <div style="font-weight:normal; color:var(--text-color);">
-                {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span style='font-weight:bold;'>(PKG)</span>
+                {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span style='font-weight:bold;'>(PM)</span>
               </div>
             </td>
             <td style="font-weight:bold; color:var(--secondary);">{{ number_format($s->quantity, 2) }}</td>
@@ -2171,7 +2171,7 @@ function updateStockTables(stockData) {
         <tr class="${rowClass}" ${titleAttr}>
           <td>
             <div style="font-weight:normal; color:var(--text-color);">
-              @php @endphp${s.name}${(s.grade && !['NONE', 'N/A', 'NA', 'N / A'].includes(s.grade.trim().toUpperCase())) ? '_<strong>' + escapeHtml(s.grade) + '</strong>' : ''} <span style="font-weight:bold;">(${s.stage === 'FINISHED' || s.stage === 'FG' ? 'FG' : s.stage})</span>
+              @php @endphp${s.name}${(s.grade && !['NONE', 'N/A', 'NA', 'N / A'].includes(s.grade.trim().toUpperCase())) ? '_<strong>' + escapeHtml(s.grade) + '</strong>' : ''} <span style="font-weight:bold;">(${s.stage === 'FINISHED' || s.stage === 'FG' ? 'FG' : (s.stage === 'PACKAGING' || s.stage === 'PKG' ? 'PM' : s.stage)})</span>
             </div>
           </td>
           <td style="font-weight:bold; color:${qtyColor};">${formattedQty}</td>
