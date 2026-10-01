@@ -50,6 +50,14 @@ class DispatchController extends Controller
             ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
             ->get();
 
+        $packagingStock = DB::table('stocks')
+            ->join('products', 'stocks.product_id', '=', 'products.id')
+            ->where('stocks.stage', 'PACKAGING')
+            ->groupBy('stocks.product_id', 'stocks.grade', 'products.name', 'products.unit')
+            ->selectRaw("stocks.product_id as id, products.name, stocks.grade, products.unit, SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity")
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
+            ->get();
+
         $liveStocks = DB::table('stocks')
             ->selectRaw("product_id, grade, SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as net_qty")
             ->groupBy('product_id', 'grade')
@@ -69,6 +77,7 @@ class DispatchController extends Controller
             'rawStock'        => $rawStock,
             'semiStock'       => $semiStock,
             'finishedStock'   => $finishedStock,
+            'packagingStock'  => $packagingStock,
             'pendingOrders'   => $pending->map(function($o) use ($stockMap) {
                 $items = $o->items->map(function($i) use ($stockMap) {
                     $needed = max(0, (float)$i->quantity - (float)$i->dispatched_qty);
@@ -124,6 +133,8 @@ class DispatchController extends Controller
                     'salesPerson'  => $o->creator?->name ?? 'N/A',
                     'total'        => $o->total,
                     'date'         => $o->created_at->toISOString(),
+                    'dueDate'      => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
+                    'rawDueDate'   => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('Y-m-d') : null,
                     'totalQty'     => $o->items->sum('quantity'),
                     'dispatchedQty'=> $o->items->sum('dispatched_qty'),
                     'dispatchStatus' => $o->dispatch_status,
@@ -141,6 +152,8 @@ class DispatchController extends Controller
                 'salesPerson'  => $o->creator?->name ?? 'N/A',
                 'total'        => $o->total,
                 'date'         => $o->created_at->toISOString(),
+                'dueDate'      => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
+                'rawDueDate'   => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('Y-m-d') : null,
                 'notes'        => $o->notes,
                 'items'        => $o->items->map(fn($i) => [
                     'id'            => $i->id,
