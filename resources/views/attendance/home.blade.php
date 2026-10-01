@@ -50,11 +50,6 @@
   <div class="card" style="margin-top:1.5rem; padding:1.5rem;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
       <h3 style="margin:0;">📅 Recent Attendance Status</h3>
-      @if(isset($recentSubmissions) && $recentSubmissions->count() > 0)
-        <button type="button" class="btn btn-sm" onclick="confirmClearAttendance()" style="background:#dc2626; border:1px solid #dc2626; color:#ffffff !important; font-weight:700; padding:5px 12px; border-radius:6px; cursor:pointer; width:auto;" title="Clear all attendance records">
-          🗑️ Clear All Attendance Records
-        </button>
-      @endif
     </div>
     @if(isset($recentSubmissions) && $recentSubmissions->count() > 0)
     <div style="overflow-x:auto;">
@@ -293,43 +288,6 @@ function submitWorkerForm(e) {
     })
     .catch(err => {
         Swal.fire('Error', 'An unexpected error occurred', 'error');
-    });
-}
-
-@php
-  $currentAttSlug = auth()->user()?->login_slug 
-      ?? (request()->segment(1) === 'public' ? request()->segment(2) : request()->segment(1)) 
-      ?: 'attendance';
-  $attendanceClearUrl = $currentAttSlug === 'admin'
-      ? (Route::has('admin.attendance.clear') ? route('admin.attendance.clear') : url('admin/attendance/clear'))
-      : (Route::has($currentAttSlug . '.clear') ? route($currentAttSlug . '.clear') : url($currentAttSlug . '/clear'));
-@endphp
-
-function confirmClearAttendance() {
-    Swal.fire({
-        title: 'Clear All Attendance?',
-        text: 'Are you sure you want to permanently clear all attendance records and submissions? Worker profiles and departments will remain 100% intact.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc2626',
-        confirmButtonText: 'Yes, clear all',
-        cancelButtonText: 'Cancel'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            const clearUrl = @json($attendanceClearUrl);
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = clearUrl;
-            
-            const csrf = document.createElement('input');
-            csrf.type = 'hidden';
-            csrf.name = '_token';
-            csrf.value = '{{ csrf_token() }}';
-            form.appendChild(csrf);
-            
-            document.body.appendChild(form);
-            form.submit();
-        }
     });
 }
 </script>
