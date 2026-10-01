@@ -488,6 +488,39 @@ class StockManagerController extends Controller
         return redirect()->back()->with('success', 'Note updated successfully!');
     }
 
+    // ── DELETE: Delete Single Stock History Entry ─────────────────────────
+    public function destroyHistory($id)
+    {
+        $stock = Stock::findOrFail($id);
+        $stock->delete();
+
+        if (request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Stock history entry deleted successfully!',
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Stock history entry deleted successfully!');
+    }
+
+    // ── POST: Clear All Stock History Entries ─────────────────────────────
+    public function clearHistory(Request $request)
+    {
+        \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
+        Stock::truncate();
+        \Illuminate\Support\Facades\Schema::enableForeignKeyConstraints();
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'All stock history has been cleared successfully!',
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'All stock history has been cleared successfully!');
+    }
+
     // ── PROFILE: User Profile ──────────────────────────────────────────────
     public function profile()
     {

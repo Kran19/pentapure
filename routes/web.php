@@ -88,6 +88,8 @@ Route::middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CA
     Route::post('/admin/logs/clear', [\App\Http\Controllers\AdminController::class, 'clearLogs']);
     Route::post('/admin/attendance/clear', [\App\Http\Controllers\AttendanceController::class, 'clearAllAttendanceData']);
     Route::post('/attendance/clear', [\App\Http\Controllers\AttendanceController::class, 'clearAllAttendanceData']);
+    Route::post('/stock_manager/history/clear', [\App\Http\Controllers\StockManagerController::class, 'clearHistory']);
+    Route::delete('/stock_manager/history/{id}', [\App\Http\Controllers\StockManagerController::class, 'destroyHistory']);
 });
 Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE,STOCK_MANAGER')->group(function() {
     Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout']);
@@ -328,7 +330,9 @@ foreach ($roleSlugs['STOCK_MANAGER'] ?? [] as $slug) {
         Route::post('/po/receive', 'receivePO')->name($slug.'.po.receive');
         Route::post('/po/{id}',    'updatePO')->name($slug.'.po.update');
         Route::delete('/po/{id}',  'destroyPO')->name($slug.'.po.destroy');
-        Route::get('/history',     'history')->name($slug.'.history');
+        Route::get('/history',          'history')->name($slug.'.history');
+        Route::delete('/history/{id}',  'destroyHistory')->name($slug.'.history.destroy');
+        Route::post('/history/clear',   'clearHistory')->name($slug.'.history.clear');
         Route::post('/stock/note/{id}', 'updateNote')->name($slug.'.stock.note.update');
         Route::get('/profile',     'profile')->name($slug.'.profile');
         Route::get('/users',       [AdminController::class, 'users'])->name($slug.'.users');
