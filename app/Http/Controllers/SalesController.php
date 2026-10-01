@@ -9,10 +9,36 @@ use App\Models\Product;
 use App\Models\Transporter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
 
 class SalesController extends Controller
 {
     private function authUser(): array { return session('auth_user'); }
+
+    private function ensureDueDateColumnExists(): bool
+    {
+        static $hasColumn = null;
+        if ($hasColumn !== null) {
+            return $hasColumn;
+        }
+
+        if (Schema::hasColumn('orders', 'due_date')) {
+            $hasColumn = true;
+            return true;
+        }
+
+        try {
+            Schema::table('orders', function (Blueprint $table) {
+                $table->date('due_date')->nullable()->after('date');
+            });
+            $hasColumn = true;
+            return true;
+        } catch (\Throwable $e) {
+            $hasColumn = false;
+            return false;
+        }
+    }
 
     public function home()
     {
@@ -146,9 +172,10 @@ class SalesController extends Controller
             }
         }
         $total = collect($request->items)->sum(fn($i) => $i['quantity'] * $i['price']);
+        $hasDueDate = $this->ensureDueDateColumnExists();
 
-        DB::transaction(function () use ($request, $user, $total) {
-            $order = Order::create([
+        DB::transaction(function () use ($request, $user, $total, $hasDueDate) {
+            $orderAttributes = [
                 'created_by'      => $user['id'],
                 'company_id'      => $request->company_id,
                 'transporter_id'  => $request->transporter_id,
@@ -156,8 +183,12 @@ class SalesController extends Controller
                 'status'          => 'OPEN',
                 'dispatch_status' => 'PENDING',
                 'notes'           => $request->notes,
-                'due_date'        => $request->due_date ?: null,
-            ]);
+            ];
+            if ($hasDueDate) {
+                $orderAttributes['due_date'] = $request->due_date ?: null;
+            }
+
+            $order = Order::create($orderAttributes);
 
             foreach ($request->items as $item) {
                 OrderItem::create([
@@ -520,15 +551,20 @@ class SalesController extends Controller
         }
 
         $total = collect($request->items)->sum(fn($i) => $i['quantity'] * $i['price']);
+        $hasDueDate = $this->ensureDueDateColumnExists();
 
-        DB::transaction(function () use ($request, $order, $total) {
-            $order->update([
+        DB::transaction(function () use ($request, $order, $total, $hasDueDate) {
+            $updateAttributes = [
                 'company_id'     => $request->company_id,
                 'transporter_id' => $request->transporter_id,
                 'total'          => $total,
                 'notes'          => $request->notes,
-                'due_date'       => $request->due_date ?: null,
-            ]);
+            ];
+            if ($hasDueDate) {
+                $updateAttributes['due_date'] = $request->due_date ?: null;
+            }
+
+            $order->update($updateAttributes);
 
             $existingItemIds = [];
 

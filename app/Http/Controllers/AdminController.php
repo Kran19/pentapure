@@ -17,6 +17,7 @@ use App\Models\Worker;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 
@@ -1510,9 +1511,11 @@ class AdminController extends Controller
             ELSE 4
         END";
 
+        $dueCol = Schema::hasColumn('orders', 'due_date') ? 'orders.due_date' : 'orders.date';
+
         $pendingDueSort = "CASE 
             WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN '9999-12-31'
-            ELSE COALESCE(orders.due_date, orders.date, orders.created_at)
+            ELSE COALESCE({$dueCol}, orders.date, orders.created_at)
         END";
 
         $completedDateSort = "CASE 
@@ -1625,9 +1628,11 @@ class AdminController extends Controller
             ELSE 4
         END";
 
+        $dueCol = Schema::hasColumn('orders', 'due_date') ? 'orders.due_date' : 'orders.date';
+
         $pendingDueSort = "CASE 
             WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN '9999-12-31'
-            ELSE COALESCE(orders.due_date, orders.date, orders.created_at)
+            ELSE COALESCE({$dueCol}, orders.date, orders.created_at)
         END";
 
         $completedDateSort = "CASE 
