@@ -391,7 +391,7 @@ html.dark-mode .info-preview-box .info-label {
       </div>
 
       <div class="form-group" style="margin-top:1rem;">
-        <label>Expected Due Date</label>
+        <label>Dispatch Date</label>
         <input type="date" id="order-due-date" value="{{ !empty($pageData['editOrder']) && $pageData['editOrder']->due_date ? \Carbon\Carbon::parse($pageData['editOrder']->due_date)->format('Y-m-d') : '' }}" style="width:100%; padding:0.65rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
       </div>
 
