@@ -19,6 +19,7 @@
     $rawItems      = collect($pageData['allStock'])->where('stage', 'RAW');
     $semiItems     = collect($pageData['allStock'])->where('stage', 'SEMI');
     $finishedItems = collect($pageData['allStock'])->where('stage', 'FINISHED');
+    $packagingItems = collect($pageData['allStock'])->where('stage', 'PACKAGING');
     $adminAllGrades = \App\Models\Grade::orderBy('id')->get();
   @endphp
   <script>
@@ -218,6 +219,45 @@
               </button>
             </td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="FINISHED" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
+          </tr>
+          @endforeach
+        </tbody>
+      </table>
+    </div>
+    @endif
+  </div>
+  @endif
+
+  @if(!$typeFilter || $typeFilter === 'PACKAGING' || $typeFilter === 'PKG')
+  <!-- PACKAGING Stock -->
+  <div class="card" style="padding:1.2rem; margin-bottom:1rem;">
+    <div class="card-title" style="color:#0284c7;">📦 Packaging Materials Stock ({{ $packagingItems->count() }} items)</div>
+    @if($packagingItems->isEmpty())
+      <p class="text-muted text-center">No packaging stock recorded yet.</p>
+    @else
+    <div class="table-container">
+      <table>
+        <thead><tr><th>Product</th><th>Total Qty</th><th>Unit</th><th>min_qty</th><th>Location</th></tr></thead>
+        <tbody id="packaging-stock-tbody">
+          @foreach($packagingItems as $s)
+          @php 
+            $isLow = $s->alert_limit > 0 && $s->quantity <= $s->alert_limit;
+          @endphp
+          <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
+            <td style="font-weight:400;">
+              <div style="font-weight:normal; color:var(--text-color);">
+                {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span>(PKG)</span>
+              </div>
+            </td>
+            <td style="font-weight:bold; color:#0284c7;">{{ number_format($s->quantity, 2) }}</td>
+            <td>{{ $s->unit }}</td>
+            <td style="font-weight:bold; color:var(--text-color);">
+              {{ number_format($s->alert_limit, 2) }}
+              <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+              </button>
+            </td>
+            <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="PACKAGING" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
           </tr>
           @endforeach
         </tbody>
@@ -1527,6 +1567,15 @@ function addStockRow() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('low_stock') === '1' || urlParams.get('filter') === 'low') {
+    document.querySelectorAll('tbody tr').forEach(tr => {
+      if (!tr.classList.contains('low-stock-row')) {
+        tr.style.display = 'none';
+      }
+    });
+  }
+
   if (sessionStorage.getItem('keepStockFormOpen') === 'true') {
     const el = document.getElementById('bulk-stock-container');
     if (el) el.style.display = 'block';

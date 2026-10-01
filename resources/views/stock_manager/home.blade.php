@@ -4,6 +4,51 @@
 <div style="padding: 1rem 0;">
   <h2 style="margin-bottom:1.5rem; color:var(--text-main);">📦 Stock Manager Dashboard</h2>
 
+  @php
+    $smPrefix = request()->segment(2) == 'stock-manager' ? request()->segment(1) . '/stock-manager' : request()->segment(1);
+    $hasAnyLowStock = (($pageData['lowRawCount'] ?? 0) > 0) ||
+                      (($pageData['lowSemiCount'] ?? 0) > 0) ||
+                      (($pageData['lowFinishedCount'] ?? 0) > 0) ||
+                      (($pageData['lowPackagingCount'] ?? 0) > 0);
+  @endphp
+
+  @if($hasAnyLowStock)
+  <!-- Low Stock Alerts -->
+  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+    <!-- Raw Material Stock -->
+    @if(($pageData['lowRawCount'] ?? 0) > 0)
+    <a href="{{ url($smPrefix . '/stock?type=raw&low_stock=1') }}" style="background-color: #dc2626; color: #ffffff; padding: 1rem; border-radius: 8px; border: 1px solid #b91c1c; display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.25); transition: all 0.15s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 14px -1px rgba(220, 38, 38, 0.4)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 6px -1px rgba(220, 38, 38, 0.25)';">
+      <span style="font-size: 1.25rem;">⚠</span>
+      <span style="font-size: 1.05rem; font-weight: 700; color: #ffffff; letter-spacing: 0.2px;">Raw Material Low Stock: {{ $pageData['lowRawCount'] }}</span>
+    </a>
+    @endif
+
+    <!-- Semi-Finished Stock -->
+    @if(($pageData['lowSemiCount'] ?? 0) > 0)
+    <a href="{{ url($smPrefix . '/stock?type=semi&low_stock=1') }}" style="background-color: #dc2626; color: #ffffff; padding: 1rem; border-radius: 8px; border: 1px solid #b91c1c; display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.25); transition: all 0.15s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 14px -1px rgba(220, 38, 38, 0.4)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 6px -1px rgba(220, 38, 38, 0.25)';">
+      <span style="font-size: 1.25rem;">⚠</span>
+      <span style="font-size: 1.05rem; font-weight: 700; color: #ffffff; letter-spacing: 0.2px;">Semi-Finished Low Stock: {{ $pageData['lowSemiCount'] }}</span>
+    </a>
+    @endif
+
+    <!-- FG Stock -->
+    @if(($pageData['lowFinishedCount'] ?? 0) > 0)
+    <a href="{{ url($smPrefix . '/stock?type=finished&low_stock=1') }}" style="background-color: #dc2626; color: #ffffff; padding: 1rem; border-radius: 8px; border: 1px solid #b91c1c; display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.25); transition: all 0.15s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 14px -1px rgba(220, 38, 38, 0.4)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 6px -1px rgba(220, 38, 38, 0.25)';">
+      <span style="font-size: 1.25rem;">⚠</span>
+      <span style="font-size: 1.05rem; font-weight: 700; color: #ffffff; letter-spacing: 0.2px;">FG Low Stock: {{ $pageData['lowFinishedCount'] }}</span>
+    </a>
+    @endif
+
+    <!-- Packaging Stock -->
+    @if(($pageData['lowPackagingCount'] ?? 0) > 0)
+    <a href="{{ url($smPrefix . '/stock?type=packaging&low_stock=1') }}" style="background-color: #dc2626; color: #ffffff; padding: 1rem; border-radius: 8px; border: 1px solid #b91c1c; display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.25); transition: all 0.15s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 14px -1px rgba(220, 38, 38, 0.4)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 6px -1px rgba(220, 38, 38, 0.25)';">
+      <span style="font-size: 1.25rem;">⚠</span>
+      <span style="font-size: 1.05rem; font-weight: 700; color: #ffffff; letter-spacing: 0.2px;">Packaging Low Stock: {{ $pageData['lowPackagingCount'] }}</span>
+    </a>
+    @endif
+  </div>
+  @endif
+
   <!-- Stats Grid -->
   <div class="responsive-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
     <div class="card" style="text-align:center; padding:1.2rem; background:var(--card-bg, rgba(255,255,255,0.05));">

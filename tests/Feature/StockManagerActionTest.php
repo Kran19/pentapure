@@ -210,5 +210,31 @@ class StockManagerActionTest extends TestCase
         $this->assertStringContainsString('DEHYDRATED AMCHUR FLAKES (FG)', $csvContent);
         $this->assertStringContainsString('Main Warehouse', $csvContent);
     }
+
+    public function test_stock_manager_home_shows_low_stock_alerts_when_stock_is_low(): void
+    {
+        // Set threshold on product
+        $this->product->update(['threshold' => 100.0]);
+
+        // Create stock with 20 kg (low stock)
+        Stock::create([
+            'product_id' => $this->product->id,
+            'stage' => 'FINISHED',
+            'grade' => 'A',
+            'location_id' => $this->location->id,
+            'quantity' => 20,
+            'transaction_type' => 'IN',
+            'user_id' => $this->stockManager->id,
+        ]);
+
+        $response = $this->withSession([
+            'auth_user' => $this->stockManager->toArray(),
+        ])->get('/stock_manager/home');
+
+        $response->assertStatus(200);
+        $response->assertSee('FG Low Stock: 1');
+        $response->assertSee('type=finished&amp;low_stock=1', false);
+    }
 }
+
 

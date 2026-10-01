@@ -36,7 +36,30 @@ class StockManagerController extends Controller
 
         $pendingPOs = PurchaseOrder::where('status', 'PENDING')->count();
 
-        $pageData = compact('totalItems', 'totalNetQty', 'todayInward', 'todayOutward', 'pendingPOs', 'liveStock');
+        $getLowCount = function (string $stage): int {
+            return DB::table('stocks')
+                ->join('products', 'stocks.product_id', '=', 'products.id')
+                ->leftJoin('stock_limits', function ($join) {
+                    $join->on('stocks.product_id', '=', 'stock_limits.product_id')
+                         ->on('stocks.stage', '=', 'stock_limits.stage')
+                         ->on('stocks.grade', '=', 'stock_limits.grade');
+                })
+                ->select('stocks.product_id', 'stocks.stage', 'stocks.grade')
+                ->where('stocks.stage', $stage)
+                ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.threshold', 'stock_limits.alert_limit')
+                ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) <= IFNULL(stock_limits.alert_limit, products.threshold)")
+                ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
+                ->havingRaw("IFNULL(stock_limits.alert_limit, products.threshold) > 0")
+                ->get()
+                ->count();
+        };
+
+        $lowRawCount       = $getLowCount('RAW');
+        $lowSemiCount      = $getLowCount('SEMI');
+        $lowFinishedCount  = $getLowCount('FINISHED');
+        $lowPackagingCount = $getLowCount('PACKAGING');
+
+        $pageData = compact('totalItems', 'totalNetQty', 'todayInward', 'todayOutward', 'pendingPOs', 'liveStock', 'lowRawCount', 'lowSemiCount', 'lowFinishedCount', 'lowPackagingCount');
 
         return view('stock_manager.home', compact('pageData'));
     }
