@@ -415,57 +415,108 @@ class AdminController extends Controller
 
     public function storeProduct(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'type' => 'required|in:RAW,SEMI,FINISHED,PACKAGING',
-            'rate' => 'nullable|numeric|min:0',
-            'threshold' => 'nullable|numeric|min:0',
-            'grades' => 'nullable', // Could be stringified JSON or array
-            'allowed_roles' => 'nullable', // Could be stringified JSON or array
-            'image' => 'nullable|image|max:2048'
-        ]);
+        try {
+            $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+                'name' => 'required|string|max:255',
+                'type' => 'required|in:RAW,SEMI,FINISHED,PACKAGING',
+                'rate' => 'nullable|numeric|min:0',
+                'threshold' => 'nullable|numeric|min:0',
+                'grades' => 'nullable',
+                'allowed_roles' => 'nullable',
+                'image' => 'nullable|image|max:2048'
+            ]);
 
-        // Parse JSON arrays if sent via FormData
-        $grades = is_string($request->grades) ? json_decode($request->grades, true) : ($request->grades ?? []);
-        $allowedRoles = is_string($request->allowed_roles) ? json_decode($request->allowed_roles, true) : ($request->allowed_roles ?? []);
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
+            }
 
-        $imageUrl = $request->image_url;
-        if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('products', 'public');
-            $imageUrl = '/storage/' . $path;
-        }
+            // Parse JSON arrays safely
+            $grades = [];
+            if ($request->has('grades') && $request->grades !== null && $request->grades !== '' && $request->grades !== 'null') {
+                if (is_array($request->grades)) {
+                    $grades = $request->grades;
+                } else {
+                    $decoded = json_decode($request->grades, true);
+                    $grades = is_array($decoded) ? $decoded : [];
+                }
+                $grades = array_values(array_filter($grades, fn($g) => !empty($g)));
+            }
 
-        $data = [
-            'name' => $request->name,
-            'type' => $request->type,
-            'unit' => $request->unit ?? 'kg',
-            'rate' => $request->rate ?? 0.00,
-            'threshold' => $request->threshold ?? 0.00,
-            'allowed_roles' => $allowedRoles
-        ];
-        
-        if ($imageUrl !== null) {
-            $data['image_url'] = $imageUrl;
-        }
+            $allowedRoles = [];
+            if ($request->has('allowed_roles') && $request->allowed_roles !== null && $request->allowed_roles !== '' && $request->allowed_roles !== 'null') {
+                if (is_array($request->allowed_roles)) {
+                    $allowedRoles = $request->allowed_roles;
+                } else {
+                    $decoded = json_decode($request->allowed_roles, true);
+                    $allowedRoles = is_array($decoded) ? $decoded : [];
+                }
+                $allowedRoles = array_values(array_filter($allowedRoles, fn($r) => !empty($r)));
+            }
 
-        if ($request->product_id) {
-            $product = Product::findOrFail($request->product_id);
-            $product->update($data);
-            $product->grades()->sync($grades);
+            $imageUrl = $request->image_url;
+            if ($request->hasFile('image')) {
+                $path = $request->file('image')->store('products', 'public');
+                $imageUrl = '/storage/' . $path;
+            }
+
+            $data = [
+                'name' => trim((string)$request->name),
+                'type' => strtoupper(trim((string)$request->type)),
+                'unit' => !empty($request->unit) ? trim((string)$request->unit) : 'KG',
+                'rate' => (float)($request->filled('rate') ? $request->rate : 0.00),
+                'threshold' => (float)($request->filled('threshold') ? $request->threshold : 0.00),
+                'allowed_roles' => $allowedRoles
+            ];
             
-            // Sync to stock_limits table
-            \Illuminate\Support\Facades\DB::table('stock_limits')
-                ->where('product_id', $product->id)
-                ->update(['alert_limit' => $data['threshold']]);
-                
-            $msg = 'Product updated!';
-        } else {
-            $product = Product::create($data);
-            $product->grades()->sync($grades);
-            $msg = 'Product created!';
-        }
+            if ($imageUrl !== null) {
+                $data['image_url'] = $imageUrl;
+            }
 
-        return response()->json(['success' => true, 'message' => $msg, 'product' => $product]);
+            if ($request->filled('product_id')) {
+                $product = Product::findOrFail($request->product_id);
+                $product->update($data);
+                if (is_array($grades)) {
+                    $product->grades()->sync($grades);
+                }
+                
+                // Sync to stock_limits table if present
+                try {
+                    \Illuminate\Support\Facades\DB::table('stock_limits')
+                        ->where('product_id', $product->id)
+                        ->update(['alert_limit' => $data['threshold']]);
+                } catch (\Throwable $limitEx) {
+                    \Illuminate\Support\Facades\Log::warning('Stock limits sync skipped: ' . $limitEx->getMessage());
+                }
+                    
+                $msg = 'Product updated successfully!';
+            } else {
+                $product = Product::create($data);
+                if (is_array($grades) && !empty($grades)) {
+                    $product->grades()->sync($grades);
+                }
+                $msg = 'Product created successfully!';
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $msg,
+                'product' => $product
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('storeProduct failed: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->except(['image'])
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to save product: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function destroyProduct($id)

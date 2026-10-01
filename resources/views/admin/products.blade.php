@@ -685,12 +685,20 @@ function adminEditProduct(prod) {
 
       fetch(window.baseUrl + '/' + window.userSlug + '/products', {
         method: 'POST',
-        headers: { 'X-CSRF-TOKEN': csrfToken },
+        headers: { 
+          'X-CSRF-TOKEN': csrfToken,
+          'Accept': 'application/json'
+        },
         body: formData
       })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
+      .then(async res => {
+        let data;
+        try {
+          data = await res.json();
+        } catch(e) {
+          data = { success: false, message: 'Server returned error (' + res.status + ')' };
+        }
+        if (res.ok && data.success) {
           Swal.fire({ icon:'success', title:'Updated!', text:data.message, background: '#ffffff', color: '#333333', confirmButtonColor:'#f59e0b', timer:1500, showConfirmButton:false})
           .then(() => location.reload());
         } else {
@@ -699,7 +707,7 @@ function adminEditProduct(prod) {
       })
       .catch(err => {
         console.error(err);
-        Swal.fire({ icon:'error', title:'Error', text:'Network error', background: '#ffffff', color: '#333333', confirmButtonColor:'#f59e0b'});
+        Swal.fire({ icon:'error', title:'Error', text: err.message || 'Network error', background: '#ffffff', color: '#333333', confirmButtonColor:'#f59e0b'});
       });
     }
   });
@@ -725,10 +733,19 @@ function adminSaveProduct() {
   
   fetch(window.baseUrl + '/' + window.userSlug + '/products', {
     method: 'POST',
-    headers: { 'X-CSRF-TOKEN': csrfToken },
+    headers: { 
+      'X-CSRF-TOKEN': csrfToken,
+      'Accept': 'application/json'
+    },
     body: formData
-  }).then(r => r.json()).then(d => {
-    if (d.success) { 
+  }).then(async r => {
+    let d;
+    try {
+      d = await r.json();
+    } catch(e) {
+      d = { success: false, message: 'Server error (' + r.status + ')' };
+    }
+    if (r.ok && d.success) { 
         Swal.fire({
           icon: 'success',
           title: 'Success',
@@ -742,11 +759,12 @@ function adminSaveProduct() {
             location.reload();
         }); 
     } else {
-        Swal.fire('Error', d.message || 'Error', 'error');
+        Swal.fire('Error', d.message || 'Failed to save product', 'error');
         btn.disabled = false;
         btn.style.opacity = '1';
     }
-  }).catch(() => {
+  }).catch(err => {
+    Swal.fire('Error', err.message || 'Network error', 'error');
     btn.disabled = false;
     btn.style.opacity = '1';
   });
@@ -755,10 +773,25 @@ function adminSaveProduct() {
 function adminToggleProduct(id) {
   fetch(window.baseUrl + '/' + window.userSlug + '/products/toggle/' + id, {
     method: 'POST',
-    headers: { 'X-CSRF-TOKEN': csrfToken }
-  }).then(r => r.json()).then(d => {
-    if (d.success) app.toast('Status updated');
-    else { app.toast('Error updating status', 'error'); location.reload(); }
+    headers: { 
+      'X-CSRF-TOKEN': csrfToken,
+      'Accept': 'application/json'
+    }
+  }).then(async r => {
+    let d;
+    try {
+      d = await r.json();
+    } catch(e) {
+      d = { success: false, message: 'Server error' };
+    }
+    if (r.ok && d.success) {
+      app.toast('Status updated');
+    } else {
+      app.toast(d.message || 'Error updating status', 'error');
+      location.reload();
+    }
+  }).catch(err => {
+    app.toast('Network error: ' + err.message, 'error');
   });
 }
 
@@ -775,14 +808,25 @@ function adminDeleteProduct(id) {
     if (result.isConfirmed) {
       fetch(window.baseUrl + '/' + window.userSlug + '/products/' + id, {
         method: 'DELETE',
-        headers: { 'X-CSRF-TOKEN': csrfToken }
-      }).then(r => r.json()).then(d => {
-        if (d.success) { 
+        headers: { 
+          'X-CSRF-TOKEN': csrfToken,
+          'Accept': 'application/json'
+        }
+      }).then(async r => {
+        let d;
+        try {
+          d = await r.json();
+        } catch(e) {
+          d = { success: false, message: 'Server error (' + r.status + ')' };
+        }
+        if (r.ok && d.success) { 
           Swal.fire('Deleted!', d.message, 'success');
           setTimeout(() => location.reload(), 800); 
         } else {
-          Swal.fire('Error!', d.message || 'Error', 'error');
+          Swal.fire('Error!', d.message || 'Failed to delete product', 'error');
         }
+      }).catch(err => {
+        Swal.fire('Error!', err.message || 'Network error', 'error');
       });
     }
   });
