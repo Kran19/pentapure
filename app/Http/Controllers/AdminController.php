@@ -773,11 +773,8 @@ class AdminController extends Controller
             ->setOption('isHtml5ParserEnabled', true)
             ->setOption('isFontSubsettingEnabled', true);
         
-        if ($date) {
-            $filename = 'PentaPure_Stock_Valuation_Report_Up_To_' . \Carbon\Carbon::parse($date)->format('Ymd') . '.pdf';
-        } else {
-            $filename = 'PentaPure_Live_Stock_Valuation_Report_' . now()->format('Ymd_His') . '.pdf';
-        }
+        $asOnDate = $date ? \Carbon\Carbon::parse($date)->format('d-m-Y') : now()->format('d-m-Y');
+        $filename = 'PentaPure_Live_Stock_As_On_Date_' . $asOnDate . '.pdf';
 
         return $pdf->download($filename);
     }
@@ -863,11 +860,8 @@ class AdminController extends Controller
             $locsByKey[$key][] = $l;
         }
 
-        if ($date) {
-            $filename = 'PentaPure_Stock_Report_Up_To_' . \Carbon\Carbon::parse($date)->format('Ymd') . '.csv';
-        } else {
-            $filename = 'PentaPure_Live_Stock_Report_' . now()->format('Ymd_His') . '.csv';
-        }
+        $asOnDate = $date ? \Carbon\Carbon::parse($date)->format('d-m-Y') : now()->format('d-m-Y');
+        $filename = 'PentaPure_Live_Stock_As_On_Date_' . $asOnDate . '.csv';
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',

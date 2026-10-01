@@ -305,19 +305,15 @@
     <!-- Document Title -->
     <div class="title-container">
         <div class="title">
-            @if(!empty($isStockManager))
-                LIVE STOCK REPORT
-            @elseif(!empty($date))
-                STOCK VALUATION REPORT
+            PENTAPURE LIVE STOCK AS ON DATE {{ \Carbon\Carbon::parse($date ?? now())->format('d-m-Y') }}
+        </div>
+        <div class="title-sub">
+            @if(!empty($date))
+                Historical Stock Valuation Report as on {{ \Carbon\Carbon::parse($date)->format('d M Y') }} (Portrait)
             @else
-                LIVE STOCK VALUATION REPORT
+                Real-Time Live Stock Inventory Status (Portrait)
             @endif
         </div>
-        @if(!empty($date))
-            <div class="title-sub">Up To {{ \Carbon\Carbon::parse($date)->format('d-m-Y') }}</div>
-        @else
-            <div class="title-sub">Real-Time Inventory Status (Portrait)</div>
-        @endif
     </div>
 
     <!-- Summary Stats Cards -->
