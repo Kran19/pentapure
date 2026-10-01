@@ -6,7 +6,7 @@
     <h2 style="margin:0; color:var(--text-main);">📜 Stock Activity History</h2>
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
       <input type="text" id="history-search" placeholder="🔍 Search history..." oninput="filterHistoryTable(this.value)" style="padding:0.6rem 1rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main);">
-      @if($pageData['history']->total() > 0)
+      @if(empty($isReadOnly) && $pageData['history']->total() > 0)
         <button type="button" onclick="clearAllStockHistory()" class="btn btn-sm" style="background:#dc2626; color:#ffffff; padding:0.6rem 1rem; border-radius:8px; font-weight:700; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; box-shadow:0 2px 4px rgba(220,38,38,0.2);">
           🗑️ Clear All History
         </button>
@@ -29,7 +29,9 @@
             <th style="white-space: nowrap;">Location</th>
             <th style="white-space: nowrap;">Notes</th>
             <th style="white-space: nowrap;">Recorded By</th>
+            @if(empty($isReadOnly))
             <th style="white-space: nowrap; text-align:center;">Action</th>
+            @endif
           </tr>
         </thead>
         <tbody>
@@ -65,17 +67,21 @@
             <td style="font-size:0.85rem; color:var(--text-muted); min-width:220px; max-width:380px; white-space:normal; word-break:break-word; overflow-wrap:break-word; vertical-align:middle;">
               <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
                 <span id="note-text-{{ $s->id }}">{{ $s->notes ?? '-' }}</span>
+                @if(empty($isReadOnly))
                 <button type="button" onclick="editStockNote({{ $s->id }}, '{{ addslashes($s->notes ?? '') }}')" title="Edit Note" style="background:none; border:none; color:var(--primary, #3b82f6); cursor:pointer; padding:2px 4px; border-radius:4px; font-size:0.85rem; opacity:0.75;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.75">
                   ✏️
                 </button>
+                @endif
               </div>
             </td>
             <td style="font-size:0.85rem; white-space: nowrap;">{{ $s->user?->name ?? 'System' }}</td>
+            @if(empty($isReadOnly))
             <td style="white-space: nowrap; text-align:center;">
               <button type="button" onclick="deleteStockHistory({{ $s->id }})" title="Delete this entry" style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); color:#ef4444; cursor:pointer; padding:3px 8px; border-radius:6px; font-size:0.82rem; font-weight:600; display:inline-flex; align-items:center; gap:4px; transition:all 0.15s ease;" onmouseover="this.style.background='rgba(239,68,68,0.18)'" onmouseout="this.style.background='rgba(239,68,68,0.08)'">
                 🗑️ Delete
               </button>
             </td>
+            @endif
           </tr>
           @empty
           <tr>
@@ -105,9 +111,19 @@ function filterHistoryTable(q) {
   });
 }
 
-function editStockNote(id, currentNote) {
+function getStockHistoryUrl(path) {
+  const baseUrl = (window.baseUrl || '').replace(/\/+$/, '');
   const segments = window.location.pathname.split('/').filter(s => s && s !== 'penta-pure' && s !== 'public');
-  const currentUrlPrefix = segments.length > 0 ? segments[0] : 'stock_manager';
+  const prefix = window.userSlug || (segments.length > 0 ? segments[0] : 'stock_manager');
+  const cleanPath = path.replace(/^\/+/, '');
+  return baseUrl ? `${baseUrl}/${prefix}/${cleanPath}` : `/${prefix}/${cleanPath}`;
+}
+
+function editStockNote(id, currentNote) {
+  if (window.isReadOnly) {
+    if (window.app && window.app.toast) window.app.toast('You have View-Only access.', 'warning');
+    return;
+  }
   
   if (typeof Swal !== 'undefined') {
     Swal.fire({
@@ -126,21 +142,22 @@ function editStockNote(id, currentNote) {
       }
     }).then((result) => {
       if (result.isConfirmed) {
-        saveStockNote(id, result.value, currentUrlPrefix);
+        saveStockNote(id, result.value);
       }
     });
   } else {
     const newNote = prompt('Edit Stock Note:', currentNote);
     if (newNote !== null) {
-      saveStockNote(id, newNote, currentUrlPrefix);
+      saveStockNote(id, newNote);
     }
   }
 }
 
-function saveStockNote(id, newNote, prefix) {
-  const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-  const baseUrl = (typeof app !== 'undefined' && typeof app.getBaseUrl === 'function') ? app.getBaseUrl() : '';
-  fetch(`${baseUrl}/${prefix}/stock/note/${id}`, {
+function saveStockNote(id, newNote) {
+  if (window.isReadOnly) return;
+  const token = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+  const targetUrl = getStockHistoryUrl(`stock/note/${id}`);
+  fetch(targetUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -170,13 +187,15 @@ function saveStockNote(id, newNote, prefix) {
 }
 
 function deleteStockHistory(id) {
-  const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-  const segments = window.location.pathname.split('/').filter(s => s && s !== 'penta-pure' && s !== 'public');
-  const prefix = segments.length > 0 ? segments[0] : 'stock_manager';
-  const baseUrl = (typeof app !== 'undefined' && typeof app.getBaseUrl === 'function') ? app.getBaseUrl() : '';
+  if (window.isReadOnly) {
+    if (window.app && window.app.toast) window.app.toast('You have View-Only access.', 'warning');
+    return;
+  }
+  const token = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+  const targetUrl = getStockHistoryUrl(`history/${id}`);
 
   const doDelete = () => {
-    fetch(`${baseUrl}/${prefix}/history/${id}`, {
+    fetch(targetUrl, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -237,10 +256,12 @@ function deleteStockHistory(id) {
 }
 
 function clearAllStockHistory() {
-  const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-  const segments = window.location.pathname.split('/').filter(s => s && s !== 'penta-pure' && s !== 'public');
-  const prefix = segments.length > 0 ? segments[0] : 'stock_manager';
-  const baseUrl = (typeof app !== 'undefined' && typeof app.getBaseUrl === 'function') ? app.getBaseUrl() : '';
+  if (window.isReadOnly) {
+    if (window.app && window.app.toast) window.app.toast('You have View-Only access.', 'warning');
+    return;
+  }
+  const token = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+  const targetUrl = getStockHistoryUrl(`history/clear`);
 
   const doClear = () => {
     if (typeof Swal !== 'undefined') {
@@ -252,7 +273,7 @@ function clearAllStockHistory() {
       });
     }
 
-    fetch(`${baseUrl}/${prefix}/history/clear`, {
+    fetch(targetUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -312,7 +312,7 @@ foreach ($roleSlugs['STOCK_MANAGER'] ?? [] as $slug) {
         Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
-    Route::prefix($slug)->middleware('auth.role:STOCK_MANAGER,SUB_ADMIN')->controller(\App\Http\Controllers\StockManagerController::class)->group(function () use ($slug) {
+    Route::prefix($slug)->middleware('auth.role:STOCK_MANAGER,SUB_ADMIN,ADMIN')->controller(\App\Http\Controllers\StockManagerController::class)->group(function () use ($slug) {
         Route::get('/home',        'home')->name($slug.'.home');
         Route::get('/action',      'action')->name($slug.'.action');
         Route::post('/action',     'storeInward')->name($slug.'.action.store');

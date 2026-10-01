@@ -507,9 +507,15 @@ class StockManagerController extends Controller
     // ── POST: Clear All Stock History Entries ─────────────────────────────
     public function clearHistory(Request $request)
     {
-        \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
-        Stock::truncate();
-        \Illuminate\Support\Facades\Schema::enableForeignKeyConstraints();
+        try {
+            \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
+            \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            Stock::truncate();
+            \Illuminate\Support\Facades\Schema::enableForeignKeyConstraints();
+            \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        } catch (\Throwable $e) {
+            Stock::query()->delete();
+        }
 
         if ($request->wantsJson()) {
             return response()->json([

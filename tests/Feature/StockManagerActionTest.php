@@ -312,6 +312,47 @@ class StockManagerActionTest extends TestCase
         $this->assertStringNotContainsString('TOTAL STOCK VALUATION (REF):', $csvContent);
         $this->assertStringNotContainsString('Rate (Ref Rs.)', $csvContent);
     }
+
+    public function test_stock_manager_can_delete_and_clear_history(): void
+    {
+        $stock = Stock::create([
+            'product_id' => $this->product->id,
+            'stage' => 'RAW',
+            'grade' => 'NONE',
+            'location_id' => $this->location->id,
+            'quantity' => 50,
+            'transaction_type' => 'IN',
+            'user_id' => $this->stockManager->id,
+            'notes' => 'Test entry for deletion',
+        ]);
+
+        $this->assertDatabaseHas('stocks', ['id' => $stock->id]);
+
+        // 1. Delete single stock history
+        $delRes = $this->withSession(['auth_user' => $this->stockManager->toArray()])
+            ->deleteJson('/stock_manager/history/' . $stock->id);
+        $delRes->assertStatus(200);
+        $delRes->assertJson(['success' => true]);
+        $this->assertDatabaseMissing('stocks', ['id' => $stock->id]);
+
+        // 2. Add more entries and clear all
+        Stock::create([
+            'product_id' => $this->product->id,
+            'stage' => 'RAW',
+            'grade' => 'NONE',
+            'location_id' => $this->location->id,
+            'quantity' => 10,
+            'transaction_type' => 'IN',
+            'user_id' => $this->stockManager->id,
+        ]);
+        $this->assertGreaterThan(0, Stock::count());
+
+        $clearRes = $this->withSession(['auth_user' => $this->stockManager->toArray()])
+            ->postJson('/stock_manager/history/clear');
+        $clearRes->assertStatus(200);
+        $clearRes->assertJson(['success' => true]);
+        $this->assertEquals(0, Stock::count());
+    }
 }
 
 
