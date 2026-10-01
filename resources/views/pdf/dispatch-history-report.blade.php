@@ -121,25 +121,33 @@
 <body>
 <div class="page">
     
+    @php
+        $logoFile = file_exists(public_path('logo.png')) 
+            ? public_path('logo.png') 
+            : (file_exists(public_path('images/penta-purelogo.png')) ? public_path('images/penta-purelogo.png') : null);
+        $logoBase64 = $logoFile ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoFile)) : null;
+    @endphp
     <!-- Branding Header -->
-    <table class="header-table">
+    <table class="header-table" style="width: 100%; border-collapse: collapse; margin-bottom: 8px; border-bottom: 2px solid #f8c300; padding-bottom: 6px;">
         <tr>
-            <td class="header-logo-cell">
-                <table style="width: 100%; border-collapse: collapse;">
+            <td class="header-logo-cell" style="width: 65%; vertical-align: middle;">
+                <table style="border-collapse: collapse;">
                     <tr>
-                        <td style="width: 40px; vertical-align: middle; padding: 0;">
-                            @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
-                                <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 35px; height: 35px; object-fit: contain;">
-                            @endif
+                        @if($logoBase64)
+                        <td style="width: 85px; vertical-align: middle; padding: 0 12px 0 0;">
+                            <img src="{{ $logoBase64 }}" style="width: 75px; height: 75px; object-fit: contain; display: block;">
                         </td>
-                        <td style="vertical-align: middle; padding: 0 0 0 8px;">
-                            <div class="brand-title">PENTAPURE</div>
-                            <div class="brand-tagline">FOOD &amp; SPICES PVT.LTD.</div>
+                        @endif
+                        <td style="vertical-align: middle; padding: 0;">
+                            <div class="brand-title" style="font-size: 22px; font-weight: 800; color: #101828; letter-spacing: 0.5px;">PENTAPURE</div>
+                            <div class="brand-tagline" style="font-size: 9.5px; color: #d88a00; font-weight: bold; letter-spacing: 1px; margin-top: 2px;">FOOD &amp; SPICES PVT.LTD.</div>
+                            <div style="font-size: 7.5px; color: #667085; margin-top: 2px;">PREMIUM QUALITY FOOD PRODUCTS &amp; SPICES</div>
                         </td>
                     </tr>
                 </table>
             </td>
-            <td class="header-contact-cell">
+            <td class="header-contact-cell" style="width: 35%; text-align: right; vertical-align: middle; font-size: 8.5px; color: #475467; line-height: 1.45;">
+                <div style="font-weight: bold; color: #101828; font-size: 9.5px; margin-bottom: 2px;">PENTAPURE HEADQUARTERS</div>
                 <div style="margin-bottom: 1px;">Email: info@pentapure.com</div>
                 <div style="margin-bottom: 1px;">Phone: +91 98765 43210</div>
                 <div>Web: www.pentapure.com</div>
@@ -179,15 +187,15 @@
         <thead>
             <tr>
                 <th style="width: 7%;">Dispatch ID</th>
-                <th style="width: 7.5%;">Order Date</th>
+                <th style="width: 9%; text-align: center;" class="text-center">Order Date / Due Date</th>
                 @if($statusFilter !== 'FULLY_DISPATCHED' && $statusFilter !== 'FULLY DISPATCHED' && $statusFilter !== 'DONE')
                     <th style="width: 6%; text-align: center;" class="text-center nowrap">Due Days</th>
                 @endif
                 @if($statusFilter !== 'PENDING')
                     <th style="width: 7.5%;">Dispatched Date</th>
                 @endif
-                <th style="width: 14%;">Customer</th>
-                <th style="width: 17%;">Product Details</th>
+                <th style="width: 13.5%;">Customer</th>
+                <th style="width: 16%;">Product Details</th>
                 <th style="width: 8%; color: #027a48; text-align: right;" class="text-right nowrap">Ord. Qty</th>
                 <th style="width: 8%; color: #b37400; text-align: right;" class="text-right nowrap">Disp. Qty</th>
                 <th style="width: 8%; color: #b42318; text-align: right;" class="text-right nowrap">Pend. Qty</th>
@@ -240,9 +248,18 @@
                             <strong>{{ $logRow['dispatch_id'] }}</strong>
                         @endif
                     </td>
-                    <td class="text-center {{ $orderClass }}" style="vertical-align: top;">
+                    <td class="text-center {{ $orderClass }}" style="vertical-align: top; padding: 4px 2px;">
                         @if($isFirst)
-                            <span>{{ $logRow['order_date'] }}</span>
+                            <div style="font-weight: 700; color: #101828; font-size: 7.5px;">{{ $logRow['order_date'] }}</div>
+                            @if(!empty($logRow['due_date']))
+                                <div style="margin-top: 3px; font-size: 6.8px; color: #b45309; font-weight: 800; background: #fff8eb; padding: 2px 3px; border-radius: 3px; border: 1px solid #fef08a;">
+                                    DUE: {{ $logRow['due_date'] }}
+                                </div>
+                            @else
+                                <div style="margin-top: 2px; font-size: 6.5px; color: #98a2b3;">
+                                    DUE: —
+                                </div>
+                            @endif
                         @endif
                     </td>
                     @if($statusFilter !== 'FULLY_DISPATCHED' && $statusFilter !== 'FULLY DISPATCHED' && $statusFilter !== 'DONE')

@@ -674,6 +674,8 @@ class HistoryPdfController extends Controller
                 $latestDispatchLog = $order->dispatchLogs->sortByDesc('created_at')->first();
                 $dispatchDateStr = $latestDispatchLog ? $latestDispatchLog->created_at->format('d-m-Y') : '-';
 
+                $dueDateStr = $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : null;
+
                 $nowDate = now();
                 $diffDays = (int) $orderDate->copy()->startOfDay()->diffInDays($nowDate->copy()->startOfDay());
                 $dueDaysText = $diffDays === 0 ? '0 Days' : $diffDays . ($diffDays === 1 ? ' Day' : ' Days');
@@ -684,6 +686,7 @@ class HistoryPdfController extends Controller
                     'dispatch_id' => 'ORD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT),
                     'order_id' => 'ORD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT),
                     'order_date' => $orderDate->format('d-m-Y'),
+                    'due_date' => $dueDateStr,
                     'dispatch_date' => $dispatchDateStr,
                     'due_days' => $diffDays,
                     'due_days_text' => $dueDaysText,
