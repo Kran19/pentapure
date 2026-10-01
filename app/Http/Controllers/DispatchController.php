@@ -654,11 +654,15 @@ class DispatchController extends Controller
             $dispatchedQty = (float) $o->items->sum('dispatched_qty');
             $remainingQty = (float) $o->items->sum(fn($i) => $i->remainingQty());
 
-            $isPartial = ($dispatchedQty > 0 && $remainingQty > 0);
+            $isFullyDispatched = ($totalQty > 0 && $remainingQty <= 0) || in_array(strtoupper(trim((string)$o->dispatch_status)), ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'FULLY_DISPATCHED', 'CLOSED']);
+            $isPartial = !$isFullyDispatched && ($dispatchedQty > 0 && $remainingQty > 0);
 
-            $dispatchStatus = $o->dispatch_status;
-            if ($isPartial) {
+            if ($isFullyDispatched) {
+                $dispatchStatus = 'DONE';
+            } elseif ($isPartial) {
                 $dispatchStatus = 'PARTIAL';
+            } else {
+                $dispatchStatus = 'PENDING';
             }
 
             $reportOrders->push([

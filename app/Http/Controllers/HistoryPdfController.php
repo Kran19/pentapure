@@ -553,16 +553,18 @@ class HistoryPdfController extends Controller
             $query->where('company_id', $companyId);
         }
         $statusFilter = $request->status;
-        if ($statusFilter) {
+        if ($statusFilter && $statusFilter !== 'ALL') {
             $target = strtoupper(trim(str_replace('_', ' ', $statusFilter)));
             $query->where(function($qo) use ($target) {
-                if ($target === 'FULLY DISPATCHED' || $target === 'DONE') {
-                    $qo->whereIn('dispatch_status', ['DONE', 'FULLY_DISPATCHED', 'FULLY DISPATCHED']);
+                if ($target === 'FULLY DISPATCHED' || $target === 'FULLY DISPATCH' || $target === 'DONE') {
+                    $qo->whereIn('dispatch_status', ['DONE', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED']);
                 } elseif ($target === 'PARTIAL DISPATCH' || $target === 'PARTIAL') {
                     $qo->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIAL_PENDING', 'PARTIAL PENDING']);
                 } elseif ($target === 'PENDING') {
-                    $qo->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED', 'PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIAL_PENDING', 'PARTIAL PENDING'])
-                       ->orWhereNull('dispatch_status');
+                    $qo->where(function($sub) {
+                        $sub->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED'])
+                            ->orWhereNull('dispatch_status');
+                    });
                 } else {
                     $qo->where('dispatch_status', 'like', "%{$target}%");
                 }
@@ -709,7 +711,7 @@ class HistoryPdfController extends Controller
                 $reportTitle = 'PENDING ORDERS HISTORY REPORT';
             } elseif ($target === 'PARTIAL DISPATCH' || $target === 'PARTIAL') {
                 $reportTitle = 'PARTIAL ORDERS HISTORY REPORT';
-            } elseif ($target === 'FULLY DISPATCHED' || $target === 'DONE') {
+            } elseif ($target === 'FULLY DISPATCHED' || $target === 'FULLY DISPATCH' || $target === 'DONE') {
                 $reportTitle = 'FULLY DISPATCH HISTORY REPORT';
             }
         }
