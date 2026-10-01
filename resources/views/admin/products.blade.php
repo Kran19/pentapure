@@ -6,10 +6,13 @@
     <h2 style="margin:0;">🏷️ Products Master</h2>
     <div style="display:flex; gap:0.5rem;">
       <a href="{{ url(request()->segment(1) . '/products/pdf') }}" class="btn btn-secondary" style="width:auto; padding:0.6rem 1.2rem; border-color:#DDCFAF !important;">📄 Generate PDF Report</a>
+      @if(empty($isReadOnly))
       <button class="btn" onclick="document.getElementById('prod-form').style.display='block'" style="width:auto; padding:0.6rem 1.2rem;">+ Add Product</button>
+      @endif
     </div>
   </div>
 
+  @if(empty($isReadOnly))
   <div id="prod-form" class="card" style="display:none; margin-bottom:1.5rem; padding:1.2rem;">
     <div class="card-title">Add Product</div>
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
@@ -68,6 +71,7 @@
       <button class="btn btn-secondary" onclick="document.getElementById('prod-form').style.display='none'" style="width:auto; padding:0.6rem 1.5rem;">Cancel</button>
     </div>
   </div>
+  @endif
 
   <!-- Common Product Instant Search Bar -->
   <div class="card" style="padding:0.85rem 1.2rem; margin-bottom:1.5rem; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:10px;">
@@ -96,7 +100,11 @@
             <th>#</th>
             <th>Name</th>
             <th>Grades</th>
-            <th>Unit</th><th>Active</th><th>Actions</th>
+            <th>Unit</th>
+            <th>Active</th>
+            @if(empty($isReadOnly))
+            <th>Actions</th>
+            @endif
           </tr>
         </thead>
         <tbody id="raw-tbody">
@@ -115,11 +123,18 @@
             <td>{{ $p['unit'] }}</td>
 
             <td>
+              @if(empty($isReadOnly))
               <label class="switch">
                 <input type="checkbox" {{ $p['is_active'] ? 'checked' : '' }} onchange="adminToggleProduct({{ $p['id'] }})">
                 <span class="slider"></span>
               </label>
+              @else
+              <span class="badge" style="background: {{ $p['is_active'] ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)' }}; color: {{ $p['is_active'] ? '#22c55e' : '#ef4444' }}; border: 1px solid {{ $p['is_active'] ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)' }}; font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; font-weight: 600;">
+                {{ $p['is_active'] ? 'ACTIVE' : 'INACTIVE' }}
+              </span>
+              @endif
             </td>
+            @if(empty($isReadOnly))
             <td>
               @php
                 $hasStock = ($p->stocks_count ?? 0) > 0;
@@ -145,6 +160,7 @@
                 @endif
               </div>
             </td>
+            @endif
           </tr>
           @endforeach
         </tbody>
@@ -168,7 +184,11 @@
             <th>#</th>
             <th>Name</th>
             <th>Grades</th>
-            <th>Unit</th><th>Active</th><th>Actions</th>
+            <th>Unit</th>
+            <th>Active</th>
+            @if(empty($isReadOnly))
+            <th>Actions</th>
+            @endif
           </tr>
         </thead>
         <tbody id="semi-tbody">
@@ -187,11 +207,18 @@
             <td>{{ $p['unit'] }}</td>
 
             <td>
+              @if(empty($isReadOnly))
               <label class="switch">
                 <input type="checkbox" {{ $p['is_active'] ? 'checked' : '' }} onchange="adminToggleProduct({{ $p['id'] }})">
                 <span class="slider"></span>
               </label>
+              @else
+              <span class="badge" style="background: {{ $p['is_active'] ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)' }}; color: {{ $p['is_active'] ? '#22c55e' : '#ef4444' }}; border: 1px solid {{ $p['is_active'] ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)' }}; font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; font-weight: 600;">
+                {{ $p['is_active'] ? 'ACTIVE' : 'INACTIVE' }}
+              </span>
+              @endif
             </td>
+            @if(empty($isReadOnly))
             <td>
               @php
                 $hasStock = ($p->stocks_count ?? 0) > 0;
@@ -217,6 +244,7 @@
                 @endif
               </div>
             </td>
+            @endif
           </tr>
           @endforeach
         </tbody>
@@ -240,7 +268,11 @@
             <th>#</th>
             <th>Name</th>
             <th>Grades</th>
-            <th>Unit</th><th>Active</th><th>Actions</th>
+            <th>Unit</th>
+            <th>Active</th>
+            @if(empty($isReadOnly))
+            <th>Actions</th>
+            @endif
           </tr>
         </thead>
         <tbody id="fin-tbody">
@@ -259,11 +291,18 @@
             <td>{{ $p['unit'] }}</td>
 
             <td>
+              @if(empty($isReadOnly))
               <label class="switch">
                 <input type="checkbox" {{ $p['is_active'] ? 'checked' : '' }} onchange="adminToggleProduct({{ $p['id'] }})">
                 <span class="slider"></span>
               </label>
+              @else
+              <span class="badge" style="background: {{ $p['is_active'] ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)' }}; color: {{ $p['is_active'] ? '#22c55e' : '#ef4444' }}; border: 1px solid {{ $p['is_active'] ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)' }}; font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; font-weight: 600;">
+                {{ $p['is_active'] ? 'ACTIVE' : 'INACTIVE' }}
+              </span>
+              @endif
             </td>
+            @if(empty($isReadOnly))
             <td>
               @php
                 $hasStock = ($p->stocks_count ?? 0) > 0;
@@ -289,6 +328,7 @@
                 @endif
               </div>
             </td>
+            @endif
           </tr>
           @endforeach
         </tbody>
@@ -321,7 +361,11 @@
             <th>#</th>
             <th>Name</th>
             <th>Grades</th>
-            <th>Unit</th><th>Active</th><th>Actions</th>
+            <th>Unit</th>
+            <th>Active</th>
+            @if(empty($isReadOnly))
+            <th>Actions</th>
+            @endif
           </tr>
         </thead>
         <tbody id="pkg-tbody">
@@ -340,11 +384,18 @@
             <td>{{ $p['unit'] }}</td>
 
             <td>
+              @if(empty($isReadOnly))
               <label class="switch">
                 <input type="checkbox" {{ $p['is_active'] ? 'checked' : '' }} onchange="adminToggleProduct({{ $p['id'] }})">
                 <span class="slider"></span>
               </label>
+              @else
+              <span class="badge" style="background: {{ $p['is_active'] ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)' }}; color: {{ $p['is_active'] ? '#22c55e' : '#ef4444' }}; border: 1px solid {{ $p['is_active'] ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)' }}; font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; font-weight: 600;">
+                {{ $p['is_active'] ? 'ACTIVE' : 'INACTIVE' }}
+              </span>
+              @endif
             </td>
+            @if(empty($isReadOnly))
             <td>
               @php
                 $hasStock = ($p->stocks_count ?? 0) > 0;
@@ -370,6 +421,7 @@
                 @endif
               </div>
             </td>
+            @endif
           </tr>
           @endforeach
         </tbody>
@@ -562,6 +614,14 @@ function escapeHtml(value) {
 let editingProductId = null;
 
 function adminEditProduct(prod) {
+  if (window.isReadOnly) {
+    if (window.app && window.app.toast) {
+      window.app.toast('You have View-Only access. Editing products is disabled.', 'warning');
+    } else if (typeof Swal !== 'undefined') {
+      Swal.fire('View Only', 'You have View-Only access. Editing products is disabled.', 'info');
+    }
+    return;
+  }
   editingProductId = prod.id;
   
   // Build the grades HTML
@@ -714,6 +774,14 @@ function adminEditProduct(prod) {
 }
 
 function adminSaveProduct() {
+  if (window.isReadOnly) {
+    if (window.app && window.app.toast) {
+      window.app.toast('You have View-Only access. Saving products is disabled.', 'warning');
+    } else if (typeof Swal !== 'undefined') {
+      Swal.fire('View Only', 'You have View-Only access. Saving products is disabled.', 'info');
+    }
+    return;
+  }
   const btn = document.getElementById('btn-save-prod');
   btn.disabled = true;
   btn.style.opacity = '0.7';
@@ -771,6 +839,12 @@ function adminSaveProduct() {
 }
 
 function adminToggleProduct(id) {
+  if (window.isReadOnly) {
+    if (window.app && window.app.toast) {
+      window.app.toast('You have View-Only access.', 'warning');
+    }
+    return;
+  }
   fetch(window.baseUrl + '/' + window.userSlug + '/products/toggle/' + id, {
     method: 'POST',
     headers: { 
@@ -796,6 +870,14 @@ function adminToggleProduct(id) {
 }
 
 function adminDeleteProduct(id) {
+  if (window.isReadOnly) {
+    if (window.app && window.app.toast) {
+      window.app.toast('You have View-Only access. Deleting products is disabled.', 'warning');
+    } else if (typeof Swal !== 'undefined') {
+      Swal.fire('View Only', 'You have View-Only access. Deleting products is disabled.', 'info');
+    }
+    return;
+  }
   Swal.fire({
     title: 'Are you sure?',
     text: "You won't be able to revert this!",
@@ -839,8 +921,9 @@ document.addEventListener('DOMContentLoaded', function() {
   initTablePagination('fin-tbody', 'finished-pagination', 10);
   initTablePagination('pkg-tbody', 'packaging-pagination', 10);
 
-  if (sessionStorage.getItem('keepProdFormOpen') === 'true') {
-    document.getElementById('prod-form').style.display = 'block';
+  if (sessionStorage.getItem('keepProdFormOpen') === 'true' && !window.isReadOnly) {
+    const pf = document.getElementById('prod-form');
+    if (pf) pf.style.display = 'block';
     sessionStorage.removeItem('keepProdFormOpen');
   }
 });

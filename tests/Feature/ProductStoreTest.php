@@ -91,4 +91,64 @@ class ProductStoreTest extends TestCase
         }
         $res->assertStatus(200);
     }
+
+    public function test_sub_admin_view_only_cannot_modify_products(): void
+    {
+        $subAdmin = User::create([
+            'name' => 'Sub Admin Viewer',
+            'email' => 'subadmin_viewer@test.com',
+            'username' => 'subadmin_viewer',
+            'password' => 'secret123',
+            'role' => 'SUB_ADMIN',
+            'status' => 'ACTIVE',
+            'permissions' => ['view_admin_products'],
+        ]);
+
+        $product = Product::create([
+            'name' => 'Existing Product',
+            'type' => 'RAW',
+            'unit' => 'KG',
+            'rate' => '50.00',
+            'threshold' => '5.00',
+            'is_active' => true,
+        ]);
+
+        // 1. GET page works and is read-only
+        $getView = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->get('/sub_admin/products');
+        $getView->assertStatus(200);
+        $getView->assertDontSee('+ Add Product');
+        $getView->assertDontSee('<th>Actions</th>', false);
+        $getView->assertSee('Existing Product');
+        $getView->assertSee('ACTIVE');
+
+        // 2. Cannot Create
+        $resCreate = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->postJson('/sub_admin/products', [
+                'name' => 'Should Not Create',
+                'type' => 'RAW',
+                'unit' => 'KG',
+            ]);
+        $resCreate->assertStatus(403);
+
+        // 3. Cannot Edit
+        $resEdit = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->postJson('/sub_admin/products', [
+                'product_id' => $product->id,
+                'name' => 'Hacked Name',
+                'type' => 'RAW',
+                'unit' => 'KG',
+            ]);
+        $resEdit->assertStatus(403);
+
+        // 4. Cannot Toggle status
+        $resToggle = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->postJson('/sub_admin/products/toggle/' . $product->id);
+        $resToggle->assertStatus(403);
+
+        // 5. Cannot Delete
+        $resDelete = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->deleteJson('/sub_admin/products/' . $product->id);
+        $resDelete->assertStatus(403);
+    }
 }

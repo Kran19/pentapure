@@ -414,8 +414,37 @@ class AdminController extends Controller
         return $pdf->download('PentaPure_Products_List_' . now()->format('Ymd_His') . '.pdf');
     }
 
+    private function canModifyProducts(): bool
+    {
+        $authUser = session('auth_user') ?? (auth()->check() ? auth()->user()->toArray() : null);
+        $userRole = strtoupper($authUser['role'] ?? '');
+        if ($userRole === 'ADMIN') {
+            return true;
+        }
+        $userPerms = $authUser['permissions'] ?? [];
+        if (is_string($userPerms)) {
+            $userPerms = json_decode($userPerms, true) ?: [];
+        }
+        $canEdit = in_array('can_manage', $userPerms)
+            || in_array('edit_admin_products', $userPerms)
+            || in_array('edit_stock_manager_products', $userPerms)
+            || in_array('edit_products', $userPerms);
+        $isExplicitViewOnly = (in_array('view_admin_products', $userPerms) || in_array('view_stock_manager_products', $userPerms)) && !$canEdit;
+        if ($isExplicitViewOnly || (!empty($userPerms) && !$canEdit)) {
+            return false;
+        }
+        return true;
+    }
+
     public function storeProduct(Request $request)
     {
+        if (!$this->canModifyProducts()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized. You have View-Only permissions for products and cannot add or edit products.'
+            ], 403);
+        }
+
         try {
             $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
                 'name' => 'required|string|max:255',
@@ -522,6 +551,13 @@ class AdminController extends Controller
 
     public function destroyProduct($id)
     {
+        if (!$this->canModifyProducts()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized. You have View-Only permissions for products and cannot delete products.'
+            ], 403);
+        }
+
         $product = Product::withCount([
             'stocks',
             'grades' => function($q) {
@@ -565,6 +601,13 @@ class AdminController extends Controller
 
     public function toggleProductStatus($id)
     {
+        if (!$this->canModifyProducts()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized. You have View-Only permissions for products.'
+            ], 403);
+        }
+
         $p = Product::findOrFail($id);
         $p->is_active = !$p->is_active;
         $p->save();
