@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Attendance;
 use App\Models\Category;
+use App\Models\Company;
 use App\Models\DispatchLog;
 use App\Models\Location;
 use App\Models\Order;
@@ -1785,11 +1786,41 @@ class AdminController extends Controller
             });
         }
 
-        if ($request->filled('date_from')) {
-            $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '>=', $request->date_from);
+        $companies = Company::orderBy('name')->get()->map(fn($c) => [
+            'id'   => $c->id,
+            'name' => strtoupper($c->name ?? '')
+        ]);
+
+        $dateRange = $request->range ?? ($request->filled('date_from') || $request->filled('date_to') || $request->filled('start') || $request->filled('end') ? 'custom' : 'all');
+        $dateFrom = $request->start ?? $request->date_from;
+        $dateTo = $request->end ?? $request->date_to;
+        $companyId = $request->company_id;
+
+        if ($companyId) {
+            $query->where('orders.company_id', $companyId);
         }
-        if ($request->filled('date_to')) {
-            $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '<=', $request->date_to);
+
+        if ($dateRange && $dateRange !== 'all') {
+            if ($dateRange === 'today') {
+                $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), Carbon::today());
+            } elseif ($dateRange === 'yesterday') {
+                $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), Carbon::yesterday());
+            } elseif ($dateRange === 'this_week') {
+                $query->whereBetween(DB::raw('COALESCE(orders.date, orders.created_at)'), [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]);
+            } elseif ($dateRange === 'last_week') {
+                $query->whereBetween(DB::raw('COALESCE(orders.date, orders.created_at)'), [Carbon::now()->subWeek()->startOfWeek(), Carbon::now()->subWeek()->endOfWeek()]);
+            } elseif ($dateRange === 'this_month') {
+                $query->whereBetween(DB::raw('COALESCE(orders.date, orders.created_at)'), [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()]);
+            } elseif ($dateRange === 'last_month') {
+                $query->whereBetween(DB::raw('COALESCE(orders.date, orders.created_at)'), [Carbon::now()->subMonth()->startOfMonth(), Carbon::now()->subMonth()->endOfMonth()]);
+            } elseif ($dateRange === 'custom') {
+                if ($dateFrom) {
+                    $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '>=', $dateFrom);
+                }
+                if ($dateTo) {
+                    $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '<=', $dateTo);
+                }
+            }
         }
 
         // Compute status counts before applying specific status filter
@@ -1839,11 +1870,16 @@ class AdminController extends Controller
 
         $pageData = [
             'orders' => $orders,
+            'companies' => $companies,
             'statusCounts' => $statusCounts,
             'filters' => [
                 'status' => $request->status ?: 'ALL',
-                'date_from' => $request->date_from,
-                'date_to' => $request->date_to,
+                'range' => $dateRange,
+                'start' => $dateFrom,
+                'end' => $dateTo,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'company_id' => $companyId,
                 'q' => $request->q,
             ]
         ];
@@ -1925,21 +1961,45 @@ class AdminController extends Controller
                 $query->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED']);
             }
         }
-        if ($request->filled('date_from')) {
-            $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '>=', $request->date_from);
+        if ($request->filled('company_id')) {
+            $query->where('orders.company_id', $request->company_id);
         }
-        if ($request->filled('date_to')) {
-            $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '<=', $request->date_to);
+
+        $dateRange = $request->range ?? ($request->filled('date_from') || $request->filled('date_to') || $request->filled('start') || $request->filled('end') ? 'custom' : 'all');
+        $dateFrom = $request->start ?? $request->date_from;
+        $dateTo = $request->end ?? $request->date_to;
+
+        if ($dateRange && $dateRange !== 'all') {
+            if ($dateRange === 'today') {
+                $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), Carbon::today());
+            } elseif ($dateRange === 'yesterday') {
+                $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), Carbon::yesterday());
+            } elseif ($dateRange === 'this_week') {
+                $query->whereBetween(DB::raw('COALESCE(orders.date, orders.created_at)'), [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]);
+            } elseif ($dateRange === 'last_week') {
+                $query->whereBetween(DB::raw('COALESCE(orders.date, orders.created_at)'), [Carbon::now()->subWeek()->startOfWeek(), Carbon::now()->subWeek()->endOfWeek()]);
+            } elseif ($dateRange === 'this_month') {
+                $query->whereBetween(DB::raw('COALESCE(orders.date, orders.created_at)'), [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()]);
+            } elseif ($dateRange === 'last_month') {
+                $query->whereBetween(DB::raw('COALESCE(orders.date, orders.created_at)'), [Carbon::now()->subMonth()->startOfMonth(), Carbon::now()->subMonth()->endOfMonth()]);
+            } elseif ($dateRange === 'custom') {
+                if ($dateFrom) {
+                    $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '>=', $dateFrom);
+                }
+                if ($dateTo) {
+                    $query->whereDate(DB::raw('COALESCE(orders.date, orders.created_at)'), '<=', $dateTo);
+                }
+            }
         }
 
         $orders = $query->get();
         
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.dispatch_activity_pdf', compact('orders'))
             ->setPaper('A4', 'landscape');
-        $fromDate = $request->date_from ? \Carbon\Carbon::parse($request->date_from)->format('d-m-Y') : now()->format('d-m-Y');
-        $toDate   = $request->date_to ? \Carbon\Carbon::parse($request->date_to)->format('d-m-Y') : now()->format('d-m-Y');
+        $fromDate = $dateFrom ? \Carbon\Carbon::parse($dateFrom)->format('d-m-Y') : now()->format('d-m-Y');
+        $toDate   = $dateTo ? \Carbon\Carbon::parse($dateTo)->format('d-m-Y') : now()->format('d-m-Y');
         $randomSerial = rand(1000, 9999);
-        if ($request->date_from && $request->date_to && $request->date_from !== $request->date_to) {
+        if ($dateFrom && $dateTo && $dateFrom !== $dateTo) {
             $filename = 'pentapure_dispatch_activity_' . $fromDate . 'to' . $toDate . '_' . $randomSerial . '.pdf';
         } else {
             $filename = 'pentapure_dispatch_activity_' . $fromDate . '_' . $randomSerial . '.pdf';

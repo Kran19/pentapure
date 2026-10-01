@@ -4,6 +4,10 @@
 @php
   $currentStatus = strtoupper(trim((string)($pageData['filters']['status'] ?? request('status', 'ALL'))));
   if (!$currentStatus) $currentStatus = 'ALL';
+  $dateRange = request('range', $pageData['filters']['range'] ?? 'all');
+  $startDate = request('start', request('date_from', $pageData['filters']['start'] ?? ''));
+  $endDate = request('end', request('date_to', $pageData['filters']['end'] ?? ''));
+  $companyId = request('company_id', $pageData['filters']['company_id'] ?? '');
 
   $pdfRoute = Route::has(request()->segment(1) . '.dispatch.pdf') 
     ? route(request()->segment(1) . '.dispatch.pdf') 
@@ -22,11 +26,12 @@
   padding: 0.42rem 0.85rem;
   border-radius: 7px;
   font-size: 0.82rem;
-  font-weight: 600;
+  font-weight: 700;
   text-decoration: none;
   color: #4b5563;
   transition: all 0.2s ease;
   white-space: nowrap;
+  text-transform: uppercase;
 }
 .status-tab-btn:hover {
   color: #111827;
@@ -98,6 +103,7 @@
   }
   .status-tabs-wrapper {
     justify-content: center !important;
+    width: 100%;
   }
 }
 </style>
@@ -111,54 +117,89 @@
     </button>
   </div>
 
-  <!-- Filter Card with Search/Date on Left and Status Tabs on Right -->
-  <div class="card" style="padding:1rem 1.2rem; margin-bottom:1.5rem; background:var(--bg-card, #ffffff); border:1px solid var(--border-soft, #e5e7eb); border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
-    <div class="dispatch-filter-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
-      
-      <!-- Left: Search and Date Filter Form -->
-      <form method="GET" action="{{ $activityRoute }}" style="display:flex; gap:0.6rem; flex-wrap:wrap; align-items:center; flex:1; min-width:320px;">
-        <input type="hidden" name="status" value="{{ $currentStatus }}">
-        <div style="flex:2; min-width:200px;">
-          <input type="text" name="q" class="form-control" placeholder="Search Order #, Company, Product..." value="{{ request('q') }}" style="width:100%; padding:0.55rem 0.8rem; font-size:0.85rem; border-radius:8px;">
-        </div>
-        <div style="flex:1; min-width:130px;">
-          <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}" title="From Date" style="width:100%; padding:0.55rem 0.6rem; font-size:0.85rem; border-radius:8px;">
-        </div>
-        <div style="flex:1; min-width:130px;">
-          <input type="date" name="date_to" class="form-control" value="{{ request('date_to') }}" title="To Date" style="width:100%; padding:0.55rem 0.6rem; font-size:0.85rem; border-radius:8px;">
-        </div>
-        <div style="display:flex; gap:0.4rem;">
-          <button type="submit" class="btn" style="width:auto; padding:0.55rem 1rem; font-size:0.85rem;">🔍 Filter</button>
-          <a href="{{ $activityRoute }}" class="btn" style="width:auto; padding:0.55rem 0.85rem; font-size:0.85rem; background:#ffffff; border:1px solid #e5e7eb; color:var(--text-main, #111827); text-decoration:none;">🔄 Reset</a>
-        </div>
-      </form>
+  <!-- Filter Card with Date Range, Company, Search & Status Tabs -->
+  <div class="card" style="padding:1.1rem 1.2rem; margin-bottom:1.5rem; background:var(--bg-card, #ffffff); border:1px solid var(--border-soft, #e5e7eb); border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+    <form method="GET" action="{{ $activityRoute }}" style="display:flex; flex-direction:column; gap:10px; margin-bottom:12px;">
+      <input type="hidden" name="status" value="{{ $currentStatus }}">
 
-      <!-- Right: Status Tabs (All, Pending, Partial, Fully Dispatched) -->
-      <div style="display:flex; align-items:center; justify-content:flex-end;">
-        <div class="status-tabs-wrapper" style="display:inline-flex; align-items:center; background:#ffffff; padding:4px; border-radius:10px; border:1px solid #e5e7eb; box-shadow:0 1px 3px rgba(0,0,0,0.04); gap:4px; flex-wrap:wrap;">
-          <!-- All -->
-          <a href="{{ request()->fullUrlWithQuery(['status' => 'ALL', 'page' => 1]) }}"
-             class="status-tab-btn {{ in_array($currentStatus, ['', 'ALL']) ? 'active-all' : '' }}" title="Show All Orders">
-            All <span class="tab-badge">{{ $pageData['statusCounts']['ALL'] ?? 0 }}</span>
-          </a>
-          <!-- Pending -->
-          <a href="{{ request()->fullUrlWithQuery(['status' => 'PENDING', 'page' => 1]) }}"
-             class="status-tab-btn {{ $currentStatus === 'PENDING' ? 'active-pending' : '' }}" title="Filter Pending Orders">
-            Pending <span class="tab-badge">{{ $pageData['statusCounts']['PENDING'] ?? 0 }}</span>
-          </a>
-          <!-- Partial -->
-          <a href="{{ request()->fullUrlWithQuery(['status' => 'PARTIAL', 'page' => 1]) }}"
-             class="status-tab-btn {{ in_array($currentStatus, ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL_DISPATCH']) ? 'active-partial' : '' }}" title="Filter Partial Orders">
-            Partial <span class="tab-badge">{{ $pageData['statusCounts']['PARTIAL'] ?? 0 }}</span>
-          </a>
-          <!-- Fully Dispatched -->
-          <a href="{{ request()->fullUrlWithQuery(['status' => 'FULLY_DISPATCH', 'page' => 1]) }}"
-             class="status-tab-btn {{ in_array($currentStatus, ['FULLY_DISPATCH', 'FULLY_DISPATCHED', 'DONE']) ? 'active-done' : '' }}" title="Filter Fully Dispatched Orders">
-            Fully Dispatched <span class="tab-badge">{{ $pageData['statusCounts']['FULLY_DISPATCH'] ?? 0 }}</span>
-          </a>
+      <!-- 2 Dropdown Filters in 1 Line: Date Range & Company Name -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; align-items:center;">
+        
+        <!-- 1st: Date Range Filter -->
+        <div>
+          <select name="range" onchange="this.form.submit()" style="width:100%; padding:0.65rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, #ffffff); color:var(--text-main, #333); font-weight:600; font-size:0.88rem;">
+            <option value="all" {{ $dateRange==='all'?'selected':'' }}>UP TO DATE</option>
+            <option value="today" {{ $dateRange==='today'?'selected':'' }}>TODAY</option>
+            <option value="yesterday" {{ $dateRange==='yesterday'?'selected':'' }}>YESTERDAY</option>
+            <option value="this_week" {{ $dateRange==='this_week'?'selected':'' }}>THIS WEEK</option>
+            <option value="last_week" {{ $dateRange==='last_week'?'selected':'' }}>LAST WEEK</option>
+            <option value="this_month" {{ $dateRange==='this_month'?'selected':'' }}>THIS MONTH</option>
+            <option value="last_month" {{ $dateRange==='last_month'?'selected':'' }}>LAST MONTH</option>
+            <option value="custom" {{ $dateRange==='custom'?'selected':'' }}>CUSTOM RANGE</option>
+          </select>
+        </div>
+
+        <!-- 2nd: Company Name Filter -->
+        <div>
+          <select name="company_id" onchange="this.form.submit()" style="width:100%; padding:0.65rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, #ffffff); color:var(--text-main, #333); font-weight:600; font-size:0.88rem;">
+            <option value="">ALL COMPANIES</option>
+            @foreach($pageData['companies'] ?? [] as $comp)
+              <option value="{{ $comp['id'] }}" {{ (string)$companyId === (string)$comp['id'] ? 'selected' : '' }}>
+                {{ strtoupper($comp['name']) }}
+              </option>
+            @endforeach
+          </select>
         </div>
       </div>
 
+      @if($dateRange === 'custom')
+        <div style="display:flex; gap:10px; align-items:center;">
+          <input type="date" name="start" value="{{ $startDate }}" onchange="this.form.submit()" title="From Date"
+            style="flex:1; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, #ffffff); color:var(--text-main, #333);">
+          <input type="date" name="end" value="{{ $endDate }}" onchange="this.form.submit()" title="To Date"
+            style="flex:1; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, #ffffff); color:var(--text-main, #333);">
+        </div>
+      @endif
+
+      <!-- Search Input Bar & Action Buttons -->
+      <div style="display:flex; gap:8px; align-items:center;">
+        <div style="flex:1;">
+          <input type="text" name="q" placeholder="Search Order #, Company, Product..." value="{{ request('q') }}" onchange="this.form.submit()"
+            style="width:100%; padding:0.6rem 0.9rem; font-size:0.88rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, #ffffff); color:var(--text-main, #333);">
+        </div>
+        <button type="submit" class="btn" style="width:auto; padding:0.6rem 1.1rem; font-size:0.85rem;">🔍 Filter</button>
+        <a href="{{ $activityRoute }}" class="btn" style="width:auto; padding:0.6rem 1rem; font-size:0.85rem; background:#ffffff; border:1px solid #e5e7eb; color:var(--text-main, #111827); text-decoration:none;">🔄 Reset</a>
+      </div>
+    </form>
+
+    <!-- Bottom Row: Status Tabs & Orders Count -->
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-top:1px solid #f1f5f9; padding-top:12px;">
+      <div class="status-tabs-wrapper" style="display:inline-flex; align-items:center; background:#ffffff; padding:4px; border-radius:10px; border:1px solid #e5e7eb; box-shadow:0 1px 3px rgba(0,0,0,0.04); gap:4px; flex-wrap:wrap;">
+        <!-- All -->
+        <a href="{{ request()->fullUrlWithQuery(['status' => 'ALL', 'page' => 1]) }}"
+           class="status-tab-btn {{ in_array($currentStatus, ['', 'ALL']) ? 'active-all' : '' }}" title="Show All Orders">
+          ALL <span class="tab-badge">{{ $pageData['statusCounts']['ALL'] ?? 0 }}</span>
+        </a>
+        <!-- Pending -->
+        <a href="{{ request()->fullUrlWithQuery(['status' => 'PENDING', 'page' => 1]) }}"
+           class="status-tab-btn {{ $currentStatus === 'PENDING' ? 'active-pending' : '' }}" title="Filter Pending Orders">
+          PENDING <span class="tab-badge">{{ $pageData['statusCounts']['PENDING'] ?? 0 }}</span>
+        </a>
+        <!-- Partial -->
+        <a href="{{ request()->fullUrlWithQuery(['status' => 'PARTIAL', 'page' => 1]) }}"
+           class="status-tab-btn {{ in_array($currentStatus, ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL_DISPATCH']) ? 'active-partial' : '' }}" title="Filter Partial Orders">
+          PARTIAL <span class="tab-badge">{{ $pageData['statusCounts']['PARTIAL'] ?? 0 }}</span>
+        </a>
+        <!-- Fully Dispatched -->
+        <a href="{{ request()->fullUrlWithQuery(['status' => 'FULLY_DISPATCH', 'page' => 1]) }}"
+           class="status-tab-btn {{ in_array($currentStatus, ['FULLY_DISPATCH', 'FULLY_DISPATCHED', 'DONE']) ? 'active-done' : '' }}" title="Filter Fully Dispatched Orders">
+          FULLY DISPATCHED <span class="tab-badge">{{ $pageData['statusCounts']['FULLY_DISPATCH'] ?? 0 }}</span>
+        </a>
+      </div>
+
+      <div style="font-size:0.85rem; color:var(--text-muted); font-weight:600;">
+        Showing <strong>{{ $pageData['orders']->total() }}</strong> {{ $pageData['orders']->total() == 1 ? 'order' : 'orders' }}
+      </div>
     </div>
   </div>
 
