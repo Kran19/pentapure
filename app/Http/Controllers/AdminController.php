@@ -730,6 +730,185 @@ class AdminController extends Controller
         return $pdf->download($filename);
     }
 
+    public function downloadStockCsv(Request $request)
+    {
+        $stages = $request->input('stages', ['RAW', 'SEMI', 'FINISHED', 'PACKAGING']);
+        if (!is_array($stages)) {
+            $stages = explode(',', $stages);
+        }
+        $stages = array_filter(array_map('trim', array_map('strtoupper', $stages)));
+        if (empty($stages)) {
+            $stages = ['RAW', 'SEMI', 'FINISHED', 'PACKAGING'];
+        }
+
+        $date = $request->input('date');
+
+        $stockQuery = DB::table('stocks')
+            ->join('products', 'stocks.product_id', '=', 'products.id')
+            ->leftJoin('stock_limits', function($join) {
+                $join->on('stocks.product_id', '=', 'stock_limits.product_id')
+                     ->on('stocks.stage', '=', 'stock_limits.stage')
+                     ->on('stocks.grade', '=', 'stock_limits.grade');
+            })
+            ->whereIn('stocks.stage', $stages);
+
+        if ($date) {
+            $stockQuery->whereRaw('COALESCE(stocks.date, stocks.created_at) <= ?', [$date . ' 23:59:59']);
+        }
+
+        $stockData = $stockQuery->groupBy(
+                'stocks.product_id',
+                'stocks.stage',
+                'stocks.grade',
+                'products.name',
+                'products.unit',
+                'products.rate',
+                'products.sort_order',
+                'products.threshold',
+                'stock_limits.alert_limit'
+            )
+            ->selectRaw("
+                stocks.product_id as productId,
+                products.name,
+                products.unit,
+                products.rate,
+                stocks.stage,
+                stocks.grade,
+                products.sort_order,
+                IFNULL(stock_limits.alert_limit, products.threshold) as alert_limit,
+                SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
+            ")
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) >= 0")
+            ->orderBy('stocks.stage')
+            ->orderBy('products.sort_order')
+            ->orderBy('products.name')
+            ->get();
+
+        // Bulk query for all location breakdowns in a single SQL call
+        $locQuery = DB::table('stocks')
+            ->leftJoin('locations', 'stocks.location_id', '=', 'locations.id')
+            ->whereIn('stocks.stage', $stages);
+
+        if ($date) {
+            $locQuery->whereRaw('COALESCE(stocks.date, stocks.created_at) <= ?', [$date . ' 23:59:59']);
+        }
+
+        $allLocations = $locQuery->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'stocks.location_id', 'locations.name')
+            ->selectRaw("
+                stocks.product_id,
+                stocks.stage,
+                stocks.grade,
+                stocks.location_id,
+                IFNULL(locations.name, 'Unspecified') as name,
+                SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity
+            ")
+            ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
+            ->get();
+
+        $locsByKey = [];
+        foreach ($allLocations as $l) {
+            $key = "{$l->product_id}_{$l->stage}_{$l->grade}";
+            $locsByKey[$key][] = $l;
+        }
+
+        if ($date) {
+            $filename = 'PentaPure_Stock_Report_Up_To_' . \Carbon\Carbon::parse($date)->format('Ymd') . '.csv';
+        } else {
+            $filename = 'PentaPure_Live_Stock_Report_' . now()->format('Ymd_His') . '.csv';
+        }
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0'
+        ];
+
+        $callback = function() use ($stockData, $locsByKey) {
+            $handle = fopen('php://output', 'w');
+            // Write UTF-8 BOM so Excel opens it with proper encoding
+            fputs($handle, "\xEF\xBB\xBF");
+
+            // Header row
+            fputcsv($handle, [
+                'Stage',
+                'Product Name',
+                'Grade',
+                'Total Quantity',
+                'Unit',
+                'Rate (Ref Rs.)',
+                'Valuation Amount (Rs.)',
+                'Min Qty Alert',
+                'Stock Status',
+                'Locations Breakdown'
+            ]);
+
+            $totalValuation = 0.0;
+            $totalQty = 0.0;
+
+            foreach ($stockData as $s) {
+                $key = "{$s->productId}_{$s->stage}_{$s->grade}";
+                $itemLocs = $locsByKey[$key] ?? [];
+
+                $locStrings = [];
+                $assignedSum = 0;
+                foreach ($itemLocs as $l) {
+                    if ($l->location_id) {
+                        $locStrings[] = "{$l->name}: " . round((float)$l->quantity, 3) . " {$s->unit}";
+                        $assignedSum += (float) $l->quantity;
+                    }
+                }
+                $unassigned = (float)$s->quantity - $assignedSum;
+                if ($unassigned > 0.01) {
+                    $locStrings[] = "Unspecified: " . round($unassigned, 3) . " {$s->unit}";
+                }
+                $locText = !empty($locStrings) ? implode(' | ', $locStrings) : 'Not Specified';
+
+                $qty = (float) $s->quantity;
+                $rate = (float) ($s->rate ?? 0.00);
+                $amount = round($qty * $rate, 2);
+                $alertLimit = (float) ($s->alert_limit ?? 0);
+                $status = ($alertLimit > 0 && $qty <= $alertLimit && $qty > 0) ? 'LOW STOCK' : ($qty == 0 ? 'OUT OF STOCK' : 'NORMAL');
+
+                $totalValuation += $amount;
+                $totalQty += $qty;
+
+                fputcsv($handle, [
+                    $s->stage,
+                    $s->name,
+                    $s->grade ?: '-',
+                    round($qty, 3),
+                    $s->unit,
+                    round($rate, 2),
+                    round($amount, 2),
+                    $alertLimit > 0 ? round($alertLimit, 3) : '-',
+                    $status,
+                    $locText
+                ]);
+            }
+
+            // Blank line followed by Total Row
+            fputcsv($handle, []);
+            fputcsv($handle, [
+                'TOTAL',
+                '',
+                '',
+                round($totalQty, 3),
+                '',
+                '',
+                round($totalValuation, 2),
+                '',
+                '',
+                ''
+            ]);
+
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
     public function liveStockApi()
     {
         $allStock = DB::table('stocks')

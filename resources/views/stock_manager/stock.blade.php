@@ -6,6 +6,10 @@
   <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem;">
     <h2 style="margin:0;">📦 Live Stock Overview</h2>
     <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+      <button class="btn btn-secondary" onclick="adminExportStockCsv()" style="width:auto; padding:0.65rem 1.2rem; background:#10b981 !important; color:#ffffff !important; border-color:#059669 !important; font-weight:700 !important; display:inline-flex; align-items:center; gap:6px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        Export CSV
+      </button>
       <button class="btn btn-secondary" onclick="adminExportStockPdf()" style="width:auto; padding:0.65rem 1.2rem; border-color:#DDCFAF !important;">📄 Generate PDF Report</button>
     </div>
   </div>
@@ -1168,6 +1172,107 @@ function adminExportStockPdf() {
       stages: stages.join(','),
       date: selectedDate
     }, btn);
+  });
+}
+
+function adminExportStockCsv() {
+  Swal.fire({
+    title: '📊 EXPORT STOCK REPORT (CSV)',
+    html: `
+      <div style="text-align:left; font-size:0.95rem; color:#333;">
+        <p style="margin-bottom:12px; color:#6b7280;">Select the stock panels to export to CSV (Excel compatible):</p>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:#333333 !important;">
+            <input type="checkbox" id="export-csv-stage-raw" checked style="width:20px; height:20px; cursor:pointer;"> 🌿 Raw Material Stock
+          </label>
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:#333333 !important;">
+            <input type="checkbox" id="export-csv-stage-semi" checked style="width:20px; height:20px; cursor:pointer;"> ⚗️ Semi-Finished Stock
+          </label>
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:#333333 !important;">
+            <input type="checkbox" id="export-csv-stage-finished" checked style="width:20px; height:20px; cursor:pointer;"> ✅ FG Stock
+          </label>
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:#333333 !important;">
+            <input type="checkbox" id="export-csv-stage-packaging" checked style="width:20px; height:20px; cursor:pointer;"> 📦 Packaging Materials
+          </label>
+        </div>
+        
+        <div style="margin-bottom:10px;">
+          <label class="field-label" style="font-weight:600; font-size:0.8rem; color:#475569; display:block; margin-bottom:4px;">
+            DATE <span style="font-weight:400; text-transform:none; color:#94a3b8 !important;">(OPTIONAL)</span>
+          </label>
+          <input type="date" id="export-csv-date" style="width: 100%; padding:0.4rem 0.6rem; border:1px solid #cbd5e1; border-radius:6px;">
+        </div>
+        <p style="margin-top:8px; font-size:0.82rem; color:#94a3b8 !important; font-style:italic;">Leave empty to export live stock report for today.</p>
+      </div>
+    `,
+    background: '#ffffff',
+    color: '#333333',
+    showCancelButton: true,
+    confirmButtonText: 'DOWNLOAD CSV',
+    cancelButtonText: 'CANCEL',
+    confirmButtonColor: '#10b981',
+    cancelButtonColor: '#9ca3af',
+    customClass: {
+      popup: 'swal-stock-popup',
+      title: 'swal-stock-title',
+      confirmButton: 'swal-confirm-btn-primary',
+      cancelButton: 'swal-cancel-btn-secondary'
+    },
+    preConfirm: () => {
+      const raw = document.getElementById('export-csv-stage-raw').checked;
+      const semi = document.getElementById('export-csv-stage-semi').checked;
+      const finished = document.getElementById('export-csv-stage-finished').checked;
+      const packaging = document.getElementById('export-csv-stage-packaging').checked;
+      const selectedDate = document.getElementById('export-csv-date').value;
+      
+      const stages = [];
+      if (raw) stages.push('RAW');
+      if (semi) stages.push('SEMI');
+      if (finished) stages.push('FINISHED');
+      if (packaging) stages.push('PACKAGING');
+      
+      if (stages.length === 0) {
+        Swal.showValidationMessage('Please select at least one stock panel.');
+        return false;
+      }
+
+      return { stages, selectedDate };
+    }
+  }).then(result => {
+    if (!result.isConfirmed) return;
+    
+    const { stages, selectedDate } = result.value;
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ route(request()->segment(1) . ".stock.csv") }}';
+    
+    const csrf = document.createElement('input');
+    csrf.type = 'hidden';
+    csrf.name = '_token';
+    csrf.value = '{{ csrf_token() }}';
+    form.appendChild(csrf);
+    
+    const stageInput = document.createElement('input');
+    stageInput.type = 'hidden';
+    stageInput.name = 'stages';
+    stageInput.value = stages.join(',');
+    form.appendChild(stageInput);
+    
+    if (selectedDate) {
+      const dateInput = document.createElement('input');
+      dateInput.type = 'hidden';
+      dateInput.name = 'date';
+      dateInput.value = selectedDate;
+      form.appendChild(dateInput);
+    }
+    
+    document.body.appendChild(form);
+    form.submit();
+    setTimeout(() => {
+      if (document.body.contains(form)) {
+        document.body.removeChild(form);
+      }
+    }, 1000);
   });
 }
 

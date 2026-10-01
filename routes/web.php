@@ -318,6 +318,7 @@ foreach ($roleSlugs['STOCK_MANAGER'] ?? [] as $slug) {
         Route::get('/stock',       'stock')->name($slug.'.stock');
         Route::get('/admin/stock', [\App\Http\Controllers\AdminController::class, 'stock'])->name($slug.'.admin.stock');
         Route::post('/stock/pdf',  [\App\Http\Controllers\AdminController::class, 'downloadStockPdf'])->name($slug.'.stock.pdf');
+        Route::match(['get', 'post'], '/stock/csv', [\App\Http\Controllers\AdminController::class, 'downloadStockCsv'])->name($slug.'.stock.csv');
         Route::get('/po',          'po')->name($slug.'.po');
         Route::post('/po',         'storePO')->name($slug.'.po.store');
         Route::post('/po/receive', 'receivePO')->name($slug.'.po.receive');
@@ -387,6 +388,7 @@ foreach ($adminSlugs as $slug) {
     Route::post('/stock/limit',       'setStockLimit');
     Route::post('/stock/rate',        'updateProductRate');
     Route::post('/stock/pdf',         'downloadStockPdf')->name($slug.'.stock.pdf');
+    Route::match(['get', 'post'], '/stock/csv', 'downloadStockCsv')->name($slug.'.stock.csv');
     Route::post('/stock/note/{id}',   'updateStockNote')->name($slug.'.stock.note.update');
     Route::get('/po',                 'po')->name($slug.'.po');
     Route::post('/po/approve',        'approvePO');

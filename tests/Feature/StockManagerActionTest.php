@@ -160,4 +160,55 @@ class StockManagerActionTest extends TestCase
 
         $this->assertEquals(5.0, $this->product->totalAvailableStock());
     }
+
+    public function test_admin_and_stock_manager_can_export_stock_csv(): void
+    {
+        $admin = User::create([
+            'name' => 'Admin Stock User',
+            'email' => 'admin_stock_user@pentapure.com',
+            'username' => 'admin_stock_user',
+            'password' => 'admin@123',
+            'role' => 'ADMIN',
+            'status' => 'ACTIVE',
+        ]);
+
+        // Insert some stock
+        Stock::create([
+            'product_id' => $this->product->id,
+            'stage' => 'FINISHED',
+            'grade' => 'A',
+            'location_id' => $this->location->id,
+            'quantity' => 50,
+            'transaction_type' => 'IN',
+            'user_id' => $admin->id,
+        ]);
+
+        // 1. Admin stock page has Export CSV button
+        $pageResponse = $this->withSession([
+            'auth_user' => $admin->toArray(),
+        ])->get('/admin/stock');
+        $pageResponse->assertStatus(200);
+        $pageResponse->assertSee('Export CSV');
+        $pageResponse->assertSee('adminExportStockCsv');
+
+        // 2. Admin export CSV endpoint
+        $csvResponse = $this->withSession([
+            'auth_user' => $admin->toArray(),
+        ])->post('/admin/stock/csv', [
+            'stages' => 'FINISHED',
+        ]);
+        $csvResponse->assertStatus(200);
+        $this->assertStringContainsString('text/csv', $csvResponse->headers->get('content-type'));
+
+        // Capture streamed response content
+        ob_start();
+        $csvResponse->sendContent();
+        $csvContent = ob_get_clean();
+
+        $this->assertStringContainsString('Stage', $csvContent);
+        $this->assertStringContainsString('Product Name', $csvContent);
+        $this->assertStringContainsString('DEHYDRATED AMCHUR FLAKES (FG)', $csvContent);
+        $this->assertStringContainsString('Main Warehouse', $csvContent);
+    }
 }
+
