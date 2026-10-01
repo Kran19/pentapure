@@ -8,8 +8,18 @@
   $endDate = request('end', '');
   $companyId = request('company_id', '');
   $statusFilter = request('status', '');
+  $dueFilter = request('due', '');
+
+  $todayFormatted = now()->format('d-m-Y');
+  $dueTodayTotal = collect($pageData['orders'] ?? [])->filter(fn($o) => ($o['dueDate'] ?? '') === $todayFormatted)->count();
 
   $timeline = collect($pageData['orders'] ?? [])->map(fn($o) => array_merge($o, ['_type' => 'ORDER']));
+
+  if ($dueFilter === 'today') {
+    $timeline = $timeline->filter(function($item) use ($todayFormatted) {
+      return ($item['dueDate'] ?? '') === $todayFormatted;
+    });
+  }
 
   if ($companyId) {
     $timeline = $timeline->filter(function($item) use ($companyId) {
@@ -96,13 +106,34 @@
   <h2 style="margin:0;">📈 Sales Orders History</h2>
   <div style="display:flex; gap:8px;">
     <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action') }}" style="width:auto; padding:0.5rem 1rem; text-decoration:none;">+ Create New Order</a>
-    @php $pdfUrl = route('history.pdf', ['user_slug' => request()->segment(1) ?: 'sales', 'panel' => 'sales']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&company_id=' . $companyId . '&status=' . $statusFilter . '&q=' . $q; @endphp
+    @php $pdfUrl = route('history.pdf', ['user_slug' => request()->segment(1) ?: 'sales', 'panel' => 'sales']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&company_id=' . $companyId . '&status=' . $statusFilter . '&q=' . $q . '&due=' . $dueFilter; @endphp
     <button id="export-pdf-btn" class="btn btn-sm btn-secondary" style="width:auto; padding:0.5rem 1rem;"
       onclick="app.exportHistoryPdf(this, '{{ $pdfUrl }}')">📄 Export PDF</button>
   </div>
 </div>
 
+<!-- Quick Filter Buttons -->
+<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:0.8rem;">
+  <a href="{{ request()->fullUrlWithQuery(['due' => null, 'page' => 1]) }}" 
+     style="padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; {{ empty($dueFilter) ? 'background:var(--primary, #D88A00); color:#fff;' : 'background:rgba(255,255,255,0.06); border:1px solid var(--border-soft, rgba(0,0,0,0.1)); color:var(--text-main);' }}">
+    All Orders
+  </a>
+  <a href="{{ request()->fullUrlWithQuery(['due' => 'today', 'page' => 1]) }}" 
+     style="padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; {{ $dueFilter === 'today' ? 'background:var(--primary, #D88A00); color:#fff;' : 'background:rgba(255,255,255,0.06); border:1px solid var(--border-soft, rgba(0,0,0,0.1)); color:var(--text-main);' }}">
+    📅 Due Today ({{ $dueTodayTotal }})
+  </a>
+  @if($dueFilter === 'today')
+    <span style="font-size:0.82rem; color:var(--text-muted); margin-left:4px;">
+      (Showing orders due today: <strong>{{ $todayFormatted }}</strong>)
+    </span>
+  @endif
+</div>
+
 <form method="GET" action="" style="margin-bottom:1.2rem; display:flex; flex-direction:column; gap:10px;">
+  @if($dueFilter)
+    <input type="hidden" name="due" value="{{ $dueFilter }}">
+  @endif
+
   <!-- 3 Filter Boxes in 1 Line -->
   <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; align-items:center;">
     
@@ -192,6 +223,10 @@
             <span class="badge badge-open" style="font-size:0.6rem;">ORDER</span>
             <span>•</span>
             <span>{{ \Carbon\Carbon::parse($item['date'])->format('d-m-Y') }}</span>
+            @if(!empty($item['dueDate']))
+              <span>•</span>
+              <span>DUE: <strong style="color:var(--text-main, #111827); font-weight:700;">{{ $item['dueDate'] }}</strong></span>
+            @endif
             @if(!empty($item['lrCopies']) && count($item['lrCopies']) > 0)
               <span>•</span>
               <span class="badge badge-done" style="font-size:0.65rem; background:#16a34a; color:#ffffff !important; padding:2px 6px; border-radius:4px; font-weight:700;">LR UPLOADED</span>
@@ -243,6 +278,10 @@
             <div style="font-size:0.85rem; font-weight:500;">{{ \Carbon\Carbon::parse($item['date'])->format('d-m-Y, h:i A') }}</div>
           </div>
           <div>
+            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Due Date</div>
+            <div style="font-size:0.85rem; font-weight:700; color:var(--text-main, #111827);">{{ $item['dueDate'] ?? 'N/A' }}</div>
+          </div>
+          <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Total Amount</div>
             <div style="font-weight:700; font-size:1.15rem; color:var(--primary, #D88A00);">₹{{ number_format($item['total'] ?? 0, 2) }}</div>
           </div>
@@ -258,13 +297,13 @@
         <div class="table-container" style="margin-bottom:1rem; overflow-x:auto;">
           <table style="width:100%; font-size:0.85rem; border-collapse:collapse;">
             <thead>
-              <tr style="border-bottom:1px solid var(--glass-border, rgba(255,255,255,0.08)); text-align:left;">
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.08); text-align:left; color:var(--text-muted);">
                 <th style="padding:6px;">Product</th>
                 <th style="padding:6px;">Grade</th>
-                <th style="padding:6px;">Total QTY</th>
-                <th style="padding:6px;">Dispatched QTY</th>
-                <th style="padding:6px;">Pending QTY</th>
-                <th style="padding:6px; text-align:right;">Price</th>
+                <th style="padding:6px;">Total Qty</th>
+                <th style="padding:6px; color:#16a34a;">Dispatched</th>
+                <th style="padding:6px; color:#ef4444;">Pending</th>
+                <th style="padding:6px; text-align:right;">Rate</th>
               </tr>
             </thead>
             <tbody>
@@ -342,11 +381,11 @@
 @if($totalPages > 1)
   <div style="display:flex; justify-content:center; gap:8px; margin-top:1.5rem;">
     @if($page > 1)
-      <a class="btn btn-sm btn-secondary" href="?range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&q={{ $q }}&page={{ $page - 1 }}" style="width:auto; text-decoration:none;">&laquo; Prev</a>
+      <a class="btn btn-sm btn-secondary" href="?range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&company_id={{ $companyId }}&status={{ $statusFilter }}&q={{ $q }}&due={{ $dueFilter }}&page={{ $page - 1 }}" style="width:auto; text-decoration:none;">&laquo; Prev</a>
     @endif
     <span style="align-self:center; color:var(--text-muted);">Page {{ $page }} of {{ $totalPages }}</span>
     @if($page < $totalPages)
-      <a class="btn btn-sm btn-secondary" href="?range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&q={{ $q }}&page={{ $page + 1 }}" style="width:auto; text-decoration:none;">Next &raquo;</a>
+      <a class="btn btn-sm btn-secondary" href="?range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&company_id={{ $companyId }}&status={{ $statusFilter }}&q={{ $q }}&due={{ $dueFilter }}&page={{ $page + 1 }}" style="width:auto; text-decoration:none;">Next &raquo;</a>
     @endif
   </div>
 @endif

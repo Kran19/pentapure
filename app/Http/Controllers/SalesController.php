@@ -89,6 +89,13 @@ class SalesController extends Controller
         $dispatchedOrders = $orders->where('dispatch_status', 'DONE')->count();
         $totalValue       = $orders->sum('total');
 
+        $todayDate = now()->toDateString();
+        $dueTodayList = $orders->filter(function($o) use ($todayDate) {
+            if (!$o->due_date) return false;
+            return \Carbon\Carbon::parse($o->due_date)->toDateString() === $todayDate;
+        })->values();
+        $dueTodayOrdersCount = $dueTodayList->count();
+
         $pageData = [
             'orders'         => $orders->map(fn($o) => [
                 'id'              => $o->id,
@@ -101,6 +108,28 @@ class SalesController extends Controller
                 'dispatchStatus'  => $o->dispatch_status,
                 'notes'           => $o->notes,
                 'date'            => $o->created_at->toISOString(),
+                'dueDate'         => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
+                'products'        => $o->items->map(fn($i) => [
+                    'id'          => $i->id,
+                    'productId'   => $i->product_id,
+                    'productName' => strtoupper($i->product ? $i->product->formatName($i->grade) : ''),
+                    'grade'       => strtoupper($i->grade ?? ''),
+                    'quantity'    => $i->quantity,
+                    'price'       => $i->price,
+                ]),
+            ]),
+            'dueTodayOrders' => $dueTodayList->map(fn($o) => [
+                'id'              => $o->id,
+                'companyId'       => $o->company_id,
+                'companyName'     => strtoupper($o->company?->name ?? ''),
+                'transportId'     => $o->transporter_id,
+                'transportName'   => strtoupper($o->transporter?->name ?? ''),
+                'total'           => $o->total,
+                'status'          => $o->status,
+                'dispatchStatus'  => $o->dispatch_status,
+                'notes'           => $o->notes,
+                'date'            => $o->created_at->toISOString(),
+                'dueDate'         => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
                 'products'        => $o->items->map(fn($i) => [
                     'id'          => $i->id,
                     'productId'   => $i->product_id,
@@ -119,7 +148,7 @@ class SalesController extends Controller
             'products'           => Product::target()->active()->visibleTo($this->authUser()['role'])->get(['id', 'name', 'unit', 'type'])->map(fn($p) => [
                 'id' => $p->id, 'name' => strtoupper($p->name ?? ''), 'unit' => $p->unit, 'type' => $p->type
             ]),
-            'stats'              => compact('totalOrders', 'pendingOrders', 'dispatchedOrders', 'totalValue'),
+            'stats'              => compact('totalOrders', 'pendingOrders', 'dispatchedOrders', 'totalValue', 'dueTodayOrdersCount'),
         ];
         return view('sales.home', compact('pageData'));
     }
