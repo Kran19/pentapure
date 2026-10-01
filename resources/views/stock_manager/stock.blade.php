@@ -16,10 +16,37 @@
 
   @php
     $typeFilter = request('type') ? strtoupper(request('type')) : null;
-    $rawItems      = collect($pageData['allStock'])->where('stage', 'RAW');
-    $semiItems     = collect($pageData['allStock'])->where('stage', 'SEMI');
-    $finishedItems = collect($pageData['allStock'])->where('stage', 'FINISHED');
-    $packagingItems = collect($pageData['allStock'])->where('stage', 'PACKAGING');
+
+    $sortStockByLow = function($collection) {
+        return $collection->sort(function($a, $b) {
+            $hasQtyA = (float) ($a->quantity ?? 0) > 0;
+            $alertA = (float) ($a->alert_limit ?? 0);
+            $isLowA = $alertA > 0 && (float) ($a->quantity ?? 0) <= $alertA;
+            $prioA = ($isLowA && $hasQtyA) ? 0 : ($isLowA ? 1 : 2);
+
+            $hasQtyB = (float) ($b->quantity ?? 0) > 0;
+            $alertB = (float) ($b->alert_limit ?? 0);
+            $isLowB = $alertB > 0 && (float) ($b->quantity ?? 0) <= $alertB;
+            $prioB = ($isLowB && $hasQtyB) ? 0 : ($isLowB ? 1 : 2);
+
+            if ($prioA !== $prioB) {
+                return $prioA <=> $prioB;
+            }
+
+            $sortA = isset($a->sort_order) ? (int)$a->sort_order : 9999;
+            $sortB = isset($b->sort_order) ? (int)$b->sort_order : 9999;
+            if ($sortA !== $sortB) {
+                return $sortA <=> $sortB;
+            }
+
+            return strcasecmp($a->name ?? '', $b->name ?? '');
+        })->values();
+    };
+
+    $rawItems       = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'RAW'));
+    $semiItems      = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'SEMI'));
+    $finishedItems  = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'FINISHED'));
+    $packagingItems = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'PACKAGING'));
     $adminAllGrades = \App\Models\Grade::orderBy('id')->get();
   @endphp
   <script>
@@ -101,20 +128,229 @@
     table td:first-child, table th:first-child {
         white-space: nowrap !important;
     }
+
+    /* Segmented Navigation & Low Stock Bar */
+    .stock-nav-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      width: 100%;
+    }
+    .stock-tabs-container {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px;
+      background: var(--bg-hover, #f1f5f9);
+      border: 1px solid var(--border-soft, #e2e8f0);
+      border-radius: 12px;
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
+    }
+    .stock-tabs-container::-webkit-scrollbar { display: none; }
+
+    .stock-tab {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 7px !important;
+      padding: 7px 15px !important;
+      font-size: 0.82rem !important;
+      font-weight: 700 !important;
+      color: var(--text-secondary, #475569) !important;
+      background: transparent !important;
+      border-radius: 8px !important;
+      text-decoration: none !important;
+      white-space: nowrap !important;
+      width: auto !important;
+      flex: 0 0 auto !important;
+      border: 1px solid transparent !important;
+      cursor: pointer !important;
+      transition: all 0.15s ease !important;
+      user-select: none !important;
+    }
+    .stock-tab:hover {
+      background: #ffffff !important;
+      color: var(--text-main, #0f172a) !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+    }
+    .stock-tab .stock-tab-badge {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 1px 7px !important;
+      border-radius: 999px !important;
+      font-size: 0.72rem !important;
+      font-weight: 700 !important;
+      background: #ffffff !important;
+      color: #64748b !important;
+      border: 1px solid #cbd5e1 !important;
+      line-height: 1.25 !important;
+    }
+
+    .stock-tab.active {
+      color: #ffffff !important;
+    }
+    .stock-tab.active .stock-tab-badge {
+      background: rgba(255, 255, 255, 0.25) !important;
+      color: #ffffff !important;
+      border-color: rgba(255, 255, 255, 0.35) !important;
+    }
+    .stock-tab.active.is-all {
+      background: #1e293b !important;
+      box-shadow: 0 2px 6px rgba(30, 41, 59, 0.35) !important;
+    }
+    .stock-tab.active.is-raw {
+      background: #059669 !important;
+      box-shadow: 0 2px 8px rgba(5, 150, 105, 0.35) !important;
+    }
+    .stock-tab.active.is-semi {
+      background: #d97706 !important;
+      box-shadow: 0 2px 8px rgba(217, 119, 6, 0.35) !important;
+    }
+    .stock-tab.active.is-fg {
+      background: #2563eb !important;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4) !important;
+    }
+    .stock-tab.active.is-pkg {
+      background: #0284c7 !important;
+      box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35) !important;
+    }
+
+    .stock-quick-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .stock-low-toggle-btn {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 7px !important;
+      padding: 0.55rem 1rem !important;
+      font-size: 0.82rem !important;
+      font-weight: 700 !important;
+      border-radius: 8px !important;
+      border: 1.5px solid #dc2626 !important;
+      background: #ffffff !important;
+      color: #dc2626 !important;
+      cursor: pointer !important;
+      width: auto !important;
+      flex: 0 0 auto !important;
+      white-space: nowrap !important;
+      transition: all 0.15s ease !important;
+      box-shadow: 0 1px 3px rgba(220, 38, 38, 0.08) !important;
+      user-select: none !important;
+    }
+    .stock-low-toggle-btn:hover {
+      background: #fef2f2 !important;
+      border-color: #b91c1c !important;
+      color: #b91c1c !important;
+    }
+    .stock-low-toggle-btn.is-active {
+      background: #dc2626 !important;
+      color: #ffffff !important;
+      border-color: #b91c1c !important;
+      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.35) !important;
+    }
+    .stock-low-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #dc2626;
+      color: #ffffff;
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 1px 7px;
+      border-radius: 999px;
+      min-width: 18px;
+    }
+    .stock-low-toggle-btn.is-active .stock-low-badge {
+      background: #ffffff;
+      color: #dc2626;
+    }
   </style>
+
+  <!-- Modern Segmented Navigation & Filter Toolbar -->
+  <div class="stock-nav-bar">
+    <div class="stock-tabs-container">
+      <a href="{{ route(request()->segment(1) . '.stock') }}" class="stock-tab {{ !$typeFilter ? 'active is-all' : '' }}">
+        <span class="stock-tab-icon">🌐</span>
+        <span class="stock-tab-label">ALL</span>
+        <span class="stock-tab-badge">{{ count($pageData['allStock']) }}</span>
+      </a>
+      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'raw']) }}" class="stock-tab {{ $typeFilter === 'RAW' ? 'active is-raw' : '' }}">
+        <span class="stock-tab-icon">🌿</span>
+        <span class="stock-tab-label">RAW</span>
+        <span class="stock-tab-badge">{{ $rawItems->count() }}</span>
+      </a>
+      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'semi']) }}" class="stock-tab {{ $typeFilter === 'SEMI' ? 'active is-semi' : '' }}">
+        <span class="stock-tab-icon">⚗️</span>
+        <span class="stock-tab-label">SEMI</span>
+        <span class="stock-tab-badge">{{ $semiItems->count() }}</span>
+      </a>
+      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'finished']) }}" class="stock-tab {{ ($typeFilter === 'FINISHED' || $typeFilter === 'FG') ? 'active is-fg' : '' }}">
+        <span class="stock-tab-icon">✅</span>
+        <span class="stock-tab-label">FG</span>
+        <span class="stock-tab-badge">{{ $finishedItems->count() }}</span>
+      </a>
+      <a href="{{ route(request()->segment(1) . '.stock', ['type' => 'packaging']) }}" class="stock-tab {{ ($typeFilter === 'PACKAGING' || $typeFilter === 'PKG') ? 'active is-pkg' : '' }}">
+        <span class="stock-tab-icon">📦</span>
+        <span class="stock-tab-label">PACKAGING</span>
+        <span class="stock-tab-badge">{{ $packagingItems->count() }}</span>
+      </a>
+    </div>
+
+    @php
+      $relevantForLow = match($typeFilter) {
+        'RAW' => $rawItems,
+        'SEMI' => $semiItems,
+        'FINISHED', 'FG' => $finishedItems,
+        'PACKAGING', 'PKG' => $packagingItems,
+        default => $rawItems->concat($semiItems)->concat($finishedItems)->concat($packagingItems)
+      };
+      $currentLowStockCount = $relevantForLow->filter(fn($s) => (float)($s->alert_limit ?? 0) > 0 && (float)($s->quantity ?? 0) <= (float)($s->alert_limit ?? 0) && (float)($s->quantity ?? 0) > 0)->count();
+    @endphp
+
+    <div class="stock-quick-actions">
+      <!-- Low Stock Only Quick Filter Toggle -->
+      <button type="button" id="toggle-low-stock-btn" onclick="toggleLowStockOnly()" class="stock-low-toggle-btn" title="Filter to only products that need replenishment">
+        <span class="low-stock-icon">⚠</span>
+        <span id="toggle-low-stock-label">Show Low Stock Only</span>
+        @if($currentLowStockCount > 0)
+          <span class="stock-low-badge" id="stock-low-badge-count">{{ $currentLowStockCount }}</span>
+        @endif
+      </button>
+    </div>
+  </div>
 
   <!-- Common Product Instant Search Bar -->
   <div class="card" style="padding:0.85rem 1.2rem; margin-bottom:1.5rem; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:10px;">
     <div style="display:flex; align-items:center; gap:0.75rem;">
       <span style="font-size:1.1rem; color:var(--text-muted);">🔍</span>
-      <input type="text" id="global-product-search" placeholder="Search product name across RAW, SEMI, and FINISHED stock types..." oninput="onGlobalProductSearch(this.value)" style="width:100%; padding:0.6rem 0.9rem; border-radius:8px; font-size:0.9rem; border:1px solid var(--border-soft); background:var(--bg-hover); color:var(--text-main); outline:none;">
+      <input type="text" id="global-product-search" placeholder="Search product name across RAW, SEMI, FG, and PACKAGING stock..." oninput="onGlobalProductSearch(this.value)" style="width:100%; padding:0.6rem 0.9rem; border-radius:8px; font-size:0.9rem; border:1px solid var(--border-soft); background:var(--bg-hover); color:var(--text-main); outline:none;">
     </div>
   </div>
 
   @if(!$typeFilter || $typeFilter === 'RAW')
   <!-- RAW Stock -->
   <div class="card" style="padding:1.2rem; margin-bottom:1rem;">
-    <div class="card-title" style="color:var(--primary-light);">🌿 Raw Material Stock ({{ $rawItems->count() }} items)</div>
+    @php
+      $rawLowCount = $rawItems->filter(fn($s) => (float)($s->alert_limit ?? 0) > 0 && (float)($s->quantity ?? 0) <= (float)($s->alert_limit ?? 0) && (float)($s->quantity ?? 0) > 0)->count();
+    @endphp
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border-soft);">
+      <div class="card-title" style="color:var(--primary-light); margin:0;">🌿 Raw Material Stock ({{ $rawItems->count() }} items)</div>
+      @if($rawLowCount > 0)
+        <div style="display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:999px; font-size:0.78rem; font-weight:700; background:#dc2626; color:#ffffff; box-shadow:0 2px 6px rgba(220, 38, 38, 0.25);">
+          <span>⚠</span>
+          <span><strong>{{ $rawLowCount }}</strong> Low Stock Ranked on Top</span>
+        </div>
+      @endif
+    </div>
     @if($rawItems->isEmpty())
       <p class="text-muted text-center">No raw stock recorded yet.</p>
     @else
@@ -124,9 +360,10 @@
         <tbody id="raw-stock-tbody">
           @foreach($rawItems as $s)
           @php 
+            $hasQty = (float) $s->quantity > 0;
             $isLow = $s->alert_limit > 0 && $s->quantity <= $s->alert_limit;
           @endphp
-          <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
+          <tr @if($isLow && $hasQty) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:400;">
               <div style="font-weight:normal; color:var(--text-color);">
                 {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span style='font-weight:bold;'>(RAW)</span>
@@ -153,7 +390,18 @@
   @if(!$typeFilter || $typeFilter === 'SEMI')
   <!-- SEMI Stock -->
   <div class="card" style="padding:1.2rem; margin-bottom:1rem;">
-    <div class="card-title" style="color:var(--warning);">⚗️ Semi-Finished Stock ({{ $semiItems->count() }} items)</div>
+    @php
+      $semiLowCount = $semiItems->filter(fn($s) => (float)($s->alert_limit ?? 0) > 0 && (float)($s->quantity ?? 0) <= (float)($s->alert_limit ?? 0) && (float)($s->quantity ?? 0) > 0)->count();
+    @endphp
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border-soft);">
+      <div class="card-title" style="color:var(--warning); margin:0;">⚗️ Semi-Finished Stock ({{ $semiItems->count() }} items)</div>
+      @if($semiLowCount > 0)
+        <div style="display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:999px; font-size:0.78rem; font-weight:700; background:#dc2626; color:#ffffff; box-shadow:0 2px 6px rgba(220, 38, 38, 0.25);">
+          <span>⚠</span>
+          <span><strong>{{ $semiLowCount }}</strong> Low Stock Ranked on Top</span>
+        </div>
+      @endif
+    </div>
     @if($semiItems->isEmpty())
       <p class="text-muted text-center">No semi stock recorded yet.</p>
     @else
@@ -163,9 +411,10 @@
         <tbody id="semi-stock-tbody">
           @foreach($semiItems as $s)
           @php 
+            $hasQty = (float) $s->quantity > 0;
             $isLow = $s->alert_limit > 0 && $s->quantity <= $s->alert_limit;
           @endphp
-          <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
+          <tr @if($isLow && $hasQty) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:400;">
               <div style="font-weight:normal; color:var(--text-color);">
                 {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span style='font-weight:bold;'>(SEMI)</span>
@@ -192,7 +441,18 @@
   @if(!$typeFilter || $typeFilter === 'FINISHED')
   <!-- Finished Stock -->
   <div class="card" style="padding:1.2rem;">
-    <div class="card-title" style="color:var(--secondary);">✅ FG Stock ({{ $finishedItems->count() }} items)</div>
+    @php
+      $finishedLowCount = $finishedItems->filter(fn($s) => (float)($s->alert_limit ?? 0) > 0 && (float)($s->quantity ?? 0) <= (float)($s->alert_limit ?? 0) && (float)($s->quantity ?? 0) > 0)->count();
+    @endphp
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border-soft);">
+      <div class="card-title" style="color:var(--secondary); margin:0;">✅ FG Stock ({{ $finishedItems->count() }} items)</div>
+      @if($finishedLowCount > 0)
+        <div style="display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:999px; font-size:0.78rem; font-weight:700; background:#dc2626; color:#ffffff; box-shadow:0 2px 6px rgba(220, 38, 38, 0.25);">
+          <span>⚠</span>
+          <span><strong>{{ $finishedLowCount }}</strong> Low Stock Ranked on Top</span>
+        </div>
+      @endif
+    </div>
     @if($finishedItems->isEmpty())
       <p class="text-muted text-center">No finished stock recorded yet.</p>
     @else
@@ -202,9 +462,10 @@
         <tbody id="finished-stock-tbody">
           @foreach($finishedItems as $s)
           @php 
+            $hasQty = (float) $s->quantity > 0;
             $isLow = $s->alert_limit > 0 && $s->quantity <= $s->alert_limit;
           @endphp
-          <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
+          <tr @if($isLow && $hasQty) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:400;">
               <div style="font-weight:normal; color:var(--text-color);">
                 {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span>(FINISHED)</span>
@@ -231,7 +492,18 @@
   @if(!$typeFilter || $typeFilter === 'PACKAGING' || $typeFilter === 'PKG')
   <!-- PACKAGING Stock -->
   <div class="card" style="padding:1.2rem; margin-bottom:1rem;">
-    <div class="card-title" style="color:#0284c7;">📦 Packaging Materials Stock ({{ $packagingItems->count() }} items)</div>
+    @php
+      $packagingLowCount = $packagingItems->filter(fn($s) => (float)($s->alert_limit ?? 0) > 0 && (float)($s->quantity ?? 0) <= (float)($s->alert_limit ?? 0) && (float)($s->quantity ?? 0) > 0)->count();
+    @endphp
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border-soft);">
+      <div class="card-title" style="color:#0284c7; margin:0;">📦 Packaging Materials Stock ({{ $packagingItems->count() }} items)</div>
+      @if($packagingLowCount > 0)
+        <div style="display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:999px; font-size:0.78rem; font-weight:700; background:#dc2626; color:#ffffff; box-shadow:0 2px 6px rgba(220, 38, 38, 0.25);">
+          <span>⚠</span>
+          <span><strong>{{ $packagingLowCount }}</strong> Low Stock Ranked on Top</span>
+        </div>
+      @endif
+    </div>
     @if($packagingItems->isEmpty())
       <p class="text-muted text-center">No packaging stock recorded yet.</p>
     @else
@@ -241,9 +513,10 @@
         <tbody id="packaging-stock-tbody">
           @foreach($packagingItems as $s)
           @php 
+            $hasQty = (float) $s->quantity > 0;
             $isLow = $s->alert_limit > 0 && $s->quantity <= $s->alert_limit;
           @endphp
-          <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
+          <tr @if($isLow && $hasQty) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
             <td style="font-weight:400;">
               <div style="font-weight:normal; color:var(--text-color);">
                 {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span>(PKG)</span>
@@ -797,10 +1070,10 @@ function fetchLiveStock() {
 setInterval(fetchLiveStock, 30000);
 
 function updateStockTables(stockData) {
-  const stages = { 'RAW': 'raw-stock-tbody', 'SEMI': 'semi-stock-tbody', 'FINISHED': 'finished-stock-tbody' };
+  const stages = { 'RAW': 'raw-stock-tbody', 'SEMI': 'semi-stock-tbody', 'FINISHED': 'finished-stock-tbody', 'PACKAGING': 'packaging-stock-tbody' };
   
   // Group data by stage
-  const grouped = { 'RAW': [], 'SEMI': [], 'FINISHED': [] };
+  const grouped = { 'RAW': [], 'SEMI': [], 'FINISHED': [], 'PACKAGING': [] };
   stockData.forEach(s => {
     if (grouped[s.stage]) grouped[s.stage].push(s);
   });
@@ -811,6 +1084,25 @@ function updateStockTables(stockData) {
 
     const items = grouped[stage];
     
+    // Sort items so low stock always appears at the top
+    items.sort((a, b) => {
+      const limitA = parseFloat(a.alert_limit) || 0;
+      const qtyA = parseFloat(a.quantity) || 0;
+      const hasQtyA = qtyA > 0;
+      const isLowA = (limitA > 0 && qtyA <= limitA && hasQtyA) ? 0 : ((limitA > 0 && qtyA <= limitA) ? 1 : 2);
+
+      const limitB = parseFloat(b.alert_limit) || 0;
+      const qtyB = parseFloat(b.quantity) || 0;
+      const hasQtyB = qtyB > 0;
+      const isLowB = (limitB > 0 && qtyB <= limitB && hasQtyB) ? 0 : ((limitB > 0 && qtyB <= limitB) ? 1 : 2);
+
+      if (isLowA !== isLowB) return isLowA - isLowB;
+      const sortA = a.sort_order !== undefined ? parseInt(a.sort_order) : 9999;
+      const sortB = b.sort_order !== undefined ? parseInt(b.sort_order) : 9999;
+      if (sortA !== sortB) return sortA - sortB;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
     if (items.length === 0) {
       tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No stock recorded yet.</td></tr>`;
       continue;
@@ -820,9 +1112,10 @@ function updateStockTables(stockData) {
     items.forEach(s => {
       const limit = parseFloat(s.alert_limit) || 0;
       const qty = parseFloat(s.quantity);
+      const hasQty = qty > 0;
       const isLow = limit > 0 && qty <= limit;
-      const rowClass = isLow ? 'low-stock-row' : '';
-      const titleAttr = isLow ? `title="Low Stock! min_qty is ${limit}"` : '';
+      const rowClass = (isLow && hasQty) ? 'low-stock-row' : '';
+      const titleAttr = (isLow && hasQty) ? `title="Low Stock! min_qty is ${limit}"` : '';
 
       const formattedQty = qty.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
       
@@ -830,12 +1123,13 @@ function updateStockTables(stockData) {
       if (stage === 'RAW') qtyColor = 'var(--secondary)';
       if (stage === 'SEMI') qtyColor = 'var(--warning)';
       if (stage === 'FINISHED') qtyColor = 'var(--secondary)';
+      if (stage === 'PACKAGING') qtyColor = '#0284c7';
 
       html += `
         <tr class="${rowClass}" ${titleAttr}>
           <td>
             <div style="font-weight:normal; color:var(--text-color);">
-              ${s.name}${(s.grade && !['NONE', 'N/A', 'NA', 'N / A'].includes(s.grade.trim().toUpperCase())) ? '_<strong>' + escapeHtml(s.grade) + '</strong>' : ''}(${s.stage === 'FINISHED' ? 'FG' : s.stage})
+              ${s.name}${(s.grade && !['NONE', 'N/A', 'NA', 'N / A'].includes(s.grade.trim().toUpperCase())) ? '_<strong>' + escapeHtml(s.grade) + '</strong>' : ''}(${s.stage === 'FINISHED' ? 'FG' : (s.stage === 'PACKAGING' ? 'PKG' : s.stage)})
             </div>
           </td>
           <td style="font-weight:bold; color:${qtyColor};">${formattedQty}</td>
@@ -853,6 +1147,56 @@ function updateStockTables(stockData) {
     tbody.innerHTML = html;
   }
   updateAllLocationLabels();
+  if (lowStockOnlyActive) {
+    applyLowStockFilter();
+  }
+  const searchInput = document.getElementById('global-product-search');
+  if (searchInput && searchInput.value) {
+    onGlobalProductSearch(searchInput.value);
+  }
+}
+
+let lowStockOnlyActive = false;
+function toggleLowStockOnly() {
+  lowStockOnlyActive = !lowStockOnlyActive;
+  const btn = document.getElementById('toggle-low-stock-btn');
+  const label = document.getElementById('toggle-low-stock-label');
+  if (btn && label) {
+    if (lowStockOnlyActive) {
+      btn.classList.add('is-active');
+      btn.style.background = '#dc2626';
+      btn.style.color = '#ffffff';
+      btn.style.borderColor = '#b91c1c';
+      label.textContent = 'Showing Low Stock (Click for All)';
+    } else {
+      btn.classList.remove('is-active');
+      btn.style.background = '#ffffff';
+      btn.style.color = '#dc2626';
+      btn.style.borderColor = '#dc2626';
+      label.textContent = 'Show Low Stock Only';
+    }
+  }
+  applyLowStockFilter();
+}
+
+function applyLowStockFilter() {
+  ['raw-stock-tbody', 'semi-stock-tbody', 'finished-stock-tbody', 'packaging-stock-tbody'].forEach(tbodyId => {
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+    tbody.querySelectorAll('tr').forEach(tr => {
+      if (!tr.children || tr.children.length <= 1) return;
+      if (lowStockOnlyActive) {
+        if (tr.classList.contains('low-stock-row')) {
+          tr.style.display = '';
+        } else {
+          tr.style.display = 'none';
+        }
+      } else {
+        tr.style.display = '';
+      }
+    });
+  });
+
   const searchInput = document.getElementById('global-product-search');
   if (searchInput && searchInput.value) {
     onGlobalProductSearch(searchInput.value);
@@ -861,14 +1205,19 @@ function updateStockTables(stockData) {
 
 function onGlobalProductSearch(val) {
   const q = (val || '').trim().toUpperCase();
-  ['raw-stock-tbody', 'semi-stock-tbody', 'finished-stock-tbody'].forEach(tbodyId => {
+  const tokens = q.split(/\s+/).filter(Boolean);
+  ['raw-stock-tbody', 'semi-stock-tbody', 'finished-stock-tbody', 'packaging-stock-tbody'].forEach(tbodyId => {
     const tbody = document.getElementById(tbodyId);
     if (!tbody) return;
     const rows = tbody.querySelectorAll('tr');
     rows.forEach(tr => {
       if (!tr.children || tr.children.length === 0) return;
+      if (lowStockOnlyActive && !tr.classList.contains('low-stock-row')) {
+        tr.style.display = 'none';
+        return;
+      }
       const text = (tr.children[0]?.textContent || tr.children[0]?.innerText || '').toUpperCase();
-      if (!q || text.indexOf(q) > -1) {
+      if (tokens.length === 0 || tokens.every(token => text.indexOf(token) > -1)) {
         tr.style.display = '';
       } else {
         tr.style.display = 'none';
@@ -1569,11 +1918,7 @@ function addStockRow() {
 document.addEventListener('DOMContentLoaded', function() {
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('low_stock') === '1' || urlParams.get('filter') === 'low') {
-    document.querySelectorAll('tbody tr').forEach(tr => {
-      if (!tr.classList.contains('low-stock-row')) {
-        tr.style.display = 'none';
-      }
-    });
+    toggleLowStockOnly();
   }
 
   if (sessionStorage.getItem('keepStockFormOpen') === 'true') {

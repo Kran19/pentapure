@@ -49,12 +49,16 @@ class SalesController extends Controller
         // Transporter not specified or N/A: ensure column is nullable
         static $ensuredNullable = null;
         if ($ensuredNullable === null) {
-            try {
-                DB::statement("ALTER TABLE `orders` MODIFY `transporter_id` BIGINT UNSIGNED NULL");
-                DB::statement("ALTER TABLE `dispatch_logs` MODIFY `transporter_id` BIGINT UNSIGNED NULL");
+            if (DB::getDriverName() === 'sqlite') {
                 $ensuredNullable = true;
-            } catch (\Throwable $e) {
-                $ensuredNullable = false;
+            } else {
+                try {
+                    DB::statement("ALTER TABLE `orders` MODIFY `transporter_id` BIGINT UNSIGNED NULL");
+                    DB::statement("ALTER TABLE `dispatch_logs` MODIFY `transporter_id` BIGINT UNSIGNED NULL");
+                    $ensuredNullable = true;
+                } catch (\Throwable $e) {
+                    $ensuredNullable = false;
+                }
             }
         }
 
