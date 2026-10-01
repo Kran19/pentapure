@@ -121,7 +121,7 @@
                 @php
                     $deptTotalPresent = array_sum(array_column($workers, 'present'));
                     $deptTotalOt = array_sum(array_column($workers, 'total_ot'));
-                    $deptTotalWage = array_sum(array_column($workers, 'total_wage'));
+                    $deptTotalPayable = array_sum(array_map(fn($w) => (float)($w['payable_salary'] ?? $w['total_wage']), $workers));
                     $deptWorkerCount = count($workers);
                 @endphp
                 <tr class="dept-row">
@@ -130,13 +130,14 @@
                     </td>
                     <td style="text-align:center;">{{ $deptTotalPresent > 0 ? (floor($deptTotalPresent) == $deptTotalPresent ? number_format($deptTotalPresent, 0) : number_format($deptTotalPresent, 1)) : 0 }}</td>
                     <td style="text-align:center;">{{ number_format($deptTotalOt, 1) }}</td>
-                    <td style="text-align:right;">₹{{ number_format($deptTotalWage, 2) }}</td>
+                    <td style="text-align:right;">₹{{ number_format($deptTotalPayable, 2) }}</td>
                     <td></td>
                 </tr>
 
                 @foreach($workers as $data)
                     @php
-                        $grandTotal += $data['total_wage'];
+                        $payable = (float)($data['payable_salary'] ?? $data['total_wage']);
+                        $grandTotal += $payable;
                         $adj = $data['adjustment'] ?? null;
                         $isPaid = (bool)($adj?->is_paid ?? false);
                         $rawDate = $adj?->paid_at ? \Carbon\Carbon::parse($adj->paid_at)->format('Y-m-d') : ($adj?->paid_note && preg_match('/^\d{4}-\d{2}-\d{2}$/', $adj->paid_note) ? $adj->paid_note : '');
@@ -160,7 +161,17 @@
                         </td>
                         <td style="text-align:center; font-weight:bold; color:#0f172a;">{{ $data['present'] }}</td>
                         <td style="text-align:center; font-weight:bold; color:#0f172a;">{{ number_format($data['total_ot'], 1) }}</td>
-                        <td style="text-align:right; font-weight:bold; color:#0f172a;">₹{{ number_format($data['total_wage'], 2) }}</td>
+                        <td style="text-align:right; font-weight:bold; color:#0f172a;">
+                            <div>₹{{ number_format($payable, 2) }}</div>
+                            @if(($data['advance'] ?? 0) > 0 || ($data['ot_amount'] ?? 0) > 0 || ($data['allowance'] ?? 0) > 0)
+                                <div style="font-size:7px; font-weight:normal; color:#64748b; margin-top:1px;">
+                                    Earned: ₹{{ number_format($data['attendance_salary'] ?? 0, 0) }}
+                                    @if(($data['ot_amount'] ?? 0) > 0) +OT:₹{{ number_format($data['ot_amount'], 0) }}@endif
+                                    @if(($data['allowance'] ?? 0) > 0) +Allw:₹{{ number_format($data['allowance'], 0) }}@endif
+                                    @if(($data['advance'] ?? 0) > 0) -Adv:₹{{ number_format($data['advance'], 0) }}@endif
+                                </div>
+                            @endif
+                        </td>
                         <td style="text-align:center;">
                             @if($isPaid)
                                 <span class="badge-paid">PAID</span>

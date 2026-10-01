@@ -146,4 +146,67 @@ class MonthlyWorkerSalaryCalculationTest extends TestCase
         $content = $response->getContent();
         $this->assertStringContainsString('9,667.00', $content);
     }
+
+    public function test_monthly_reports_page_and_summary_pdf_show_attendance_wise_actual_payable(): void
+    {
+        $admin = $this->createAdmin();
+        $session = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
+
+        $dept = Department::create(['name' => 'PACKAGING']);
+        $worker = Worker::create([
+            'name'          => 'Pooja Ben',
+            'department_id' => $dept->id,
+            'role'          => 'Packer',
+            'shift_type'    => 'DAY',
+            'salary_type'   => 'MONTHLY',
+            'salary_amount' => 12000.00,
+            'status'        => 'ACTIVE',
+        ]);
+
+        // Present 15 days out of 30 days in September 2026:
+        // Earned: 15 * (12000 / 30) = 6000
+        for ($d = 1; $d <= 15; $d++) {
+            \App\Models\Attendance::create([
+                'worker_id' => $worker->id,
+                'date' => sprintf('2026-09-%02d', $d),
+                'status' => 'PRESENT',
+                'overtime_hours' => 0,
+            ]);
+        }
+
+        // Daily advance of 500 on one day
+        \App\Models\Attendance::create([
+            'worker_id' => $worker->id,
+            'date' => '2026-09-16',
+            'status' => 'ABSENT',
+            'advance' => 500,
+        ]);
+
+        // Report page check
+        $response = $this->withSession($session)->get('/admin/attendance/reports?month=2026-09');
+        $response->assertStatus(200);
+
+        $reportData = $response->viewData('reportData');
+        $this->assertNotNull($reportData);
+        $this->assertArrayHasKey($worker->id, $reportData);
+
+        $workerData = $reportData[$worker->id];
+        // Earned salary = 6000
+        $this->assertEquals(6000.00, $workerData['attendance_salary']);
+        // Daily advance = 500
+        $this->assertEquals(500.00, $workerData['advance']);
+        // Net payable = 5500
+        $this->assertEquals(5500.00, $workerData['payable_salary']);
+
+        $content = $response->getContent();
+        // Check that actual payable 5,500.00 appears in reports table
+        $this->assertStringContainsString('5,500.00', $content);
+        $this->assertStringContainsString('Earned: ₹6,000', $content);
+        $this->assertStringContainsString('- Adv: ₹500', $content);
+
+        // Check Summary PDF endpoint
+        $pdfResponse = $this->withSession($session)->get('/admin/attendance/reports/summary/pdf?month=2026-09');
+        $pdfResponse->assertStatus(200);
+    }
 }
+

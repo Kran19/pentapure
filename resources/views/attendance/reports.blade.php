@@ -62,7 +62,7 @@
             @php
               $deptTotalPresent = array_sum(array_column($workers, 'present'));
               $deptTotalOt = array_sum(array_column($workers, 'total_ot'));
-              $deptTotalWage = array_sum(array_column($workers, 'total_wage'));
+              $deptTotalPayable = array_sum(array_map(fn($w) => (float)($w['payable_salary'] ?? $w['total_wage']), $workers));
               $deptWorkerCount = count($workers);
             @endphp
             <tr style="background:rgba(255,255,255,0.07); border-top:2px solid var(--border-soft, #e5e7eb);">
@@ -71,12 +71,13 @@
               </td>
               <td style="font-weight:bold; color:#000000; font-size:0.95rem;">{{ $deptTotalPresent > 0 ? (floor($deptTotalPresent) == $deptTotalPresent ? number_format($deptTotalPresent, 0) : number_format($deptTotalPresent, 1)) : 0 }}</td>
               <td style="font-weight:bold; font-size:0.9rem;">{{ number_format($deptTotalOt, 1) }}</td>
-              <td style="font-weight:bold; color:var(--primary-light); font-size:1.05rem;">₹{{ number_format($deptTotalWage, 2) }}</td>
+              <td style="font-weight:bold; color:var(--primary-light); font-size:1.05rem;" data-csv-value="{{ number_format($deptTotalPayable, 2, '.', '') }}">₹{{ number_format($deptTotalPayable, 2) }}</td>
               <td></td>
             </tr>
             @foreach($workers as $data)
               @php 
-                $grandTotal += $data['total_wage']; 
+                $payable = (float)($data['payable_salary'] ?? $data['total_wage']);
+                $grandTotal += $payable; 
                 $adj = $data['adjustment'] ?? null;
                 $isPaid = (bool)($adj?->is_paid ?? false);
                 $rawDate = $adj?->paid_at ? \Carbon\Carbon::parse($adj->paid_at)->format('Y-m-d') : ($adj?->paid_note && preg_match('/^\d{4}-\d{2}-\d{2}$/', $adj->paid_note) ? $adj->paid_note : '');
@@ -108,7 +109,21 @@
                 </td>
                 <td style="color:#000000; font-weight:bold;">{{ $data['present'] }}</td>
                 <td style="font-weight:bold;">{{ number_format($data['total_ot'], 1) }}</td>
-                <td style="font-weight:bold; color:var(--primary-light); font-size:1.1rem;">₹{{ number_format($data['total_wage'], 2) }}</td>
+                <td style="font-weight:bold; color:var(--primary-light); font-size:1.05rem;" data-csv-value="{{ number_format($payable, 2, '.', '') }}">
+                  <div>₹{{ number_format($payable, 2) }}</div>
+                  <div style="font-size:0.7rem; font-weight:500; color:var(--text-muted); margin-top:2px; line-height:1.3;">
+                    <span>Earned: ₹{{ number_format($data['attendance_salary'] ?? 0, 0) }}</span>
+                    @if(($data['ot_amount'] ?? 0) > 0)
+                      <span style="color:#16a34a;"> + OT: ₹{{ number_format($data['ot_amount'], 0) }}</span>
+                    @endif
+                    @if(($data['allowance'] ?? 0) > 0)
+                      <span style="color:#2563eb;"> + Allw: ₹{{ number_format($data['allowance'], 0) }}</span>
+                    @endif
+                    @if(($data['advance'] ?? 0) > 0)
+                      <span style="color:#dc2626;"> - Adv: ₹{{ number_format($data['advance'], 0) }}</span>
+                    @endif
+                  </div>
+                </td>
                 <td>
                   <div style="display:flex; align-items:center; gap:6px;">
                     <button type="button" 
@@ -126,12 +141,12 @@
                       ✕
                     </button>
                     <input type="date" 
-                           id="paid-date-{{ $data['worker']->id }}" 
-                           value="{{ $paidDate }}" 
-                           onchange="updatePaidDate({{ $data['worker']->id }})"
-                           onclick="if(typeof this.showPicker === 'function'){ try{ this.showPicker(); }catch(e){} }"
-                           style="padding:4px 8px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.78rem; width:135px; background:white; color:#0f172a; outline:none; cursor:pointer; font-weight:500;"
-                           title="Click to open calendar and select payment date">
+                            id="paid-date-{{ $data['worker']->id }}" 
+                            value="{{ $paidDate }}" 
+                            onchange="updatePaidDate({{ $data['worker']->id }})"
+                            onclick="if(typeof this.showPicker === 'function'){ try{ this.showPicker(); }catch(e){} }"
+                            style="padding:4px 8px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.78rem; width:135px; background:white; color:#0f172a; outline:none; cursor:pointer; font-weight:500;"
+                            title="Click to open calendar and select payment date">
                   </div>
                   <div id="paid-badge-{{ $data['worker']->id }}" style="margin-top:3px; font-size:0.68rem; font-weight:bold; color:{{ $isPaid ? '#22c55e' : '#ef4444' }};">
                     {{ $isPaid ? '✓ PAID' . ($paidDate ? ' (' . \Carbon\Carbon::parse($paidDate)->format('d-m-Y') . ')' : '') : '✕ UNPAID' }}
@@ -148,7 +163,7 @@
               <td colspan="4" style="text-align:right;">Grand Total Payroll Liability:</td>
               <td class="no-print"></td>
               <td colspan="2"></td>
-              <td style="color:var(--secondary); font-size:1.2rem;">₹{{ number_format($grandTotal, 2) }}</td>
+              <td style="color:var(--secondary); font-size:1.2rem;" data-csv-value="{{ number_format($grandTotal, 2, '.', '') }}">₹{{ number_format($grandTotal, 2) }}</td>
               <td></td>
             </tr>
           @endif
@@ -250,7 +265,8 @@ function exportToExcel() {
         for (let j = 0; j < cols.length; j++) {
             if (cols[j].classList.contains('no-print')) continue;
             
-            let data = cols[j].innerText.trim()
+            let val = cols[j].getAttribute('data-csv-value');
+            let data = (val !== null) ? val : cols[j].innerText.trim()
                 .replace(/\n/g, " ")
                 .replace(/\s\s+/g, " ");
             

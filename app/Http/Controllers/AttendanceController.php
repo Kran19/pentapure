@@ -543,51 +543,14 @@ class AttendanceController extends Controller
 
         $reportData = [];
         foreach ($workers as $w) {
-            $present = 0; $absent = 0; $half = 0;
-            $totalOT = 0; $totalWage = 0;
-
-            foreach ($w->attendances as $att) {
-                if ($w->salary_type === 'LABOUR_MUKADAM') {
-                    $present += ($att->num_workers ?? 0);
-                } else {
-                    if ($att->status == 'ABSENT') {
-                        $absent++;
-                    } else {
-                        $present += $this->getPresentMultiplier($att->status);
-                    }
-                }
-                $totalOT += $att->overtime_hours;
-
-                if ($w->salary_type === 'LABOUR_MUKADAM') {
-                    $wageForDay = $att->calculated_wage > 0 ? $att->calculated_wage : (($att->num_workers ?? 0) * ($w->salary_amount ?? 0));
-                    $totalWage += $wageForDay;
-                } elseif ($w->salary_type === 'DAILY') {
-                    $totalWage += $att->calculated_wage;
-                } else {
-                    $mDays = \Carbon\Carbon::parse($month)->daysInMonth;
-                    $perDay = $w->salary_type === 'MONTHLY' ? ($w->salary_amount / $mDays) : ($w->daily_salary ?? 0);
-                    $hourly = $w->per_hour_salary > 0 ? $w->per_hour_salary : ($perDay / 12);
-                    $otPay = $att->overtime_hours * ($hourly * 1.5);
-                    $totalWage += $otPay;
-                }
-            }
-
-            if ($w->salary_type === 'MONTHLY') {
-                $totalWage += $w->salary_amount;
-            }
-
             $adj = $adjustments->get($w->id);
-
-            $reportData[$w->id] = [
-                'worker'        => $w,
-                'worker_number' => $workerNumberMap[$w->id] ?? null,
-                'present'       => $present,
-                'absent'        => $absent,
-                'half'          => $half,
-                'total_ot'      => $totalOT,
-                'total_wage'    => $totalWage,
-                'adjustment'    => $adj
-            ];
+            $reportData[$w->id] = $this->calculateWorkerMonthlyPayroll(
+                $w,
+                $w->attendances,
+                $adj,
+                $month,
+                $workerNumberMap[$w->id] ?? null
+            );
         }
 
         return view('attendance.reports', [
@@ -745,51 +708,14 @@ class AttendanceController extends Controller
 
         $reportData = [];
         foreach ($workers as $w) {
-            $present = 0; $absent = 0; $half = 0;
-            $totalOT = 0; $totalWage = 0;
-
-            foreach ($w->attendances as $att) {
-                if ($w->salary_type === 'LABOUR_MUKADAM') {
-                    $present += ($att->num_workers ?? 0);
-                } else {
-                    if ($att->status == 'ABSENT') {
-                        $absent++;
-                    } else {
-                        $present += $this->getPresentMultiplier($att->status);
-                    }
-                }
-                $totalOT += $att->overtime_hours;
-
-                if ($w->salary_type === 'LABOUR_MUKADAM') {
-                    $wageForDay = $att->calculated_wage > 0 ? $att->calculated_wage : (($att->num_workers ?? 0) * ($w->salary_amount ?? 0));
-                    $totalWage += $wageForDay;
-                } elseif ($w->salary_type === 'DAILY') {
-                    $totalWage += $att->calculated_wage;
-                } else {
-                    $mDays = \Carbon\Carbon::parse($month)->daysInMonth;
-                    $perDay = $w->salary_type === 'MONTHLY' ? ($w->salary_amount / $mDays) : ($w->daily_salary ?? 0);
-                    $hourly = $w->per_hour_salary > 0 ? $w->per_hour_salary : ($perDay / 12);
-                    $otPay = $att->overtime_hours * ($hourly * 1.5);
-                    $totalWage += $otPay;
-                }
-            }
-
-            if ($w->salary_type === 'MONTHLY') {
-                $totalWage += $w->salary_amount;
-            }
-
             $adj = $adjustments->get($w->id);
-
-            $reportData[$w->id] = [
-                'worker'        => $w,
-                'worker_number' => $workerNumberMap[$w->id] ?? null,
-                'present'       => $present,
-                'absent'        => $absent,
-                'half'          => $half,
-                'total_ot'      => $totalOT,
-                'total_wage'    => $totalWage,
-                'adjustment'    => $adj
-            ];
+            $reportData[$w->id] = $this->calculateWorkerMonthlyPayroll(
+                $w,
+                $w->attendances,
+                $adj,
+                $month,
+                $workerNumberMap[$w->id] ?? null
+            );
         }
 
         $pdf = Pdf::loadView('pdf.monthly-payroll-summary', [
@@ -837,70 +763,119 @@ class AttendanceController extends Controller
         $hourlyRate = 0;
         $perDaySalary = 0;
         $attendanceSalary = 0;
-        $dailyAdvanceTotal = 0;
+        $payroll = $this->calculateWorkerMonthlyPayroll(
+            $worker,
+            $attendances,
+            $adjustment,
+            $month,
+            $workerNumber
+        );
 
-        foreach ($attendances as $att) {
-            $totalOT += $att->overtime_hours;
-            $dailyAdvanceTotal += (float)($att->advance ?? 0);
-            if ($worker->salary_type === 'LABOUR_MUKADAM') {
-                $presentDays += $att->num_workers ?? 0;
-            } else {
-                if ($att->status !== 'ABSENT') {
-                    $presentDays += $this->getPresentMultiplier($att->status);
-                }
-            }
-        }
-
-        if ($worker->salary_type === 'FIXED_MONTHLY') {
-            $attendanceSalary = $worker->salary_amount;
-            $otUtAdjustment = 0;
-            $totalWage = $worker->salary_amount + ($adjustment->petrol_food_amount ?? 0);
-        } elseif ($worker->salary_type === 'LABOUR_MUKADAM') {
-            $perDaySalary = $worker->salary_amount ?? 0;
-            $attendanceSalary = $presentDays * $perDaySalary;
-            
-            $hourlyRate = $worker->per_hour_salary ?? 0;
-            $otUtAdjustment = $totalOT * $hourlyRate;
-            
-            $totalWage = $attendanceSalary + $otUtAdjustment + ($adjustment->petrol_food_amount ?? 0);
-        } elseif ($worker->salary_type === 'MONTHLY') {
-            $perDaySalary = $worker->salary_amount / $daysInMonth;
-            $attendanceSalary = ($presentDays >= $daysInMonth) ? $worker->salary_amount : ($presentDays * $perDaySalary);
-            
-            $hourlyRate = $worker->per_hour_salary > 0 ? $worker->per_hour_salary : ($perDaySalary / 12);
-            $otUtAdjustment = $totalOT * $hourlyRate;
-            
-            $totalWage = $attendanceSalary + $otUtAdjustment + ($adjustment->petrol_food_amount ?? 0);
-        } elseif ($worker->salary_type === 'DAILY') {
-            $perDaySalary = $worker->salary_amount ?? 0;
-            $attendanceSalary = $presentDays * $perDaySalary;
-            
-            $hourlyRate = $worker->per_hour_salary ?? 0;
-            $otUtAdjustment = $totalOT * $hourlyRate;
-            
-            $totalWage = $attendanceSalary + $otUtAdjustment + ($adjustment->petrol_food_amount ?? 0);
-        } else {
-            foreach ($attendances as $att) {
-                $attendanceSalary += $att->calculated_wage;
-            }
-            $perDaySalary = $worker->daily_salary ?? 0;
-            $hourlyRate = $worker->per_hour_salary > 0 ? $worker->per_hour_salary : ($perDaySalary / 12);
-            $otUtAdjustment = $totalOT * $hourlyRate;
-            // Assuming calculated_wage already handles OT for daily workers normally, we'll keep existing logic or just use attendanceSalary
-            $totalWage = $attendanceSalary + ($adjustment->petrol_food_amount ?? 0);
-        }
-
-        $attendanceSalary = round($attendanceSalary);
-        $otUtAdjustment   = round($otUtAdjustment);
-        $totalWage        = round($attendanceSalary + $otUtAdjustment + (float)($adjustment->petrol_food_amount ?? 0));
-        $totalAdvance     = round($dailyAdvanceTotal + (float)($adjustment->advance ?? 0));
-        $payableSalary    = round($totalWage - $totalAdvance);
+        $presentDays        = $payroll['present'];
+        $totalOT            = $payroll['total_ot'];
+        $perDaySalary       = $payroll['per_day_salary'];
+        $hourlyRate         = $payroll['hourly_rate'];
+        $attendanceSalary   = $payroll['attendance_salary'];
+        $otUtAdjustment     = $payroll['ot_amount'];
+        $totalWage          = $payroll['total_wage'];
+        $dailyAdvanceTotal  = $payroll['daily_advance'];
+        $totalAdvance       = $payroll['advance'];
+        $payableSalary      = $payroll['payable_salary'];
 
         return compact(
             'worker', 'workerNumber', 'attendances', 'month', 'start', 'end', 'daysInMonth',
             'adjustment', 'presentDays', 'perDaySalary', 'attendanceSalary',
             'totalOT', 'hourlyRate', 'otUtAdjustment', 'totalWage', 'dailyAdvanceTotal', 'totalAdvance', 'payableSalary'
         );
+    }
+
+    public function calculateWorkerMonthlyPayroll(Worker $worker, $attendances, ?WorkerMonthlyAdjustment $adjustment, string $month, ?int $workerNumber = null): array
+    {
+        $daysInMonth = Carbon::parse($month)->daysInMonth;
+        $totalOT = 0;
+        $dailyAdvanceTotal = 0;
+        $presentDays = 0;
+        $absentDays = 0;
+        $halfDays = 0;
+
+        foreach ($attendances as $att) {
+            $totalOT += (float) ($att->overtime_hours ?? 0);
+            $dailyAdvanceTotal += (float) ($att->advance ?? 0);
+            if ($worker->salary_type === 'LABOUR_MUKADAM') {
+                $presentDays += (int) ($att->num_workers ?? 0);
+            } else {
+                if ($att->status === 'ABSENT') {
+                    $absentDays++;
+                } else {
+                    $mult = $this->getPresentMultiplier($att->status);
+                    $presentDays += $mult;
+                    if (str_contains(strtoupper($att->status), 'HALF')) {
+                        $halfDays++;
+                    }
+                }
+            }
+        }
+
+        $attendanceSalary = 0;
+        $otUtAdjustment = 0;
+        $hourlyRate = 0;
+        $perDaySalary = 0;
+
+        if ($worker->salary_type === 'FIXED_MONTHLY') {
+            $attendanceSalary = (float) $worker->salary_amount;
+            $otUtAdjustment = 0;
+            $perDaySalary = (float) ($worker->salary_amount / $daysInMonth);
+        } elseif ($worker->salary_type === 'LABOUR_MUKADAM') {
+            $perDaySalary = (float) ($worker->salary_amount ?? 0);
+            $attendanceSalary = $presentDays * $perDaySalary;
+            $hourlyRate = (float) ($worker->per_hour_salary ?? 0);
+            $otUtAdjustment = $totalOT * $hourlyRate;
+        } elseif ($worker->salary_type === 'MONTHLY') {
+            $perDaySalary = (float) ($worker->salary_amount / $daysInMonth);
+            $attendanceSalary = ($presentDays >= $daysInMonth) ? (float) $worker->salary_amount : ($presentDays * $perDaySalary);
+            $hourlyRate = (float) ($worker->per_hour_salary > 0 ? $worker->per_hour_salary : ($perDaySalary / 12));
+            $otUtAdjustment = $totalOT * $hourlyRate;
+        } elseif ($worker->salary_type === 'DAILY') {
+            $perDaySalary = (float) ($worker->salary_amount ?? 0);
+            $attendanceSalary = $presentDays * $perDaySalary;
+            $hourlyRate = (float) ($worker->per_hour_salary ?? ($perDaySalary / 12));
+            $otUtAdjustment = $totalOT * $hourlyRate;
+        } else {
+            foreach ($attendances as $att) {
+                $attendanceSalary += (float) ($att->calculated_wage ?? 0);
+            }
+            $perDaySalary = (float) ($worker->daily_salary ?? 0);
+            $hourlyRate = (float) ($worker->per_hour_salary > 0 ? $worker->per_hour_salary : ($perDaySalary / 12));
+            $otUtAdjustment = $totalOT * $hourlyRate;
+        }
+
+        $allowance     = (float) ($adjustment?->petrol_food_amount ?? 0);
+        $monthAdvance  = (float) ($adjustment?->advance ?? 0);
+        $totalAdvance  = round($dailyAdvanceTotal + $monthAdvance);
+
+        $attendanceSalaryRound = round($attendanceSalary);
+        $otUtAdjustmentRound   = round($otUtAdjustment);
+        $totalWageRound        = round($attendanceSalaryRound + $otUtAdjustmentRound + $allowance);
+        $payableSalary         = round($totalWageRound - $totalAdvance);
+
+        return [
+            'worker'            => $worker,
+            'worker_number'     => $workerNumber,
+            'present'           => $presentDays,
+            'absent'            => $absentDays,
+            'half'              => $halfDays,
+            'total_ot'          => $totalOT,
+            'per_day_salary'    => $perDaySalary,
+            'hourly_rate'       => $hourlyRate,
+            'attendance_salary' => $attendanceSalaryRound,
+            'ot_amount'         => $otUtAdjustmentRound,
+            'allowance'         => $allowance,
+            'daily_advance'     => $dailyAdvanceTotal,
+            'advance'           => $totalAdvance,
+            'total_wage'        => $totalWageRound,
+            'payable_salary'    => $payableSalary,
+            'adjustment'        => $adjustment
+        ];
     }
 
     public function profile(Request $request)
