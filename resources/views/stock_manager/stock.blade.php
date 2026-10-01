@@ -215,10 +215,18 @@
       transition: all 0.15s ease !important;
       user-select: none !important;
     }
+    .stock-tab .stock-tab-label {
+      color: inherit !important;
+      font-weight: 700 !important;
+      font-size: 0.85rem !important;
+    }
     .stock-tab:hover {
       background: #ffffff !important;
       color: var(--text-main, #0f172a) !important;
       box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+    }
+    .stock-tab:hover .stock-tab-label {
+      color: var(--text-main, #0f172a) !important;
     }
     .stock-tab .stock-tab-badge {
       display: inline-flex !important;
@@ -234,32 +242,58 @@
       line-height: 1.25 !important;
     }
 
-    .stock-tab.active {
+    /* Active Tab Themes - Explicit White Font & Label */
+    .stock-tab.active,
+    .stock-tab.active:hover,
+    .stock-tab.active:focus,
+    .stock-tab.active:visited {
       color: #ffffff !important;
     }
-    .stock-tab.active .stock-tab-badge {
+    .stock-tab.active .stock-tab-label,
+    .stock-tab.active:hover .stock-tab-label,
+    .stock-tab.active:focus .stock-tab-label,
+    .stock-tab.active:visited .stock-tab-label {
+      color: #ffffff !important;
+    }
+    .stock-tab.active .stock-tab-badge,
+    .stock-tab.active:hover .stock-tab-badge {
       background: rgba(255, 255, 255, 0.25) !important;
       color: #ffffff !important;
       border-color: rgba(255, 255, 255, 0.35) !important;
     }
-    .stock-tab.active.is-all {
+    .stock-tab.active.is-all,
+    .stock-tab.active.is-all:hover,
+    .stock-tab.active.is-all:focus {
       background: #1e293b !important;
+      color: #ffffff !important;
       box-shadow: 0 2px 6px rgba(30, 41, 59, 0.35) !important;
     }
-    .stock-tab.active.is-raw {
+    .stock-tab.active.is-raw,
+    .stock-tab.active.is-raw:hover,
+    .stock-tab.active.is-raw:focus {
       background: #059669 !important;
+      color: #ffffff !important;
       box-shadow: 0 2px 8px rgba(5, 150, 105, 0.35) !important;
     }
-    .stock-tab.active.is-semi {
+    .stock-tab.active.is-semi,
+    .stock-tab.active.is-semi:hover,
+    .stock-tab.active.is-semi:focus {
       background: #d97706 !important;
+      color: #ffffff !important;
       box-shadow: 0 2px 8px rgba(217, 119, 6, 0.35) !important;
     }
-    .stock-tab.active.is-fg {
+    .stock-tab.active.is-fg,
+    .stock-tab.active.is-fg:hover,
+    .stock-tab.active.is-fg:focus {
       background: #2563eb !important;
+      color: #ffffff !important;
       box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4) !important;
     }
-    .stock-tab.active.is-pkg {
+    .stock-tab.active.is-pkg,
+    .stock-tab.active.is-pkg:hover,
+    .stock-tab.active.is-pkg:focus {
       background: #0284c7 !important;
+      color: #ffffff !important;
       box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35) !important;
     }
 
