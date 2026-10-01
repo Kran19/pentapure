@@ -73,9 +73,13 @@
             📦 Live Stock Overview
           @endif
         </h2>
-        <span class="live-status-pill">
-          <span class="pulse-dot"></span> Live
+        <span class="live-status-pill" id="live-sync-indicator" title="Auto-refreshing stock data every 5 seconds" style="cursor:pointer;" onclick="fetchLiveStock(true)">
+          <span class="pulse-dot"></span> Auto-Refresh ON (5s)
         </span>
+        <button type="button" class="btn btn-secondary" onclick="fetchLiveStock(true)" title="Refresh stock now" style="padding:0.25rem 0.65rem; font-size:0.75rem; font-weight:600; display:inline-flex; align-items:center; gap:5px; border-radius:5px; height:24px; line-height:1; vertical-align:middle; cursor:pointer;">
+          <svg id="refresh-spin-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          Refresh Now
+        </button>
       </div>
     </div>
     <div class="stock-header-actions">
@@ -218,6 +222,8 @@
     const adminAllGrades = {!! json_encode($adminAllGrades) !!};
   </script>
   <style>
+    @keyframes spinRefresh { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .is-spinning { animation: spinRefresh 0.8s linear infinite !important; }
     /* Low Stock Styling */
     tbody tr.low-stock-row,
     tbody tr.low-stock-row:hover,
@@ -1053,15 +1059,15 @@
     <div class="stock-toolbar-info">
       <span class="stock-count-chip">
         @if(!$typeFilter)
-          Showing <strong>{{ count($pageData['allStock']) }}</strong> Total Products
+          Showing <strong id="total-products-count">{{ count($pageData['allStock']) }}</strong> Total Products
         @elseif($typeFilter === 'FINISHED' || $typeFilter === 'FG')
-          Showing <strong>{{ $finishedItems->count() }}</strong> Finished Goods (FG)
+          Showing <strong id="total-products-count">{{ $finishedItems->count() }}</strong> Finished Goods (FG)
         @elseif($typeFilter === 'RAW')
-          Showing <strong>{{ $rawItems->count() }}</strong> Raw Materials
+          Showing <strong id="total-products-count">{{ $rawItems->count() }}</strong> Raw Materials
         @elseif($typeFilter === 'SEMI')
-          Showing <strong>{{ $semiItems->count() }}</strong> Semi-Finished Items
+          Showing <strong id="total-products-count">{{ $semiItems->count() }}</strong> Semi-Finished Items
         @elseif($typeFilter === 'PACKAGING' || $typeFilter === 'PKG')
-          Showing <strong>{{ $packagingItems->count() }}</strong> Packaging Items
+          Showing <strong id="total-products-count">{{ $packagingItems->count() }}</strong> Packaging Items
         @endif
       </span>
     </div>
@@ -1077,7 +1083,7 @@
       <div class="stock-card-title-group">
         <span class="stock-stage-pill is-raw">RAW</span>
         <h3 class="stock-card-title">🌿 Raw Material Stock</h3>
-        <span class="stock-card-count-pill">{{ $rawItems->count() }} items</span>
+        <span class="stock-card-count-pill" id="raw-count-pill">{{ $rawItems->count() }} items</span>
       </div>
       @if($rawLowCount > 0)
         <div class="stock-low-alert-banner">
@@ -1157,7 +1163,7 @@
       <div class="stock-card-title-group">
         <span class="stock-stage-pill is-semi">SEMI</span>
         <h3 class="stock-card-title">⚗️ Semi-Finished Stock</h3>
-        <span class="stock-card-count-pill">{{ $semiItems->count() }} items</span>
+        <span class="stock-card-count-pill" id="semi-count-pill">{{ $semiItems->count() }} items</span>
       </div>
       @if($semiLowCount > 0)
         <div class="stock-low-alert-banner">
@@ -1237,7 +1243,7 @@
       <div class="stock-card-title-group">
         <span class="stock-stage-pill is-fg">FG</span>
         <h3 class="stock-card-title">✅ Finished Goods (FG) Stock</h3>
-        <span class="stock-card-count-pill">{{ $finishedItems->count() }} items</span>
+        <span class="stock-card-count-pill" id="finished-count-pill">{{ $finishedItems->count() }} items</span>
       </div>
       @if($finishedLowCount > 0)
         <div class="stock-low-alert-banner">
@@ -1317,7 +1323,7 @@
       <div class="stock-card-title-group">
         <span class="stock-stage-pill is-pkg">PKG</span>
         <h3 class="stock-card-title">📦 Packaging Material Stock</h3>
-        <span class="stock-card-count-pill">{{ $packagingItems->count() }} items</span>
+        <span class="stock-card-count-pill" id="packaging-count-pill">{{ $packagingItems->count() }} items</span>
       </div>
       @if($packagingLowCount > 0)
         <div class="stock-low-alert-banner">
@@ -1584,7 +1590,17 @@ function adminAddStock() {
     })
     .then(d => {
       if (d.success) {
-        Swal.fire('Saved', d.message || 'Stock added.', 'success').then(() => location.reload());
+        Swal.fire({
+          icon: 'success',
+          title: 'Stock Added!',
+          text: d.message || 'Stock added successfully.',
+          timer: 1000,
+          showConfirmButton: false,
+          background: '#ffffff',
+          color: '#333333'
+        });
+        fetchLiveStock();
+        setTimeout(() => location.reload(), 1000);
       } else {
         Swal.fire('Error', d.message || 'Could not add stock.', 'error');
       }
@@ -2089,8 +2105,12 @@ function adminSetLimit(productId, stage, grade, currentLimit, productName = '') 
   });
 }
 
-function fetchLiveStock() {
-  fetch(window.baseUrl + '/' + window.userSlug + '/stock/live?_t=' + new Date().getTime(), {
+function fetchLiveStock(isManual = false) {
+  const spinIcon = document.getElementById('refresh-spin-icon');
+  if (spinIcon) spinIcon.classList.add('is-spinning');
+  const indicator = document.getElementById('live-sync-indicator');
+
+  return fetch(window.baseUrl + '/' + window.userSlug + '/stock/live?_t=' + new Date().getTime(), {
     headers: { 
       'Accept': 'application/json',
       'Cache-Control': 'no-cache' 
@@ -2104,13 +2124,43 @@ function fetchLiveStock() {
       }
       updateStockTables(data.data);
       updateAllLocationLabels();
+
+      if (indicator) {
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        indicator.innerHTML = `<span class="pulse-dot"></span> Auto-Refresh ON (${timeStr})`;
+      }
+      if (isManual && window.Swal) {
+        const toast = Swal.mixin({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 1500,
+          background: '#ffffff',
+          color: '#333333'
+        });
+        toast.fire({ icon: 'success', title: 'Stock data refreshed' });
+      }
     }
   })
-  .catch(err => console.error('Polling error:', err));
+  .catch(err => console.error('Auto-refresh polling error:', err))
+  .finally(() => {
+    if (spinIcon) spinIcon.classList.remove('is-spinning');
+  });
 }
 
-// AJAX Polling every 30 seconds
-setInterval(fetchLiveStock, 30000);
+// Background live sync every 5 seconds so newly added entries appear automatically
+setInterval(() => {
+  if (document.hidden) return;
+  if (document.querySelector('.swal2-container')) return;
+  fetchLiveStock();
+}, 5000);
+
+// Instant auto-refresh when user switches back to this tab
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    fetchLiveStock();
+  }
+});
 
 function updateStockTables(stockData) {
   const stages = { 'RAW': 'raw-stock-tbody', 'SEMI': 'semi-stock-tbody', 'FINISHED': 'finished-stock-tbody', 'PACKAGING': 'packaging-stock-tbody' };
@@ -2120,6 +2170,20 @@ function updateStockTables(stockData) {
   stockData.forEach(s => {
     if (grouped[s.stage]) grouped[s.stage].push(s);
   });
+
+  // Update card count pills and total products count
+  const countMapping = {
+    'RAW': 'raw-count-pill',
+    'SEMI': 'semi-count-pill',
+    'FINISHED': 'finished-count-pill',
+    'PACKAGING': 'packaging-count-pill'
+  };
+  for (const [st, pillId] of Object.entries(countMapping)) {
+    const el = document.getElementById(pillId);
+    if (el) el.textContent = `${grouped[st].length} items`;
+  }
+  const totalProductsEl = document.getElementById('total-products-count');
+  if (totalProductsEl) totalProductsEl.textContent = stockData.length;
 
   for (const [stage, tbodyId] of Object.entries(stages)) {
     const tbody = document.getElementById(tbodyId);
@@ -3027,20 +3091,23 @@ window.adminSaveBulkStock = function() {
       const btnText = document.querySelector('.loc-dropdown-text');
       if (btnText) btnText.innerHTML = '📍 Select Locations <span style="float:right;">▼</span>';
 
-      // 2. Refresh page instantly
-      sessionStorage.setItem('keepStockFormOpen', 'true');
-      location.reload();
+      // 2. Immediate live stock fetch
+      fetchLiveStock();
 
-      // 3. Show success message (will not show due to reload, but kept for logic)
+      // 3. Show non-blocking toast
       Swal.fire({
         icon: 'success',
-        title: 'Success',
-        text: 'Stock entries added successfully!',
+        title: 'Stock Saved!',
+        text: 'Stock entries added successfully.',
         timer: 1000,
         showConfirmButton: false,
         background: '#ffffff',
         color: '#333333'
       });
+
+      // 4. Auto-refresh page
+      sessionStorage.setItem('keepStockFormOpen', 'true');
+      setTimeout(() => location.reload(), 900);
     } else {
       Swal.fire('Error', data.message || 'Something went wrong.', 'error');
     }

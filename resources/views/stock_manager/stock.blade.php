@@ -4,7 +4,16 @@
 
 <div style="padding:0.25rem 0 1rem 0;">
   <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem;">
-    <h2 style="margin:0;">📦 Live Stock Overview</h2>
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <h2 style="margin:0;">📦 Live Stock Overview</h2>
+      <span class="live-status-pill" id="sm-live-sync-indicator" title="Auto-refreshing stock data every 5 seconds" style="cursor:pointer; font-size:0.75rem; background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; padding:3px 10px; border-radius:12px; font-weight:700; display:inline-flex; align-items:center; gap:5px;" onclick="fetchLiveStock(true)">
+        <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#10b981;"></span> Auto-Refresh ON (5s)
+      </span>
+      <button type="button" class="btn btn-sm btn-secondary" onclick="fetchLiveStock(true)" title="Refresh stock now" style="padding:0.25rem 0.65rem; font-size:0.75rem; font-weight:600; display:inline-flex; align-items:center; gap:5px; border-radius:5px; height:26px; line-height:1; cursor:pointer;">
+        <svg id="sm-refresh-spin-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+        Refresh Now
+      </button>
+    </div>
     <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
       <button class="btn btn-secondary" onclick="adminExportStockCsv()" style="width:auto; padding:0.65rem 1.2rem; background:#10b981 !important; color:#ffffff !important; border-color:#059669 !important; font-weight:700 !important; display:inline-flex; align-items:center; gap:6px;">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
@@ -62,6 +71,8 @@
     const adminAllGrades = {!! json_encode($adminAllGrades) !!};
   </script>
   <style>
+    @keyframes spinRefresh { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .is-spinning { animation: spinRefresh 0.8s linear infinite !important; }
     /* Low Stock Styling */
     tbody tr.low-stock-row,
     tbody tr.low-stock-row:hover,
@@ -724,7 +735,17 @@ function adminAddStock() {
     })
     .then(d => {
       if (d.success) {
-        Swal.fire('Saved', d.message || 'Stock added.', 'success').then(() => location.reload());
+        Swal.fire({
+          icon: 'success',
+          title: 'Stock Added!',
+          text: d.message || 'Stock added successfully.',
+          timer: 1000,
+          showConfirmButton: false,
+          background: '#ffffff',
+          color: '#333333'
+        });
+        fetchLiveStock();
+        setTimeout(() => location.reload(), 1000);
       } else {
         Swal.fire('Error', d.message || 'Could not add stock.', 'error');
       }
@@ -1104,8 +1125,12 @@ function adminSetLimit(productId, stage, grade, currentLimit, productName = '') 
   });
 }
 
-function fetchLiveStock() {
-  fetch(window.baseUrl + '/' + window.userSlug + '/stock/live?_t=' + new Date().getTime(), {
+function fetchLiveStock(isManual = false) {
+  const spinIcon = document.getElementById('sm-refresh-spin-icon');
+  if (spinIcon) spinIcon.classList.add('is-spinning');
+  const indicator = document.getElementById('sm-live-sync-indicator');
+
+  return fetch(window.baseUrl + '/' + window.userSlug + '/stock/live?_t=' + new Date().getTime(), {
     headers: { 
       'Accept': 'application/json',
       'Cache-Control': 'no-cache' 
@@ -1119,13 +1144,43 @@ function fetchLiveStock() {
       }
       updateStockTables(data.data);
       updateAllLocationLabels();
+
+      if (indicator) {
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        indicator.innerHTML = `<span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#10b981;"></span> Auto-Refresh ON (${timeStr})`;
+      }
+      if (isManual && window.Swal) {
+        const toast = Swal.mixin({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 1500,
+          background: '#ffffff',
+          color: '#333333'
+        });
+        toast.fire({ icon: 'success', title: 'Stock data refreshed' });
+      }
     }
   })
-  .catch(err => console.error('Polling error:', err));
+  .catch(err => console.error('Auto-refresh polling error:', err))
+  .finally(() => {
+    if (spinIcon) spinIcon.classList.remove('is-spinning');
+  });
 }
 
-// AJAX Polling every 30 seconds
-setInterval(fetchLiveStock, 30000);
+// Background live sync every 5 seconds so newly added entries appear automatically
+setInterval(() => {
+  if (document.hidden) return;
+  if (document.querySelector('.swal2-container')) return;
+  fetchLiveStock();
+}, 5000);
+
+// Instant auto-refresh when user switches back to this tab
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    fetchLiveStock();
+  }
+});
 
 function updateStockTables(stockData) {
   const stages = { 'RAW': 'raw-stock-tbody', 'SEMI': 'semi-stock-tbody', 'FINISHED': 'finished-stock-tbody', 'PACKAGING': 'packaging-stock-tbody' };
@@ -1853,8 +1908,20 @@ window.adminSaveBulkStock = function() {
       const btnText = document.querySelector('.loc-dropdown-text');
       if (btnText) btnText.innerHTML = '📍 Select Locations <span style="float:right;">▼</span>';
 
+      fetchLiveStock();
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Stock Saved!',
+        text: 'Stock entries added successfully.',
+        timer: 1000,
+        showConfirmButton: false,
+        background: '#ffffff',
+        color: '#333333'
+      });
+
       sessionStorage.setItem('keepStockFormOpen', 'true');
-      location.reload();
+      setTimeout(() => location.reload(), 900);
     } else {
       Swal.fire('Error', data.message || 'Something went wrong.', 'error');
     }
