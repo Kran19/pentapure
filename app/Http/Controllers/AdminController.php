@@ -539,7 +539,7 @@ class AdminController extends Controller
                 stocks.stage,
                 stocks.grade,
                 products.sort_order,
-                IFNULL(stock_limits.alert_limit, products.threshold) as alert_limit,
+                COALESCE(NULLIF(stock_limits.alert_limit, 0), NULLIF(products.threshold, 0), stock_limits.alert_limit, products.threshold, 0) as alert_limit,
                 SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
             ")
             ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) >= 0")
@@ -918,19 +918,21 @@ class AdminController extends Controller
                      ->on('stocks.stage', '=', 'stock_limits.stage')
                      ->on('stocks.grade', '=', 'stock_limits.grade');
             })
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.type', 'products.unit', 'products.rate', 'stock_limits.alert_limit')
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.type', 'products.unit', 'products.rate', 'products.threshold', 'products.sort_order', 'stock_limits.alert_limit')
             ->selectRaw("
                 stocks.product_id as productId,
                 products.name,
                 products.type,
                 products.unit,
                 products.rate,
+                products.threshold,
+                products.sort_order,
                 stocks.stage,
                 stocks.grade,
-                IFNULL(stock_limits.alert_limit, products.threshold) as alert_limit,
+                COALESCE(NULLIF(stock_limits.alert_limit, 0), NULLIF(products.threshold, 0), stock_limits.alert_limit, products.threshold, 0) as alert_limit,
                 SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
             ")
-            ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) >= 0")
             ->orderBy('stocks.stage')
             ->orderBy('products.sort_order')
             ->get();

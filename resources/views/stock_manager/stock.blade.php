@@ -19,15 +19,15 @@
 
     $sortStockByLow = function($collection) {
         return $collection->sort(function($a, $b) {
-            $hasQtyA = (float) ($a->quantity ?? 0) > 0;
-            $alertA = (float) ($a->alert_limit ?? 0);
-            $isLowA = $alertA > 0 && (float) ($a->quantity ?? 0) <= $alertA;
-            $prioA = ($isLowA && $hasQtyA) ? 0 : ($isLowA ? 1 : 2);
+            $alertA = (float) (($a->alert_limit ?? 0) > 0 ? $a->alert_limit : ($a->threshold ?? 0));
+            $qtyA = (float) ($a->quantity ?? 0);
+            $isLowA = $alertA > 0 && $qtyA <= $alertA;
+            $prioA = $isLowA ? 0 : 1;
 
-            $hasQtyB = (float) ($b->quantity ?? 0) > 0;
-            $alertB = (float) ($b->alert_limit ?? 0);
-            $isLowB = $alertB > 0 && (float) ($b->quantity ?? 0) <= $alertB;
-            $prioB = ($isLowB && $hasQtyB) ? 0 : ($isLowB ? 1 : 2);
+            $alertB = (float) (($b->alert_limit ?? 0) > 0 ? $b->alert_limit : ($b->threshold ?? 0));
+            $qtyB = (float) ($b->quantity ?? 0);
+            $isLowB = $alertB > 0 && $qtyB <= $alertB;
+            $prioB = $isLowB ? 0 : 1;
 
             if ($prioA !== $prioB) {
                 return $prioA <=> $prioB;
@@ -41,6 +41,15 @@
 
             return strcasecmp($a->name ?? '', $b->name ?? '');
         })->values();
+    };
+
+    $isStockItemLow = function($s) {
+        $alert = (float)(($s->alert_limit ?? 0) > 0 ? $s->alert_limit : ($s->threshold ?? 0));
+        return $alert > 0 && (float)($s->quantity ?? 0) <= $alert;
+    };
+
+    $getStockAlertLimit = function($s) {
+        return (float)(($s->alert_limit ?? 0) > 0 ? $s->alert_limit : ($s->threshold ?? 0));
     };
 
     $rawItems       = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'RAW'));
@@ -59,14 +68,22 @@
     tbody tr.low-stock-row td,
     tbody tr.low-stock-row:hover td {
         background-color: #dc3545 !important;
+        color: #ffffff !important;
     }
     
     tbody tr.low-stock-row td,
     tbody tr.low-stock-row td *,
     tbody tr.low-stock-row td span,
     tbody tr.low-stock-row td div,
+    tbody tr.low-stock-row td strong,
+    tbody tr.low-stock-row td a,
+    tbody tr.low-stock-row td.location-col,
     tbody tr.low-stock-row button {
         color: #ffffff !important;
+    }
+    
+    tbody tr.low-stock-row td.location-col {
+        text-decoration: underline !important;
     }
     
     tbody tr.low-stock-row button.btn-icon svg {
@@ -82,6 +99,19 @@
     
     tbody tr.low-stock-row .btn.btn-sm:hover {
         background-color: rgba(255, 255, 255, 0.4) !important;
+    }
+
+    .low-qty-badge {
+        background: #991b1b !important;
+        color: #ffffff !important;
+        padding: 3px 8px !important;
+        border-radius: 6px !important;
+        font-weight: 800 !important;
+        border: 1px solid rgba(255, 255, 255, 0.45) !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
     }
 
     /* Hide spin arrows on number inputs globally in this context */
@@ -313,7 +343,7 @@
         'PACKAGING', 'PKG' => $packagingItems,
         default => $rawItems->concat($semiItems)->concat($finishedItems)->concat($packagingItems)
       };
-      $currentLowStockCount = $relevantForLow->filter(fn($s) => (float)($s->alert_limit ?? 0) > 0 && (float)($s->quantity ?? 0) <= (float)($s->alert_limit ?? 0) && (float)($s->quantity ?? 0) > 0)->count();
+      $currentLowStockCount = $relevantForLow->filter($isStockItemLow)->count();
     @endphp
 
     <div class="stock-quick-actions">
@@ -340,7 +370,7 @@
   <!-- RAW Stock -->
   <div class="card" style="padding:1.2rem; margin-bottom:1rem;">
     @php
-      $rawLowCount = $rawItems->filter(fn($s) => (float)($s->alert_limit ?? 0) > 0 && (float)($s->quantity ?? 0) <= (float)($s->alert_limit ?? 0) && (float)($s->quantity ?? 0) > 0)->count();
+      $rawLowCount = $rawItems->filter($isStockItemLow)->count();
     @endphp
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border-soft);">
       <div class="card-title" style="color:var(--primary-light); margin:0;">🌿 Raw Material Stock ({{ $rawItems->count() }} items)</div>
@@ -360,20 +390,27 @@
         <tbody id="raw-stock-tbody">
           @foreach($rawItems as $s)
           @php 
-            $hasQty = (float) $s->quantity > 0;
-            $isLow = $s->alert_limit > 0 && $s->quantity <= $s->alert_limit;
+            $alertLimit = $getStockAlertLimit($s);
+            $qty = (float) ($s->quantity ?? 0);
+            $isLow = $isStockItemLow($s);
           @endphp
-          <tr @if($isLow && $hasQty) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
+          <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ number_format($alertLimit, 2) }}" @endif>
             <td style="font-weight:400;">
               <div style="font-weight:normal; color:var(--text-color);">
                 {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span style='font-weight:bold;'>(RAW)</span>
               </div>
             </td>
-            <td style="font-weight:bold; color:var(--secondary);">{{ number_format($s->quantity, 2) }}</td>
+            <td style="font-weight:bold;">
+              @if($isLow)
+                <span class="low-qty-badge"><span>⚠</span> {{ number_format($qty, 2) }}</span>
+              @else
+                <span style="color:var(--secondary);">{{ number_format($qty, 2) }}</span>
+              @endif
+            </td>
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold; color:var(--text-color);">
-              {{ number_format($s->alert_limit, 2) }}
-              <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
+              {{ number_format($alertLimit, 2) }}
+              <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $alertLimit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
             </td>
@@ -391,7 +428,7 @@
   <!-- SEMI Stock -->
   <div class="card" style="padding:1.2rem; margin-bottom:1rem;">
     @php
-      $semiLowCount = $semiItems->filter(fn($s) => (float)($s->alert_limit ?? 0) > 0 && (float)($s->quantity ?? 0) <= (float)($s->alert_limit ?? 0) && (float)($s->quantity ?? 0) > 0)->count();
+      $semiLowCount = $semiItems->filter($isStockItemLow)->count();
     @endphp
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border-soft);">
       <div class="card-title" style="color:var(--warning); margin:0;">⚗️ Semi-Finished Stock ({{ $semiItems->count() }} items)</div>
@@ -411,20 +448,27 @@
         <tbody id="semi-stock-tbody">
           @foreach($semiItems as $s)
           @php 
-            $hasQty = (float) $s->quantity > 0;
-            $isLow = $s->alert_limit > 0 && $s->quantity <= $s->alert_limit;
+            $alertLimit = $getStockAlertLimit($s);
+            $qty = (float) ($s->quantity ?? 0);
+            $isLow = $isStockItemLow($s);
           @endphp
-          <tr @if($isLow && $hasQty) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
+          <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ number_format($alertLimit, 2) }}" @endif>
             <td style="font-weight:400;">
               <div style="font-weight:normal; color:var(--text-color);">
                 {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span style='font-weight:bold;'>(SEMI)</span>
               </div>
             </td>
-            <td style="font-weight:bold; color:var(--warning);">{{ number_format($s->quantity, 2) }}</td>
+            <td style="font-weight:bold;">
+              @if($isLow)
+                <span class="low-qty-badge"><span>⚠</span> {{ number_format($qty, 2) }}</span>
+              @else
+                <span style="color:var(--warning);">{{ number_format($qty, 2) }}</span>
+              @endif
+            </td>
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold; color:var(--text-color);">
-              {{ number_format($s->alert_limit, 2) }}
-              <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
+              {{ number_format($alertLimit, 2) }}
+              <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $alertLimit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
             </td>
@@ -442,7 +486,7 @@
   <!-- Finished Stock -->
   <div class="card" style="padding:1.2rem;">
     @php
-      $finishedLowCount = $finishedItems->filter(fn($s) => (float)($s->alert_limit ?? 0) > 0 && (float)($s->quantity ?? 0) <= (float)($s->alert_limit ?? 0) && (float)($s->quantity ?? 0) > 0)->count();
+      $finishedLowCount = $finishedItems->filter($isStockItemLow)->count();
     @endphp
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border-soft);">
       <div class="card-title" style="color:var(--secondary); margin:0;">✅ FG Stock ({{ $finishedItems->count() }} items)</div>
@@ -462,20 +506,27 @@
         <tbody id="finished-stock-tbody">
           @foreach($finishedItems as $s)
           @php 
-            $hasQty = (float) $s->quantity > 0;
-            $isLow = $s->alert_limit > 0 && $s->quantity <= $s->alert_limit;
+            $alertLimit = $getStockAlertLimit($s);
+            $qty = (float) ($s->quantity ?? 0);
+            $isLow = $isStockItemLow($s);
           @endphp
-          <tr @if($isLow && $hasQty) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
+          <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ number_format($alertLimit, 2) }}" @endif>
             <td style="font-weight:400;">
               <div style="font-weight:normal; color:var(--text-color);">
                 {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span>(FINISHED)</span>
               </div>
             </td>
-            <td style="font-weight:bold; color:var(--secondary);">{{ number_format($s->quantity, 2) }}</td>
+            <td style="font-weight:bold;">
+              @if($isLow)
+                <span class="low-qty-badge"><span>⚠</span> {{ number_format($qty, 2) }}</span>
+              @else
+                <span style="color:var(--secondary);">{{ number_format($qty, 2) }}</span>
+              @endif
+            </td>
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold; color:var(--text-color);">
-              {{ number_format($s->alert_limit, 2) }}
-              <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
+              {{ number_format($alertLimit, 2) }}
+              <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $alertLimit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
             </td>
@@ -493,7 +544,7 @@
   <!-- PACKAGING Stock -->
   <div class="card" style="padding:1.2rem; margin-bottom:1rem;">
     @php
-      $packagingLowCount = $packagingItems->filter(fn($s) => (float)($s->alert_limit ?? 0) > 0 && (float)($s->quantity ?? 0) <= (float)($s->alert_limit ?? 0) && (float)($s->quantity ?? 0) > 0)->count();
+      $packagingLowCount = $packagingItems->filter($isStockItemLow)->count();
     @endphp
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border-soft);">
       <div class="card-title" style="color:#0284c7; margin:0;">📦 Packaging Materials Stock ({{ $packagingItems->count() }} items)</div>
@@ -513,20 +564,27 @@
         <tbody id="packaging-stock-tbody">
           @foreach($packagingItems as $s)
           @php 
-            $hasQty = (float) $s->quantity > 0;
-            $isLow = $s->alert_limit > 0 && $s->quantity <= $s->alert_limit;
+            $alertLimit = $getStockAlertLimit($s);
+            $qty = (float) ($s->quantity ?? 0);
+            $isLow = $isStockItemLow($s);
           @endphp
-          <tr @if($isLow && $hasQty) class="low-stock-row" title="Low Stock! min_qty is {{ $s->alert_limit }}" @endif>
+          <tr @if($isLow) class="low-stock-row" title="Low Stock! min_qty is {{ number_format($alertLimit, 2) }}" @endif>
             <td style="font-weight:400;">
               <div style="font-weight:normal; color:var(--text-color);">
                 {{ $s->name }}@if($s->grade && !in_array(strtoupper(trim($s->grade)), ['NONE', 'N/A', 'NA', 'N / A'], true))_<strong>{{ $s->grade }}</strong>@endif <span>(PKG)</span>
               </div>
             </td>
-            <td style="font-weight:bold; color:#0284c7;">{{ number_format($s->quantity, 2) }}</td>
+            <td style="font-weight:bold;">
+              @if($isLow)
+                <span class="low-qty-badge"><span>⚠</span> {{ number_format($qty, 2) }}</span>
+              @else
+                <span style="color:#0284c7;">{{ number_format($qty, 2) }}</span>
+              @endif
+            </td>
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold; color:var(--text-color);">
-              {{ number_format($s->alert_limit, 2) }}
-              <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
+              {{ number_format($alertLimit, 2) }}
+              <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $alertLimit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
             </td>
@@ -1086,15 +1144,13 @@ function updateStockTables(stockData) {
     
     // Sort items so low stock always appears at the top
     items.sort((a, b) => {
-      const limitA = parseFloat(a.alert_limit) || 0;
+      const limitA = parseFloat(a.alert_limit) || parseFloat(a.threshold) || 0;
       const qtyA = parseFloat(a.quantity) || 0;
-      const hasQtyA = qtyA > 0;
-      const isLowA = (limitA > 0 && qtyA <= limitA && hasQtyA) ? 0 : ((limitA > 0 && qtyA <= limitA) ? 1 : 2);
+      const isLowA = (limitA > 0 && qtyA <= limitA) ? 0 : 1;
 
-      const limitB = parseFloat(b.alert_limit) || 0;
+      const limitB = parseFloat(b.alert_limit) || parseFloat(b.threshold) || 0;
       const qtyB = parseFloat(b.quantity) || 0;
-      const hasQtyB = qtyB > 0;
-      const isLowB = (limitB > 0 && qtyB <= limitB && hasQtyB) ? 0 : ((limitB > 0 && qtyB <= limitB) ? 1 : 2);
+      const isLowB = (limitB > 0 && qtyB <= limitB) ? 0 : 1;
 
       if (isLowA !== isLowB) return isLowA - isLowB;
       const sortA = a.sort_order !== undefined ? parseInt(a.sort_order) : 9999;
@@ -1110,12 +1166,11 @@ function updateStockTables(stockData) {
 
     let html = '';
     items.forEach(s => {
-      const limit = parseFloat(s.alert_limit) || 0;
-      const qty = parseFloat(s.quantity);
-      const hasQty = qty > 0;
+      const limit = parseFloat(s.alert_limit) || parseFloat(s.threshold) || 0;
+      const qty = parseFloat(s.quantity) || 0;
       const isLow = limit > 0 && qty <= limit;
-      const rowClass = (isLow && hasQty) ? 'low-stock-row' : '';
-      const titleAttr = (isLow && hasQty) ? `title="Low Stock! min_qty is ${limit}"` : '';
+      const rowClass = isLow ? 'low-stock-row' : '';
+      const titleAttr = isLow ? `title="Low Stock! min_qty is ${limit}"` : '';
 
       const formattedQty = qty.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
       
@@ -1125,6 +1180,10 @@ function updateStockTables(stockData) {
       if (stage === 'FINISHED') qtyColor = 'var(--secondary)';
       if (stage === 'PACKAGING') qtyColor = '#0284c7';
 
+      const qtyContent = isLow
+        ? `<span class="low-qty-badge"><span>⚠</span> ${formattedQty}</span>`
+        : `<span style="color:${qtyColor};">${formattedQty}</span>`;
+
       html += `
         <tr class="${rowClass}" ${titleAttr}>
           <td>
@@ -1132,7 +1191,7 @@ function updateStockTables(stockData) {
               ${s.name}${(s.grade && !['NONE', 'N/A', 'NA', 'N / A'].includes(s.grade.trim().toUpperCase())) ? '_<strong>' + escapeHtml(s.grade) + '</strong>' : ''}(${s.stage === 'FINISHED' ? 'FG' : (s.stage === 'PACKAGING' ? 'PKG' : s.stage)})
             </div>
           </td>
-          <td style="font-weight:bold; color:${qtyColor};">${formattedQty}</td>
+          <td style="font-weight:bold;">${qtyContent}</td>
           <td>${s.unit || ''}</td>
           <td style="font-weight:bold; color:var(--text-color);">
             ${limit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}

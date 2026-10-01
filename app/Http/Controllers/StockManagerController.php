@@ -271,10 +271,11 @@ class StockManagerController extends Controller
                 products.rate,
                 stocks.stage,
                 stocks.grade,
-                IFNULL(stock_limits.alert_limit, products.threshold) as alert_limit,
+                products.sort_order,
+                COALESCE(NULLIF(stock_limits.alert_limit, 0), NULLIF(products.threshold, 0), stock_limits.alert_limit, products.threshold, 0) as alert_limit,
                 SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
             ")
-            ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
+            ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) >= 0")
             ->orderBy('stocks.stage')
             ->orderBy('products.sort_order')
             ->get();

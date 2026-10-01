@@ -235,6 +235,57 @@ class StockManagerActionTest extends TestCase
         $response->assertSee('FG Low Stock: 1');
         $response->assertSee('type=finished&amp;low_stock=1', false);
     }
+
+    public function test_stock_manager_stock_view_shows_low_stock_in_red_and_ranked_on_top(): void
+    {
+        // Product 1: low stock (threshold 100, stock 20)
+        $this->product->update(['threshold' => 100.0, 'name' => 'Low Stock Amchur']);
+        Stock::create([
+            'product_id' => $this->product->id,
+            'stage' => 'FINISHED',
+            'grade' => 'A',
+            'location_id' => $this->location->id,
+            'quantity' => 20,
+            'transaction_type' => 'IN',
+            'user_id' => $this->stockManager->id,
+        ]);
+
+        // Product 2: normal stock (threshold 10, stock 50)
+        $normalProduct = Product::create([
+            'name' => 'Adequate Stock Garlic',
+            'type' => 'FINISHED',
+            'unit' => 'KG',
+            'threshold' => 10.0,
+            'rate' => 150.0,
+            'is_active' => true,
+        ]);
+        Stock::create([
+            'product_id' => $normalProduct->id,
+            'stage' => 'FINISHED',
+            'grade' => 'A',
+            'location_id' => $this->location->id,
+            'quantity' => 50,
+            'transaction_type' => 'IN',
+            'user_id' => $this->stockManager->id,
+        ]);
+
+        $response = $this->withSession([
+            'auth_user' => $this->stockManager->toArray(),
+        ])->get('/stock_manager/stock');
+
+        $response->assertStatus(200);
+        $content = $response->getContent();
+
+        // Must show low stock badge & row class
+        $this->assertStringContainsString('low-stock-row', $content);
+        $this->assertStringContainsString('low-qty-badge', $content);
+        $this->assertStringContainsString('Low Stock Ranked on Top', $content);
+
+        // Low stock item must appear before the normal item in HTML
+        $posLow = strpos($content, 'Low Stock Amchur');
+        $posNormal = strpos($content, 'Adequate Stock Garlic');
+        $this->assertTrue($posLow !== false && $posNormal !== false && $posLow < $posNormal, 'Low stock product should be sorted before normal product');
+    }
 }
 
 
