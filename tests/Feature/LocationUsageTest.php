@@ -41,30 +41,16 @@ class LocationUsageTest extends TestCase
 
         $response = $this->withSession($session)->deleteJson("/admin/locations/{$mainLoc->id}");
         $response->assertStatus(403);
-        $response->assertJson(['success' => false]);
+        $response->assertJson([
+            'success' => false,
+            'message' => 'Storage locations cannot be deleted once added. You can edit the location name or description instead.'
+        ]);
         $this->assertDatabaseHas('locations', ['id' => $mainLoc->id]);
     }
 
-    public function test_location_in_use_cannot_be_deleted(): void
+    public function test_added_location_cannot_be_deleted(): void
     {
         $loc = Location::create(['name' => 'Cold Storage Bay']);
-        $product = Product::create([
-            'name' => 'Test Product',
-            'type' => 'RAW',
-            'unit' => 'kg',
-            'is_active' => true,
-        ]);
-
-        Stock::create([
-            'product_id' => $product->id,
-            'user_id' => $this->adminUser->id,
-            'stage' => 'RAW',
-            'grade' => 'NONE',
-            'location_id' => $loc->id,
-            'quantity' => 50,
-            'transaction_type' => 'IN',
-            'date' => now(),
-        ]);
 
         $session = ['auth_user' => [
             'id' => $this->adminUser->id,
@@ -73,20 +59,17 @@ class LocationUsageTest extends TestCase
         ]];
 
         $response = $this->withSession($session)->deleteJson("/admin/locations/{$loc->id}");
-        $response->assertStatus(422);
-        $response->assertJson(['success' => false]);
+        $response->assertStatus(403);
+        $response->assertJson([
+            'success' => false,
+            'message' => 'Storage locations cannot be deleted once added. You can edit the location name or description instead.'
+        ]);
         $this->assertDatabaseHas('locations', ['id' => $loc->id]);
-
-        // Check that view disables delete button and shows usage count
-        $viewResponse = $this->withSession($session)->get('/admin/locations');
-        $viewResponse->assertStatus(200);
-        $viewResponse->assertSee('1 record');
-        $viewResponse->assertSee('is-disabled');
     }
 
-    public function test_unused_location_can_be_deleted(): void
+    public function test_locations_view_has_edit_button_and_no_delete_button(): void
     {
-        $loc = Location::create(['name' => 'Temporary Spare Shelf']);
+        $loc = Location::create(['name' => 'New Storage Area']);
 
         $session = ['auth_user' => [
             'id' => $this->adminUser->id,
@@ -94,9 +77,10 @@ class LocationUsageTest extends TestCase
             'role' => 'ADMIN',
         ]];
 
-        $response = $this->withSession($session)->deleteJson("/admin/locations/{$loc->id}");
-        $response->assertStatus(200);
-        $response->assertJson(['success' => true]);
-        $this->assertDatabaseMissing('locations', ['id' => $loc->id]);
+        $viewResponse = $this->withSession($session)->get('/admin/locations');
+        $viewResponse->assertStatus(200);
+        $viewResponse->assertSee('adminEditLocation');
+        $viewResponse->assertDontSee('adminDeleteLocation');
+        $viewResponse->assertDontSee('btn-icon delete');
     }
 }

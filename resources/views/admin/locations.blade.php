@@ -74,19 +74,6 @@
                 <button class="btn-icon edit" onclick="adminEditLocation({{ json_encode($loc) }})" title="Edit">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
-                @if($isFixed)
-                  <button class="btn-icon delete is-disabled" disabled style="opacity:0.35; cursor:not-allowed;" title="Cannot delete: System fixed location (Main Warehouse)">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                  </button>
-                @elseif($isInUse)
-                  <button class="btn-icon delete is-disabled" disabled style="opacity:0.35; cursor:not-allowed;" title="Cannot delete: In use across {{ $usageCount }} {{ \Illuminate\Support\Str::plural('record', $usageCount) }}">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                  </button>
-                @else
-                  <button class="btn-icon delete" onclick="adminDeleteLocation({{ $loc->id }}, '{{ addslashes($loc->name) }}')" title="Delete">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                  </button>
-                @endif
               </div>
               @endif
             </td>
@@ -195,34 +182,6 @@ function adminSaveLocation() {
   .catch(() => {
     btn.disabled = false;
     btn.style.opacity = '1';
-  });
-}
-
-function adminDeleteLocation(id, name) {
-  if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
-  Swal.fire({
-    title: 'Delete Location?',
-    text: `Are you sure you want to delete location "${name}"?`,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Yes, Delete',
-    cancelButtonText: 'Cancel'
-  }).then(result => {
-    if (result.isConfirmed) {
-      fetch(window.baseUrl + '/' + window.userSlug + '/locations/' + id, {
-        method: 'DELETE',
-        headers: { 'X-CSRF-TOKEN': window.csrfToken }
-      })
-      .then(r => r.json())
-      .then(d => {
-        if (d.success) {
-          Swal.fire('Deleted', d.message, 'success');
-          setTimeout(() => location.reload(), 700);
-        } else {
-          Swal.fire('Error', d.message || 'Could not delete location.', 'error');
-        }
-      });
-    }
   });
 }
 

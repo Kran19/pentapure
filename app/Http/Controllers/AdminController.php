@@ -2466,22 +2466,10 @@ class AdminController extends Controller
 
     public function destroyLocationApi($id)
     {
-        $loc = Location::withCount(['stocks', 'dispatchLocations'])->findOrFail($id);
-
-        if (in_array(strtoupper(trim($loc->name)), ['MAIN WAREHOUSE', 'DEFAULT'], true)) {
-            return response()->json(['success' => false, 'message' => 'Fixed system location (Main Warehouse) cannot be deleted!'], 403);
-        }
-
-        $usageCount = ($loc->stocks_count ?? 0) + ($loc->dispatch_locations_count ?? 0);
-        if ($usageCount > 0) {
-            return response()->json([
-                'success' => false,
-                'message' => "Cannot delete location: it is currently in use across {$usageCount} stock/dispatch " . (\Illuminate\Support\Str::plural('record', $usageCount)) . "!"
-            ], 422);
-        }
-
-        $loc->delete();
-        return response()->json(['success' => true, 'message' => 'Location deleted successfully!']);
+        return response()->json([
+            'success' => false,
+            'message' => 'Storage locations cannot be deleted once added. You can edit the location name or description instead.'
+        ], 403);
     }
 
     public function stockLocationsBreakdownApi(Request $request)

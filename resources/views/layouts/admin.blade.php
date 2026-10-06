@@ -554,7 +554,6 @@
         let listHtml = locs.map(loc => `
           <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:8px; margin-bottom:6px;">
             <span style="font-weight:600; color:var(--primary-light);">${escapeHtml(loc.name)}</span>
-            <button class="btn btn-danger btn-sm" onclick="deleteLocation(${loc.id})" style="padding:4px 8px; width:auto; font-size:0.75rem;">Delete</button>
           </div>
         `).join('') || '<p style="text-align:center;color:#8b949e;">No locations added yet.</p>';
 
@@ -599,35 +598,6 @@
       } catch(e) {
         app.toast('Network error', 'error');
       }
-    }
-
-    function deleteLocation(id) {
-      Swal.fire({
-        title: 'Delete location?',
-        text: 'This will permanently remove the location and any associated stock constraints.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        confirmButtonText: 'Yes, delete'
-      }).then(async res => {
-        if(res.isConfirmed) {
-          try {
-            const response = await fetch(window.baseUrl + '/' + window.userSlug + '/locations/' + id, {
-              method: 'DELETE',
-              headers: { 'X-CSRF-TOKEN': window.csrfToken }
-            });
-            const data = await response.json();
-            if (data.success) {
-              app.toast('Location deleted');
-              openLocationsAdminModal();
-            } else {
-              app.toast(data.message || 'Failed to delete location', 'error');
-            }
-          } catch(e) {
-            app.toast('Network error', 'error');
-          }
-        }
-      });
     }
   </script>
 
