@@ -362,11 +362,15 @@ header {
 .role-badge {
   font-size: 0.7rem;
   background: var(--primary);
-  padding: 0.2rem 0.5rem;
+  color: #000000 !important;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
   border-radius: 20px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   width: fit-content;
+  display: inline-block;
+  line-height: 1.2;
 }
 
 /* Main Content */
@@ -1417,25 +1421,24 @@ a.btn-danger:hover {
     top: 0;
     left: 0;
     right: 0;
-    height: 50px;
+    height: 56px;
     background: var(--dark-panel);
     border-bottom: 1px solid var(--glass-border);
     z-index: 1500;
     align-items: center;
-    justify-content: center;
     color: var(--text-main);
-    font-weight: 700;
-    font-size: 1rem;
-    letter-spacing: 1px;
-    text-transform: uppercase;
   }
 
   body.admin-mode .admin-mobile-header {
     display: flex;
   }
 
+  body.admin-mode .content-wrapper > header#app-header {
+    display: none !important;
+  }
+
   body.admin-mode #content-area {
-    padding-top: 60px;
+    padding-top: 66px;
   }
 
   .admin-close-btn {

@@ -150,17 +150,26 @@
           <div class="user-info">
               @php
                 $segments = [
-                  // 'raw' => ['Raw', 'RAW MATERIAL'],
-                  // 'semi' => ['Semi', 'SEMI PRODUCT'],
-                  // 'finished' => ['Finished', 'FINISHED GOODS'],
-                  'cashier' => ['Cashier', 'FINANCE'],
+                  'cashier' => ['Cashier', 'CASHIER'],
                   'sales' => ['Sales', 'SALES'],
                   'dispatch' => ['Dispatch', 'DISPATCH'],
                   'attendance' => ['Attendance', 'ATTENDANCE'],
-                  'stock_manager' => ['Stock Manager', 'STOCK MANAGEMENT']
+                  'stock_manager' => ['Stock Manager', 'STOCK MANAGER'],
+                  'admin' => ['Admin', 'ADMIN'],
+                  'sub_admin' => ['Sub Admin', 'SUB ADMIN'],
                 ];
                 $userName = $sessUser['name'] ?? ($segments[$role][0] ?? 'User');
-                $userRole = $sessUser['role'] ?? ($segments[$role][1] ?? strtoupper($role));
+                $rawRole = $sessUser['role'] ?? ($segments[$role][1] ?? strtoupper($role));
+                $userRole = match(strtoupper(trim($rawRole))) {
+                    'ADMIN' => 'ADMIN',
+                    'SUB_ADMIN', 'SUBADMIN' => 'SUB ADMIN',
+                    'STOCK_MANAGER', 'STOCK MANAGEMENT' => 'STOCK MANAGER',
+                    'CASHIER', 'FINANCE' => 'CASHIER',
+                    'SALES' => 'SALES',
+                    'DISPATCH' => 'DISPATCH',
+                    'ATTENDANCE' => 'ATTENDANCE',
+                    default => str_replace('_', ' ', strtoupper($rawRole)),
+                };
               @endphp
             <span class="user-name" id="current-user-name">{{ $userName }}</span>
             <span class="role-badge" id="current-user-role">{{ $userRole }}</span>

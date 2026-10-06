@@ -32,7 +32,28 @@
           </svg>
         </div>
 
-        <div id="admin-mobile-header" class="admin-mobile-header">Attendance Manager</div>
+        @php
+          $headerUser = session('auth_user') ?? (auth()->user() ? auth()->user()->toArray() : null);
+          $userName = $headerUser['name'] ?? 'User';
+          $rawRole = $headerUser['role'] ?? 'ATTENDANCE';
+          $roleLabel = match(strtoupper(trim($rawRole))) {
+              'ADMIN' => 'ADMIN',
+              'SUB_ADMIN', 'SUBADMIN' => 'SUB ADMIN',
+              'STOCK_MANAGER', 'STOCK MANAGEMENT' => 'STOCK MANAGER',
+              'CASHIER', 'FINANCE' => 'CASHIER',
+              'SALES' => 'SALES',
+              'DISPATCH' => 'DISPATCH',
+              'ATTENDANCE' => 'ATTENDANCE',
+              default => str_replace('_', ' ', strtoupper($rawRole)),
+          };
+        @endphp
+
+        <div id="admin-mobile-header" class="admin-mobile-header" style="justify-content:space-between; padding:0.4rem 1rem 0.4rem 52px;">
+          <div class="user-info" style="display:flex; flex-direction:column; gap:2px; text-align:left;">
+            <span class="user-name" style="font-size:0.92rem; font-weight:700; color:var(--text-main); line-height:1.2;">{{ $userName }}</span>
+            <span class="role-badge" style="font-size:0.65rem; background:var(--primary); color:#000000; font-weight:700; padding:2px 7px; border-radius:20px; text-transform:uppercase; letter-spacing:0.5px; width:fit-content; line-height:1.2;">{{ $roleLabel }}</span>
+          </div>
+        </div>
 
         <!-- Sidebar -->
         <div id="admin-sidebar" class="admin-sidebar">
@@ -87,23 +108,41 @@
           </div>
         </div>
 
-        <!-- Content -->
-        <div class="main-content" id="content-area">
-          @php 
-            $seg2 = request()->segment(2) ?? 'home';
-          @endphp
-          @if(!in_array($seg2, ['home', 'dashboard']))
-            <div style="margin-bottom: 1rem;">
-              <button onclick="history.back()" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:8px; padding:0.4rem 0.8rem; cursor:pointer; color:var(--text-main); display:inline-flex; align-items:center; gap:5px; transition:all 0.2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border-color)'">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                   <line x1="19" y1="12" x2="5" y2="12"></line>
-                   <polyline points="12 19 5 12 12 5"></polyline>
-                </svg>
-                Back
-              </button>
+        <div class="content-wrapper">
+          <!-- Standard Header -->
+          <header id="app-header">
+            <div class="user-info">
+              <span class="user-name" id="current-user-name">{{ $userName }}</span>
+              <span class="role-badge" id="current-user-role">{{ $roleLabel }}</span>
             </div>
-          @endif
-          @yield('content')
+            <div class="header-actions" style="display:flex; align-items:center;">
+              <a href="{{ url(request()->segment(1) . '/notifications') }}" id="notif-bell-container" style="position:relative; cursor:pointer; color:var(--text-main); text-decoration:none; display:flex; align-items:center;" title="Notifications">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                </svg>
+              </a>
+            </div>
+          </header>
+
+          <!-- Content -->
+          <div class="main-content" id="content-area">
+            @php 
+              $seg2 = request()->segment(2) ?? 'home';
+            @endphp
+            @if(!in_array($seg2, ['home', 'dashboard']))
+              <div style="margin-bottom: 1rem;">
+                <button onclick="history.back()" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:8px; padding:0.4rem 0.8rem; cursor:pointer; color:var(--text-main); display:inline-flex; align-items:center; gap:5px; transition:all 0.2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border-color)'">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                     <line x1="19" y1="12" x2="5" y2="12"></line>
+                     <polyline points="12 19 5 12 12 5"></polyline>
+                  </svg>
+                  Back
+                </button>
+              </div>
+            @endif
+            @yield('content')
+          </div>
         </div>
       </div>
     </div>

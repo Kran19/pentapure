@@ -71,10 +71,29 @@
           </svg>
         </div>
 
-        <div id="admin-mobile-header" class="admin-mobile-header">
-          Pentapure Admin
-          <a href="{{ url(request()->segment(1) . '/notifications') }}" id="notif-bell-container" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:inherit; text-decoration:none;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        @php
+          $headerUser = $authUser ?? session('auth_user') ?? (auth()->user() ? auth()->user()->toArray() : null);
+          $userName = $headerUser['name'] ?? 'User';
+          $rawRole = $headerUser['role'] ?? ($role ?? 'ADMIN');
+          $roleLabel = match(strtoupper(trim($rawRole))) {
+              'ADMIN' => 'ADMIN',
+              'SUB_ADMIN', 'SUBADMIN' => 'SUB ADMIN',
+              'STOCK_MANAGER', 'STOCK MANAGEMENT' => 'STOCK MANAGER',
+              'CASHIER', 'FINANCE' => 'CASHIER',
+              'SALES' => 'SALES',
+              'DISPATCH' => 'DISPATCH',
+              'ATTENDANCE' => 'ATTENDANCE',
+              default => str_replace('_', ' ', strtoupper($rawRole)),
+          };
+        @endphp
+
+        <div id="admin-mobile-header" class="admin-mobile-header" style="justify-content:space-between; padding:0.4rem 1rem 0.4rem 52px;">
+          <div class="user-info" style="display:flex; flex-direction:column; gap:2px; text-align:left;">
+            <span class="user-name" style="font-size:0.92rem; font-weight:700; color:var(--text-main); line-height:1.2;">{{ $userName }}</span>
+            <span class="role-badge" style="font-size:0.65rem; background:var(--primary); color:#000000; font-weight:700; padding:2px 7px; border-radius:20px; text-transform:uppercase; letter-spacing:0.5px; width:fit-content; line-height:1.2;">{{ $roleLabel }}</span>
+          </div>
+          <a href="{{ url(request()->segment(1) . '/notifications') }}" id="notif-bell-container" style="position:relative; cursor:pointer; color:inherit; text-decoration:none; display:flex; align-items:center;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
               <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
             </svg>
@@ -452,28 +471,50 @@
           </div>
         </div>
 
-        <!-- Content area fully rendered by Blade -->
-        <div class="main-content" id="content-area">
-          @php 
-            $seg2 = request()->segment(2) ?? 'home';
-          @endphp
-          @if(!in_array($seg2, ['home', 'dashboard']))
-            <div style="margin-bottom: 1rem;">
-              <button onclick="history.back()" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:8px; padding:0.4rem 0.8rem; cursor:pointer; color:var(--text-main); display:inline-flex; align-items:center; gap:5px; transition:all 0.2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border-color)'">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                   <line x1="19" y1="12" x2="5" y2="12"></line>
-                   <polyline points="12 19 5 12 12 5"></polyline>
+        <div class="content-wrapper">
+          <!-- Standard Header -->
+          <header id="app-header">
+            <div class="user-info">
+              <span class="user-name" id="current-user-name">{{ $userName }}</span>
+              <span class="role-badge" id="current-user-role">{{ $roleLabel }}</span>
+            </div>
+            <div class="header-actions" style="display:flex; align-items:center;">
+              <div class="nav-item desktop-only" style="cursor:pointer; display:flex; align-items:center; gap:0.4rem; padding:0.4rem 0.8rem; margin-right:12px; font-size:0.85rem; border-radius:8px; border:1px solid var(--glass-border);" onclick="toggleTheme()" title="Toggle Theme">
+                <span id="header-theme-icon">🌙</span>
+              </div>
+              <a href="{{ url(request()->segment(1) . '/notifications') }}" id="notif-bell-container" style="position:relative; cursor:pointer; color:var(--text-main); text-decoration:none; display:flex; align-items:center;" title="Notifications">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
                 </svg>
-                Back
-              </button>
+                <span id="notif-badge" style="position:absolute; top:-5px; right:-5px; background:var(--danger); color:white; font-size:10px; padding:2px 5px; border-radius:10px; {{ ($sidebarUnreadNotifCount ?? 0) > 0 ? '' : 'display:none;' }} min-width:16px; text-align:center;">{{ $sidebarUnreadNotifCount ?? 0 }}</span>
+              </a>
             </div>
-          @endif
-          @if(!empty($isReadOnly))
-            <div style="margin-bottom:1rem; padding:0.75rem 1.2rem; background:#fffbe8; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:8px; color:#92400e; font-weight:600; display:flex; align-items:center; gap:8px; font-size:0.9rem; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
-              <span>🔒 <strong>View-Only Mode</strong>: You have read-only access to this page. Action buttons like Add, Edit, Delete, or Save are disabled.</span>
-            </div>
-          @endif
-          @yield('content')
+          </header>
+
+          <!-- Content area fully rendered by Blade -->
+          <div class="main-content" id="content-area">
+            @php 
+              $seg2 = request()->segment(2) ?? 'home';
+            @endphp
+            @if(!in_array($seg2, ['home', 'dashboard']))
+              <div style="margin-bottom: 1rem;">
+                <button onclick="history.back()" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:8px; padding:0.4rem 0.8rem; cursor:pointer; color:var(--text-main); display:inline-flex; align-items:center; gap:5px; transition:all 0.2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border-color)'">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                     <line x1="19" y1="12" x2="5" y2="12"></line>
+                     <polyline points="12 19 5 12 12 5"></polyline>
+                  </svg>
+                  Back
+                </button>
+              </div>
+            @endif
+            @if(!empty($isReadOnly))
+              <div style="margin-bottom:1rem; padding:0.75rem 1.2rem; background:#fffbe8; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:8px; color:#92400e; font-weight:600; display:flex; align-items:center; gap:8px; font-size:0.9rem; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                <span>🔒 <strong>View-Only Mode</strong>: You have read-only access to this page. Action buttons like Add, Edit, Delete, or Save are disabled.</span>
+              </div>
+            @endif
+            @yield('content')
+          </div>
         </div>
       </div>
     </div>
@@ -495,8 +536,10 @@
     }
     function updateThemeUI(isDark) {
       const themeIcon = document.getElementById('theme-icon');
+      const headerThemeIcon = document.getElementById('header-theme-icon');
       const themeText = document.getElementById('theme-text');
       if (themeIcon) themeIcon.textContent = isDark ? '☀️' : '🌙';
+      if (headerThemeIcon) headerThemeIcon.textContent = isDark ? '☀️' : '🌙';
       if (themeText) themeText.textContent = isDark ? 'Light Mode' : 'Dark Mode';
     }
     document.addEventListener('DOMContentLoaded', () => {
