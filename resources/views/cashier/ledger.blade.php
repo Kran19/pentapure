@@ -2,6 +2,13 @@
 
 @section('content')
 @php
+  $authUser = session('auth_user') ?? [];
+  $currentUserId = (int)($authUser['id'] ?? 0);
+  $visibleTeamMembers = array_values(array_filter($pageData['teamMembers'] ?? [], function($tm) use ($currentUserId) {
+    return (int)($tm['id'] ?? 0) !== $currentUserId;
+  }));
+  $hasTeamMembers = count($visibleTeamMembers) > 0;
+
   $q = request('q', '');
   $category = request('category', '');
   $specificDate = request('specific_date', '');
@@ -9,6 +16,9 @@
   $startDate = request('start', '');
   $endDate = request('end', '');
   $activeTab = request('tab', 'personal'); // personal, team, daily
+  if (!$hasTeamMembers && $activeTab === 'team') {
+    $activeTab = 'personal';
+  }
   $teamMember = request('team_member', 'all'); // 'all' or specific user ID / name
 
   $sourceData = $activeTab === 'team' ? ($pageData['teamTransactions'] ?? []) : ($pageData['transactions'] ?? []);
@@ -139,18 +149,18 @@
     <!-- Ledger Type (Personal / Team) -->
     <select name="tab" id="ledger-tab-select" onchange="onLedgerTabChange(this.value)" style="width:auto; flex:1; min-width:160px; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600;">
       <option value="personal" {{ $activeTab==='personal'?'selected':'' }}>PERSONAL LEDGER</option>
-      <option value="team" {{ $activeTab==='team'?'selected':'' }}>TEAM LEDGER</option>
+      @if($hasTeamMembers)
+        <option value="team" {{ $activeTab==='team'?'selected':'' }}>TEAM LEDGER</option>
+      @endif
     </select>
 
     <!-- Team Member Selector (Shown when tab === 'team') -->
-    <select id="team-member-select" name="team_member" onchange="applyLedgerFilters()" style="display:{{ $activeTab === 'team' ? 'block' : 'none' }}; width:auto; flex:1; min-width:160px; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600;">
+    <select id="team-member-select" name="team_member" onchange="applyLedgerFilters()" style="display:{{ ($activeTab === 'team' && $hasTeamMembers) ? 'block' : 'none' }}; width:auto; flex:1; min-width:160px; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600;">
       <option value="all" {{ $teamMember === 'all' ? 'selected' : '' }}>ALL TEAM MEMBERS</option>
-      @foreach($pageData['teamMembers'] ?? [] as $tm)
-        @if((int)$tm['id'] !== (int)($authUser['id'] ?? session('auth_user')['id'] ?? 0))
-          <option value="{{ $tm['id'] }}" {{ ((string)$teamMember === (string)$tm['id'] || strtolower($teamMember) === strtolower($tm['name'])) ? 'selected' : '' }}>
-            {{ strtoupper($tm['name']) }}
-          </option>
-        @endif
+      @foreach($visibleTeamMembers as $tm)
+        <option value="{{ $tm['id'] }}" {{ ((string)$teamMember === (string)$tm['id'] || strtolower($teamMember) === strtolower($tm['name'])) ? 'selected' : '' }}>
+          {{ strtoupper($tm['name']) }}
+        </option>
       @endforeach
     </select>
 
@@ -192,7 +202,7 @@
 
   <div id="ledger-search-container" class="form-group" style="display:{{ $activeTab === 'daily' ? 'none' : 'flex' }}; gap:10px; margin-bottom:1rem;">
     <input type="text" name="q" id="ledger-search-input" placeholder="Search details or amount..." value="{{ $q }}" oninput="applyLedgerFilters()" style="flex:1; padding:0.65rem 0.9rem; font-size:0.9rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
-    <div id="team-visibility-btn-wrapper" style="display:{{ $activeTab === 'team' ? 'block' : 'none' }};">
+    <div id="team-visibility-btn-wrapper" style="display:{{ ($activeTab === 'team' && $hasTeamMembers) ? 'block' : 'none' }};">
       <button type="button" class="btn btn-sm" style="background:rgba(59,130,246,0.1); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); padding:0.65rem 12px; border-radius:8px; display:flex; align-items:center; gap:6px; white-space:nowrap; height:100%;" onclick="showVisibilityInfo()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
         <span>Visibility Info</span>
@@ -360,14 +370,18 @@
     const txTable = document.getElementById('ledger-tx-table');
     const dailyTable = document.getElementById('ledger-daily-table');
 
-    if (tabVal === 'team') {
+    const currentUserId = {{ (int)($authUser['id'] ?? session('auth_user')['id'] ?? 0) }};
+    const teamMembers = (window.serverPageData?.teamMembers || []).filter(m => Number(m.id) !== currentUserId);
+    const hasTeam = teamMembers.length > 0;
+
+    if (tabVal === 'team' && hasTeam) {
       if (memberSelect) memberSelect.style.display = 'block';
       if (visBtn) visBtn.style.display = 'block';
       if (summaryCards) summaryCards.style.display = 'grid';
       if (searchContainer) searchContainer.style.display = 'flex';
       if (txTable) txTable.style.display = 'table';
       if (dailyTable) dailyTable.style.display = 'none';
-    } else if (tabVal === 'personal') {
+    } else if (tabVal === 'personal' || (tabVal === 'team' && !hasTeam)) {
       if (memberSelect) memberSelect.style.display = 'none';
       if (visBtn) visBtn.style.display = 'none';
       if (summaryCards) summaryCards.style.display = 'grid';
@@ -662,23 +676,47 @@
 
         // Check and update team member options in select dropdown
         const memberSelect = document.getElementById('team-member-select');
-        if (memberSelect && newPageData.teamMembers) {
-          const currentVal = memberSelect.value;
-          const currentOptions = Array.from(memberSelect.options).map(o => String(o.value));
-          const newMembers = newPageData.teamMembers;
-          
-          let needsUpdate = (newMembers.length + 1 !== currentOptions.length);
-          if (!needsUpdate) {
-            needsUpdate = newMembers.some(m => !currentOptions.includes(String(m.id)));
-          }
+        const tabSelect = document.getElementById('ledger-tab-select');
+        const currentUserId = {{ (int)($authUser['id'] ?? session('auth_user')['id'] ?? 0) }};
+        const newMembers = (newPageData.teamMembers || []).filter(m => Number(m.id) !== currentUserId);
+        const hasTeam = newMembers.length > 0;
 
-          if (needsUpdate) {
-            let html = `<option value="all" ${currentVal === 'all' ? 'selected' : ''}>ALL TEAM MEMBERS</option>`;
-            newMembers.forEach(tm => {
-              const isSelected = (String(currentVal) === String(tm.id) || currentVal.toLowerCase() === tm.name.toLowerCase());
-              html += `<option value="${tm.id}" ${isSelected ? 'selected' : ''}>${tm.name.toUpperCase()}</option>`;
-            });
-            memberSelect.innerHTML = html;
+        if (tabSelect) {
+          const teamOption = Array.from(tabSelect.options).find(o => o.value === 'team');
+          if (hasTeam && !teamOption) {
+            const opt = document.createElement('option');
+            opt.value = 'team';
+            opt.text = 'TEAM LEDGER';
+            tabSelect.appendChild(opt);
+          } else if (!hasTeam && teamOption) {
+            teamOption.remove();
+            if (tabSelect.value === 'team') {
+              tabSelect.value = 'personal';
+              onLedgerTabChange('personal');
+            }
+          }
+        }
+
+        if (memberSelect) {
+          if (!hasTeam) {
+            memberSelect.style.display = 'none';
+          } else {
+            const currentVal = memberSelect.value;
+            const currentOptions = Array.from(memberSelect.options).map(o => String(o.value));
+            
+            let needsUpdate = (newMembers.length + 1 !== currentOptions.length);
+            if (!needsUpdate) {
+              needsUpdate = newMembers.some(m => !currentOptions.includes(String(m.id)));
+            }
+
+            if (needsUpdate) {
+              let html = `<option value="all" ${currentVal === 'all' ? 'selected' : ''}>ALL TEAM MEMBERS</option>`;
+              newMembers.forEach(tm => {
+                const isSelected = (String(currentVal) === String(tm.id) || currentVal.toLowerCase() === tm.name.toLowerCase());
+                html += `<option value="${tm.id}" ${isSelected ? 'selected' : ''}>${tm.name.toUpperCase()}</option>`;
+              });
+              memberSelect.innerHTML = html;
+            }
           }
         }
 

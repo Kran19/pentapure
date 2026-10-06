@@ -577,7 +577,10 @@ class CashierController extends Controller
             : 0.0;
 
         if ($from && !($request->has('opening_balance') && $request->opening_balance !== '')) {
-            $prevTxs = Transaction::where('user_id', $userId)->where('created_at', '<', $from)->get();
+            $prevQuery = ($teamUserIds !== null && is_array($teamUserIds))
+                ? Transaction::whereIn('user_id', $teamUserIds)
+                : Transaction::where('user_id', $userId);
+            $prevTxs = $prevQuery->where('created_at', '<', $from)->get();
             $openingBalance = (float) $prevTxs->sum(fn($t) => $t->type === 'IN' ? $t->amount : -$t->amount);
         }
 
@@ -593,7 +596,7 @@ class CashierController extends Controller
             }
             $rows[] = [
                 'id'          => $tx->id,
-                'date'        => $tx->created_at,
+                'date'        => $tx->date ?: $tx->created_at,
                 'category'    => $tx->category,
                 'note'        => $tx->note,
                 'description' => $tx->description,
@@ -622,7 +625,7 @@ class CashierController extends Controller
         $data = [
             'reportId'       => $userId * 100 + rand(1, 99),
             'generatedOn'    => now()->format('d-M-Y H:i:s'),
-            'fromDate'       => $from ? $from->format('Y-m-d') : ($txs->first()?->created_at?->format('Y-m-d') ?? now()->format('Y-m-d')),
+            'fromDate'       => $from ? $from->format('Y-m-d') : ($txs->first()?->created_at?->format('Y-m-d') ?? ($to ? $to->format('Y-m-d') : now()->format('Y-m-d'))),
             'toDate'         => $to   ? $to->format('Y-m-d')   : now()->format('Y-m-d'),
             'cashierName'    => $cashierName,
             'cashierId'      => $userId,
@@ -643,7 +646,7 @@ class CashierController extends Controller
         $userModel = \App\Models\User::find($userId);
         $branchName = $userModel && $userModel->branch ? strtoupper(str_replace(' ', '_', $userModel->branch)) : 'ALL_BRANCHES';
 
-        $formattedFromDate = $from ? $from->format('d-m-Y') : ($txs->first()?->created_at?->format('d-m-Y') ?? now()->format('d-m-Y'));
+        $formattedFromDate = $from ? $from->format('d-m-Y') : ($txs->first()?->created_at?->format('d-m-Y') ?? ($to ? $to->format('d-m-Y') : now()->format('d-m-Y')));
         $formattedToDate   = $to   ? $to->format('d-m-Y')   : now()->format('d-m-Y');
         
         if ($from && $to && $from->format('Y-m-d') !== $to->format('Y-m-d')) {
@@ -779,7 +782,7 @@ class CashierController extends Controller
 
         $fpdi->SetFont('Helvetica', '', 8);
         $fpdi->SetXY(5, 13);
-        $fpdi->Cell(60, 5, strtoupper('Txn #' . $bill['tx_id'] . ' | ' . $bill['tx_date'] . ' | ' . $bill['tx_cat']));
+        $fpdi->Cell(60, 5, strtoupper('Txn #' . $bill['tx_id'] . ' | ' . $bill['tx_date']));
         $fpdi->SetXY(75, 13);
         $fpdi->Cell(60, 5, strtoupper('Amount: ' . $bill['tx_amount']));
 

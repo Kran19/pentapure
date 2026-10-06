@@ -145,8 +145,7 @@ body {
         </td>
     </tr>
     <tr>
-        <td style="width: 50%;">CATEGORY: {{ $category }}</td>
-        <td style="width: 50%;">SITE: {{ $site }}</td>
+        <td colspan="2">SITE: {{ $site }}</td>
     </tr>
     <tr>
         <td style="color: #15803d; font-weight: bold;">OPENING BALANCE: {{ number_format($openingBalance, 2) }}</td>

@@ -390,4 +390,24 @@ class CashierTest extends TestCase
         $response = $this->withSession($sessionB)->get('/cashier/history/pdf?cashier_id=' . $this->cashierA->id);
         $response->assertStatus(403);
     }
+
+    public function test_team_ledger_option_is_hidden_when_cashier_has_no_visible_team_members(): void
+    {
+        // Cashier B has NO visible cashiers assigned
+        $this->cashierB->update(['visible_cashiers' => []]);
+        $sessionB = ['auth_user' => ['id' => $this->cashierB->id, 'name' => $this->cashierB->name, 'role' => 'CASHIER']];
+        $respB = $this->withSession($sessionB)->get('/cashier/ledger');
+        $respB->assertStatus(200);
+        $respB->assertSee('PERSONAL LEDGER');
+        $respB->assertDontSee('value="team"', false);
+
+        // Cashier A HAS Cashier B assigned in visible_cashiers
+        $this->cashierA->update(['visible_cashiers' => [$this->cashierB->id]]);
+        $sessionA = ['auth_user' => ['id' => $this->cashierA->id, 'name' => $this->cashierA->name, 'role' => 'CASHIER']];
+        $respA = $this->withSession($sessionA)->get('/cashier/ledger');
+        $respA->assertStatus(200);
+        $respA->assertSee('value="team"', false);
+        $respA->assertSee('TEAM LEDGER');
+    }
 }
+

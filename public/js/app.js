@@ -2556,13 +2556,11 @@ const app = {
 
   downloadCashierPdf() {
     const urlParams = new URLSearchParams(window.location.search);
-    const activeTab = urlParams.get('tab') || 'personal';
+    const activeTab = document.getElementById('ledger-tab-select')?.value || urlParams.get('tab') || 'personal';
     const selectedMember = document.getElementById('team-member-select')?.value || urlParams.get('team_member') || 'all';
     const teamMembers = window.serverPageData?.teamMembers || [];
 
     const txs = (activeTab === 'team' ? (window.serverPageData?.teamTransactions || []) : (window.serverPageData?.transactions || []));
-    let cats = window.serverPageData?.categories || [];
-    if (cats.length === 0) cats = [...new Set(txs.map(t => t.category).filter(Boolean))].sort().map(c => ({value: c, label: c.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase())}));
     const sites = [...new Set(txs.map(t => t.site).filter(Boolean))].sort();
 
     const today = new Date().toISOString().split('T')[0];
@@ -2579,7 +2577,7 @@ const app = {
     }
     const defaultFromDate = earliestDate || new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
 
-    const isTeam = (activeTab === 'team');
+    const isTeam = (activeTab === 'team' && teamMembers.length > 0);
 
     Swal.fire({
       title: '📄 Generate Account Statement',
@@ -2597,14 +2595,21 @@ const app = {
 
           <div style="margin-bottom:0.8rem;">
             <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Date Filter Mode</label>
-            <select id="sp-date-type" onchange="const isAsOn = this.value === 'as_on_date'; document.getElementById('sp-custom-date-grid').style.display = isAsOn ? 'none' : 'grid'; document.getElementById('sp-as-on-date-container').style.display = isAsOn ? 'block' : 'none';" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
-              <option value="as_on_date" selected>As on date</option>
-              <option value="custom">Custom</option>
+            <select id="sp-date-type" onchange="
+              const v = this.value;
+              const isRange = (v === 'custom');
+              document.getElementById('sp-custom-date-grid').style.display = isRange ? 'grid' : 'none';
+              document.getElementById('sp-as-on-date-container').style.display = isRange ? 'none' : 'block';
+              document.getElementById('sp-date-label').innerText = (v === 'as_on_date') ? 'Statement As On Date' : 'Date';
+            " style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+              <option value="as_on_date" selected>As on date (All records up to date)</option>
+              <option value="single_day">Specific Date (Single day)</option>
+              <option value="custom">Custom Date Range</option>
             </select>
           </div>
 
           <div id="sp-as-on-date-container" style="display:block; margin-bottom:0.8rem;">
-            <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Date</label>
+            <label id="sp-date-label" style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Statement As On Date</label>
             <input id="sp-as-on" type="date" value="${today}" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
           </div>
 
@@ -2619,21 +2624,12 @@ const app = {
             </div>
           </div>
 
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; margin-bottom:0.8rem;">
-            <div>
-              <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Category</label>
-              <select id="sp-cat" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
-                <option value="all">All Categories</option>
-                ${cats.map(c => `<option value="${c.value}">${c.label}</option>`).join('')}
-              </select>
-            </div>
-            <div>
-              <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Site / Branch</label>
-              <select id="sp-site" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
-                <option value="all">All Sites</option>
-                ${sites.map(s => `<option value="${s}">${s}</option>`).join('')}
-              </select>
-            </div>
+          <div style="margin-bottom:0.8rem;">
+            <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Site / Branch</label>
+            <select id="sp-site" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+              <option value="all">All Sites</option>
+              ${sites.map(s => `<option value="${s}">${s}</option>`).join('')}
+            </select>
           </div>
 
           <div style="margin-bottom:0.8rem;">
@@ -2659,8 +2655,13 @@ const app = {
       width: '500px',
       preConfirm: () => {
         const dateType = document.getElementById('sp-date-type').value;
-        let from, to;
+        let from = '', to = '';
         if (dateType === 'as_on_date') {
+          const asOn = document.getElementById('sp-as-on').value;
+          if (!asOn) { Swal.showValidationMessage('Please select a date'); return false; }
+          from = '';
+          to   = asOn;
+        } else if (dateType === 'single_day') {
           const asOn = document.getElementById('sp-as-on').value;
           if (!asOn) { Swal.showValidationMessage('Please select a date'); return false; }
           from = asOn;
@@ -2674,7 +2675,7 @@ const app = {
         const memberEl = document.getElementById('sp-member');
         return {
           from, to,
-          category: document.getElementById('sp-cat').value,
+          category: 'all',
           site: document.getElementById('sp-site').value,
           include_bills: document.getElementById('sp-bills').checked ? 'yes' : 'no',
           opening_balance: document.getElementById('sp-opening').value || '',
@@ -2686,12 +2687,18 @@ const app = {
       if (!result.isConfirmed) return;
       const p = result.value;
       const currentSlug = this.getCurrentSlug('cashier');
-      let url = `${this.getBaseUrl()}/${currentSlug}/history/pdf?from=${p.from}&to=${p.to}&include_bills=${p.include_bills}&category=${p.category}&site=${p.site}`;
+      let url = `${this.getBaseUrl()}/${currentSlug}/history/pdf?include_bills=${p.include_bills}&category=${p.category}&site=${p.site}`;
+      if (p.from) url += `&from=${p.from}`;
+      if (p.to) url += `&to=${p.to}`;
       if (p.opening_balance) url += `&opening_balance=${p.opening_balance}`;
       if (p.tab) url += `&tab=${p.tab}`;
       if (p.cashier_id) url += `&cashier_id=${p.cashier_id}`;
       this.toast('Generating PDF... this may take a moment ⏳', 'info');
-      window.open(url, '_blank');
+      if (typeof window.downloadPdfAsync === 'function') {
+        window.downloadPdfAsync(url);
+      } else {
+        window.open(url, '_blank');
+      }
     });
   },
 
