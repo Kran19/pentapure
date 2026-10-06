@@ -129,6 +129,69 @@ class PdfGenerationTest extends TestCase
         $this->assertNotEmpty($response->getContent());
     }
 
+    public function test_stock_pdf_table_structure_and_no_rupee_question_marks(): void
+    {
+        $view = view('pdf.live-stock', [
+            'items' => [
+                [
+                    'name' => 'SALT',
+                    'stage' => 'RAW',
+                    'grade' => null,
+                    'quantity' => 1500,
+                    'unit' => 'KG',
+                    'location' => '&bull; RACK 1 (1500.000 KG)',
+                    'rate' => 3.5,
+                    'amount' => 5250.0
+                ],
+                [
+                    'name' => 'JEERA WHOLE',
+                    'stage' => 'FINISHED',
+                    'grade' => 'A',
+                    'quantity' => 200,
+                    'unit' => 'KG',
+                    'location' => '&bull; PALLET 3 (200.000 KG)',
+                    'rate' => 250.0,
+                    'amount' => 50000.0
+                ]
+            ],
+            'totalValuation' => 55250.0,
+            'generatedOn' => '06 Oct 2026, 08:00 PM',
+            'stages' => ['RAW', 'FINISHED'],
+            'date' => null,
+            'isStockManager' => false,
+        ])->render();
+
+        // 1. Stage column is not in headers
+        $dom = new \DOMDocument();
+        @$dom->loadHTML($view);
+        $ths = $dom->getElementsByTagName('th');
+        $headerTexts = [];
+        foreach ($ths as $th) {
+            $headerTexts[] = trim($th->textContent);
+        }
+        $this->assertNotContains('Stage', $headerTexts);
+
+        // 2. Product Name column contains stage badge and grade badge (only if grade exists)
+        $this->assertStringContainsString('badge-raw', $view);
+        $this->assertStringContainsString('RAW', $view);
+        $this->assertStringContainsString('badge-finished', $view);
+        $this->assertStringContainsString('FG', $view);
+        $this->assertStringContainsString('GRADE A', $view);
+
+        // 3. DomPDF rendered stream does not fall back to Helvetica question mark
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($view);
+        $output = $pdf->output();
+
+        preg_match_all('/stream[\r\n]+(.*?)[\r\n]+endstream/s', $output, $streams);
+        foreach ($streams[1] as $stream) {
+            $decompressed = @gzuncompress($stream);
+            if ($decompressed) {
+                $this->assertStringNotContainsString('?5,250', $decompressed);
+                $this->assertStringNotContainsString('?55,250', $decompressed);
+            }
+        }
+    }
+
     public function test_stock_manager_stock_pdf_download_with_packaging_stage(): void
     {
         $response = $this->withSession(['auth_user' => [

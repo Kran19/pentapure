@@ -46,7 +46,7 @@
         }
         .brand-title {
             font-size: 16px;
-            font-weight: 800;
+            font-weight: bold;
             color: #101828;
             letter-spacing: 0.5px;
         }
@@ -65,7 +65,7 @@
         .title {
             display: inline-block;
             font-size: 14px;
-            font-weight: 800;
+            font-weight: bold;
             letter-spacing: 1px;
             color: #101828;
             padding: 2px 10px;
@@ -103,8 +103,9 @@
             text-transform: uppercase;
         }
         .stats-val {
+            font-family: 'DejaVu Sans', sans-serif !important;
             font-size: 10px;
-            font-weight: 800;
+            font-weight: bold;
         }
         .card-amber { background: #fffdf5; border-color: #fde68a; }
         .card-amber .stats-val { color: #b45309; }
@@ -145,7 +146,7 @@
             background: #f8c300;
             color: #101828;
             padding: 3px 6px;
-            font-weight: 800;
+            font-weight: bold;
             font-size: 8.5px;
             border-radius: 2px 2px 0 0;
             text-transform: uppercase;
@@ -168,7 +169,7 @@
             background: #f8c300;
             color: #101828;
             padding: 4px 4px;
-            font-weight: 800;
+            font-weight: bold;
             text-align: left;
             font-size: 7.8px;
             border: 1px solid #344054;
@@ -202,14 +203,16 @@
 
         .badge-grade {
             display: inline-block;
-            background: #f1f5f9;
-            color: #334155;
-            border: 0.5px solid #cbd5e1;
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 0.5px solid #bfdbfe;
             padding: 1px 3px;
             font-size: 6.5px;
             font-weight: bold;
             border-radius: 2px;
-            margin-left: 3px;
+            margin-left: 2px;
+            text-transform: uppercase;
+            white-space: nowrap;
         }
 
         /* Alignments */
@@ -218,13 +221,15 @@
         .text-left { text-align: left !important; }
 
         .amount-highlight {
-            font-weight: 800;
+            font-family: 'DejaVu Sans', sans-serif !important;
+            font-weight: bold;
             color: #b45309;
         }
 
         .total-row td {
             background-color: #fffdf5 !important;
-            font-weight: 800;
+            font-family: 'DejaVu Sans', sans-serif !important;
+            font-weight: bold;
             font-size: 8.2px;
             border-top: 1.5px solid #f8c300 !important;
             padding: 5px 4px;
@@ -335,7 +340,7 @@
                 @if(empty($isStockManager))
                 <div class="stats-card card-purple">
                     <div class="stats-label">Total Valuation (Ref)</div>
-                    <div class="stats-val">₹{{ number_format($totalValuation, 2) }}</div>
+                    <div class="stats-val">&#8377;{{ number_format($totalValuation, 2) }}</div>
                 </div>
                 @else
                 <div class="stats-card card-purple">
@@ -393,18 +398,16 @@
             <tr>
                 @if(empty($isStockManager))
                     <th style="width: 4%;" class="text-center">#</th>
-                    <th style="width: 33%;">Product Name</th>
-                    <th style="width: 9%;" class="text-center">Stage</th>
-                    <th style="width: 26%;">Location Breakdown</th>
-                    <th style="width: 12%;" class="text-right">Available Qty</th>
+                    <th style="width: 40%;">Product Name</th>
+                    <th style="width: 27%;">Location Breakdown</th>
+                    <th style="width: 13%;" class="text-right">Available Qty</th>
                     <th style="width: 7%;" class="text-right">Rate</th>
-                    <th style="width: 9%;" class="text-right">Valuation (₹)</th>
+                    <th style="width: 9%;" class="text-right">Valuation (&#8377;)</th>
                 @else
                     <th style="width: 5%;" class="text-center">#</th>
-                    <th style="width: 44%;">Product Name</th>
-                    <th style="width: 11%;" class="text-center">Stage</th>
-                    <th style="width: 25%;">Location Breakdown</th>
-                    <th style="width: 15%;" class="text-right">Available Qty</th>
+                    <th style="width: 50%;">Product Name</th>
+                    <th style="width: 28%;">Location Breakdown</th>
+                    <th style="width: 17%;" class="text-right">Available Qty</th>
                 @endif
             </tr>
         </thead>
@@ -412,39 +415,43 @@
             @forelse($items as $idx => $item)
                 @php
                     $stageRaw = strtoupper($item['stage'] ?? '');
-                    $stageLabel = $stageRaw === 'FINISHED' ? 'FG' : ($stageRaw === 'PACKAGING' ? 'PKG' : $stageRaw);
+                    $stageLabel = match($stageRaw) {
+                        'FINISHED', 'FG' => 'FG',
+                        'PACKAGING', 'PKG' => 'PKG',
+                        default => $stageRaw
+                    };
                     $badgeClass = match($stageRaw) {
                         'RAW' => 'badge-raw',
                         'SEMI' => 'badge-semi',
-                        'FINISHED' => 'badge-finished',
-                        'PACKAGING' => 'badge-packaging',
+                        'FINISHED', 'FG' => 'badge-finished',
+                        'PACKAGING', 'PKG' => 'badge-packaging',
                         default => 'badge-raw'
                     };
-                    $hasGrade = !empty($item['grade']) && !in_array(strtoupper($item['grade']), ['NONE', 'N/A', 'DEFAULT', '-']);
+                    $gradeTrim = strtoupper(trim($item['grade'] ?? ''));
+                    $hasGrade = !empty($gradeTrim) && !in_array($gradeTrim, ['NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', '-'], true);
+                    $gradeLabel = $hasGrade ? (str_starts_with($gradeTrim, 'GRADE') ? $gradeTrim : 'GRADE ' . $gradeTrim) : '';
                 @endphp
                 <tr>
                     <td class="text-center" style="font-weight: bold; color: #475467;">{{ $idx + 1 }}</td>
                     <td>
-                        <span style="font-weight: 600;">{{ $item['name'] }}</span>
+                        <span style="font-weight: bold; color: #101828;">{{ $item['name'] }}</span>
+                        &nbsp;<span class="badge-stage {{ $badgeClass }}">{{ $stageLabel }}</span>
                         @if($hasGrade)
-                            <span class="badge-grade">{{ strtoupper($item['grade']) }}</span>
+                            &nbsp;<span class="badge-grade">{{ $gradeLabel }}</span>
                         @endif
                     </td>
-                    <td class="text-center">
-                        <span class="badge-stage {{ $badgeClass }}">{{ $stageLabel }}</span>
-                    </td>
                     <td style="font-size: 7.2px;">{!! $item['location'] !!}</td>
-                    <td class="text-right" style="font-weight: 700;">
+                    <td class="text-right" style="font-weight: bold;">
                         {{ number_format($item['quantity'], 2) }} <span style="font-size: 6.8px; font-weight: normal; color: #475467;">{{ $item['unit'] }}</span>
                     </td>
                     @if(empty($isStockManager))
-                        <td class="text-right">₹{{ number_format($item['rate'], 2) }}</td>
-                        <td class="text-right amount-highlight">₹{{ number_format($item['amount'], 2) }}</td>
+                        <td class="text-right">&#8377;{{ number_format($item['rate'], 2) }}</td>
+                        <td class="text-right amount-highlight">&#8377;{{ number_format($item['amount'], 2) }}</td>
                     @endif
                 </tr>
             @empty
                 <tr>
-                    <td colspan="{{ empty($isStockManager) ? 7 : 5 }}" class="text-center" style="padding: 15px; color: #667085;">
+                    <td colspan="{{ empty($isStockManager) ? 6 : 4 }}" class="text-center" style="padding: 15px; color: #667085;">
                         No live stock records found matching selected filters.
                     </td>
                 </tr>
@@ -453,12 +460,12 @@
             @if(!empty($items))
                 @if(empty($isStockManager))
                     <tr class="total-row">
-                        <td colspan="6" class="text-right">TOTAL STOCK VALUATION (REF):</td>
-                        <td class="text-right amount-highlight">₹{{ number_format($totalValuation, 2) }}</td>
+                        <td colspan="5" class="text-right">TOTAL STOCK VALUATION (REF):</td>
+                        <td class="text-right amount-highlight">&#8377;{{ number_format($totalValuation, 2) }}</td>
                     </tr>
                 @else
                     <tr class="total-row">
-                        <td colspan="4" class="text-right">TOTAL ITEMS / QUANTITY:</td>
+                        <td colspan="3" class="text-right">TOTAL ITEMS / QUANTITY:</td>
                         <td class="text-right amount-highlight">{{ $totalItemsCount }} items ({{ number_format($totalQtySum, 2) }})</td>
                     </tr>
                 @endif
