@@ -152,6 +152,51 @@ input[type="number"],
     box-sizing: border-box !important;
   }
 }
+
+.btn-category-add-link {
+  background: transparent !important;
+  border: none !important;
+  color: #f59e0b !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  text-decoration: none !important;
+  line-height: 1 !important;
+  transition: color 0.15s ease !important;
+}
+.btn-category-add-link:hover {
+  color: #d97706 !important;
+  text-decoration: underline !important;
+}
+
+.btn-category-plus {
+  background: #f59e0b !important;
+  color: #1e293b !important;
+  border: 1.5px solid #d97706 !important;
+  border-radius: 8px !important;
+  padding: 0 !important;
+  width: 42px !important;
+  min-width: 42px !important;
+  height: 42px !important;
+  font-weight: 800 !important;
+  font-size: 1.25rem !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.25) !important;
+  transition: all 0.15s ease !important;
+}
+.btn-category-plus:hover {
+  background: #fbbf24 !important;
+  transform: translateY(-1px);
+}
 </style>
 
 <div class="card" style="padding:2rem;">
@@ -174,25 +219,38 @@ input[type="number"],
   // Global category list populated from PHP
   window.expenseCategories = @json($pageData['categories'] ?? []);
 
-  function addCategoryPrompt() {
+  function handleCategoryChange(select) {
+    if (select.value === '__add_new__') {
+      const prevVal = select.dataset.prevValue || (window.expenseCategories[0] ? window.expenseCategories[0].value : '');
+      addCategoryPrompt(select, prevVal);
+    } else {
+      select.dataset.prevValue = select.value;
+    }
+  }
+
+  function addCategoryPrompt(triggerEl, fallbackVal) {
+    const targetSelect = triggerEl ? (triggerEl.classList.contains('tx-category') ? triggerEl : triggerEl.closest('.cashier-tx-row')?.querySelector('.tx-category')) : null;
+    const revertVal = fallbackVal || (targetSelect ? targetSelect.dataset.prevValue || (targetSelect.value !== '__add_new__' ? targetSelect.value : '') : '');
+
     Swal.fire({
       title: 'Add New Category',
       input: 'text',
       inputPlaceholder: 'Category Name',
       showCancelButton: true,
-      confirmButtonText: 'Save',
+      confirmButtonText: 'Save Category',
       confirmButtonColor: '#f59e0b',
       background: '#ffffff',
       color: '#333333',
       preConfirm: (name) => {
-        if (!name) {
+        if (!name || !name.trim()) {
           Swal.showValidationMessage('Category name is required');
           return false;
         }
-        return name;
+        return name.trim();
       }
     }).then((result) => {
       if (result.isConfirmed) {
+        const catName = result.value.trim();
         fetch(window.baseUrl + '/' + window.userSlug + '/categories', {
           method: 'POST',
           headers: {
@@ -200,31 +258,60 @@ input[type="number"],
             'Accept': 'application/json',
             'X-CSRF-TOKEN': '{{ csrf_token() }}'
           },
-          body: JSON.stringify({ name: result.value })
+          body: JSON.stringify({ name: catName })
         })
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            Swal.fire({ icon: 'success', title: 'Added', text: data.message, timer: 1000, showConfirmButton: false });
-            const slugVal = result.value.toLowerCase().replace(/ /g, '_');
-            window.expenseCategories.push({ value: slugVal, label: result.value.toUpperCase() });
+            Swal.fire({ icon: 'success', title: 'Added', text: data.message || 'Category created!', timer: 1200, showConfirmButton: false });
             
-            window.expenseCategories.sort((a, b) => {
-              if (a.label === 'NONE' || a.label === 'N/A') return -1;
-              if (b.label === 'NONE' || b.label === 'N/A') return 1;
-              return a.label.localeCompare(b.label);
-            });
+            const newCat = (data.category && data.category.value) ? data.category : {
+              value: catName.toLowerCase().replace(/[^a-z0-9]+/gi, '_'),
+              label: catName
+            };
             
+            // Check if already in list
+            const existingIdx = window.expenseCategories.findIndex(c => String(c.value) === String(newCat.value));
+            if (existingIdx === -1) {
+              window.expenseCategories.push(newCat);
+              window.expenseCategories.sort((a, b) => {
+                if (a.label === 'NONE' || a.label === 'N/A') return -1;
+                if (b.label === 'NONE' || b.label === 'N/A') return 1;
+                return a.label.localeCompare(b.label);
+              });
+            }
+
+            if (window.serverPageData) {
+              window.serverPageData.categories = window.expenseCategories;
+            }
+
+            // Update all category dropdowns across rows
             document.querySelectorAll('.tx-category').forEach(select => {
-              const currentVal = select.value;
-              select.innerHTML = window.expenseCategories.map(c => `<option value="${c.value}">${c.label}</option>`).join('');
-              select.value = currentVal;
+              const wasTarget = (select === targetSelect);
+              const targetVal = wasTarget ? newCat.value : (select.value === '__add_new__' ? (select.dataset.prevValue || newCat.value) : select.value);
+
+              select.innerHTML = window.expenseCategories.map(c => `<option value="${c.value}">${c.label}</option>`).join('') +
+                                 `<option value="__add_new__" style="color:#d97706; font-weight:700;">+ Add Category...</option>`;
+              select.value = targetVal;
+              select.dataset.prevValue = select.value;
             });
           } else {
+            if (targetSelect && revertVal && targetSelect.value === '__add_new__') {
+              targetSelect.value = revertVal;
+            }
             Swal.fire('Error', data.message || 'Failed to add category', 'error');
           }
         })
-        .catch(err => Swal.fire('Error', 'Network error', 'error'));
+        .catch(err => {
+          if (targetSelect && revertVal && targetSelect.value === '__add_new__') {
+            targetSelect.value = revertVal;
+          }
+          Swal.fire('Error', 'Network error: ' + (err.message || ''), 'error');
+        });
+      } else {
+        if (targetSelect && revertVal && targetSelect.value === '__add_new__') {
+          targetSelect.value = revertVal;
+        }
       }
     });
   }
@@ -431,11 +518,22 @@ input[type="number"],
           </select>
         </div>
         
-        <div class="form-group" style="flex:2.2 1 200px;">
-          <label>Category</label>
-          <select class="tx-category">
-            ${categories.map(c => `<option value="${c.value}">${c.label}</option>`).join('')}
-          </select>
+        <div class="form-group" style="flex:2.2 1 220px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <label style="margin-bottom:0;">Category</label>
+            <button type="button" class="btn-category-add-link" onclick="addCategoryPrompt(this)" title="Add New Category">
+              + Add Category
+            </button>
+          </div>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <select class="tx-category" onchange="handleCategoryChange(this)" style="flex:1;">
+              ${categories.map(c => `<option value="${c.value}">${c.label}</option>`).join('')}
+              <option value="__add_new__" style="color:#d97706; font-weight:700;">+ Add Category...</option>
+            </select>
+            <button type="button" class="btn-category-plus" onclick="addCategoryPrompt(this)" title="Add New Category">
+              +
+            </button>
+          </div>
         </div>
 
         <div class="form-group" style="flex:1.2 1 140px;">
@@ -497,6 +595,10 @@ input[type="number"],
     `;
     wrapper.appendChild(div);
     container.appendChild(wrapper);
+
+    div.querySelectorAll('.tx-category').forEach(sel => {
+      sel.dataset.prevValue = sel.value;
+    });
   }
 
   function saveTransactions(btn) {
@@ -513,7 +615,10 @@ input[type="number"],
       const dateEl = row.querySelector('.tx-date');
       const date = dateEl ? dateEl.value : '';
       const type = row.querySelector('.tx-type').value;
-      const category = row.querySelector('.tx-category').value;
+      let category = row.querySelector('.tx-category').value;
+      if (category === '__add_new__') {
+        category = '';
+      }
       const amount = Number(row.querySelector('.tx-amount').value);
       const note = row.querySelector('.tx-note').value;
       const reference = row.querySelector('.tx-ref').value;

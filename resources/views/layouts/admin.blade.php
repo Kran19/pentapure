@@ -194,11 +194,7 @@
               Cashier Overview
             </a>
             @endif
-            @if($can('admin_categories'))
-            <a href="{{ url(request()->segment(1) . '/categories') }}" class="nav-item {{ $seg=='categories'?'active':'' }}">
-              Expense Category Master
-            </a>
-            @endif
+
           @else
             {{-- Admin Panel Links --}}
             @if($can('admin_dashboard'))
@@ -264,11 +260,7 @@
             </a>
             @endif
 
-            @if($can('admin_categories'))
-            <a href="{{ url(request()->segment(1) . '/categories') }}" class="nav-item {{ $seg=='categories'?'active':'' }}">
-              Expense Category Master
-            </a>
-            @endif
+
 
             {{-- Sub-Admin Specific Module Panel Links --}}
             @if($role !== 'ADMIN')
@@ -283,11 +275,7 @@
                 Cashier Ledger
               </a>
               @endif
-              @if($can('cashier_categories') || $can('admin_categories'))
-              <a href="{{ url(request()->segment(1) . '/categories') }}" class="nav-item {{ $seg=='categories'?'active':'' }}">
-                Expense Categories
-              </a>
-              @endif
+
 
               {{-- Sales Panel Links --}}
               @if($can('sales_home'))

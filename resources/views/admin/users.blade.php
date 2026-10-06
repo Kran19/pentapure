@@ -131,7 +131,6 @@
             ['key' => 'admin_logs', 'name' => 'Activity Logs', 'url' => '/admin/logs'],
             ['key' => 'admin_grades', 'name' => 'Grades Master', 'url' => '/admin/grades'],
             ['key' => 'admin_locations', 'name' => 'Storage Location', 'url' => '/admin/locations'],
-            ['key' => 'admin_categories', 'name' => 'Expense Categories', 'url' => '/admin/categories'],
             ['key' => 'admin_dispatch_activity', 'name' => 'Dispatch Overview', 'url' => '/admin/dispatch-activity'],
             ['key' => 'admin_cashier_overview', 'name' => 'Cashier Overview', 'url' => '/admin/cashier-overview'],
             ['key' => 'admin_notifications', 'name' => 'Notifications', 'url' => '/admin/notifications'],
@@ -140,7 +139,6 @@
             ['key' => 'cashier_action', 'name' => 'Cashier Action / Entry', 'url' => '/cashier2/action'],
             ['key' => 'cashier_history', 'name' => 'Cashier History', 'url' => '/cashier2/history'],
             ['key' => 'cashier_ledger', 'name' => 'Cashier Ledger', 'url' => '/cashier2/ledger'],
-            ['key' => 'cashier_categories', 'name' => 'Expense Categories', 'url' => '/cashier2/categories'],
         ],
         'Sales Panel' => [
             ['key' => 'sales_home', 'name' => 'Sales Dashboard', 'url' => '/sales/home'],

@@ -1489,13 +1489,25 @@ class AdminController extends Controller
             return response()->json(['success' => true, 'message' => 'Category updated!']);
         }
 
+        $catName = trim((string)$request->name);
+        $request->merge(['name' => $catName]);
         $request->validate([
             'name' => 'required|string|max:255|unique:categories,name',
         ]);
-        Category::create([
-            'name' => $request->name,
+        $cat = Category::create([
+            'name' => $catName,
+            'is_active' => true,
         ]);
-        return response()->json(['success' => true, 'message' => 'Category created!']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Category created!',
+            'category' => [
+                'id' => $cat->id,
+                'name' => $cat->name,
+                'value' => strtolower(preg_replace('/[^a-z0-9]+/i', '_', trim($cat->name))),
+                'label' => $cat->name,
+            ],
+        ]);
     }
 
     public function toggleCategoryStatus(Request $request)
