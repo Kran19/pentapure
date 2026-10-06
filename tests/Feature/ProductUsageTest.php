@@ -73,33 +73,78 @@ class ProductUsageTest extends TestCase
         // Check UI shows disabled delete button
         $uiResponse = $this->withSession($auth['session'])->get('/admin/products');
         $uiResponse->assertStatus(200);
-        $uiResponse->assertSee('Cannot delete: Product is recorded in Stock');
+        $uiResponse->assertSee('Cannot delete: Product currently has 50.00 KG in Stock');
     }
 
-    public function test_cannot_delete_product_with_grades(): void
+    public function test_can_delete_product_with_grades_when_no_stock(): void
     {
         $auth = $this->createAdmin();
         $grade = Grade::create(['name' => '100 MESH', 'is_active' => true]);
         $product = Product::create([
-            'name' => 'PRODUCT WITH GRADE',
+            'name' => 'PRODUCT WITH GRADE NO STOCK',
             'type' => 'SEMI',
             'unit' => 'KG',
         ]);
         $product->grades()->attach($grade->id);
 
-        // Attempt API deletion
+        // UI shows delete button enabled
+        $uiResponse = $this->withSession($auth['session'])->get('/admin/products');
+        $uiResponse->assertStatus(200);
+        $uiResponse->assertSee("adminDeleteProduct({$product->id})");
+
+        // Attempt API deletion -> succeeds!
         $response = $this->withSession($auth['session'])
             ->deleteJson("/admin/products/{$product->id}");
 
-        $response->assertStatus(422);
-        $response->assertJson(['success' => false]);
-        $this->assertStringContainsString('Grades Master', $response->json('message'));
-        $this->assertDatabaseHas('products', ['id' => $product->id]);
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true]);
+        $this->assertDatabaseMissing('products', ['id' => $product->id]);
+        $this->assertDatabaseMissing('grade_product', ['product_id' => $product->id]);
+    }
 
-        // Check UI shows disabled delete button
+    public function test_can_delete_product_when_net_stock_is_zero(): void
+    {
+        $auth = $this->createAdmin();
+        $product = Product::create([
+            'name' => 'PRODUCT ZERO STOCK',
+            'type' => 'RAW',
+            'unit' => 'KG',
+        ]);
+
+        $loc = \App\Models\Location::create(['name' => 'Main Warehouse']);
+        // Net stock = 20 - 20 = 0 in admin/stock
+        Stock::create([
+            'product_id' => $product->id,
+            'user_id' => $auth['user']->id,
+            'stage' => 'RAW',
+            'grade' => 'NONE',
+            'location_id' => $loc->id,
+            'quantity' => 20,
+            'transaction_type' => 'IN',
+        ]);
+        Stock::create([
+            'product_id' => $product->id,
+            'user_id' => $auth['user']->id,
+            'stage' => 'RAW',
+            'grade' => 'NONE',
+            'location_id' => $loc->id,
+            'quantity' => 20,
+            'transaction_type' => 'OUT',
+        ]);
+
+        // UI shows delete button enabled
         $uiResponse = $this->withSession($auth['session'])->get('/admin/products');
         $uiResponse->assertStatus(200);
-        $uiResponse->assertSee('Cannot delete: Product is assigned in Grades master');
+        $uiResponse->assertSee("adminDeleteProduct({$product->id})");
+
+        // Attempt API deletion -> succeeds!
+        $response = $this->withSession($auth['session'])
+            ->deleteJson("/admin/products/{$product->id}");
+
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true]);
+        $this->assertDatabaseMissing('products', ['id' => $product->id]);
+        $this->assertDatabaseMissing('stocks', ['product_id' => $product->id]);
     }
 
     public function test_stock_page_initial_stock_type_is_all(): void

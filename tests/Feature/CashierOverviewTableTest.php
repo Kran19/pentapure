@@ -62,6 +62,9 @@ class CashierOverviewTableTest extends TestCase
         $response->assertSee('-₹200.00');
         $response->assertSee('₹800.00');
 
+        // Verify In: amount is styled in green (#16a34a)
+        $response->assertSee('<span style="color:#16a34a; font-weight:600;">₹1,000.00</span>', false);
+
         // Verify status filter dropdown is present
         $response->assertSee('STATUS:');
         $response->assertSee('ALL (IN & OUT)', false);

@@ -313,60 +313,45 @@ class AdminController extends Controller
     // ── PRODUCTS ───────────────────────────────────────────────────────────
     public function products()
     {
-        $withCounts = [
-            'stocks',
-            'grades as custom_grades_count' => function($q) {
-                $q->whereNotIn(\Illuminate\Support\Facades\DB::raw('UPPER(name)'), ['NONE', 'N/A', 'NA', 'N / A']);
-            }
-        ];
+        // Calculate available stock per product as shown in admin/stock
+        $stockMap = DB::table('stocks')
+            ->groupBy('product_id', 'stage', 'grade')
+            ->selectRaw("product_id, SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as qty")
+            ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
+            ->get()
+            ->groupBy('product_id')
+            ->map(fn($group) => (float)$group->sum('qty'));
+
+        $attachData = function($p) use ($stockMap) {
+            $p->gradeIds = $p->grades->pluck('id')->toArray();
+            $p->gradeNames = $p->grades->pluck('name')->toArray();
+            $p->current_stock = (float)($stockMap[$p->id] ?? 0);
+            return $p;
+        };
 
         $rawProducts = Product::with('grades')
-            ->withCount($withCounts)
             ->where('type', 'RAW')
             ->orderBy('sort_order')
-            ->get();
-
-        $rawProducts->transform(function($p) {
-            $p->gradeIds = $p->grades->pluck('id')->toArray();
-            $p->gradeNames = $p->grades->pluck('name')->toArray();
-            return $p;
-        });
+            ->get()
+            ->map($attachData);
             
         $semiProducts = Product::with('grades')
-            ->withCount($withCounts)
             ->where('type', 'SEMI')
             ->orderBy('sort_order')
-            ->get();
-
-        $semiProducts->transform(function($p) {
-            $p->gradeIds = $p->grades->pluck('id')->toArray();
-            $p->gradeNames = $p->grades->pluck('name')->toArray();
-            return $p;
-        });
+            ->get()
+            ->map($attachData);
 
         $finishedProducts = Product::with('grades')
-            ->withCount($withCounts)
             ->where('type', 'FINISHED')
             ->orderBy('sort_order')
-            ->get();
-            
-        $finishedProducts->transform(function($p) {
-            $p->gradeIds = $p->grades->pluck('id')->toArray();
-            $p->gradeNames = $p->grades->pluck('name')->toArray();
-            return $p;
-        });
+            ->get()
+            ->map($attachData);
 
         $packagingProducts = Product::with('grades')
-            ->withCount($withCounts)
             ->where('type', 'PACKAGING')
             ->orderBy('sort_order')
-            ->get();
-
-        $packagingProducts->transform(function($p) {
-            $p->gradeIds = $p->grades->pluck('id')->toArray();
-            $p->gradeNames = $p->grades->pluck('name')->toArray();
-            return $p;
-        });
+            ->get()
+            ->map($attachData);
             
         $allActiveGrades = \App\Models\Grade::where('is_active', true)->orderByRaw("CASE WHEN UPPER(name) IN ('NONE', 'N/A') THEN 0 ELSE 1 END")->orderBy('id')->get();
         
@@ -570,44 +555,31 @@ class AdminController extends Controller
             ], 403);
         }
 
-        $product = Product::withCount([
-            'stocks',
-            'grades' => function($q) {
-                $q->whereNotIn(\Illuminate\Support\Facades\DB::raw('UPPER(name)'), ['NONE', 'N/A', 'NA', 'N / A']);
-            },
-            'orderItems',
-            'purchaseOrders',
-            'productionLogs',
-            'productionInputs'
-        ])->findOrFail($id);
+        $product = Product::findOrFail($id);
 
-        $reasons = [];
-        if ($product->stocks_count > 0) {
-            $reasons[] = "it has {$product->stocks_count} record" . ($product->stocks_count > 1 ? 's' : '') . " in Stock";
-        }
-        if ($product->grades_count > 0) {
-            $reasons[] = "it has {$product->grades_count} assigned grade" . ($product->grades_count > 1 ? 's' : '') . " in Grades Master";
-        }
-        if ($product->order_items_count > 0) {
-            $reasons[] = "it is used in Orders ({$product->order_items_count} item" . ($product->order_items_count > 1 ? 's' : '') . ")";
-        }
-        if ($product->purchase_orders_count > 0) {
-            $reasons[] = "it is used in Purchase Orders ({$product->purchase_orders_count} PO" . ($product->purchase_orders_count > 1 ? 's' : '') . ")";
-        }
-        if ($product->production_logs_count > 0 || $product->production_inputs_count > 0) {
-            $prodCount = $product->production_logs_count + $product->production_inputs_count;
-            $reasons[] = "it is linked to Production logs ({$prodCount} entry/entries)";
-        }
+        // Check if product has available stock in admin/stock (> 0)
+        $stockBreakdown = DB::table('stocks')
+            ->where('product_id', $product->id)
+            ->groupBy('stage', 'grade')
+            ->selectRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as qty")
+            ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
+            ->get();
 
-        if (!empty($reasons)) {
+        $totalAvailable = (float) $stockBreakdown->sum('qty');
+
+        if ($totalAvailable > 0) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cannot delete product: ' . implode(' and ', $reasons) . '!'
+                'message' => "Cannot delete product: it has " . number_format($totalAvailable, 2) . " {$product->unit} available in Stock! Please dispatch or adjust stock to 0 first."
             ], 422);
         }
 
+        // Clean up stock limits, old stock ledger records, detached grades, and delete product
+        \App\Models\StockLimit::where('product_id', $product->id)->delete();
+        \App\Models\Stock::where('product_id', $product->id)->delete();
         $product->grades()->detach();
         $product->delete();
+
         return response()->json(['success' => true, 'message' => 'Product deleted!']);
     }
 
@@ -2296,6 +2268,7 @@ class AdminController extends Controller
         ];
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.cashier_overview_pdf', compact('pageData'));
+        $pdf->setPaper('A4', 'portrait');
         $filename = 'pentapure_cashier_overview_' . now()->format('d-m-Y') . '_' . rand(1000, 9999) . '.pdf';
         return $pdf->download($filename);
     }
@@ -2365,6 +2338,39 @@ class AdminController extends Controller
         ];
 
         return view('admin.notifications', compact('pageData'));
+    }
+
+    public function destroyNotification($id)
+    {
+        $deleted = \Illuminate\Support\Facades\DB::table('notifications')
+            ->where('id', (string)$id)
+            ->orWhere('id', (int)$id)
+            ->delete();
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'deleted' => $deleted,
+                'message' => 'Notification removed successfully.'
+            ]);
+        }
+
+        return back()->with('success', 'Notification removed successfully.');
+    }
+
+    public function clearNotifications(Request $request)
+    {
+        $deleted = \Illuminate\Support\Facades\DB::table('notifications')->delete();
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'deleted' => $deleted,
+                'message' => 'All notifications cleared successfully.'
+            ]);
+        }
+
+        return back()->with('success', 'All notifications cleared successfully.');
     }
 
     // ── ADMIN: DOWNLOAD ANY CASHIER'S PDF ──────────────────────────────────

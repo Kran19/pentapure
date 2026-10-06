@@ -8,9 +8,16 @@
     <div>
       <h2 style="margin:0; font-size:1.6rem;">🔔 Notification History</h2>
       <p style="margin:0.3rem 0 0; font-size:0.9rem; color:var(--text-muted);">
-        {{ $pageData['totalCount'] }} total notifications
+        <span id="notif-total-count">{{ $pageData['totalCount'] }}</span> total notifications
       </p>
     </div>
+    @if($pageData['totalCount'] > 0)
+    <div style="display:flex; gap:0.5rem;" id="clear-all-wrap">
+      <button type="button" onclick="clearAllNotifications()" class="btn" style="background:rgba(239,68,68,0.1); color:#ef4444; border:1px solid rgba(239,68,68,0.3); padding:0.5rem 1rem; border-radius:8px; font-size:0.85rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px;" onmouseover="this.style.background='#ef4444'; this.style.color='#fff';" onmouseout="this.style.background='rgba(239,68,68,0.1)'; this.style.color='#ef4444';">
+        🗑️ Clear All Notifications
+      </button>
+    </div>
+    @endif
   </div>
 
   {{-- ── Filter Tabs ──────────────────────────────────── --}}
@@ -23,13 +30,13 @@
   </div>
 
   {{-- ── Notifications List ───────────────────────────── --}}
-  @if($pageData['notifications']->isEmpty())
-    <div class="card" style="padding:3rem 2rem; text-align:center; color:var(--text-muted);">
-      <div style="font-size:3rem; margin-bottom:1rem;">🔕</div>
-      <h3 style="margin:0 0 0.5rem;">No Notifications Yet</h3>
-      <p style="margin:0; font-size:0.9rem;">Notifications will appear here when stock alerts or system events occur.</p>
-    </div>
-  @else
+  <div id="notif-none" class="card" style="{{ $pageData['notifications']->isEmpty() ? '' : 'display:none;' }} padding:3rem 2rem; text-align:center; color:var(--text-muted);">
+    <div style="font-size:3rem; margin-bottom:1rem;">🔕</div>
+    <h3 style="margin:0 0 0.5rem;">No Notifications Yet</h3>
+    <p style="margin:0; font-size:0.9rem;">Notifications will appear here when stock alerts or system events occur.</p>
+  </div>
+
+  @if($pageData['notifications']->isNotEmpty())
     <div id="notif-list" style="display:grid; gap:0.75rem;">
       @foreach($pageData['notifications'] as $n)
       @php
@@ -44,6 +51,7 @@
         $icon     = $iconMap[$n->type] ?? '🔔';
       @endphp
       <div class="notif-card"
+           id="notif-card-{{ $n->id }}"
            data-type="{{ $n->type }}"
            data-id="{{ $n->id }}"
            style="
@@ -55,7 +63,7 @@
              align-items: flex-start;
              gap: 1rem;
              box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-             transition: background 0.3s, opacity 0.3s;
+             transition: background 0.3s, opacity 0.3s, transform 0.3s;
              position: relative;
            ">
 
@@ -64,14 +72,24 @@
 
         {{-- Body --}}
         <div style="flex:1; min-width:0;">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.25rem;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.5rem;">
             <div style="font-weight:600; font-size:1rem; color:var(--text-main);">
               {{ $n->title }}
             </div>
-            <div style="font-size:0.78rem; color:var(--text-muted); white-space:nowrap;">
-              {{ $n->created_at->diffForHumans() }}
-              &nbsp;·&nbsp;
-              {{ $n->created_at->format('d-m-Y, H:i') }}
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+              <div style="font-size:0.78rem; color:var(--text-muted); white-space:nowrap;">
+                {{ $n->created_at->diffForHumans() }}
+                &nbsp;·&nbsp;
+                {{ $n->created_at->format('d-m-Y, H:i') }}
+              </div>
+              <button type="button" 
+                      onclick="deleteNotification('{{ $n->id }}', this)" 
+                      title="Remove notification"
+                      style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2); color:#ef4444; border-radius:6px; padding:3px 8px; font-size:0.75rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:3px;"
+                      onmouseover="this.style.background='#ef4444'; this.style.color='#fff';"
+                      onmouseout="this.style.background='rgba(239,68,68,0.08)'; this.style.color='#ef4444';">
+                🗑️ Delete
+              </button>
             </div>
           </div>
 
@@ -101,6 +119,87 @@
 
 <script>
 const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+const deleteUrlBase = '{{ url(request()->segment(1) . "/notifications") }}';
+const clearUrl = '{{ url(request()->segment(1) . "/notifications/clear") }}';
+
+function deleteNotification(id, btn) {
+  if (!confirm('Are you sure you want to remove this notification?')) return;
+  
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Removing...';
+
+  fetch(`${deleteUrlBase}/${id}`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': csrfToken,
+      'Accept': 'application/json'
+    }
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      const card = document.getElementById(`notif-card-${id}`) || btn.closest('.notif-card');
+      if (card) {
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+          card.remove();
+          updateNotifCount();
+        }, 250);
+      }
+    } else {
+      alert(data.message || 'Failed to delete notification');
+      btn.disabled = false;
+      btn.innerHTML = '🗑️ Delete';
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert('An error occurred while deleting the notification');
+    btn.disabled = false;
+    btn.innerHTML = '🗑️ Delete';
+  });
+}
+
+function clearAllNotifications() {
+  if (!confirm('Are you sure you want to delete ALL notifications? This action cannot be undone.')) return;
+
+  fetch(clearUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': csrfToken,
+      'Accept': 'application/json'
+    }
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      location.reload();
+    } else {
+      alert(data.message || 'Failed to clear notifications');
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert('An error occurred while clearing notifications');
+  });
+}
+
+function updateNotifCount() {
+  const cards = document.querySelectorAll('.notif-card');
+  const countEl = document.getElementById('notif-total-count');
+  if (countEl) countEl.innerText = cards.length;
+  if (cards.length === 0) {
+    const list = document.getElementById('notif-list');
+    if (list) list.style.display = 'none';
+    const none = document.getElementById('notif-none');
+    if (none) none.style.display = 'block';
+    const clearWrap = document.getElementById('clear-all-wrap');
+    if (clearWrap) clearWrap.style.display = 'none';
+  }
+}
 
 function filterNotifs(filter, btn) {
   document.querySelectorAll('.notif-tab').forEach(t => t.classList.remove('active'));
@@ -120,7 +219,7 @@ function filterNotifs(filter, btn) {
   });
 
   const empty = document.getElementById('notif-empty');
-  if (empty) empty.style.display = visible === 0 ? 'block' : 'none';
+  if (empty) empty.style.display = (visible === 0 && cards.length > 0) ? 'block' : 'none';
 }
 </script>
 

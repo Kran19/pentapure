@@ -4,6 +4,10 @@
     <meta charset="utf-8">
     <title>PentaPure - Transaction History Report</title>
     <style>
+        @page {
+            size: A4 portrait;
+            margin: 15px;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: DejaVu Sans, sans-serif;
@@ -15,7 +19,8 @@
 
         /* ── HEADER BAR ── */
         .header-bar {
-            background: #f8c300;
+            background: #ffffff;
+            border-bottom: 2px solid #cbd5e1;
             padding: 20px 30px;
             display: table;
             width: 100%;
@@ -30,7 +35,7 @@
             vertical-align: middle;
             text-align: right;
             width: 40%;
-            color: #ffffff;
+            color: #334155;
             font-size: 10px;
         }
         .header-right div { margin-bottom: 4px; }
@@ -90,8 +95,9 @@
 
         /* ── SECTION LABEL ── */
         .section-label {
-            background: #f8c300;
+            background: #f1f5f9;
             color: #101828;
+            border: 1px solid #cbd5e1;
             font-size: 11px;
             font-weight: bold;
             padding: 5px 15px;
@@ -139,7 +145,7 @@
             margin-bottom: 20px;
         }
         .data-table thead th {
-            background: #f8c300;
+            background: #f1f5f9;
             color: #101828;
             padding: 10px 8px;
             font-size: 10px;
@@ -147,7 +153,7 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
             text-align: center;
-            border: 1px solid #667085;
+            border: 1px solid #cbd5e1;
         }
         .data-table tbody td {
             padding: 10px 8px;

@@ -4,94 +4,104 @@
     <meta charset="utf-8">
     <title>Cashier Overview Statement</title>
     <style>
+        @page {
+            size: A4 portrait;
+            margin: 15px;
+        }
         body {
             font-family: DejaVu Sans, 'Helvetica', 'Arial', sans-serif;
             margin: 0;
-            padding: 20px;
-            color: #333;
-            font-size: 12px;
+            padding: 10px;
+            color: #1e293b;
+            font-size: 11px;
             text-transform: uppercase;
             background-color: #ffffff;
         }
         .header {
             text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 3px solid #f8c300;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #cbd5e1;
             padding-bottom: 15px;
         }
-        .header .brand-title { font-size: 24px; font-weight: bold; color: #101828; margin: 0; }
-        .header .tagline { font-size: 14px; font-weight: bold; color: #101828; margin-top: 5px; }
-        .header .report-title { margin-top: 15px; padding-top: 10px; border-top: 1px solid #ccc; font-size: 14px; font-weight: bold; color: #344054; text-transform: uppercase; }
+        .header .brand-title { font-size: 22px; font-weight: bold; color: #0f172a; margin: 0; }
+        .header .tagline { font-size: 12px; font-weight: bold; color: #475569; margin-top: 4px; }
+        .header .report-title { margin-top: 12px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 13px; font-weight: bold; color: #1e293b; text-transform: uppercase; }
         .header p {
-            margin: 0;
-            color: #666;
+            margin: 4px 0 0 0;
+            color: #64748b;
+            font-size: 10px;
         }
         .summary-box {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
         .summary-box td {
             width: 33.33%;
-            padding: 15px;
+            padding: 12px;
             text-align: center;
-            border: 1px solid #ddd;
+            border: 1px solid #cbd5e1;
+            background-color: #f8fafc;
         }
         .summary-box .label {
-            font-size: 10px;
+            font-size: 9px;
             text-transform: uppercase;
-            color: #666;
-            margin-bottom: 5px;
-        }
-        .summary-box .value {
-            font-size: 18px;
+            color: #64748b;
+            margin-bottom: 4px;
             font-weight: bold;
         }
-        .value.income { color: #22c55e; }
-        .value.expense { color: #ef4444; }
-        .value.balance { color: #344054; }
+        .summary-box .value {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .value.income { color: #16a34a; }
+        .value.expense { color: #dc2626; }
+        .value.balance { color: #0f172a; }
         
         .cashier-breakdown {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
         }
         .cashier-breakdown th, .cashier-breakdown td {
-            border: 1px solid #eee;
-            padding: 8px;
+            border: 1px solid #cbd5e1;
+            padding: 8px 10px;
             text-align: left;
+            font-size: 10px;
         }
         .cashier-breakdown th {
-            background-color: #f8c300;
-            color: #101828;
+            background-color: #f1f5f9;
+            color: #0f172a;
             font-weight: bold;
         }
 
         .tx-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
         }
         .tx-table th, .tx-table td {
-            border: 1px solid #ddd;
-            padding: 10px;
+            border: 1px solid #cbd5e1;
+            padding: 8px 10px;
             text-align: left;
+            font-size: 10px;
         }
         .tx-table th {
-            background-color: #f8c300;
-            color: #101828;
+            background-color: #f1f5f9;
+            color: #0f172a;
+            font-weight: bold;
         }
-        .tx-table tr:nth-child(even) { background-color: #f9fafb; }
+        .tx-table tr:nth-child(even) { background-color: #f8fafc; }
         .text-right { text-align: right; }
         .text-center { text-align: center; }
         
         .footer {
-            margin-top: 40px;
+            margin-top: 30px;
             text-align: center;
-            font-size: 10px;
-            color: #999;
-            border-top: 1px solid #eee;
-            padding-top: 15px;
+            font-size: 9px;
+            color: #94a3b8;
+            border-top: 1px solid #cbd5e1;
+            padding-top: 12px;
         }
     </style>
 </head>

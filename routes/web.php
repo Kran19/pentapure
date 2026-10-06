@@ -410,7 +410,9 @@ foreach ($adminSlugs as $slug) {
     Route::get('/grades',             'grades')->name($slug.'.grades');
     Route::post('/grades',            'storeGrade');
     Route::delete('/grades/{id}',     'destroyGrade');
-    Route::get('/notifications',      'notificationHistory')->name($slug.'.notifications');
+    Route::get('/notifications',             'notificationHistory')->name($slug.'.notifications');
+    Route::match(['delete', 'post'], '/notifications/clear', 'clearNotifications')->name($slug.'.notifications.clear');
+    Route::match(['delete', 'post'], '/notifications/{id}',  'destroyNotification')->name($slug.'.notifications.destroy');
 
     // Categories (Cashier expense categories)
     Route::get('/categories',        'categories')->name($slug.'.categories');

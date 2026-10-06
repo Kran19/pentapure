@@ -659,7 +659,7 @@ class CashierController extends Controller
 
         // 1. Generate the main statement HTML via DomPDF
         $mainPdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.cashier-statement', $data);
-        $mainPdf->setPaper('A4', 'landscape');
+        $mainPdf->setPaper('A4', 'portrait');
         $mainPdfContent = $mainPdf->output();
 
         // If no bills to include, return immediately
@@ -711,12 +711,12 @@ class CashierController extends Controller
         $fpdi = new \setasign\Fpdi\Fpdi();
         $fpdi->SetAutoPageBreak(false);
 
-        // Import all pages of the main PDF (Landscape A4: 297mm x 210mm) with 10mm margin offset
+        // Import all pages of the main PDF (Portrait A4: 210mm x 297mm)
         $mainPageCount = $fpdi->setSourceFile($tmpMain);
         for ($i = 1; $i <= $mainPageCount; $i++) {
             $tpl = $fpdi->importPage($i);
-            $fpdi->AddPage('L', 'A4');
-            $fpdi->useTemplate($tpl, 10, 10, 277, 190);
+            $fpdi->AddPage('P', 'A4');
+            $fpdi->useTemplate($tpl, 0, 0, 210, 297);
         }
 
         // Now add each bill as a new page

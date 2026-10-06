@@ -5,7 +5,8 @@
 <title>PentaPure - Account Statement</title>
 <style>
 @page {
-    margin: 15px;
+    size: A4 portrait;
+    margin: 12px;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
@@ -17,20 +18,22 @@ body {
 }
 
 .pdf-container {
-    padding: 15px 25px;
+    padding: 8px 12px;
 }
 
 /* ── HEADER ── */
 .header-table {
     width: 100%;
-    background: #ffc107;
+    background: #ffffff;
     padding: 10px 14px;
     border-radius: 4px;
     margin-bottom: 15px;
     border-collapse: collapse;
+    border: 1px solid #cbd5e1;
+    border-top: 3px solid #f59e0b;
 }
-.brand-name { font-size: 18px; font-weight: bold; color: #000000; letter-spacing: 0.5px; }
-.brand-sub  { font-size: 8px; font-weight: bold; color: #222222; margin-top: 1px; }
+.brand-name { font-size: 18px; font-weight: bold; color: #0f172a; letter-spacing: 0.5px; }
+.brand-sub  { font-size: 8px; font-weight: bold; color: #475569; margin-top: 1px; }
 
 /* ── META BOX ── */
 .meta-table {
@@ -38,6 +41,7 @@ body {
     margin-bottom: 12px;
     border-collapse: collapse;
     border: 1px solid #cbd5e1;
+    background: #ffffff;
 }
 .meta-table td {
     padding: 6px 10px;
@@ -57,12 +61,12 @@ body {
     font-size: 9px;
 }
 .data-table thead th {
-    background: #ffc107;
-    color: #000000;
+    background: #f1f5f9;
+    color: #0f172a;
     padding: 7px 6px;
     font-weight: bold;
     text-align: left;
-    border: 1px solid #94a3b8;
+    border: 1px solid #cbd5e1;
     font-size: 9px;
 }
 .data-table tbody td {
@@ -93,6 +97,8 @@ body {
 .bal-right.negative { background: #fef2f2; border: 1px solid #fca5a5; }
 .bal-label  { font-size: 8px; color: #64748b; font-weight: bold; text-transform: uppercase; }
 .bal-amount { font-size: 15px; font-weight: bold; margin-top: 1px; }
+.color-green { color: #16a34a; }
+.color-red   { color: #dc2626; }
 
 /* ── FOOTER ── */
 .footer-table {
@@ -128,10 +134,10 @@ body {
                 </tr>
             </table>
         </td>
-        <td style="width: 40%; text-align: right; color: #101828; font-size: 8.5px; vertical-align: middle;">
-            <div>Report ID: RPT-{{ str_pad($reportId, 4, '0', STR_PAD_LEFT) }}</div>
-            <div>Generated: {{ $generatedOn }}</div>
-            <div>Cashier: {{ $cashierName }}</div>
+        <td style="width: 40%; text-align: right; color: #334155; font-size: 8.5px; vertical-align: middle; line-height: 1.45;">
+            <div><strong style="color:#0f172a;">Report ID:</strong> RPT-{{ str_pad($reportId, 4, '0', STR_PAD_LEFT) }}</div>
+            <div><strong style="color:#0f172a;">Generated:</strong> {{ $generatedOn }}</div>
+            <div><strong style="color:#0f172a;">Cashier:</strong> {{ $cashierName }}</div>
         </td>
     </tr>
 </table>

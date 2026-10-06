@@ -53,17 +53,17 @@
 
     <!-- Summary Cards -->
     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:2rem;">
-        <div class="card" style="padding:1.2rem; border-left: 4px solid var(--secondary);">
+        <div class="card" style="padding:1.2rem; border-left: 4px solid #16a34a;">
             <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">Total Income</div>
-            <div style="font-size:1.8rem; font-weight:bold; color:var(--secondary); margin-top:5px;">₹{{ number_format($pageData['summary']['totalIn'], 2) }}</div>
+            <div style="font-size:1.8rem; font-weight:bold; color:#16a34a; margin-top:5px;">₹{{ number_format($pageData['summary']['totalIn'], 2) }}</div>
         </div>
         <div class="card" style="padding:1.2rem; border-left: 4px solid var(--danger);">
             <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">Total Expenses</div>
             <div style="font-size:1.8rem; font-weight:bold; color:var(--danger); margin-top:5px;">₹{{ number_format($pageData['summary']['totalOut'], 2) }}</div>
         </div>
-        <div class="card" style="padding:1.2rem; border-left: 4px solid var(--primary-light);">
+        <div class="card" style="padding:1.2rem; border-left: 4px solid {{ $pageData['summary']['balance'] >= 0 ? '#16a34a' : 'var(--danger)' }};">
             <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">Net Balance</div>
-            <div style="font-size:1.8rem; font-weight:bold; color:var(--primary-light); margin-top:5px;">₹{{ number_format($pageData['summary']['balance'], 2) }}</div>
+            <div style="font-size:1.8rem; font-weight:bold; color:{{ $pageData['summary']['balance'] >= 0 ? '#16a34a' : 'var(--danger)' }}; margin-top:5px;">₹{{ number_format($pageData['summary']['balance'], 2) }}</div>
         </div>
     </div>
 
@@ -78,7 +78,7 @@
                 </div>
                 <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
                     <span style="color:var(--text-muted);">In:</span>
-                    <span style="color:var(--secondary); font-weight:600;">₹{{ number_format($vals['in'], 2) }}</span>
+                    <span style="color:#16a34a; font-weight:600;">₹{{ number_format($vals['in'], 2) }}</span>
                 </div>
                 <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
                     <span style="color:var(--text-muted);">Out:</span>
@@ -86,7 +86,7 @@
                 </div>
                 <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-top:5px; padding-top:5px; border-top:1px dashed var(--glass-border);">
                     <span style="color:var(--text-muted);">Balance:</span>
-                    <span style="font-weight:bold; color:{{ $vals['balance'] >= 0 ? 'var(--secondary)' : 'var(--danger)' }};">₹{{ number_format($vals['balance'], 2) }}</span>
+                    <span style="font-weight:bold; color:{{ $vals['balance'] >= 0 ? '#16a34a' : 'var(--danger)' }};">₹{{ number_format($vals['balance'], 2) }}</span>
                 </div>
             </div>
             @endforeach

@@ -9,7 +9,7 @@ git pull origin main
 
 # 2. Install PHP dependencies
 echo "Installing composer dependencies..."
-composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev --no-scripts
 
 # 3. Install Node dependencies and build assets (optional but recommended if using Vite/Mix)
 # Uncomment these if you are building assets on the server instead of committing them
