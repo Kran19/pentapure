@@ -413,5 +413,22 @@ class CashierTest extends TestCase
         $respA->assertSee('value="team"', false);
         $respA->assertSee('TEAM LEDGER');
     }
+
+    public function test_cashier_can_download_statement_pdf_in_uppercase(): void
+    {
+        Transaction::create([
+            'user_id' => $this->cashierA->id,
+            'type' => 'IN',
+            'amount' => 5000.00,
+            'category' => 'sales',
+            'note' => 'wholesale salt sales',
+            'site' => 'Main Branch',
+        ]);
+
+        $sessionA = ['auth_user' => ['id' => $this->cashierA->id, 'name' => $this->cashierA->name, 'role' => 'CASHIER']];
+        $resp = $this->withSession($sessionA)->get('/cashier/history/pdf?site=Main%20Branch');
+        $resp->assertStatus(200);
+        $this->assertStringContainsString('application/pdf', $resp->headers->get('content-type'));
+    }
 }
 

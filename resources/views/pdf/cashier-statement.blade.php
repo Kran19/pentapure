@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>PentaPure - Account Statement</title>
+<title>PENTAPURE - ACCOUNT STATEMENT</title>
 <style>
 @page {
     size: A4 portrait;
@@ -36,8 +36,8 @@ table, th, td, div, span, p, a, strong, small {
     border: 1px solid #cbd5e1;
     border-top: 3px solid #f59e0b;
 }
-.brand-name { font-size: 18px; font-weight: bold; color: #0f172a; letter-spacing: 0.5px; }
-.brand-sub  { font-size: 8px; font-weight: bold; color: #475569; margin-top: 1px; }
+.brand-name { font-size: 18px; font-weight: bold; color: #0f172a; letter-spacing: 0.5px; text-transform: uppercase; }
+.brand-sub  { font-size: 8px; font-weight: bold; color: #475569; margin-top: 1px; text-transform: uppercase; }
 
 /* ── META BOX ── */
 .meta-table {
@@ -51,8 +51,9 @@ table, th, td, div, span, p, a, strong, small {
     padding: 6px 10px;
     font-size: 9px;
     border: 1px solid #cbd5e1;
+    text-transform: uppercase;
 }
-.meta-title { font-size: 12px; font-weight: bold; color: #0f172a; }
+.meta-title { font-size: 12px; font-weight: bold; color: #0f172a; text-transform: uppercase; }
 
 /* ── CONTENT ── */
 .content { width: 100%; }
@@ -72,11 +73,13 @@ table, th, td, div, span, p, a, strong, small {
     text-align: left;
     border: 1px solid #cbd5e1;
     font-size: 9px;
+    text-transform: uppercase;
 }
 .data-table tbody td {
     padding: 6px 6px;
     border: 1px solid #e2e8f0;
     vertical-align: middle;
+    text-transform: uppercase;
 }
 .data-table tbody tr:nth-child(even) { background: #f8fafc; }
 
@@ -91,6 +94,7 @@ table, th, td, div, span, p, a, strong, small {
 }
 .balance-table td {
     vertical-align: middle;
+    text-transform: uppercase;
 }
 .bal-right {
     text-align: right; 
@@ -112,10 +116,10 @@ table, th, td, div, span, p, a, strong, small {
     margin-top: 15px;
     border-collapse: collapse;
 }
-.footer-note  { font-size: 8px; color: #64748b; line-height: 1.4; }
+.footer-note  { font-size: 8px; color: #64748b; line-height: 1.4; text-transform: uppercase; }
 .sig-line     { border-top: 1px solid #334155; width: 140px; display: inline-block; margin-bottom: 3px; }
-.sig-name     { font-size: 9px; font-weight: bold; color: #0f172a; }
-.sig-role     { font-size: 8px; color: #64748b; }
+.sig-name     { font-size: 9px; font-weight: bold; color: #0f172a; text-transform: uppercase; }
+.sig-role     { font-size: 8px; color: #64748b; text-transform: uppercase; }
 </style>
 </head>
 <body>
@@ -132,16 +136,16 @@ table, th, td, div, span, p, a, strong, small {
                         @endif
                     </td>
                     <td style="text-align: left; padding-left: 8px; vertical-align: middle; border: none; background: transparent;">
-                        <div class="brand-name">PentaPure</div>
-                        <div class="brand-sub">FOOD &amp; SPICES PVT.LTD.</div>
+                        <div class="brand-name">PENTAPURE</div>
+                        <div class="brand-sub">FOOD &amp; SPICES PVT. LTD.</div>
                     </td>
                 </tr>
             </table>
         </td>
         <td style="width: 40%; text-align: right; color: #334155; font-size: 8.5px; vertical-align: middle; line-height: 1.45;">
-            <div><strong style="color:#0f172a;">Report ID:</strong> RPT-{{ str_pad($reportId, 4, '0', STR_PAD_LEFT) }}</div>
-            <div><strong style="color:#0f172a;">Generated:</strong> {{ $generatedOn }}</div>
-            <div><strong style="color:#0f172a;">Cashier:</strong> {{ $cashierName }}</div>
+            <div><strong style="color:#0f172a;">REPORT ID:</strong> RPT-{{ str_pad($reportId, 4, '0', STR_PAD_LEFT) }}</div>
+            <div><strong style="color:#0f172a;">GENERATED:</strong> {{ strtoupper($generatedOn) }}</div>
+            <div><strong style="color:#0f172a;">CASHIER:</strong> {{ strtoupper($cashierName) }}</div>
         </td>
     </tr>
 </table>
@@ -155,7 +159,7 @@ table, th, td, div, span, p, a, strong, small {
         </td>
     </tr>
     <tr>
-        <td colspan="2">SITE: {{ $site }}</td>
+        <td colspan="2">SITE: {{ strtoupper($site) }}</td>
     </tr>
     <tr>
         <td style="color: #15803d; font-weight: bold;">OPENING BALANCE: {{ number_format($openingBalance, 2) }}</td>
@@ -168,27 +172,39 @@ table, th, td, div, span, p, a, strong, small {
     <table class="data-table">
         <thead>
             <tr>
-                <th style="width: 85px;">Date</th>
-                <th>Description</th>
-                <th style="width: 95px; text-align: right;">Amt</th>
-                <th style="width: 105px; text-align: right;">Balance</th>
+                <th style="width: 85px;">DATE</th>
+                <th>DESCRIPTION</th>
+                <th style="width: 95px; text-align: right;">AMT</th>
+                <th style="width: 105px; text-align: right;">BALANCE</th>
             </tr>
         </thead>
         <tbody>
             @forelse($rows as $idx => $row)
             <tr>
-                <td>{{ \Carbon\Carbon::parse($row['date'])->format('d-m-Y') }}</td>
                 <td>
-                    {{ $row['note'] ?: ($row['description'] ?: '—') }}
-                    @if($row['reference'])
-                        <br><span style="font-size: 7.5px; color: #777;">Ref: {{ $row['reference'] }}</span>
+                    {{ \Carbon\Carbon::parse($row['date'])->format('d-m-Y') }}
+                    <br><span style="font-size: 7.5px; color: #64748b;">{{ strtoupper(\Carbon\Carbon::parse($row['date'])->format('h:i A')) }}</span>
+                </td>
+                <td>
+                    <div style="font-weight: bold; color: #0f172a;">{{ strtoupper($row['note'] ?: ($row['description'] ?: '—')) }}</div>
+                    @if(!empty($row['description']) && !empty($row['note']) && strtoupper($row['description']) !== strtoupper($row['note']))
+                        <div style="font-size: 7.5px; color: #64748b;">{{ strtoupper($row['description']) }}</div>
                     @endif
-                    @if(!empty($row['site']) && $row['site'] !== 'Pentapure' && $row['site'] !== 'All')
-                        <br><span style="font-size: 7.5px; color: #777;">Site: {{ $row['site'] }}</span>
-                    @endif
+                    <div style="font-size: 7.5px; color: #64748b; margin-top: 1px;">
+                        @if(!empty($row['cashier_name']))
+                            <span style="font-weight: bold; color: #334155;">CASHIER: {{ strtoupper($row['cashier_name']) }}</span>
+                        @endif
+                        @if(!empty($row['reference']))
+                            @if(!empty($row['cashier_name'])) &nbsp;|&nbsp; @endif
+                            <span>REF: {{ strtoupper($row['reference']) }}</span>
+                        @endif
+                        @if(!empty($row['site']) && strtoupper($row['site']) !== 'PENTAPURE' && strtoupper($row['site']) !== 'ALL')
+                            &nbsp;|&nbsp;<span>SITE: {{ strtoupper($row['site']) }}</span>
+                        @endif
+                    </div>
                 </td>
                 <td style="text-align: right;" class="{{ $row['type'] === 'IN' ? 'amt-in' : 'amt-out' }}">
-                    {{ number_format($row['amount'], 2) }}
+                    {{ $row['type'] === 'IN' ? '+' : '-' }}{{ number_format($row['amount'], 2) }}
                 </td>
                 <td style="text-align: right;">
                     <strong>{{ number_format($row['closing_bal'], 2) }}</strong>
@@ -197,7 +213,7 @@ table, th, td, div, span, p, a, strong, small {
             @empty
             <tr>
                 <td colspan="4" style="padding:15px; text-align:center; color:#888;">
-                    No transactions found for this period.
+                    NO TRANSACTIONS FOUND FOR THIS PERIOD.
                 </td>
             </tr>
             @endforelse
@@ -207,12 +223,12 @@ table, th, td, div, span, p, a, strong, small {
     <table class="balance-table">
         <tr>
             <td style="width: 55%; font-size: 8.5px; color: #555;">
-                Opening Balance: <strong>{{ number_format($openingBalance, 2) }}</strong>
-                &nbsp;+&nbsp; Income: <strong style="color:#15803d;">{{ number_format($sumIn, 2) }}</strong>
-                &nbsp;−&nbsp; Expense: <strong style="color:#b91c1c;">{{ number_format($sumOut, 2) }}</strong>
+                OPENING BALANCE: <strong>{{ number_format($openingBalance, 2) }}</strong>
+                &nbsp;+&nbsp; INCOME: <strong style="color:#15803d;">{{ number_format($sumIn, 2) }}</strong>
+                &nbsp;−&nbsp; EXPENSE: <strong style="color:#b91c1c;">{{ number_format($sumOut, 2) }}</strong>
             </td>
             <td style="width: 45%;" class="bal-right {{ $closingBalance >= 0 ? 'positive' : 'negative' }}">
-                <div class="bal-label">Closing Balance</div>
+                <div class="bal-label">CLOSING BALANCE</div>
                 <div class="bal-amount {{ $closingBalance >= 0 ? 'color-green' : 'color-red' }}">
                     {{ number_format(abs($closingBalance), 2) }}
                 </div>
@@ -224,19 +240,19 @@ table, th, td, div, span, p, a, strong, small {
         <tr>
             <td style="width: 60%; vertical-align: bottom;">
                 <div class="footer-note">
-                    This is a system-generated statement. No signature required.<br>
-                    For queries, contact the PentaPure administrator.<br>
-                    Report Period: {{ $fromDate }} to {{ $toDate }}
+                    THIS IS A SYSTEM-GENERATED STATEMENT. NO SIGNATURE REQUIRED.<br>
+                    FOR QUERIES, CONTACT THE PENTAPURE ADMINISTRATOR.<br>
+                    REPORT PERIOD: {{ \Carbon\Carbon::parse($fromDate)->format('d-m-Y') }} TO {{ \Carbon\Carbon::parse($toDate)->format('d-m-Y') }}
                     @if($includeBills && collect($rows)->flatMap(fn($r)=>$r['bills'])->isNotEmpty())
-                        &nbsp;| Bill attachments follow on next pages.
+                        &nbsp;| BILL ATTACHMENTS FOLLOW ON NEXT PAGES.
                     @endif
                 </div>
             </td>
             <td style="width: 40%; text-align: right; vertical-align: bottom; padding-right: 10px;">
-                <div style="font-size: 14px; font-weight: bold; color: #1a2744; margin-bottom: 2px;">PentaPure</div>
+                <div style="font-size: 14px; font-weight: bold; color: #1a2744; margin-bottom: 2px;">PENTAPURE</div>
                 <div class="sig-line"></div><br>
-                <div class="sig-name">Authorized Signature</div>
-                <div class="sig-role">PentaPure Admin</div>
+                <div class="sig-name">AUTHORIZED SIGNATURE</div>
+                <div class="sig-role">PENTAPURE ADMIN</div>
             </td>
         </tr>
     </table>
