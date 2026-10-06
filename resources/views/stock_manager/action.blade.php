@@ -158,7 +158,10 @@ input[type=number].no-spinners {
       <select id="sm-prod-id" name="product_id" onchange="onProductChange(this.value)" required style="padding:0.75rem; width:100%; font-size:0.95rem; font-weight:600; cursor:pointer;">
         <option value="" disabled selected>-- SELECT PRODUCT --</option>
         @foreach($pageData['products'] as $p)
-          @php $dispType = in_array(strtoupper($p->type), ['FINISHED', 'FG']) ? 'FG' : $p->type; @endphp
+          @php
+            $cleanType = strtoupper(trim((string)$p->type));
+            $dispType = in_array($cleanType, ['FINISHED', 'FG']) ? 'FG' : $p->type;
+          @endphp
           <option value="{{ $p->id }}" data-type="{{ $p->type }}">{{ $p->name }} ({{ $dispType }})</option>
         @endforeach
       </select>
@@ -260,15 +263,21 @@ function onStageChange(stage) {
   
   let html = '<option value="" disabled selected>-- SELECT PRODUCT --</option>';
   allMasterProducts.forEach(p => {
-    const isStageMatch = stage === 'ALL' || p.type === stage || ((stage === 'FINISHED' || stage === 'FG') && (p.type === 'FINISHED' || p.type === 'FG'));
+    const cleanType = String(p.type || '').trim().toUpperCase();
+    const cleanStage = String(stage || '').trim().toUpperCase();
+    const isStageMatch = cleanStage === 'ALL' || cleanType === cleanStage || ((cleanStage === 'FINISHED' || cleanStage === 'FG') && (cleanType === 'FINISHED' || cleanType === 'FG'));
     if (isStageMatch) {
-      const dispType = (p.type === 'FINISHED' || p.type === 'FG') ? 'FG' : p.type;
+      const dispType = (cleanType === 'FINISHED' || cleanType === 'FG') ? 'FG' : p.type;
       html += `<option value="${p.id}" data-type="${p.type}">${p.name} (${dispType})</option>`;
     }
   });
   prodSelect.innerHTML = html;
 
-  const exists = allMasterProducts.some(p => p.id == currentVal && (stage === 'ALL' || p.type === stage || ((stage === 'FINISHED' || stage === 'FG') && (p.type === 'FINISHED' || p.type === 'FG'))));
+  const exists = allMasterProducts.some(p => {
+    const cleanType = String(p.type || '').trim().toUpperCase();
+    const cleanStage = String(stage || '').trim().toUpperCase();
+    return p.id == currentVal && (cleanStage === 'ALL' || cleanType === cleanStage || ((cleanStage === 'FINISHED' || cleanStage === 'FG') && (cleanType === 'FINISHED' || cleanType === 'FG')));
+  });
   if (exists) {
     prodSelect.value = currentVal;
   } else {
