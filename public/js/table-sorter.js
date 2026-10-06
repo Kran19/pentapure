@@ -76,7 +76,14 @@
   function scanTables(root = document) {
     const tables = Array.from(root.querySelectorAll('table:not([data-tabulator="true"])'));
     tables.forEach((table) => {
-      if (table.dataset.sortable === 'false') return;
+      if (
+        table.dataset.sortable === 'false' ||
+        table.dataset.filterable === 'false' ||
+        table.classList.contains('no-sort') ||
+        table.classList.contains('no-filter') ||
+        table.closest('#printable-report') ||
+        table.closest('#printable-sheet')
+      ) return;
       attachSortableHeaders(table);
     });
   }

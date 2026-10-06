@@ -2300,6 +2300,11 @@ class AdminController extends Controller
         return $pdf->download($filename);
     }
 
+    public function cashierOverviewPdf(Request $request)
+    {
+        return $this->overviewPdf($request);
+    }
+
     // ── NOTIFICATION HISTORY ───────────────────────────────────────────────
     public function notificationHistory()
     {

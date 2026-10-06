@@ -155,6 +155,22 @@ class PdfGenerationTest extends TestCase
         $this->assertNotEmpty($response->getContent());
     }
 
+    public function test_admin_cashier_overview_pdf_post_download(): void
+    {
+        $response = $this->withSession(['auth_user' => [
+            'id' => $this->adminUser->id,
+            'name' => $this->adminUser->name,
+            'role' => 'ADMIN',
+        ]])->postJson('/admin/cashier-overview/pdf', [
+            'cashier_id' => $this->cashierUser->id,
+            'type' => 'IN'
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $this->assertNotEmpty($response->getContent());
+    }
+
     public function test_cashier_statement_pdf_download(): void
     {
         $response = $this->withSession(['auth_user' => [

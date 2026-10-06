@@ -3643,7 +3643,28 @@ window.downloadPdfAsync = async function(url, data = {}, btnElement = null) {
       options.body = JSON.stringify(data);
     }
 
-    const response = await fetch(url, options);
+    let response = await fetch(url, options);
+
+    // If server rejects POST with 405 Method Not Allowed, fallback to GET with query parameters
+    if (response.status === 405 && isPost) {
+      try {
+        const getUrl = new URL(url, window.location.origin);
+        Object.keys(data).forEach(k => {
+          if (data[k] !== undefined && data[k] !== null && data[k] !== '') {
+            getUrl.searchParams.set(k, data[k]);
+          }
+        });
+        response = await fetch(getUrl.toString(), {
+          method: 'GET',
+          headers: {
+            'X-CSRF-TOKEN': window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '',
+          }
+        });
+      } catch (fallbackErr) {
+        console.warn('Fallback GET failed:', fallbackErr);
+      }
+    }
+
     if (!response.ok) {
       if (response.status === 403) {
         throw new Error('You do not have permission to export or view this PDF report.');

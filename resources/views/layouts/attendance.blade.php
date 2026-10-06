@@ -111,8 +111,8 @@
 
   <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
   <script src="{{ asset('js/tabulator-init.js') }}"></script>
-  <script src="{{ asset('js/table-sorter.js') }}"></script>
-  <script src="{{ asset('js/table-filter.js') }}"></script>
+  <script src="{{ asset('js/table-sorter.js') }}?v={{ filemtime(public_path('js/table-sorter.js')) }}"></script>
+  <script src="{{ asset('js/table-filter.js') }}?v={{ filemtime(public_path('js/table-filter.js')) }}"></script>
   <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}"></script>
   <script>
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;

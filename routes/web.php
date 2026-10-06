@@ -357,9 +357,9 @@ foreach ($roleSlugs['STOCK_MANAGER'] ?? [] as $slug) {
         Route::post('/categories/toggle', [AdminController::class, 'toggleCategoryStatus']);
         Route::delete('/categories/{id}',    [AdminController::class, 'destroyCategory']);
         Route::get('/dispatch-activity',     [AdminController::class, 'dispatchActivity'])->name($slug.'.dispatch.activity');
-        Route::get('/dispatch-activity/pdf', [AdminController::class, 'dispatchActivityPdf'])->name($slug.'.dispatch.pdf');
+        Route::match(['get', 'post'], '/dispatch-activity/pdf', [AdminController::class, 'dispatchActivityPdf'])->name($slug.'.dispatch.pdf');
         Route::get('/cashier-overview',       [AdminController::class, 'cashierOverview'])->name($slug.'.cashier_overview');
-        Route::get('/cashier-overview/pdf',   [AdminController::class, 'cashierOverviewPdf'])->name($slug.'.cashier.pdf');
+        Route::match(['get', 'post'], '/cashier-overview/pdf',   [AdminController::class, 'overviewPdf'])->name($slug.'.cashier.pdf');
     });
 }
 
@@ -420,11 +420,11 @@ foreach ($adminSlugs as $slug) {
 
     // Dispatch Activity
     Route::get('/dispatch-activity', 'dispatchActivity')->name($slug.'.dispatch.activity');
-    Route::get('/dispatch-activity/pdf', 'dispatchActivityPdf')->name($slug.'.dispatch.pdf');
+    Route::match(['get', 'post'], '/dispatch-activity/pdf', 'dispatchActivityPdf')->name($slug.'.dispatch.pdf');
 
     // ── CASHIER OVERVIEW ───────────────────────────────────────────────────
     Route::get('/cashier-overview',   'cashierOverview')->name($slug.'.cashier_overview');
-    Route::get('/cashier-overview/pdf','overviewPdf')->name($slug.'.cashier_overview.pdf');
+    Route::match(['get', 'post'], '/cashier-overview/pdf', 'overviewPdf')->name($slug.'.cashier_overview.pdf');
     Route::get('/cashier-logs',       'cashierActivityLogs')->name($slug.'.cashier.logs');
 
     // Admin Attendance sub-pages (read + full access)

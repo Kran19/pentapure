@@ -430,8 +430,8 @@
 
   <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
   <script src="{{ asset('js/tabulator-init.js') }}"></script>
-  <script src="{{ asset('js/table-sorter.js') }}"></script>
-  <script src="{{ asset('js/table-filter.js') }}"></script>
+  <script src="{{ asset('js/table-sorter.js') }}?v={{ filemtime(public_path('js/table-sorter.js')) }}"></script>
+  <script src="{{ asset('js/table-filter.js') }}?v={{ filemtime(public_path('js/table-filter.js')) }}"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>

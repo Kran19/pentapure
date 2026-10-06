@@ -33,7 +33,7 @@
     </div>
 
     <div class="table-container">
-      <table data-filterable="false">
+      <table data-filterable="false" data-sortable="false" class="no-sort no-filter">
         <thead>
           <tr>
             <th style="width:45px;">#</th>
@@ -301,6 +301,24 @@ function downloadAllIndividualSheets() {
 </script>
 
 <style>
+/* Remove any sort / filter arrows and click cursor on report headers */
+#printable-report table thead th,
+#printable-report table thead th.sortable {
+  cursor: default !important;
+  user-select: text !important;
+  pointer-events: none !important;
+}
+
+#printable-report table thead th::after,
+#printable-report table thead th::before,
+#printable-report table thead th.sortable::after,
+#printable-report table thead th.sortable::before,
+#printable-report table thead th.sorted-asc::after,
+#printable-report table thead th.sorted-desc::after {
+  display: none !important;
+  content: none !important;
+}
+
 @media print {
   @page { margin: 10mm; size: auto; }
   body * { visibility: hidden !important; }
