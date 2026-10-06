@@ -41,12 +41,17 @@ class AuthMiddleware
         if (in_array($user['role'], ['SUB_ADMIN', 'STOCK_MANAGER'])) {
             $path = trim($request->path(), '/');
             $segments = explode('/', $path);
+            if (strtolower($segments[0] ?? '') === 'public') {
+                array_shift($segments);
+            }
             $seg1 = strtolower($segments[0] ?? '');
             $seg2 = strtolower($segments[1] ?? 'home');
             $seg3 = strtolower($segments[2] ?? '');
 
-            // Skip strict checks for profile, logout, notifications API, and all JSON API endpoints
-            if (in_array($seg2, ['profile', 'logout']) || $seg1 === 'notifications' || $seg1 === 'logout' || str_contains($path, 'api/')) {
+            $isWrite = in_array($request->method(), ['POST', 'PUT', 'PATCH', 'DELETE']);
+
+            // Skip strict checks for profile, logout, notifications, or GET API helpers
+            if (in_array($seg2, ['profile', 'logout']) || $seg1 === 'notifications' || $seg1 === 'logout' || (!$isWrite && str_contains($path, 'api/'))) {
                 view()->share('authUser', $user);
                 return $next($request);
             }
@@ -66,14 +71,6 @@ class AuthMiddleware
                 $panel = str_replace('-', '_', $seg2);
                 $seg2 = $seg3;
             } elseif (str_contains($seg1, 'cashier')) $panel = 'cashier';
-            elseif (str_contains($seg1, 'sales')) $panel = 'sales';
-            elseif (str_contains($seg1, 'dispatch')) $panel = 'dispatch';
-            elseif (str_contains($seg1, 'raw')) $panel = 'raw';
-            elseif (str_contains($seg1, 'semi')) $panel = 'semi';
-            elseif (str_contains($seg1, 'finished')) $panel = 'finished';
-            elseif (str_contains($seg1, 'stock_manager')) $panel = 'stock_manager';
-            elseif (str_contains($seg1, 'attendance')) $panel = 'attendance';
-            elseif ($seg1 === 'admin' || $seg1 === 'sub_admin') $panel = 'admin';
             elseif (str_contains($seg1, 'sales')) $panel = 'sales';
             elseif (str_contains($seg1, 'dispatch')) $panel = 'dispatch';
             elseif (str_contains($seg1, 'raw')) $panel = 'raw';
@@ -130,6 +127,9 @@ class AuthMiddleware
                 elseif ($seg2 === 'products') $moduleKey = 'stock_manager_products';
                 elseif ($seg2 === 'grades') $moduleKey = 'stock_manager_grades';
                 elseif ($seg2 === 'locations') $moduleKey = 'stock_manager_locations';
+                elseif ($seg2 === 'categories') $moduleKey = 'admin_categories';
+                elseif ($seg2 === 'dispatch-activity') $moduleKey = 'admin_dispatch_activity';
+                elseif ($seg2 === 'cashier-overview') $moduleKey = 'admin_cashier_overview';
             } elseif ($panel === 'attendance') {
                 if (in_array($seg2, ['home', 'dashboard'])) $moduleKey = 'attendance_dashboard';
                 elseif ($seg2 === 'departments') $moduleKey = 'attendance_departments';
@@ -152,24 +152,67 @@ class AuthMiddleware
             }
 
             $userPermissions = $user['permissions'] ?? [];
-            $shortKey = $seg2;
+            if (is_string($userPermissions)) {
+                $userPermissions = json_decode($userPermissions, true) ?: [];
+            }
 
-            // Check View Access
-            $hasView = in_array('view_' . $moduleKey, $userPermissions)
-                || in_array('edit_' . $moduleKey, $userPermissions)
-                || in_array('module_' . $moduleKey, $userPermissions)
-                || in_array($moduleKey, $userPermissions)
-                || in_array('can_manage', $userPermissions)
-                || ($moduleKey === 'admin_stock' && (in_array('stock_manager_stock', $userPermissions) || in_array('view_stock_manager_stock', $userPermissions) || in_array('edit_stock_manager_stock', $userPermissions)))
-                || ($moduleKey === 'stock_manager_stock' && (in_array('admin_stock', $userPermissions) || in_array('view_admin_stock', $userPermissions) || in_array('edit_admin_stock', $userPermissions)))
-                || ($moduleKey === 'stock_manager_products' && (in_array('admin_products', $userPermissions) || in_array('view_admin_products', $userPermissions) || in_array('edit_admin_products', $userPermissions)))
-                || ($moduleKey === 'admin_products' && (in_array('stock_manager_products', $userPermissions) || in_array('view_stock_manager_products', $userPermissions) || in_array('edit_stock_manager_products', $userPermissions)))
-                || ($moduleKey === 'stock_manager_grades' && (in_array('admin_grades', $userPermissions) || in_array('view_admin_grades', $userPermissions) || in_array('edit_admin_grades', $userPermissions)))
-                || ($moduleKey === 'admin_grades' && (in_array('stock_manager_grades', $userPermissions) || in_array('view_stock_manager_grades', $userPermissions) || in_array('edit_stock_manager_grades', $userPermissions)))
-                || ($moduleKey === 'stock_manager_locations' && (in_array('admin_locations', $userPermissions) || in_array('view_admin_locations', $userPermissions) || in_array('edit_admin_locations', $userPermissions)))
-                || ($moduleKey === 'admin_locations' && (in_array('stock_manager_locations', $userPermissions) || in_array('view_stock_manager_locations', $userPermissions) || in_array('edit_stock_manager_locations', $userPermissions)))
-                || ($moduleKey === 'cashier_categories' && (in_array('admin_categories', $userPermissions) || in_array('view_admin_categories', $userPermissions) || in_array('edit_admin_categories', $userPermissions)))
-                || (empty($userPermissions) && (
+            // Equivalent module keys across Admin and Stock Manager
+            $moduleEquivalents = [
+                'admin_stock' => ['admin_stock', 'stock_manager_stock'],
+                'stock_manager_stock' => ['stock_manager_stock', 'admin_stock'],
+                'admin_products' => ['admin_products', 'stock_manager_products'],
+                'stock_manager_products' => ['stock_manager_products', 'admin_products'],
+                'admin_grades' => ['admin_grades', 'stock_manager_grades'],
+                'stock_manager_grades' => ['stock_manager_grades', 'admin_grades'],
+                'admin_locations' => ['admin_locations', 'stock_manager_locations'],
+                'stock_manager_locations' => ['stock_manager_locations', 'admin_locations'],
+                'admin_po' => ['admin_po', 'stock_manager_po'],
+                'stock_manager_po' => ['stock_manager_po', 'admin_po'],
+                'admin_categories' => ['admin_categories', 'cashier_categories'],
+                'cashier_categories' => ['cashier_categories', 'admin_categories'],
+                'stock_manager_home' => ['stock_manager_home', 'admin_dashboard'],
+                'admin_dashboard' => ['admin_dashboard', 'stock_manager_home'],
+            ];
+
+            $keysToCheck = $moduleEquivalents[$moduleKey] ?? [$moduleKey];
+            if (!empty($seg2)) {
+                $keysToCheck[] = $seg2;
+            }
+            $keysToCheck = array_values(array_unique(array_filter($keysToCheck)));
+
+            // Check Edit (Write) Access
+            $hasEdit = false;
+            if (in_array('can_manage', $userPermissions)) {
+                $hasEdit = true;
+            } else {
+                foreach ($keysToCheck as $k) {
+                    if (in_array('edit_' . $k, $userPermissions) || in_array('edit_module_' . $k, $userPermissions)) {
+                        $hasEdit = true;
+                        break;
+                    }
+                }
+            }
+
+            // Check View (Read) Access
+            $hasView = false;
+            if ($hasEdit || in_array('can_manage', $userPermissions)) {
+                $hasView = true;
+            } else {
+                foreach ($keysToCheck as $k) {
+                    if (
+                        in_array('view_' . $k, $userPermissions) ||
+                        in_array('module_' . $k, $userPermissions) ||
+                        in_array($k, $userPermissions)
+                    ) {
+                        $hasView = true;
+                        break;
+                    }
+                }
+            }
+
+            // Fallback for users with no granular permissions configured
+            if (empty($userPermissions)) {
+                $hasView = (
                     ($user['role'] === 'STOCK_MANAGER' && (str_starts_with($moduleKey, 'stock_manager_') || str_starts_with($moduleKey, 'admin_'))) ||
                     ($user['role'] === 'SUB_ADMIN' && (str_starts_with($moduleKey, 'admin_') || str_starts_with($moduleKey, 'sub_admin_') || str_starts_with($moduleKey, 'stock_manager_'))) ||
                     ($user['role'] === 'CASHIER' && str_starts_with($moduleKey, 'cashier_')) ||
@@ -179,7 +222,9 @@ class AuthMiddleware
                     ($user['role'] === 'RAW' && str_starts_with($moduleKey, 'raw_')) ||
                     ($user['role'] === 'SEMI' && str_starts_with($moduleKey, 'semi_')) ||
                     ($user['role'] === 'FINISHED' && str_starts_with($moduleKey, 'finished_'))
-                ));
+                );
+                $hasEdit = $hasView;
+            }
 
             if (!$hasView) {
                 if (in_array($seg2, ['home', 'dashboard'])) {
@@ -232,52 +277,9 @@ class AuthMiddleware
                 abort(403, 'Unauthorized. You do not have View access to this section.');
             }
 
-            // Check Write/Edit Access
-            $hasExplicitViewOnly = (
-                    in_array('view_' . $moduleKey, $userPermissions) || 
-                    in_array('view_' . $shortKey, $userPermissions) ||
-                    ($moduleKey === 'admin_products' && in_array('view_stock_manager_products', $userPermissions)) ||
-                    ($moduleKey === 'stock_manager_products' && in_array('view_admin_products', $userPermissions))
-                )
-                && !in_array('edit_' . $moduleKey, $userPermissions)
-                && !in_array('edit_' . $shortKey, $userPermissions)
-                && !in_array('edit_module_' . $moduleKey, $userPermissions)
-                && !in_array('can_manage', $userPermissions)
-                && !(($moduleKey === 'admin_products' || $moduleKey === 'stock_manager_products') && (in_array('edit_admin_products', $userPermissions) || in_array('edit_stock_manager_products', $userPermissions)));
-
-            if ($hasExplicitViewOnly) {
-                $hasEdit = false;
-            } else {
-                $hasEdit = in_array('edit_' . $moduleKey, $userPermissions)
-                    || in_array('can_manage', $userPermissions)
-                    || in_array('edit_module_' . $moduleKey, $userPermissions)
-                    || in_array('edit_' . $shortKey, $userPermissions)
-                    || ($moduleKey === 'admin_stock' && (in_array('edit_stock_manager_stock', $userPermissions) || in_array('stock_manager_stock', $userPermissions)))
-                    || ($moduleKey === 'stock_manager_stock' && (in_array('edit_admin_stock', $userPermissions) || in_array('admin_stock', $userPermissions)))
-                    || ($moduleKey === 'stock_manager_products' && in_array('edit_admin_products', $userPermissions))
-                    || ($moduleKey === 'admin_products' && in_array('edit_stock_manager_products', $userPermissions))
-                    || ($moduleKey === 'stock_manager_grades' && (in_array('edit_admin_grades', $userPermissions) || in_array('admin_grades', $userPermissions)))
-                    || ($moduleKey === 'admin_grades' && (in_array('edit_stock_manager_grades', $userPermissions) || in_array('stock_manager_grades', $userPermissions)))
-                    || ($moduleKey === 'stock_manager_locations' && (in_array('edit_admin_locations', $userPermissions) || in_array('admin_locations', $userPermissions)))
-                    || ($moduleKey === 'admin_locations' && (in_array('edit_stock_manager_locations', $userPermissions) || in_array('admin_locations', $userPermissions)))
-                    || ($moduleKey === 'cashier_categories' && (in_array('edit_admin_categories', $userPermissions) || in_array('admin_categories', $userPermissions)))
-                    || (empty($userPermissions) && (
-                        ($user['role'] === 'STOCK_MANAGER' && (str_starts_with($moduleKey, 'stock_manager_') || str_starts_with($moduleKey, 'admin_'))) ||
-                        ($user['role'] === 'SUB_ADMIN' && (str_starts_with($moduleKey, 'admin_') || str_starts_with($moduleKey, 'sub_admin_') || str_starts_with($moduleKey, 'stock_manager_'))) ||
-                        ($user['role'] === 'CASHIER' && str_starts_with($moduleKey, 'cashier_')) ||
-                        ($user['role'] === 'SALES' && str_starts_with($moduleKey, 'sales_')) ||
-                        ($user['role'] === 'DISPATCH' && str_starts_with($moduleKey, 'dispatch_')) ||
-                        ($user['role'] === 'ATTENDANCE' && str_starts_with($moduleKey, 'attendance_')) ||
-                        ($user['role'] === 'RAW' && str_starts_with($moduleKey, 'raw_')) ||
-                        ($user['role'] === 'SEMI' && str_starts_with($moduleKey, 'semi_')) ||
-                        ($user['role'] === 'FINISHED' && str_starts_with($moduleKey, 'finished_'))
-                    ));
-            }
-
             $isReadOnly = !$hasEdit;
             view()->share('isReadOnly', $isReadOnly);
 
-            $isWrite = in_array($request->method(), ['POST', 'PUT', 'PATCH', 'DELETE']);
             if ($isWrite) {
                 if (!$hasEdit) {
                     if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {

@@ -93,6 +93,9 @@
               @endif
             </td>
             <td>
+              @if(!empty($isReadOnly))
+                <span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">View Only</span>
+              @else
               <div class="action-btns" style="display:inline-flex; align-items:center; justify-content:center; gap:0.35rem; flex-wrap:nowrap;">
                 @if($po->status === 'PENDING')
                   <button class="btn btn-sm" style="width:auto; padding:0.25rem 0.5rem; background:#eab308; color:#ffffff !important; border:none; border-radius:4px; font-size:0.75rem; cursor:pointer; white-space:nowrap;"
@@ -110,6 +113,7 @@
                   🗑️ Delete
                 </button>
               </div>
+              @endif
             </td>
           </tr>
           @endforeach
@@ -130,6 +134,7 @@
 <script>
 const csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
 function adminDeletePO(id) {
+  if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
   Swal.fire({
     title: 'Are you sure?',
     text: "Delete this purchase request?",
@@ -155,6 +160,7 @@ function adminDeletePO(id) {
 }
 
 function adminApprovePO(id, btn) {
+  if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
   Swal.fire({
     title: 'Mark as Read?',
     text: "This will acknowledge the request without modifying stock.",
@@ -184,6 +190,7 @@ function adminApprovePO(id, btn) {
 }
 
 function adminOrderPO(id, btn) {
+  if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
   Swal.fire({
     title: 'Mark as Order?',
     text: "This will update the order status to ORDERED for the Stock Manager.",
@@ -213,6 +220,7 @@ function adminOrderPO(id, btn) {
 }
 
 function adminRejectPO(id, btn) {
+  if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
   Swal.fire({
     title: 'Reject Request?',
     text: "This will mark the purchase request as REJECTED.",
@@ -243,6 +251,7 @@ function adminRejectPO(id, btn) {
 }
 
 function adminReceivePO(id, btn) {
+  if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
   const todayStr = new Date().toISOString().split('T')[0];
   if (typeof Swal !== 'undefined') {
     Swal.fire({

@@ -54,7 +54,9 @@
 <div style="padding:1.5rem;">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
     <h2 style="margin:0;">👥 Users & Hierarchy</h2>
+    @if(empty($isReadOnly))
     <button class="btn" onclick="resetUserForm()" style="width:auto; padding:0.6rem 1.2rem;">+ Add User</button>
+    @endif
   </div>
 
   <!-- Add/Edit Form -->
@@ -306,9 +308,9 @@
             <td>
               @if($user['id'] == auth()->id())
                 <span class="badge" style="background:var(--primary, #f59e0b); color:#fff; padding:4px 10px; font-weight:700; border-radius:12px; font-size:0.75rem;">YOU</span>
-              @else
-                <label class="user-status-switch" title="Toggle Active / Blocked">
+                     <label class="user-status-switch" title="Toggle Active / Blocked">
                   <input type="checkbox" id="status-toggle-{{ $user['id'] }}" {{ $user['status'] === 'ACTIVE' ? 'checked' : '' }} 
+                    {{ !empty($isReadOnly) ? 'disabled style=cursor:not-allowed;' : '' }}
                     onchange="adminToggleUser({{ $user['id'] }})">
                   <span class="user-status-slider"></span>
                 </label>
@@ -316,9 +318,11 @@
             </td>
             <td>
               <div class="action-btns">
+                @if(empty($isReadOnly))
                 <button class="btn-icon edit" onclick="adminEditUser({{ json_encode($user) }})" title="Edit">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 2 2h14a2 2 0 0 2 2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
+                @endif
                 @if($user['id'] != auth()->id())
                   <button class="btn-icon notify" onclick="openNotifyModal({{ $user['id'] }}, '{{ addslashes($user['name']) }}')" title="Notify User">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
@@ -338,11 +342,11 @@
                     @endphp
                     @if($dataCount > 0)
                       <button class="btn-icon delete is-disabled" disabled style="opacity:0.35; cursor:not-allowed;" title="Cannot delete: User has {{ $dataCount }} associated record(s) in system.">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="14" x2="14" y2="17"></line></svg>
                       </button>
-                    @else
+                    @elseif(empty($isReadOnly))
                       <button class="btn-icon delete" onclick="adminDeleteUser({{ $user['id'] }})" title="Delete">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="14" x2="14" y2="17"></line></svg>
                       </button>
                     @endif
                   @endif
@@ -450,12 +454,12 @@ function toggleAllPerms(type, check) {
     if (type === 'view') {
       card.querySelectorAll('.perm-view-cb').forEach(cb => {
         cb.checked = check;
-        if (!check) {
-          const modKey = cb.dataset.module;
-          const editCb = card.querySelector(`.perm-edit-cb[data-module="${modKey}"]`);
-          if (editCb) editCb.checked = false;
-        }
       });
+      if (check) {
+        card.querySelectorAll('.perm-edit-cb').forEach(cb => {
+          cb.checked = false;
+        });
+      }
       if (check && body) {
         body.style.display = 'grid';
         if (icon) icon.style.transform = 'rotate(180deg)';
@@ -463,12 +467,12 @@ function toggleAllPerms(type, check) {
     } else if (type === 'edit') {
       card.querySelectorAll('.perm-edit-cb').forEach(cb => {
         cb.checked = check;
-        if (check) {
-          const modKey = cb.dataset.module;
-          const viewCb = card.querySelector(`.perm-view-cb[data-module="${modKey}"]`);
-          if (viewCb) viewCb.checked = true;
-        }
       });
+      if (check) {
+        card.querySelectorAll('.perm-view-cb').forEach(cb => {
+          cb.checked = true;
+        });
+      }
       if (check && body) {
         body.style.display = 'grid';
         if (icon) icon.style.transform = 'rotate(180deg)';
@@ -635,14 +639,20 @@ function adminEditUser(user) {
   toggleRoleFields(user.role);
   
   // Set permissions if it's a SUB_ADMIN or STOCK_MANAGER or ATTENDANCE
-  const perms = user.permissions || [];
+  let perms = user.permissions || [];
+  if (typeof perms === 'string') {
+    try { perms = JSON.parse(perms) || []; } catch(e) { perms = []; }
+  }
+  const permsArr = Array.isArray(perms) ? perms : [];
+  const hasGranular = permsArr.some(p => typeof p === 'string' && (p.startsWith('view_') || p.startsWith('edit_')));
+
   document.querySelectorAll('.perm-view-cb').forEach(cb => {
     const modKey = cb.dataset.module;
-    cb.checked = perms.includes(cb.value) || perms.includes('view_' + modKey) || perms.includes('module_' + modKey) || perms.includes(modKey) || perms.includes('edit_' + modKey);
+    cb.checked = permsArr.includes(cb.value) || permsArr.includes('view_' + modKey) || permsArr.includes('edit_' + modKey) || permsArr.includes('module_' + modKey) || permsArr.includes('can_manage') || (!hasGranular && permsArr.includes(modKey));
   });
   document.querySelectorAll('.perm-edit-cb').forEach(cb => {
     const modKey = cb.dataset.module;
-    cb.checked = perms.includes(cb.value) || perms.includes('edit_' + modKey) || perms.includes('can_manage') || perms.includes('edit_module_' + modKey);
+    cb.checked = permsArr.includes(cb.value) || permsArr.includes('edit_' + modKey) || permsArr.includes('edit_module_' + modKey) || permsArr.includes('can_manage') || (!hasGranular && permsArr.includes(modKey));
   });
 
   document.querySelectorAll('.group-select-all-cb').forEach(cb => {
@@ -703,6 +713,9 @@ function adminEditUser(user) {
 }
 
 function adminSaveUser() {
+  if (window.isReadOnly) {
+    return Swal.fire('View-Only Mode', 'You have View-Only permission. Modifying users is disabled.', 'warning');
+  }
   const perms = [];
   document.querySelectorAll('.perm-view-cb:checked').forEach(cb => perms.push(cb.value));
   document.querySelectorAll('.perm-edit-cb:checked').forEach(cb => perms.push(cb.value));
@@ -772,6 +785,11 @@ function adminSaveUser() {
 }
 
 function adminToggleUser(id) {
+  if (window.isReadOnly) {
+    const toggleEl = document.getElementById('status-toggle-' + id);
+    if (toggleEl) toggleEl.checked = !toggleEl.checked;
+    return Swal.fire('View-Only Mode', 'You have View-Only permission. Modifying users is disabled.', 'warning');
+  }
   const toggleEl = document.getElementById('status-toggle-' + id);
 
   fetch(window.baseUrl + '/' + window.userSlug + '/users/toggle', {
@@ -792,6 +810,9 @@ function adminToggleUser(id) {
 }
 
 function adminDeleteUser(id) {
+  if (window.isReadOnly) {
+    return Swal.fire('View-Only Mode', 'You have View-Only permission. Modifying users is disabled.', 'warning');
+  }
   Swal.fire({
     title: 'Are you sure?',
     text: "You won't be able to revert this!",

@@ -3,7 +3,9 @@
 @section('content')
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem;">
   <h2 style="margin:0;">🛒 PO Received by System</h2>
+  @if(empty($isReadOnly))
   <button class="btn btn-primary btn-sm" onclick="openNewPoModal()">+ New Request</button>
+  @endif
 </div>
 
 @if(empty($pageData['purchaseOrders']) || $pageData['purchaseOrders']->isEmpty())
@@ -57,14 +59,18 @@
           </td>
           <td>
             <div style="display:flex; align-items:center; gap:0.4rem;">
-              @if($po->status === 'ORDERED')
-                <button class="btn btn-sm" style="width:auto; padding:0.3rem 0.6rem; font-size:0.75rem; background:var(--primary); color:#fff; border:none; border-radius:4px; cursor:pointer;" onclick="smReceivePo('{{ $po->id }}', this)">
-                  📦 Mark as Received
+              @if(empty($isReadOnly))
+                @if($po->status === 'ORDERED')
+                  <button class="btn btn-sm" style="width:auto; padding:0.3rem 0.6rem; font-size:0.75rem; background:var(--primary); color:#fff; border:none; border-radius:4px; cursor:pointer;" onclick="smReceivePo('{{ $po->id }}', this)">
+                    📦 Mark as Received
+                  </button>
+                @endif
+                <button class="btn-icon delete" onclick="deletePo('{{ $po->id }}')" title="Delete Request">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="14" x2="14" y2="17"></line></svg>
                 </button>
+              @else
+                <span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">View Only</span>
               @endif
-              <button class="btn-icon delete" onclick="deletePo('{{ $po->id }}')" title="Delete Request">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="14" x2="14" y2="17"></line></svg>
-              </button>
             </div>
           </td>
         </tr>
@@ -616,6 +622,9 @@ function initPoSelect2() {
 }
 
 function openNewPoModal() {
+  if (window.isReadOnly) {
+    return Swal.fire('View-Only Mode', 'You have View-Only permission for Purchase Orders.', 'warning');
+  }
   document.getElementById('po-modal-title').textContent = 'Request Material';
   document.getElementById('po-form').action = window.baseUrl + '/' + window.userSlug + '/po';
   document.getElementById('po-id').value = '';
@@ -709,6 +718,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function smReceivePo(id, btn) {
+  if (window.isReadOnly) {
+    return Swal.fire('View-Only Mode', 'You have View-Only permission. Modifying purchase orders is disabled.', 'warning');
+  }
   const todayStr = new Date().toISOString().split('T')[0];
   if (typeof Swal !== 'undefined') {
     Swal.fire({
@@ -800,6 +812,9 @@ function smReceivePo(id, btn) {
 }
 
 function deletePo(id) {
+  if (window.isReadOnly) {
+    return Swal.fire('View-Only Mode', 'You have View-Only permission. Deleting purchase orders is disabled.', 'warning');
+  }
   if (typeof Swal !== 'undefined') {
     Swal.fire({
       title: 'Are you sure?',

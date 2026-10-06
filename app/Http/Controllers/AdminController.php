@@ -176,18 +176,17 @@ class AdminController extends Controller
             $permissions = [];
         }
 
-        if ($request->role === 'STOCK_MANAGER') {
-            $defaultStockPerms = [
-                'view_stock_manager_home', 'edit_stock_manager_home', 'stock_manager_home',
-                'view_stock_manager_action', 'edit_stock_manager_action', 'stock_manager_action',
-                'view_stock_manager_stock', 'edit_stock_manager_stock', 'stock_manager_stock',
-                'view_stock_manager_po', 'edit_stock_manager_po', 'stock_manager_po',
-                'view_stock_manager_history', 'edit_stock_manager_history', 'stock_manager_history',
-                'view_stock_manager_products', 'edit_stock_manager_products', 'stock_manager_products',
-                'view_stock_manager_grades', 'edit_stock_manager_grades', 'stock_manager_grades',
-                'view_stock_manager_locations', 'edit_stock_manager_locations', 'stock_manager_locations'
+        if ($request->role === 'STOCK_MANAGER' && empty($permissions) && !$request->user_id) {
+            $permissions = [
+                'view_stock_manager_home', 'edit_stock_manager_home',
+                'view_stock_manager_action', 'edit_stock_manager_action',
+                'view_stock_manager_stock', 'edit_stock_manager_stock',
+                'view_stock_manager_po', 'edit_stock_manager_po',
+                'view_stock_manager_history', 'edit_stock_manager_history',
+                'view_stock_manager_products', 'edit_stock_manager_products',
+                'view_stock_manager_grades', 'edit_stock_manager_grades',
+                'view_stock_manager_locations', 'edit_stock_manager_locations'
             ];
-            $permissions = array_values(array_unique(array_merge($defaultStockPerms, $permissions)));
         }
         
         if ($request->role === 'CASHIER') {

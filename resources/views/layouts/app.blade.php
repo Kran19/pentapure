@@ -8,6 +8,7 @@
   <script>
     window.baseUrl = '{{ url('') }}';
     window.userSlug = '{{ request()->segment(1) }}';
+    window.isReadOnly = {{ !empty($isReadOnly) ? 'true' : 'false' }};
   </script>
   <title>Pentapure Factory Operations</title>
   <link rel="icon" type="image/png" href="{{ asset('logo.png') }}?v=1">

@@ -455,9 +455,11 @@
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold; color:var(--text-color);">
               {{ number_format($alertLimit, 2) }}
+              @if(empty($isReadOnly))
               <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $alertLimit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
+              @endif
             </td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="RAW" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
           </tr>
@@ -513,9 +515,11 @@
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold; color:var(--text-color);">
               {{ number_format($alertLimit, 2) }}
+              @if(empty($isReadOnly))
               <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $alertLimit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
+              @endif
             </td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="SEMI" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
           </tr>
@@ -571,9 +575,11 @@
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold; color:var(--text-color);">
               {{ number_format($alertLimit, 2) }}
+              @if(empty($isReadOnly))
               <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $alertLimit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
+              @endif
             </td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="FINISHED" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
           </tr>
@@ -629,9 +635,11 @@
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold; color:var(--text-color);">
               {{ number_format($alertLimit, 2) }}
+              @if(empty($isReadOnly))
               <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $alertLimit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
+              @endif
             </td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="PACKAGING" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
           </tr>

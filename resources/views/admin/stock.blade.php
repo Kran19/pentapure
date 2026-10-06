@@ -86,19 +86,21 @@
       <button type="button" class="btn btn-secondary stock-action-btn-secondary stock-btn-csv" onclick="adminExportStockCsv()" title="Export CSV report for stock" style="background:#10b981 !important; color:#ffffff !important; border-color:#059669 !important; font-weight:700 !important; display:inline-flex; align-items:center; gap:6px;">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         Export CSV
-      </button>
-      <button type="button" class="btn btn-secondary stock-action-btn-secondary" onclick="adminExportStockPdf()" title="Export PDF report for selected stages">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+       <button type="button" class="btn btn-secondary stock-action-btn-secondary" onclick="adminExportStockPdf()" title="Export PDF report for selected stages">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
         Generate PDF Report
       </button>
+      @if(empty($isReadOnly))
       <button type="button" class="btn stock-action-btn-primary" onclick="toggleStockFormCard()" title="Add or record incoming stock">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
         + Add Stock
       </button>
+      @endif
     </div>
   </div>
 
   <!-- In-Page Add / Adjust Stock Card (Hidden by Default) -->
+  @if(empty($isReadOnly))
   <div id="stock-form-card" class="card white-orange-card" style="display:none; margin-bottom:1.5rem; padding:1.2rem;">
     <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem;">
       <span style="font-size:1.15rem; font-weight:700;">📦 Add Stock Entry</span>
@@ -195,6 +197,7 @@
       </div>
     </div>
   </div>
+  @endif
 
   <template id="bulk-stock-location-template">
     <div class="bs-location-row" style="display:flex; gap:0.5rem; align-items:flex-end; margin-bottom:0.5rem;">
@@ -1154,18 +1157,25 @@
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold;">
               ₹{{ number_format($s->rate ?? 0, 2) }}
+              @if(empty($isReadOnly))
               <button class="btn-icon edit" onclick="adminUpdateRate('{{ $s->productId }}', '{{ $s->rate ?? 0 }}', '{{ addslashes($s->name) }}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
+              @endif
             </td>
             <td style="font-weight:bold; color:var(--text-color);">
               {{ number_format($s->alert_limit, 2) }}
+              @if(empty($isReadOnly))
               <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
+              @endif
             </td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="RAW" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
+              @if(!empty($isReadOnly))
+                <span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">View Only</span>
+              @else
               <div style="display:flex; align-items:center; gap:0.4rem;">
                 <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }})" title="Adjust Stock">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
@@ -1180,6 +1190,7 @@
                   </button>
                 @endif
               </div>
+              @endif
             </td>
           </tr>
           @endforeach
@@ -1234,18 +1245,25 @@
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold;">
               ₹{{ number_format($s->rate ?? 0, 2) }}
+              @if(empty($isReadOnly))
               <button class="btn-icon edit" onclick="adminUpdateRate('{{ $s->productId }}', '{{ $s->rate ?? 0 }}', '{{ addslashes($s->name) }}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
+              @endif
             </td>
             <td style="font-weight:bold; color:var(--text-color);">
               {{ number_format($s->alert_limit, 2) }}
+              @if(empty($isReadOnly))
               <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
+              @endif
             </td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="SEMI" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
+              @if(!empty($isReadOnly))
+                <span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">View Only</span>
+              @else
               <div style="display:flex; align-items:center; gap:0.4rem;">
                 <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }})" title="Adjust Stock">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
@@ -1260,6 +1278,7 @@
                   </button>
                 @endif
               </div>
+              @endif
             </td>
           </tr>
           @endforeach
@@ -1314,18 +1333,25 @@
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold;">
               ₹{{ number_format($s->rate ?? 0, 2) }}
+              @if(empty($isReadOnly))
               <button class="btn-icon edit" onclick="adminUpdateRate('{{ $s->productId }}', '{{ $s->rate ?? 0 }}', '{{ addslashes($s->name) }}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
+              @endif
             </td>
             <td style="font-weight:bold; color:var(--text-color);">
               {{ number_format($s->alert_limit, 2) }}
+              @if(empty($isReadOnly))
               <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
+              @endif
             </td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="FINISHED" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
+              @if(!empty($isReadOnly))
+                <span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">View Only</span>
+              @else
               <div style="display:flex; align-items:center; gap:0.4rem;">
                 <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }})" title="Adjust Stock">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
@@ -1340,6 +1366,7 @@
                   </button>
                 @endif
               </div>
+              @endif
             </td>
           </tr>
           @endforeach
@@ -1394,18 +1421,25 @@
             <td>{{ $s->unit }}</td>
             <td style="font-weight:bold;">
               ₹{{ number_format($s->rate ?? 0, 2) }}
+              @if(empty($isReadOnly))
               <button class="btn-icon edit" onclick="adminUpdateRate('{{ $s->productId }}', '{{ $s->rate ?? 0 }}', '{{ addslashes($s->name) }}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
+              @endif
             </td>
             <td style="font-weight:bold; color:var(--text-color);">
               {{ number_format($s->alert_limit, 2) }}
+              @if(empty($isReadOnly))
               <button class="btn-icon edit" onclick="adminSetLimit('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->alert_limit }}', '{{ addslashes($s->name) }}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
+              @endif
             </td>
             <td class="location-col" data-product="{{ $s->productId }}" data-grade="{{ $s->grade }}" data-stage="PACKAGING" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
             <td>
+              @if(!empty($isReadOnly))
+                <span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">View Only</span>
+              @else
               <div style="display:flex; align-items:center; gap:0.4rem;">
                  <button class="btn-icon edit" onclick="adminAdjustStock('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ addslashes($s->name) }}', {{ $s->quantity }})" title="Adjust Stock">
                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
@@ -1420,6 +1454,7 @@
                    </button>
                  @endif
               </div>
+              @endif
             </td>
           </tr>
           @endforeach
@@ -1432,6 +1467,7 @@
 </div>
 
 <script>
+window.isReadOnly = {{ !empty($isReadOnly) ? 'true' : 'false' }};
 const csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
 const adminStockProducts = @json($pageData['allProducts']);
 const adminStockLogsByKey = @json($pageData['stockLogsByKey']);
@@ -1448,6 +1484,7 @@ function escapeHtml(value) {
 }
 
 function adminDeleteStock(productId, stage, grade, productName = '') {
+  if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
   Swal.fire({
     title: 'Delete Stock Entry?',
     text: `Are you sure you want to delete the stock entry for ${productName} (${stage})?`,
@@ -1649,6 +1686,7 @@ function adminAddStock() {
 }
 
 function adminAdjustStock(productId, stage, grade, productName = '', currentQty = 0) {
+  if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
   const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG', PACKAGING: '📦 Packaging' }[stage] || stage;
   const isDefGrade = !grade || ['NONE', 'N/A', 'NA', 'N / A'].includes(grade.trim().toUpperCase());
   const displayGrade = !isDefGrade ? ` &nbsp;·&nbsp; Grade: <strong style="color:#333;">${grade}</strong>` : '';
@@ -1979,6 +2017,7 @@ function onSwalMainQtyInput(mainInput) {
 }
 
 function adminUpdateRate(productId, currentRate, name) {
+  if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
   Swal.fire({
     title: 'Edit Rate',
     html: `
@@ -2058,6 +2097,7 @@ function adminUpdateRate(productId, currentRate, name) {
 }
 
 function adminSetLimit(productId, stage, grade, currentLimit, productName = '') {
+  if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
   const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG', PACKAGING: '📦 Packaging' }[stage] || stage;
   const isDefGrade = !grade || ['NONE', 'N/A', 'NA', 'N / A'].includes(grade.trim().toUpperCase());
   const displayGrade = !isDefGrade ? ` &nbsp;·&nbsp; Grade: <strong style="color:#333;">${grade}</strong>` : '';
@@ -2279,18 +2319,23 @@ function updateStockTables(stockData) {
           <td>${s.unit || ''}</td>
           <td style="font-weight:bold;">
             ₹${window.number_format(s.rate ?? 0, 2)}
+            ${window.isReadOnly ? '' : `
             <button class="btn-icon edit" onclick="adminUpdateRate('${s.productId}', '${s.rate ?? 0}', '${escapeHtml(s.name)}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
             </button>
+            `}
           </td>
           <td style="font-weight:bold; color:var(--text-color);">
             ${limit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+            ${window.isReadOnly ? '' : `
             <button class="btn-icon edit" onclick="adminSetLimit('${s.productId}', '${s.stage}', '${s.grade}', '${limit}', '${escapeHtml(s.name)}')" title="Edit Min Qty" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
             </button>
+            `}
           </td>
           <td class="location-col" data-product="${s.productId}" data-grade="${s.grade}" data-stage="${stage}" style="cursor:pointer; text-decoration:underline; color:var(--primary-light);" onclick="showLocationBreakdown(this)">📍 View Locations</td>
           <td>
+            ${window.isReadOnly ? '<span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">View Only</span>' : `
             <div style="display:flex; align-items:center; gap:0.4rem;">
               <button class="btn-icon edit" onclick="adminAdjustStock('${s.productId}', '${s.stage}', '${s.grade}', '${escapeHtml(s.name)}', ${s.quantity})" title="Adjust Stock">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
@@ -2305,6 +2350,7 @@ function updateStockTables(stockData) {
                 </button>
               `}
             </div>
+            `}
           </td>
         </tr>
       `;
@@ -2519,7 +2565,7 @@ async function showLocationBreakdown(el) {
   const fromEntries = Object.entries(locMap).filter(([loc, qty]) => qty > 0);
 
   let transferHtml = '';
-  if (fromEntries.length > 0) {
+  if (fromEntries.length > 0 && !window.isReadOnly) {
     const defaultFromLoc = fromEntries[0][0];
     const defaultFromLower = defaultFromLoc.trim().toLowerCase();
 
@@ -2584,6 +2630,7 @@ async function showLocationBreakdown(el) {
 }
 
 window.addLocationMapping = async function(productId, stage, grade, remainingQty, buttonEl) {
+  if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
   const toLocation = document.getElementById('swal-loc-select').value;
   const quantity = parseFloat(document.getElementById('swal-loc-qty').value);
   if(!toLocation || isNaN(quantity) || quantity <= 0) {
@@ -2629,6 +2676,7 @@ window.addLocationMapping = async function(productId, stage, grade, remainingQty
 }
 
 window.transferLocationMapping = async function(productId, stage, grade, buttonEl) {
+  if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
   const fromLocation = document.getElementById('swal-transfer-from').value;
   const toLocation = document.getElementById('swal-transfer-to').value;
   const quantity = parseFloat(document.getElementById('swal-transfer-qty').value);
@@ -3030,6 +3078,7 @@ window.onBsProductChange = function(element) {
 };
 
 window.toggleStockFormCard = function() {
+  if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
   const card = document.getElementById('stock-form-card');
   if (card) {
     const isOpening = card.style.display === 'none';
@@ -3045,6 +3094,7 @@ window.toggleStockFormCard = function() {
 };
 
 window.adminSaveBulkStock = function() {
+  if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
   const btn = document.getElementById('btn-save-stock-card');
   const rows = document.querySelectorAll('.bulk-stock-row');
   const fallbackDate = '{{ date('Y-m-d') }}';

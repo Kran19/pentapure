@@ -4,10 +4,13 @@
 <div style="padding:1.5rem;">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
     <h2 style="margin:0;">📍 Warehouse / Storage Locations Master</h2>
+    @if(empty($isReadOnly))
     <button class="btn" onclick="document.getElementById('loc-form-card').style.display='block'; resetLocationForm(); document.getElementById('loc-form-card').scrollIntoView({ behavior: 'smooth' });" style="width:auto; padding:0.6rem 1.2rem;">+ Add Location</button>
+    @endif
   </div>
 
   <!-- Add / Edit Form Card -->
+  @if(empty($isReadOnly))
   <div id="loc-form-card" class="card" style="display:none; margin-bottom:1.5rem; padding:1.2rem;">
     <div class="card-title" id="loc-card-title">Add / Edit Warehouse Location</div>
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1rem;">
@@ -26,6 +29,7 @@
       <button class="btn btn-secondary" onclick="document.getElementById('loc-form-card').style.display='none'" style="width:auto; padding:0.6rem 1.5rem;">Cancel</button>
     </div>
   </div>
+  @endif
 
   <!-- Locations List Table -->
   <div class="card" style="padding:1.2rem; margin-bottom:1.5rem;">
@@ -63,6 +67,9 @@
             <td style="color:var(--text-muted);">{{ $loc->description ?: '—' }}</td>
             <td>{{ date('d-m-Y, h:i A', strtotime($loc->created_at)) }}</td>
             <td>
+              @if(!empty($isReadOnly))
+                <span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">View Only</span>
+              @else
               <div class="action-btns">
                 <button class="btn-icon edit" onclick="adminEditLocation({{ json_encode($loc) }})" title="Edit">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
@@ -81,6 +88,7 @@
                   </button>
                 @endif
               </div>
+              @endif
             </td>
           </tr>
           @endforeach
@@ -99,12 +107,16 @@ let editingLocationId = null;
 
 function resetLocationForm() {
   editingLocationId = null;
-  document.getElementById('loc-card-title').innerText = 'Add Warehouse Location';
-  document.getElementById('loc-name').value = '';
-  document.getElementById('loc-description').value = '';
+  const title = document.getElementById('loc-card-title');
+  if (title) title.innerText = 'Add Warehouse Location';
+  const name = document.getElementById('loc-name');
+  if (name) name.value = '';
+  const desc = document.getElementById('loc-description');
+  if (desc) desc.value = '';
 }
 
 function adminEditLocation(loc) {
+  if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
   Swal.fire({
     title: 'Edit Warehouse Location',
     html: `
@@ -145,6 +157,7 @@ function adminEditLocation(loc) {
 }
 
 function adminSaveLocation() {
+  if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
   const name = document.getElementById('loc-name').value.trim();
   const description = document.getElementById('loc-description').value.trim();
 
@@ -186,6 +199,7 @@ function adminSaveLocation() {
 }
 
 function adminDeleteLocation(id, name) {
+  if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
   Swal.fire({
     title: 'Delete Location?',
     text: `Are you sure you want to delete location "${name}"?`,

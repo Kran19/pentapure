@@ -4,10 +4,13 @@
 <div style="padding: 1.5rem;">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
     <h2 style="margin:0;">🏷️ Expense Category Master</h2>
+    @if(empty($isReadOnly))
     <button class="btn" onclick="openCategoryForm()" style="width:auto; padding:0.6rem 1.2rem;">+ Add New Category</button>
+    @endif
   </div>
 
   <!-- Add/Edit Form Card -->
+  @if(empty($isReadOnly))
   <div id="category-form-card" class="card white-orange-card" style="display:none; margin-bottom:1.5rem; padding:1.2rem;">
     <div class="card-title" id="form-card-title">Add New Category</div>
     <form id="category-form">
@@ -23,6 +26,7 @@
       </div>
     </form>
   </div>
+  @endif
 
   <div class="card" style="padding: 1.2rem;">
     <div class="table-container">
@@ -54,12 +58,15 @@
             </td>
             <td>
               <label class="switch">
-                <input type="checkbox" {{ $c->is_active ? 'checked' : '' }} onchange="adminToggleCategory({{ $c->id }})">
+                <input type="checkbox" {{ $c->is_active ? 'checked' : '' }} {{ !empty($isReadOnly) ? 'disabled style=cursor:not-allowed;' : '' }} onchange="adminToggleCategory({{ $c->id }})">
                 <span class="slider"></span>
               </label>
             </td>
             <td>{{ date('d-m-Y', strtotime($c->created_at)) }}</td>
             <td>
+              @if(!empty($isReadOnly))
+                <span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">View Only</span>
+              @else
               <div class="action-btns">
                 <button class="btn-icon edit" onclick="adminEditCategory({{ json_encode($c) }})" title="Edit">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
@@ -74,6 +81,7 @@
                   </button>
                 @endif
               </div>
+              @endif
             </td>
           </tr>
           @endforeach
@@ -94,14 +102,19 @@
   let editingCategoryId = null;
 
   function openCategoryForm() {
+    if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
     editingCategoryId = null;
     document.getElementById('form-card-title').innerText = 'Add New Category';
     document.getElementById('category-name').value = '';
-    document.getElementById('category-form-card').style.display = 'block';
-    document.getElementById('category-form-card').scrollIntoView({ behavior: 'smooth' });
+    const formCard = document.getElementById('category-form-card');
+    if (formCard) {
+      formCard.style.display = 'block';
+      formCard.scrollIntoView({ behavior: 'smooth' });
+    }
   }
 
   function adminEditCategory(c) {
+    if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
     Swal.fire({
         title: 'Edit Category',
         html: `
@@ -137,30 +150,36 @@
   }
 
   function closeCategoryForm() {
-    document.getElementById('category-form-card').style.display = 'none';
+    const formCard = document.getElementById('category-form-card');
+    if (formCard) formCard.style.display = 'none';
   }
 
-  document.getElementById('category-form').onsubmit = function(e) {
-    e.preventDefault();
+  const catFormEl = document.getElementById('category-form');
+  if (catFormEl) {
+    catFormEl.onsubmit = function(e) {
+      e.preventDefault();
+      if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
 
-    const name = document.getElementById('category-name').value.trim();
-    if(!name) return;
+      const name = document.getElementById('category-name').value.trim();
+      if(!name) return;
 
-    fetch(window.baseUrl + '/' + window.userSlug + '/categories', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-      body: JSON.stringify({ category_id: editingCategoryId, name })
-    }).then(r => r.json()).then(d => {
-      if(d.success) {
-        Swal.fire('Success', d.message, 'success');
-        setTimeout(() => location.reload(), 800);
-      } else {
-        Swal.fire('Error', d.message || 'Error', 'error');
-      }
-    });
-  };
+      fetch(window.baseUrl + '/' + window.userSlug + '/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify({ category_id: editingCategoryId, name })
+      }).then(r => r.json()).then(d => {
+        if(d.success) {
+          Swal.fire('Success', d.message, 'success');
+          setTimeout(() => location.reload(), 800);
+        } else {
+          Swal.fire('Error', d.message || 'Error', 'error');
+        }
+      });
+    };
+  }
 
   function adminToggleCategory(id) {
+    if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
     fetch(window.baseUrl + '/' + window.userSlug + '/categories/toggle', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
@@ -172,6 +191,7 @@
   }
 
   function adminDeleteCategory(id) {
+    if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
     Swal.fire({
       title: 'Are you sure?',
       text: "Are you sure you want to delete this category?",

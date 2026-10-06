@@ -217,9 +217,15 @@ input[type=number].no-spinners {
     </div>
 
     <!-- 7. Submit Button -->
-    <button type="submit" class="btn" id="sm-submit-btn" style="width:100%; padding:0.8rem; font-size:1rem; font-weight:700; background:#f59e0b; color:#ffffff !important; border:none; border-radius:8px; cursor:pointer;">
-      SUBMIT INWARD
-    </button>
+    @if(!empty($isReadOnly))
+      <button type="button" class="btn is-disabled" disabled style="width:100%; padding:0.8rem; font-size:1rem; font-weight:700; background:#9ca3af; color:#ffffff !important; border:none; border-radius:8px; cursor:not-allowed;">
+        🔒 View-Only Mode (Stock Actions Disabled)
+      </button>
+    @else
+      <button type="submit" class="btn" id="sm-submit-btn" style="width:100%; padding:0.8rem; font-size:1rem; font-weight:700; background:#f59e0b; color:#ffffff !important; border:none; border-radius:8px; cursor:pointer;">
+        SUBMIT INWARD
+      </button>
+    @endif
   </form>
 </div>
 

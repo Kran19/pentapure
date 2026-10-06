@@ -4,10 +4,13 @@
 <div style="padding: 1.5rem;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
         <h2 style="margin:0;">✅ Grades Master</h2>
+        @if(empty($isReadOnly))
         <button class="btn" onclick="openGradeForm()" style="width:auto; padding:0.6rem 1.2rem;">+ Add New Grade</button>
+        @endif
     </div>
 
     <!-- Add/Edit Form Card -->
+    @if(empty($isReadOnly))
     <div id="grade-form-card" class="card white-orange-card" style="display:none; margin-bottom:1.5rem; padding:1.2rem;">
         <div class="card-title" id="form-card-title">Add New Grade</div>
         <form id="grade-form">
@@ -23,6 +26,7 @@
             </div>
         </form>
     </div>
+    @endif
 
     <div class="card">
         <div class="table-container">
@@ -56,13 +60,15 @@
                         </td>
                         <td>
                             <label class="switch">
-                                <input type="checkbox" {{ $g->is_active ? 'checked' : '' }} onchange="adminToggleGrade({{ $g->id }})">
+                                <input type="checkbox" {{ $g->is_active ? 'checked' : '' }} {{ !empty($isReadOnly) ? 'disabled style=cursor:not-allowed;' : '' }} onchange="adminToggleGrade({{ $g->id }})">
                                 <span class="slider"></span>
                             </label>
                         </td>
                         <td>{{ date('d-m-Y', strtotime($g->created_at)) }}</td>
                         <td>
-                            @if($isFixed)
+                            @if(!empty($isReadOnly))
+                                <span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">View Only</span>
+                            @elseif($isFixed)
                                 <span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">Protected</span>
                             @else
                                 <div class="action-btns">
@@ -100,14 +106,19 @@
 let editingGradeId = null;
 
 function openGradeForm() {
+    if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
     editingGradeId = null;
     document.getElementById('form-card-title').innerText = 'Add New Grade';
     document.getElementById('grade-name').value = '';
-    document.getElementById('grade-form-card').style.display = 'block';
-    document.getElementById('grade-form-card').scrollIntoView({ behavior: 'smooth' });
+    const formCard = document.getElementById('grade-form-card');
+    if (formCard) {
+        formCard.style.display = 'block';
+        formCard.scrollIntoView({ behavior: 'smooth' });
+    }
 }
 
 function adminEditGrade(g) {
+    if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
     Swal.fire({
         title: 'Edit Grade',
         html: `
@@ -143,29 +154,35 @@ function adminEditGrade(g) {
 }
 
 function closeGradeForm() {
-    document.getElementById('grade-form-card').style.display = 'none';
+    const formCard = document.getElementById('grade-form-card');
+    if (formCard) formCard.style.display = 'none';
 }
 
-document.getElementById('grade-form').onsubmit = function(e) {
-    e.preventDefault();
-    const name = document.getElementById('grade-name').value;
-    if(!name) return;
+const gradeFormEl = document.getElementById('grade-form');
+if (gradeFormEl) {
+    gradeFormEl.onsubmit = function(e) {
+        e.preventDefault();
+        if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
+        const name = document.getElementById('grade-name').value;
+        if(!name) return;
 
-    fetch(window.baseUrl + '/' + window.userSlug + '/grades', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
-        body: JSON.stringify({ grade_id: editingGradeId, name })
-    }).then(r => r.json()).then(d => {
-        if(d.success) {
-            Swal.fire('Success', d.message, 'success');
-            setTimeout(() => location.reload(), 800);
-        } else {
-            Swal.fire('Error', d.message || 'Error', 'error');
-        }
-    });
-};
+        fetch(window.baseUrl + '/' + window.userSlug + '/grades', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
+            body: JSON.stringify({ grade_id: editingGradeId, name })
+        }).then(r => r.json()).then(d => {
+            if(d.success) {
+                Swal.fire('Success', d.message, 'success');
+                setTimeout(() => location.reload(), 800);
+            } else {
+                Swal.fire('Error', d.message || 'Error', 'error');
+            }
+        });
+    };
+}
 
 function adminToggleGrade(id) {
+    if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
     fetch(window.baseUrl + '/' + window.userSlug + '/grades', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
@@ -177,6 +194,7 @@ function adminToggleGrade(id) {
 }
 
 function adminDeleteGrade(id) {
+    if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
     Swal.fire({
         title: 'Are you sure?',
         text: "Are you sure you want to delete this grade?",
