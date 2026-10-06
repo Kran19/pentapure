@@ -92,17 +92,30 @@
     </div>
 
     <div id="visible-cashiers-container" style="display:none; margin-top:1rem; border:1px solid var(--glass-border); padding:1.2rem; border-radius:8px; background:var(--glass-bg);">
-      <h4 style="margin-top:0; margin-bottom:1rem; color:var(--secondary); font-size:1.1rem; text-transform:none;">Team Ledger Visibility (Cashier Only)</h4>
-      <div style="margin-bottom:1rem; font-size:0.9rem; color:var(--text-muted);">
-        Select which other cashiers this user is allowed to see in their Team Ledger.
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem; flex-wrap:wrap; gap:8px;">
+        <h4 style="margin:0; color:var(--secondary); font-size:1.1rem; text-transform:none;">Team Ledger Visibility (Cashier Only)</h4>
+        <div style="display:flex; gap:6px;">
+          <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllVisibleCashiers(true)" style="padding:4px 10px; font-size:0.75rem;">Select All</button>
+          <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllVisibleCashiers(false)" style="padding:4px 10px; font-size:0.75rem;">Deselect All</button>
+        </div>
       </div>
-      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:1rem;">
-        @foreach($pageData['cashiers'] as $c)
-          <div style="display:flex; align-items:center; gap:8px;" class="visible-cashier-wrapper">
-            <input type="checkbox" class="visible-cashier-cb" value="{{ $c['id'] }}" style="width:16px;height:16px;margin:0;">
-            <span style="font-size:0.9rem; text-transform:none;">{{ $c['name'] }}</span>
+      <div style="margin-bottom:1rem; font-size:0.9rem; color:var(--text-muted);">
+        Select which other cashiers this user is allowed to see in their Team Ledger. If none are selected, this user can only see their own transactions.
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:0.75rem;">
+        @forelse($pageData['cashiers'] as $c)
+          <div style="display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:6px; background:rgba(0,0,0,0.02); border:1px solid var(--glass-border);" class="visible-cashier-wrapper" data-cashier-id="{{ $c->id }}">
+            <input type="checkbox" class="visible-cashier-cb" value="{{ $c->id }}" id="vis-cashier-{{ $c->id }}" style="width:16px;height:16px;margin:0; cursor:pointer;">
+            <label for="vis-cashier-{{ $c->id }}" style="font-size:0.9rem; text-transform:none; cursor:pointer; margin:0; flex:1;">
+              {{ $c->name }}
+              @if(!empty($c->branch))
+                <span style="font-size:0.75rem; color:var(--text-muted); display:block;">({{ $c->branch }})</span>
+              @endif
+            </label>
           </div>
-        @endforeach
+        @empty
+          <div style="color:var(--text-muted); font-size:0.85rem;">No other cashiers registered in the system.</div>
+        @endforelse
       </div>
     </div>
     
@@ -274,7 +287,22 @@
                 <div>{{ $user['phone'] }}</div>
                 @if($user['email'])<div style="font-size:0.75rem;">{{ $user['email'] }}</div>@endif
             </td>
-            <td><span class="badge badge-info">{{ $user['role'] }}</span></td>
+            <td>
+              <span class="badge badge-info">{{ $user['role'] }}</span>
+              @if($user['role'] === 'CASHIER')
+                @if(!empty($user['branch']))
+                  <div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px;">🏢 {{ $user['branch'] }}</div>
+                @endif
+                @php
+                  $vc = $user['visible_cashiers'] ?? [];
+                  if (is_string($vc)) $vc = json_decode($vc, true) ?? [];
+                  $vcCount = is_array($vc) ? count($vc) : 0;
+                @endphp
+                <div style="font-size:0.72rem; color:{{ $vcCount > 0 ? '#10b981' : 'var(--text-muted)' }}; margin-top:2px; font-weight:600;">
+                  👁️ {{ $vcCount }} visible cashier{{ $vcCount === 1 ? '' : 's' }}
+                </div>
+              @endif
+            </td>
             <td>
               @if($user['id'] == auth()->id())
                 <span class="badge" style="background:var(--primary, #f59e0b); color:#fff; padding:4px 10px; font-weight:700; border-radius:12px; font-size:0.75rem;">YOU</span>
@@ -499,9 +527,10 @@ function resetUserForm() {
     const groupSlug = card.id;
     if (groupSlug) syncGroupSelectAll(groupSlug);
   });
-  document.querySelectorAll('.visible-cashier-cb').forEach(cb => {
-      cb.checked = false;
-      cb.parentElement.style.display = 'flex';
+  document.querySelectorAll('.visible-cashier-wrapper').forEach(wrap => {
+      wrap.style.display = 'flex';
+      const cb = wrap.querySelector('.visible-cashier-cb');
+      if (cb) cb.checked = false;
   });
   document.querySelectorAll('.attendance-dept-cb').forEach(cb => cb.checked = false);
   
@@ -574,6 +603,15 @@ function toggleRoleFields(role) {
   }
 }
 
+function toggleAllVisibleCashiers(checked) {
+  document.querySelectorAll('.visible-cashier-wrapper').forEach(wrap => {
+    if (wrap.style.display !== 'none') {
+      const cb = wrap.querySelector('.visible-cashier-cb');
+      if (cb) cb.checked = checked;
+    }
+  });
+}
+
 function adminEditUser(user) {
   editingUserId = user.id;
   document.getElementById('user-form-card').style.display = 'block';
@@ -633,14 +671,30 @@ function adminEditUser(user) {
   });
 
   // Set visible cashiers if it's a CASHIER
-  const visCashiers = user.visible_cashiers || [];
-  document.querySelectorAll('.visible-cashier-cb').forEach(cb => {
-      if (cb.value == user.id) {
-          cb.parentElement.style.display = 'none'; // hide themselves
+  let visCashiers = user.visible_cashiers || [];
+  if (typeof visCashiers === 'string') {
+    try {
+      visCashiers = JSON.parse(visCashiers);
+    } catch (e) {
+      visCashiers = [];
+    }
+  }
+  if (!Array.isArray(visCashiers)) {
+    visCashiers = [];
+  }
+  const visInts = visCashiers.map(v => parseInt(v)).filter(v => !isNaN(v));
+
+  document.querySelectorAll('.visible-cashier-wrapper').forEach(wrap => {
+      const cb = wrap.querySelector('.visible-cashier-cb');
+      if (!cb) return;
+      const cbVal = parseInt(cb.value);
+      if (cbVal === parseInt(user.id)) {
+          wrap.style.display = 'none'; // hide themselves
+          cb.checked = false;
       } else {
-          cb.parentElement.style.display = 'flex';
+          wrap.style.display = 'flex';
+          cb.checked = visInts.includes(cbVal);
       }
-      cb.checked = visCashiers.includes(parseInt(cb.value)) || visCashiers.includes(cb.value.toString());
   });
   
   document.getElementById('u-password').value = ''; 

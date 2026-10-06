@@ -132,7 +132,7 @@ class AdminController extends Controller
             ])
             ->orderBy('role')
             ->paginate(15);
-        $allCashiers = User::where('role', 'CASHIER')->get(['id', 'name']);
+        $allCashiers = User::where('role', 'CASHIER')->orderBy('name')->get(['id', 'name', 'branch', 'status']);
         $departments = \App\Models\Department::orderBy('name')->get();
         return view('admin.users', ['pageData' => ['users' => $users, 'cashiers' => $allCashiers, 'departments' => $departments]]);
     }
@@ -190,9 +190,22 @@ class AdminController extends Controller
             $permissions = array_values(array_unique(array_merge($defaultStockPerms, $permissions)));
         }
         
-        $visibleCashiers = $request->role === 'CASHIER' ? ($request->visible_cashiers ?? []) : null;
-        if (is_array($visibleCashiers)) {
-            $visibleCashiers = array_values(array_map('intval', $visibleCashiers));
+        if ($request->role === 'CASHIER') {
+            $visibleCashiers = $request->visible_cashiers ?? [];
+            if (is_string($visibleCashiers)) {
+                $visibleCashiers = json_decode($visibleCashiers, true) ?? [];
+            }
+            if (is_array($visibleCashiers)) {
+                $targetId = (int)($request->user_id ?? 0);
+                $visibleCashiers = array_values(array_filter(
+                    array_map('intval', $visibleCashiers),
+                    fn($id) => $id > 0 && $id !== $targetId
+                ));
+            } else {
+                $visibleCashiers = [];
+            }
+        } else {
+            $visibleCashiers = null;
         }
 
         if ($request->user_id) {

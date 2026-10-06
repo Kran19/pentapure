@@ -360,13 +360,12 @@ class CashierController extends Controller
         ];
 
         $userModel = User::find($user['id']);
-        $visibleIds = $userModel->visible_cashiers ?? null;
+        $isAdmin = in_array($user['role'] ?? '', ['ADMIN', 'SUB_ADMIN']);
+        $visibleIds = $userModel ? ($userModel->visible_cashiers ?? []) : [];
         if (is_string($visibleIds)) {
-            $visibleIds = json_decode($visibleIds, true) ?? null;
+            $visibleIds = json_decode($visibleIds, true) ?? [];
         }
-        if ($visibleIds !== null) {
-            $visibleIds = array_map('intval', $visibleIds);
-        }
+        $visibleIds = array_values(array_filter(array_map('intval', (array)$visibleIds)));
 
         // Fetch all active cashiers in the company
         $allCashiers = User::where('role', 'CASHIER')->where('status', 'ACTIVE')->orderBy('name')->get();
@@ -388,7 +387,7 @@ class CashierController extends Controller
             if (in_array($c->id, $addedUserIds)) {
                 continue;
             }
-            if ($visibleIds === null || in_array($c->id, $visibleIds)) {
+            if ($isAdmin || in_array((int)$c->id, $visibleIds)) {
                 $allowedCashiers[] = $c->name;
                 $teamMembers[] = [
                     'id'   => $c->id,
@@ -482,23 +481,27 @@ class CashierController extends Controller
     {
         $user = $this->authUser();
         $cashierId = $request->cashier_id;
+        $isAdmin = in_array($user['role'] ?? '', ['ADMIN', 'SUB_ADMIN']);
+        $userModel = User::find($user['id']);
+        $visibleIds = $userModel ? ($userModel->visible_cashiers ?? []) : [];
+        if (is_string($visibleIds)) $visibleIds = json_decode($visibleIds, true) ?? [];
+        $visibleIds = array_values(array_filter(array_map('intval', (array)$visibleIds)));
         
         if ($cashierId && $cashierId !== 'all') {
-            $targetUser = User::find($cashierId);
+            $targetId = (int)$cashierId;
+            if (!$isAdmin && $targetId !== (int)$user['id'] && !in_array($targetId, $visibleIds)) {
+                abort(403, 'Unauthorized to download this cashier ledger.');
+            }
+            $targetUser = User::find($targetId);
             $targetName = $targetUser ? strtoupper($targetUser->name) : $user['name'];
-            return $this->generateCashierPdf($request, (int)$cashierId, $targetName);
+            return $this->generateCashierPdf($request, $targetId, $targetName);
         }
 
         if ($request->tab === 'team' || $request->team === 'all' || $cashierId === 'all') {
-            $userModel = User::find($user['id']);
-            $visibleIds = $userModel->visible_cashiers ?? null;
-            if (is_string($visibleIds)) $visibleIds = json_decode($visibleIds, true) ?? null;
-            if ($visibleIds !== null) $visibleIds = array_map('intval', $visibleIds);
-            
             $allOther = User::where('role', 'CASHIER')->where('status', 'ACTIVE')->get();
             $allowedIds = [$user['id']];
             foreach ($allOther as $c) {
-                if ($visibleIds === null || in_array($c->id, $visibleIds)) {
+                if ($isAdmin || in_array((int)$c->id, $visibleIds)) {
                     if (!in_array($c->id, $allowedIds)) {
                         $allowedIds[] = $c->id;
                     }

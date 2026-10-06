@@ -304,4 +304,90 @@ class CashierTest extends TestCase
         // Verify Details content is displayed in the table row
         $response->assertSee('Sales deposit for ledger');
     }
+
+    public function test_cashiers_without_permission_do_not_see_each_other_in_team_ledger(): void
+    {
+        // Neither cashierB nor cashierC have visible_cashiers permission granted
+        $this->cashierB->update(['visible_cashiers' => null]);
+        $this->cashierC->update(['visible_cashiers' => []]);
+
+        Transaction::create([
+            'user_id' => $this->cashierB->id,
+            'type' => 'IN',
+            'amount' => 1234.00,
+            'category' => 'sales',
+            'note' => 'Cashier B private entry',
+        ]);
+
+        Transaction::create([
+            'user_id' => $this->cashierC->id,
+            'type' => 'IN',
+            'amount' => 5678.00,
+            'category' => 'sales',
+            'note' => 'Cashier C private entry',
+        ]);
+
+        // Cashier B visits ledger
+        $sessionB = ['auth_user' => ['id' => $this->cashierB->id, 'name' => $this->cashierB->name, 'role' => 'CASHIER']];
+        $respB = $this->withSession($sessionB)->get('/cashier/ledger');
+        $respB->assertStatus(200);
+        $teamTxsB = collect($respB->viewData('pageData')['teamTransactions']);
+        // B sees own transaction
+        $this->assertTrue($teamTxsB->pluck('amount')->contains(1234.00));
+        // B DOES NOT see C's transaction
+        $this->assertFalse($teamTxsB->pluck('amount')->contains(5678.00));
+
+        // Cashier C visits ledger
+        $sessionC = ['auth_user' => ['id' => $this->cashierC->id, 'name' => $this->cashierC->name, 'role' => 'CASHIER']];
+        $respC = $this->withSession($sessionC)->get('/cashier/ledger');
+        $respC->assertStatus(200);
+        $teamTxsC = collect($respC->viewData('pageData')['teamTransactions']);
+        // C sees own transaction
+        $this->assertTrue($teamTxsC->pluck('amount')->contains(5678.00));
+        // C DOES NOT see B's transaction
+        $this->assertFalse($teamTxsC->pluck('amount')->contains(1234.00));
+    }
+
+    public function test_cashier_visibility_is_strictly_directional(): void
+    {
+        // Cashier A is granted permission to see Cashier B
+        $this->cashierA->update(['visible_cashiers' => [$this->cashierB->id]]);
+        // Cashier B is NOT granted permission to see Cashier A
+        $this->cashierB->update(['visible_cashiers' => []]);
+
+        Transaction::create([
+            'user_id' => $this->cashierA->id,
+            'type' => 'IN',
+            'amount' => 111.00,
+            'category' => 'sales',
+        ]);
+
+        Transaction::create([
+            'user_id' => $this->cashierB->id,
+            'type' => 'IN',
+            'amount' => 222.00,
+            'category' => 'sales',
+        ]);
+
+        // Cashier A views team ledger -> sees B ($222)
+        $sessionA = ['auth_user' => ['id' => $this->cashierA->id, 'name' => $this->cashierA->name, 'role' => 'CASHIER']];
+        $respA = $this->withSession($sessionA)->get('/cashier/ledger');
+        $teamTxsA = collect($respA->viewData('pageData')['teamTransactions']);
+        $this->assertTrue($teamTxsA->pluck('amount')->contains(222.00));
+
+        // Cashier B views team ledger -> DOES NOT see A ($111)
+        $sessionB = ['auth_user' => ['id' => $this->cashierB->id, 'name' => $this->cashierB->name, 'role' => 'CASHIER']];
+        $respB = $this->withSession($sessionB)->get('/cashier/ledger');
+        $teamTxsB = collect($respB->viewData('pageData')['teamTransactions']);
+        $this->assertFalse($teamTxsB->pluck('amount')->contains(111.00));
+    }
+
+    public function test_cashier_cannot_download_unauthorized_cashier_pdf(): void
+    {
+        $this->cashierB->update(['visible_cashiers' => []]);
+
+        $sessionB = ['auth_user' => ['id' => $this->cashierB->id, 'name' => $this->cashierB->name, 'role' => 'CASHIER']];
+        $response = $this->withSession($sessionB)->get('/cashier/history/pdf?cashier_id=' . $this->cashierA->id);
+        $response->assertStatus(403);
+    }
 }
