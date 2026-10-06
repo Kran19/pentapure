@@ -303,6 +303,10 @@ class CashierTest extends TestCase
 
         // Verify Details content is displayed in the table row
         $response->assertSee('Sales deposit for ledger');
+
+        // Verify ALL CATEGORIES dropdown is removed from ledger toolbar
+        $response->assertDontSee('ALL CATEGORIES');
+        $response->assertDontSee('id="ledger-category-select"', false);
     }
 
     public function test_cashiers_without_permission_do_not_see_each_other_in_team_ledger(): void

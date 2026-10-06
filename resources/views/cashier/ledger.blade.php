@@ -164,14 +164,6 @@
       @endforeach
     </select>
 
-    <!-- Category Filter -->
-    <select name="category" id="ledger-category-select" onchange="applyLedgerFilters()" style="width:auto; flex:1; min-width:150px; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
-      <option value="">ALL CATEGORIES</option>
-      @foreach($pageData['categories'] ?? [] as $c)
-        <option value="{{ $c['value'] }}" {{ $category===$c['value']?'selected':'' }}>{{ strtoupper($c['label']) }}</option>
-      @endforeach
-    </select>
-
     <!-- Specific Date -->
     <input type="date" name="specific_date" id="ledger-specific-date" value="{{ request('specific_date') }}" onchange="applyLedgerFilters()" style="width:auto; flex:1; min-width:140px; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);" title="Search by specific date">
 
@@ -407,7 +399,8 @@
 
     const memberSelect = document.getElementById('team-member-select');
     const selectedMember = memberSelect ? memberSelect.value : 'all';
-    const catVal = (document.getElementById('ledger-category-select').value || '').toLowerCase();
+    const catSelect = document.getElementById('ledger-category-select');
+    const catVal = (catSelect ? catSelect.value : '').toLowerCase();
     const specificDate = document.getElementById('ledger-specific-date').value;
     const rangeVal = document.getElementById('ledger-range-select').value;
     const startDate = document.getElementById('ledger-start-date').value;
@@ -642,7 +635,8 @@
     document.getElementById('ledger-tab-select').value = 'personal';
     const memberSelect = document.getElementById('team-member-select');
     if (memberSelect) memberSelect.value = 'all';
-    document.getElementById('ledger-category-select').value = '';
+    const catSelect = document.getElementById('ledger-category-select');
+    if (catSelect) catSelect.value = '';
     document.getElementById('ledger-specific-date').value = '';
     document.getElementById('ledger-range-select').value = 'all';
     document.getElementById('ledger-start-date').value = '';
@@ -717,28 +711,6 @@
               });
               memberSelect.innerHTML = html;
             }
-          }
-        }
-
-        // Check and update category options in select dropdown
-        const catSelect = document.getElementById('ledger-category-select');
-        if (catSelect && newPageData.categories) {
-          const currentCat = catSelect.value;
-          const currentCatOptions = Array.from(catSelect.options).map(o => String(o.value));
-          const newCategories = newPageData.categories;
-          
-          let needsCatUpdate = (newCategories.length + 1 !== currentCatOptions.length);
-          if (!needsCatUpdate) {
-            needsCatUpdate = newCategories.some(c => !currentCatOptions.includes(String(c.value)));
-          }
-
-          if (needsCatUpdate) {
-            let catHtml = `<option value="" ${!currentCat ? 'selected' : ''}>ALL CATEGORIES</option>`;
-            newCategories.forEach(c => {
-              const isSelected = (String(currentCat) === String(c.value));
-              catHtml += `<option value="${c.value}" ${isSelected ? 'selected' : ''}>${c.label.toUpperCase()}</option>`;
-            });
-            catSelect.innerHTML = catHtml;
           }
         }
 
