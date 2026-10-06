@@ -166,9 +166,8 @@
         <thead>
             <tr>
                 <th width="15%">Date</th>
-                <th width="15%">Cashier</th>
-                <th width="10%">Category</th>
-                <th width="35%">Particulars / Note</th>
+                <th width="18%">Cashier</th>
+                <th width="42%">Particulars / Note</th>
                 <th width="10%">Ref / Bill</th>
                 <th width="15%" class="text-right">Amount (₹)</th>
             </tr>
@@ -178,7 +177,6 @@
             <tr>
                 <td>{{ $t->created_at->format('d-m-Y') }}<br><span style="color:#666;font-size:10px;">{{ $t->created_at->format('h:i A') }}</span></td>
                 <td><strong>{{ $t->user->name ?? 'Unknown' }}</strong></td>
-                <td>{{ strtoupper($t->category) }}</td>
                 <td>
                     {{ $t->note ?? '—' }}
                     @if($t->description)

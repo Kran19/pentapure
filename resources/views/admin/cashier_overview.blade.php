@@ -120,8 +120,7 @@
                         <th style="padding:12px; text-align:left;">Date</th>
                         <th style="padding:12px; text-align:left;">Cashier</th>
                         <th style="padding:12px; text-align:center;">Type</th>
-                        <th style="padding:12px; text-align:left;">Details</th>
-                        <th style="padding:12px; text-align:left;">Category</th>
+                        <th style="padding:12px; text-align:left;">Particulars / Note</th>
                         <th style="padding:12px; text-align:right;">Amount</th>
                         <th style="padding:12px; text-align:right;">Balance</th>
                         <th style="padding:12px; text-align:center;">Bills</th>
@@ -143,15 +142,10 @@
                             </span>
                         </td>
                         <td style="padding:12px;">
-                            <div style="font-weight:600;">{{ $tx->note ?: 'Cash ' . $tx->type }}</div>
+                            <div style="font-weight:600; color:var(--text-main);">{{ $tx->note ?: 'Cash ' . $tx->type }}</div>
                             @if($tx->description)
                                 <div style="font-size:0.72rem; color:var(--text-muted);">{{ $tx->description }}</div>
                             @endif
-                        </td>
-                        <td style="padding:12px;">
-                            <span style="font-size:0.75rem; background:rgba(0,0,0,0.06); padding:2px 8px; border-radius:10px; font-weight:bold; white-space:nowrap;">
-                                {{ strtoupper(str_replace('_', ' ', $tx->category)) }}
-                            </span>
                             @if($tx->site)
                                 <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">📍 {{ $tx->site }}</div>
                             @endif
@@ -182,35 +176,13 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
+                        <td colspan="7" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
                             No transactions found.
                         </td>
                     </tr>
                     @endforelse
                 </tbody>
             </table>
-        </div>
-    </div>
-
-    <!-- Category Breakdown -->
-    <div style="margin-top:2rem;">
-        <h3 class="mb-1">Category Breakdown</h3>
-        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:1rem;">
-            @foreach($pageData['summary']['byCategory'] as $cat => $vals)
-            <div class="card" style="padding:1rem;">
-                <div style="font-weight:600; color:var(--primary-light); margin-bottom:8px; border-bottom:1px solid var(--glass-border); padding-bottom:5px;">
-                    {{ strtoupper($cat) }}
-                </div>
-                <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
-                    <span style="color:var(--text-muted);">In:</span>
-                    <span style="color:var(--secondary); font-weight:600;">₹{{ number_format($vals['in'], 2) }}</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
-                    <span style="color:var(--text-muted);">Out:</span>
-                    <span style="color:var(--danger); font-weight:600;">₹{{ number_format($vals['out'], 2) }}</span>
-                </div>
-            </div>
-            @endforeach
         </div>
     </div>
 </div>

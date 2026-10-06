@@ -153,56 +153,11 @@ input[type="number"],
   }
 }
 
-.btn-category-add-link {
-  background: transparent !important;
-  border: none !important;
-  color: #f59e0b !important;
-  font-size: 0.78rem !important;
-  font-weight: 700 !important;
-  cursor: pointer !important;
-  padding: 0 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 3px !important;
-  text-decoration: none !important;
-  line-height: 1 !important;
-  transition: color 0.15s ease !important;
-}
-.btn-category-add-link:hover {
-  color: #d97706 !important;
-  text-decoration: underline !important;
-}
-
-.btn-category-plus {
-  background: #f59e0b !important;
-  color: #1e293b !important;
-  border: 1.5px solid #d97706 !important;
-  border-radius: 8px !important;
-  padding: 0 !important;
-  width: 42px !important;
-  min-width: 42px !important;
-  height: 42px !important;
-  font-weight: 800 !important;
-  font-size: 1.25rem !important;
-  line-height: 1 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  cursor: pointer !important;
-  flex-shrink: 0 !important;
-  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.25) !important;
-  transition: all 0.15s ease !important;
-}
-.btn-category-plus:hover {
-  background: #fbbf24 !important;
-  transform: translateY(-1px);
-}
 </style>
 
 <div class="card" style="padding:2rem;">
   <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:1.5rem;">
     <h2 style="margin:0; font-size:1.4rem;">💰 New Transactions</h2>
-    <button class="btn btn-sm" onclick="addCategoryPrompt()" style="padding:0.5rem 1.2rem; font-weight:600;">+ Add Category</button>
   </div>
   
   <div id="transaction-rows">
@@ -216,106 +171,6 @@ input[type="number"],
 </div>
 
 <script>
-  // Global category list populated from PHP
-  window.expenseCategories = @json($pageData['categories'] ?? []);
-
-  function handleCategoryChange(select) {
-    if (select.value === '__add_new__') {
-      const prevVal = select.dataset.prevValue || (window.expenseCategories[0] ? window.expenseCategories[0].value : '');
-      addCategoryPrompt(select, prevVal);
-    } else {
-      select.dataset.prevValue = select.value;
-    }
-  }
-
-  function addCategoryPrompt(triggerEl, fallbackVal) {
-    const targetSelect = triggerEl ? (triggerEl.classList.contains('tx-category') ? triggerEl : triggerEl.closest('.cashier-tx-row')?.querySelector('.tx-category')) : null;
-    const revertVal = fallbackVal || (targetSelect ? targetSelect.dataset.prevValue || (targetSelect.value !== '__add_new__' ? targetSelect.value : '') : '');
-
-    Swal.fire({
-      title: 'Add New Category',
-      input: 'text',
-      inputPlaceholder: 'Category Name',
-      showCancelButton: true,
-      confirmButtonText: 'Save Category',
-      confirmButtonColor: '#f59e0b',
-      background: '#ffffff',
-      color: '#333333',
-      preConfirm: (name) => {
-        if (!name || !name.trim()) {
-          Swal.showValidationMessage('Category name is required');
-          return false;
-        }
-        return name.trim();
-      }
-    }).then((result) => {
-      if (result.isConfirmed) {
-        const catName = result.value.trim();
-        fetch(window.baseUrl + '/' + window.userSlug + '/categories', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-          },
-          body: JSON.stringify({ name: catName })
-        })
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            Swal.fire({ icon: 'success', title: 'Added', text: data.message || 'Category created!', timer: 1200, showConfirmButton: false });
-            
-            const newCat = (data.category && data.category.value) ? data.category : {
-              value: catName.toLowerCase().replace(/[^a-z0-9]+/gi, '_'),
-              label: catName
-            };
-            
-            // Check if already in list
-            const existingIdx = window.expenseCategories.findIndex(c => String(c.value) === String(newCat.value));
-            if (existingIdx === -1) {
-              window.expenseCategories.push(newCat);
-              window.expenseCategories.sort((a, b) => {
-                if (a.label === 'NONE' || a.label === 'N/A') return -1;
-                if (b.label === 'NONE' || b.label === 'N/A') return 1;
-                return a.label.localeCompare(b.label);
-              });
-            }
-
-            if (window.serverPageData) {
-              window.serverPageData.categories = window.expenseCategories;
-            }
-
-            // Update all category dropdowns across rows
-            document.querySelectorAll('.tx-category').forEach(select => {
-              const wasTarget = (select === targetSelect);
-              const targetVal = wasTarget ? newCat.value : (select.value === '__add_new__' ? (select.dataset.prevValue || newCat.value) : select.value);
-
-              select.innerHTML = window.expenseCategories.map(c => `<option value="${c.value}">${c.label}</option>`).join('') +
-                                 `<option value="__add_new__" style="color:#d97706; font-weight:700;">+ Add Category...</option>`;
-              select.value = targetVal;
-              select.dataset.prevValue = select.value;
-            });
-          } else {
-            if (targetSelect && revertVal && targetSelect.value === '__add_new__') {
-              targetSelect.value = revertVal;
-            }
-            Swal.fire('Error', data.message || 'Failed to add category', 'error');
-          }
-        })
-        .catch(err => {
-          if (targetSelect && revertVal && targetSelect.value === '__add_new__') {
-            targetSelect.value = revertVal;
-          }
-          Swal.fire('Error', 'Network error: ' + (err.message || ''), 'error');
-        });
-      } else {
-        if (targetSelect && revertVal && targetSelect.value === '__add_new__') {
-          targetSelect.value = revertVal;
-        }
-      }
-    });
-  }
-
   function triggerRowCamera(btn) {
     const container = btn.closest('.bill-attach-container');
     const camInput = container.querySelector('.tx-bill-camera');
@@ -503,9 +358,9 @@ input[type="number"],
     div.className = 'cashier-tx-row';
     
     div.innerHTML = `
-      <!-- Line 1: Date, Type, Category, Amount, and Delete button -->
+      <!-- Line 1: Date, Type, Particulars / Note, Amount, and Delete button -->
       <div style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap;">
-        <div class="form-group" style="flex:1.2 1 150px;">
+        <div class="form-group" style="flex:1.2 1 140px;">
           <label>Date</label>
           <input type="date" class="tx-date" value="${defaultDate}" required>
         </div>
@@ -517,23 +372,10 @@ input[type="number"],
             <option value="IN">INCOME (IN)</option>
           </select>
         </div>
-        
-        <div class="form-group" style="flex:2.2 1 220px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <label style="margin-bottom:0;">Category</label>
-            <button type="button" class="btn-category-add-link" onclick="addCategoryPrompt(this)" title="Add New Category">
-              + Add Category
-            </button>
-          </div>
-          <div style="display:flex; gap:6px; align-items:center;">
-            <select class="tx-category" onchange="handleCategoryChange(this)" style="flex:1;">
-              ${categories.map(c => `<option value="${c.value}">${c.label}</option>`).join('')}
-              <option value="__add_new__" style="color:#d97706; font-weight:700;">+ Add Category...</option>
-            </select>
-            <button type="button" class="btn-category-plus" onclick="addCategoryPrompt(this)" title="Add New Category">
-              +
-            </button>
-          </div>
+
+        <div class="form-group" style="flex:2.5 1 240px;">
+          <label>Particulars / Note</label>
+          <input type="text" class="tx-note" placeholder="Description of transaction / note">
         </div>
 
         <div class="form-group" style="flex:1.2 1 140px;">
@@ -546,19 +388,14 @@ input[type="number"],
         </button>
       </div>
 
-      <!-- Line 2: Note, Reference, Bill file -->
+      <!-- Line 2: Reference, Bill file -->
       <div style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap;">
-        <div class="form-group" style="flex:2 1 250px;">
-          <label>Particulars / Note</label>
-          <input type="text" class="tx-note" placeholder="Description of transaction">
-        </div>
-
-        <div class="form-group" style="flex:1 1 160px;">
+        <div class="form-group" style="flex:1 1 200px;">
           <label>Reference / Bill No. (optional)</label>
           <input type="text" class="tx-ref" placeholder="e.g. INV-001">
         </div>
 
-        <div class="form-group bill-attach-container" style="flex:1.8 1 240px;">
+        <div class="form-group bill-attach-container" style="flex:2 1 280px;">
           <label>Attach Bill (optional)</label>
           <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-height:42px;">
             <!-- Mobile Camera Button -->
@@ -595,10 +432,6 @@ input[type="number"],
     `;
     wrapper.appendChild(div);
     container.appendChild(wrapper);
-
-    div.querySelectorAll('.tx-category').forEach(sel => {
-      sel.dataset.prevValue = sel.value;
-    });
   }
 
   function saveTransactions(btn) {
@@ -615,10 +448,6 @@ input[type="number"],
       const dateEl = row.querySelector('.tx-date');
       const date = dateEl ? dateEl.value : '';
       const type = row.querySelector('.tx-type').value;
-      let category = row.querySelector('.tx-category').value;
-      if (category === '__add_new__') {
-        category = '';
-      }
       const amount = Number(row.querySelector('.tx-amount').value);
       const note = row.querySelector('.tx-note').value;
       const reference = row.querySelector('.tx-ref').value;
@@ -634,7 +463,7 @@ input[type="number"],
         formData.append(`transactions[${idx}][date]`, date);
       }
       formData.append(`transactions[${idx}][type]`, type);
-      formData.append(`transactions[${idx}][category]`, category);
+      formData.append(`transactions[${idx}][category]`, 'general');
       formData.append(`transactions[${idx}][amount]`, amount);
       formData.append(`transactions[${idx}][note]`, note);
       formData.append(`transactions[${idx}][reference]`, reference);
@@ -685,9 +514,6 @@ input[type="number"],
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    window.serverPageData = window.serverPageData || {};
-    window.serverPageData.categories = window.expenseCategories;
-    
     addTransactionRow();
   });
 </script>

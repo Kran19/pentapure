@@ -43,8 +43,8 @@ class CashierOverviewTableTest extends TestCase
         $response->assertSee('Date');
         $response->assertSee('Cashier');
         $response->assertSee('Type');
-        $response->assertSee('Details');
-        $response->assertSee('Category');
+        $response->assertSee('Particulars / Note');
+        $response->assertDontSee('<th style="padding:12px; text-align:left;">Category</th>', false);
         $response->assertSee('Amount');
         $response->assertSee('Balance');
         $response->assertSee('Bills');
@@ -56,8 +56,6 @@ class CashierOverviewTableTest extends TestCase
         // Verify transaction content
         $response->assertSee('Daily auto entry');
         $response->assertSee('Cash OUT');
-        $response->assertSee('EDFD');
-        $response->assertSee('SALES');
         $response->assertSee('John Cashier');
         $response->assertSee('No Bills');
         $response->assertSee('+₹1,000.00');
