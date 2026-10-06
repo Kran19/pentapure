@@ -1665,6 +1665,9 @@ function adminExportStockPdf() {
           <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:#333333 !important;">
             <input type="checkbox" id="export-stage-finished" checked style="width:20px; height:20px; cursor:pointer;"> ✅ FG Stock
           </label>
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:#333333 !important;">
+            <input type="checkbox" id="export-stage-packaging" checked style="width:20px; height:20px; cursor:pointer;"> 📦 Packaging Materials
+          </label>
         </div>
         
         <div style="margin-bottom:10px;">
@@ -1693,12 +1696,14 @@ function adminExportStockPdf() {
       const raw = document.getElementById('export-stage-raw').checked;
       const semi = document.getElementById('export-stage-semi').checked;
       const finished = document.getElementById('export-stage-finished').checked;
+      const packaging = document.getElementById('export-stage-packaging')?.checked;
       const selectedDate = document.getElementById('export-date').value;
       
       const stages = [];
       if (raw) stages.push('RAW');
       if (semi) stages.push('SEMI');
       if (finished) stages.push('FINISHED');
+      if (packaging) stages.push('PACKAGING');
       
       if (stages.length === 0) {
         Swal.showValidationMessage('Please select at least one stock panel.');

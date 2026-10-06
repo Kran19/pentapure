@@ -129,6 +129,22 @@ class PdfGenerationTest extends TestCase
         $this->assertNotEmpty($response->getContent());
     }
 
+    public function test_stock_manager_stock_pdf_download_with_packaging_stage(): void
+    {
+        $response = $this->withSession(['auth_user' => [
+            'id' => $this->stockManagerUser->id,
+            'name' => $this->stockManagerUser->name,
+            'role' => 'STOCK_MANAGER',
+        ]])->post('/stock_manager/stock/pdf', [
+            'stages' => 'RAW,SEMI,FINISHED,PACKAGING',
+            'date' => '2026-10-06',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $this->assertNotEmpty($response->getContent());
+    }
+
     public function test_admin_dispatch_activity_pdf_download(): void
     {
         $response = $this->withSession(['auth_user' => [
