@@ -157,6 +157,46 @@ class CashierTest extends TestCase
         $this->assertFalse($teamTxs->pluck('amount')->contains(9999.00));
     }
 
+    public function test_admin_can_save_empty_visible_cashiers_to_restrict_team_ledger(): void
+    {
+        $admin = User::factory()->create(['role' => 'ADMIN', 'status' => 'ACTIVE']);
+        $adminSession = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
+
+        // Update Cashier A via admin with empty visible_cashiers
+        $response = $this->withSession($adminSession)->postJson('/admin/users', [
+            'user_id' => $this->cashierA->id,
+            'name' => $this->cashierA->name,
+            'username' => $this->cashierA->username,
+            'role' => 'CASHIER',
+            'phone' => '+91 9999999999',
+            'branch' => 'Main Branch',
+            'visible_cashiers' => [],
+        ]);
+        $response->assertJson(['success' => true]);
+
+        $this->cashierA->refresh();
+        $this->assertSame([], $this->cashierA->visible_cashiers);
+
+        // Verify Cashier A now sees neither Cashier B nor Cashier C in team ledger
+        Transaction::create([
+            'user_id' => $this->cashierB->id,
+            'type' => 'IN',
+            'amount' => 500.00,
+            'category' => 'sales',
+        ]);
+
+        $sessionA = ['auth_user' => [
+            'id' => $this->cashierA->id,
+            'name' => $this->cashierA->name,
+            'role' => 'CASHIER',
+        ]];
+
+        $ledgerResp = $this->withSession($sessionA)->get('/cashier/ledger');
+        $ledgerResp->assertStatus(200);
+        $teamTxs = collect($ledgerResp->viewData('pageData')['teamTransactions']);
+        $this->assertFalse($teamTxs->pluck('amount')->contains(500.00));
+    }
+
     public function test_cashier_can_create_date_wise_transactions_and_update_date(): void
     {
         $session = ['auth_user' => [

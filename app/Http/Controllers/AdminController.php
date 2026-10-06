@@ -190,9 +190,9 @@ class AdminController extends Controller
             $permissions = array_values(array_unique(array_merge($defaultStockPerms, $permissions)));
         }
         
-        $visibleCashiers = $request->role === 'CASHIER' ? ($request->visible_cashiers ?? null) : null;
+        $visibleCashiers = $request->role === 'CASHIER' ? ($request->visible_cashiers ?? []) : null;
         if (is_array($visibleCashiers)) {
-            $visibleCashiers = !empty($visibleCashiers) ? array_map('intval', $visibleCashiers) : null;
+            $visibleCashiers = array_values(array_map('intval', $visibleCashiers));
         }
 
         if ($request->user_id) {

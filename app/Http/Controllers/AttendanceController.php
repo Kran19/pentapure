@@ -29,17 +29,33 @@ class AttendanceController extends Controller
         $user = $this->authUser();
         
         $today = Carbon::today()->toDateString();
-        $totalWorkers  = Worker::count();
-        $activeWorkers = Worker::where('status','ACTIVE')->count();
-        $presentToday  = Attendance::where('date', $today)->whereIn('status', ['PRESENT', 'HALF_DAY'])->count();
-        $absentToday   = Attendance::where('date', $today)->where('status', 'ABSENT')->count();
-        $totalOT       = Attendance::where('date', $today)->sum('overtime_hours');
+        $allowedDeptIds = ($user && $user['role'] === 'ATTENDANCE') ? ($user['permissions'] ?? []) : [];
+
+        $workersBase = Worker::query();
+        if (!empty($allowedDeptIds)) {
+            $workersBase->whereIn('department_id', $allowedDeptIds);
+        }
+        $totalWorkers  = (clone $workersBase)->count();
+        $activeWorkers = (clone $workersBase)->where('status','ACTIVE')->count();
+
+        $attBase = Attendance::where('date', $today);
+        if (!empty($allowedDeptIds)) {
+            $attBase->whereHas('worker', fn($q) => $q->whereIn('department_id', $allowedDeptIds));
+        }
+        $presentToday  = (clone $attBase)->whereIn('status', ['PRESENT', 'HALF_DAY'])->count();
+        $absentToday   = (clone $attBase)->where('status', 'ABSENT')->count();
+        $totalOT       = (clone $attBase)->sum('overtime_hours');
+
         $recentSubmissions = \App\Models\AttendanceSubmission::with(['createdBy', 'submittedBy'])
             ->orderBy('attendance_date', 'desc')
             ->limit(7)
             ->get();
             
-        $departments = Department::withCount('workers')->orderBy('name')->get();
+        $departmentsQuery = Department::withCount('workers')->orderBy('name');
+        if (!empty($allowedDeptIds)) {
+            $departmentsQuery->whereIn('id', $allowedDeptIds);
+        }
+        $departments = $departmentsQuery->get();
 
         return view('attendance.home', [
             'totalWorkers'      => $totalWorkers,
@@ -55,6 +71,14 @@ class AttendanceController extends Controller
 
     public function clearAttendanceData(Request $request)
     {
+        $user = $this->authUser();
+        if (($user['role'] ?? '') !== 'ADMIN') {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized. Only Admin can clear attendance data.'], 403);
+            }
+            abort(403, 'Unauthorized. Only Admin can clear attendance data.');
+        }
+
         \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
 
         $tables = [
@@ -79,6 +103,11 @@ class AttendanceController extends Controller
         }
 
         return redirect()->back()->with('success', 'All attendance records and submissions have been successfully cleared!');
+    }
+
+    public function clearAllAttendanceData(Request $request)
+    {
+        return $this->clearAttendanceData($request);
     }
 
     // --- DEPARTMENTS ---
@@ -120,8 +149,20 @@ class AttendanceController extends Controller
     // --- WORKERS ---
     public function workers(Request $request)
     {
-        $workers     = Worker::with('department')->orderBy('id')->get();
-        $departments = Department::where('is_active', true)->orderBy('name')->get();
+        $workersQuery = Worker::with('department')->orderBy('id');
+        $departmentsQuery = Department::where('is_active', true)->orderBy('name');
+
+        $authUser = $this->authUser();
+        if ($authUser && $authUser['role'] === 'ATTENDANCE') {
+            $allowedDeptIds = $authUser['permissions'] ?? [];
+            if (!empty($allowedDeptIds)) {
+                $workersQuery->whereIn('department_id', $allowedDeptIds);
+                $departmentsQuery->whereIn('id', $allowedDeptIds);
+            }
+        }
+
+        $workers     = $workersQuery->get();
+        $departments = $departmentsQuery->get();
         return view('attendance.workers', [
             'workers'     => $workers,
             'departments' => $departments,
@@ -132,7 +173,16 @@ class AttendanceController extends Controller
     // JSON API for SPA
     public function workersJson()
     {
-        $workers = Worker::with('department')->orderBy('name')->get()->map(fn($w) => [
+        $workersQuery = Worker::with('department')->orderBy('name');
+        $authUser = $this->authUser();
+        if ($authUser && $authUser['role'] === 'ATTENDANCE') {
+            $allowedDeptIds = $authUser['permissions'] ?? [];
+            if (!empty($allowedDeptIds)) {
+                $workersQuery->whereIn('department_id', $allowedDeptIds);
+            }
+        }
+
+        $workers = $workersQuery->get()->map(fn($w) => [
             'id'             => $w->id,
             'name'           => $w->name,
             'department'     => $w->department->name ?? '—',
@@ -469,16 +519,26 @@ class AttendanceController extends Controller
         $submission = \App\Models\AttendanceSubmission::where('attendance_date', $date)->first();
         $status = $submission ? $submission->status : 'PENDING';
         
-        $attendances = Attendance::with(['worker.department'])
+        $authUser = $this->authUser();
+        $allowedDeptIds = ($authUser && $authUser['role'] === 'ATTENDANCE') ? ($authUser['permissions'] ?? []) : [];
+
+        $attQuery = Attendance::with(['worker.department'])
             ->where('date', $date)
-            ->whereHas('worker', function($q) {
+            ->whereHas('worker', function($q) use ($allowedDeptIds) {
                 $q->where('status', 'ACTIVE');
-            })
-            ->get();
+                if (!empty($allowedDeptIds)) {
+                    $q->whereIn('department_id', $allowedDeptIds);
+                }
+            });
+        $attendances = $attQuery->get();
 
         // If nothing saved yet, we still want to show all active workers with blank data
         if ($attendances->isEmpty()) {
-            $workers = Worker::with('department')->where('status', 'ACTIVE')->get();
+            $wQuery = Worker::with('department')->where('status', 'ACTIVE');
+            if (!empty($allowedDeptIds)) {
+                $wQuery->whereIn('department_id', $allowedDeptIds);
+            }
+            $workers = $wQuery->get();
             $attendances = $workers->map(function($w) use ($date) {
                 return new Attendance([
                     'worker_id' => $w->id,
@@ -530,14 +590,24 @@ class AttendanceController extends Controller
         }
 
         // Get workers who are ACTIVE OR INACTIVE with attendance records in the month
-        $workers = Worker::with(['department', 'attendances' => function($q) use ($startDate, $endDate) {
+        $workersQuery = Worker::with(['department', 'attendances' => function($q) use ($startDate, $endDate) {
             $q->whereBetween('date', [$startDate, $endDate]);
         }])->where(function($q) use ($startDate, $endDate) {
             $q->where('status', 'ACTIVE')
               ->orWhereHas('attendances', function($aq) use ($startDate, $endDate) {
                   $aq->whereBetween('date', [$startDate, $endDate]);
               });
-        })->orderBy('name')->get();
+        });
+
+        $authUser = $this->authUser();
+        if ($authUser && $authUser['role'] === 'ATTENDANCE') {
+            $allowedDeptIds = $authUser['permissions'] ?? [];
+            if (!empty($allowedDeptIds)) {
+                $workersQuery->whereIn('department_id', $allowedDeptIds);
+            }
+        }
+
+        $workers = $workersQuery->orderBy('name')->get();
 
         $adjustments = WorkerMonthlyAdjustment::where('month', $month)->get()->keyBy('worker_id');
 
@@ -659,12 +729,22 @@ class AttendanceController extends Controller
         $startDate = Carbon::parse($month)->startOfMonth()->toDateString();
         $endDate   = Carbon::parse($month)->endOfMonth()->toDateString();
 
-        $workers = Worker::where(function($q) use ($startDate, $endDate) {
+        $workersQuery = Worker::where(function($q) use ($startDate, $endDate) {
             $q->where('status', 'ACTIVE')
               ->orWhereHas('attendances', function($aq) use ($startDate, $endDate) {
                   $aq->whereBetween('date', [$startDate, $endDate]);
               });
-        })->orderBy('name')->get();
+        });
+
+        $authUser = $this->authUser();
+        if ($authUser && $authUser['role'] === 'ATTENDANCE') {
+            $allowedDeptIds = $authUser['permissions'] ?? [];
+            if (!empty($allowedDeptIds)) {
+                $workersQuery->whereIn('department_id', $allowedDeptIds);
+            }
+        }
+
+        $workers = $workersQuery->orderBy('name')->get();
 
         $allData = [];
         foreach($workers as $worker) {
@@ -695,14 +775,24 @@ class AttendanceController extends Controller
             $workerNumberMap[$wId] = $idx + 1;
         }
 
-        $workers = Worker::with(['department', 'attendances' => function($q) use ($startDate, $endDate) {
+        $workersQuery = Worker::with(['department', 'attendances' => function($q) use ($startDate, $endDate) {
             $q->whereBetween('date', [$startDate, $endDate]);
         }])->where(function($q) use ($startDate, $endDate) {
             $q->where('status', 'ACTIVE')
               ->orWhereHas('attendances', function($aq) use ($startDate, $endDate) {
                   $aq->whereBetween('date', [$startDate, $endDate]);
               });
-        })->orderBy('name')->get();
+        });
+
+        $authUser = $this->authUser();
+        if ($authUser && $authUser['role'] === 'ATTENDANCE') {
+            $allowedDeptIds = $authUser['permissions'] ?? [];
+            if (!empty($allowedDeptIds)) {
+                $workersQuery->whereIn('department_id', $allowedDeptIds);
+            }
+        }
+
+        $workers = $workersQuery->orderBy('name')->get();
 
         $adjustments = WorkerMonthlyAdjustment::where('month', $month)->get()->keyBy('worker_id');
 

@@ -341,20 +341,18 @@ function togglePermDrawer(groupSlug, event) {
   const card = document.getElementById(groupSlug);
   if (!card) return;
   const body = card.querySelector('.perm-group-body');
-  const badge = card.querySelector('.drawer-status-badge');
   const icon = card.querySelector('.drawer-toggle-icon');
   if (!body) return;
 
   const isClosed = body.style.display === 'none' || !body.style.display;
   if (isClosed) {
     body.style.display = 'grid';
-    if (badge) { badge.innerText = 'Open'; badge.style.background = '#dbeafe'; badge.style.color = '#1e40af'; }
     if (icon) { icon.style.transform = 'rotate(180deg)'; }
   } else {
     body.style.display = 'none';
-    if (badge) { badge.innerText = 'Closed'; badge.style.background = '#e2e8f0'; badge.style.color = '#64748b'; }
     if (icon) { icon.style.transform = 'rotate(0deg)'; }
   }
+  syncGroupSelectAll(groupSlug);
 }
 
 function toggleGroupPerms(groupSlug, check) {
@@ -364,17 +362,32 @@ function toggleGroupPerms(groupSlug, check) {
   const editCbs = card.querySelectorAll('.perm-edit-cb');
   viewCbs.forEach(cb => cb.checked = check);
   editCbs.forEach(cb => cb.checked = check);
+  syncGroupSelectAll(groupSlug);
 }
 
 function syncGroupSelectAll(groupSlug) {
   const card = document.getElementById(groupSlug);
   if (!card) return;
   const groupSelectAll = card.querySelector('.group-select-all-cb');
-  if (!groupSelectAll) return;
   const allCbs = card.querySelectorAll('.perm-view-cb, .perm-edit-cb');
   if (allCbs.length === 0) return;
   const checkedCbs = card.querySelectorAll('.perm-view-cb:checked, .perm-edit-cb:checked');
-  groupSelectAll.checked = (allCbs.length === checkedCbs.length);
+  if (groupSelectAll) groupSelectAll.checked = (allCbs.length === checkedCbs.length);
+
+  const badge = card.querySelector('.drawer-status-badge');
+  const body = card.querySelector('.perm-group-body');
+  const isOpen = body && (body.style.display === 'grid' || body.style.display === 'flex');
+  if (badge) {
+    if (checkedCbs.length > 0) {
+      badge.innerText = checkedCbs.length + ' Active';
+      badge.style.background = '#dbeafe';
+      badge.style.color = '#1e40af';
+    } else {
+      badge.innerText = isOpen ? 'Open' : 'Closed';
+      badge.style.background = isOpen ? '#e0f2fe' : '#e2e8f0';
+      badge.style.color = isOpen ? '#0369a1' : '#64748b';
+    }
+  }
 }
 
 function onPermViewToggle(viewCb) {
@@ -403,6 +416,9 @@ function toggleAllPerms(type, check) {
   const cards = document.querySelectorAll('.perm-group-card');
   cards.forEach(card => {
     if (card.style.display === 'none') return;
+    const body = card.querySelector('.perm-group-body');
+    const icon = card.querySelector('.drawer-toggle-icon');
+
     if (type === 'view') {
       card.querySelectorAll('.perm-view-cb').forEach(cb => {
         cb.checked = check;
@@ -412,6 +428,10 @@ function toggleAllPerms(type, check) {
           if (editCb) editCb.checked = false;
         }
       });
+      if (check && body) {
+        body.style.display = 'grid';
+        if (icon) icon.style.transform = 'rotate(180deg)';
+      }
     } else if (type === 'edit') {
       card.querySelectorAll('.perm-edit-cb').forEach(cb => {
         cb.checked = check;
@@ -421,8 +441,16 @@ function toggleAllPerms(type, check) {
           if (viewCb) viewCb.checked = true;
         }
       });
+      if (check && body) {
+        body.style.display = 'grid';
+        if (icon) icon.style.transform = 'rotate(180deg)';
+      }
     } else if (type === 'all') {
       card.querySelectorAll('.perm-view-cb, .perm-edit-cb').forEach(cb => cb.checked = false);
+      if (!check && body) {
+        body.style.display = 'none';
+        if (icon) icon.style.transform = 'rotate(0deg)';
+      }
     }
     const groupSlug = card.id;
     if (groupSlug) syncGroupSelectAll(groupSlug);
@@ -463,6 +491,14 @@ function resetUserForm() {
   
   document.querySelectorAll('.perm-view-cb, .perm-edit-cb').forEach(cb => cb.checked = false);
   document.querySelectorAll('.group-select-all-cb').forEach(cb => cb.checked = false);
+  document.querySelectorAll('.perm-group-card').forEach(card => {
+    const body = card.querySelector('.perm-group-body');
+    const icon = card.querySelector('.drawer-toggle-icon');
+    if (body) body.style.display = 'none';
+    if (icon) icon.style.transform = 'rotate(0deg)';
+    const groupSlug = card.id;
+    if (groupSlug) syncGroupSelectAll(groupSlug);
+  });
   document.querySelectorAll('.visible-cashier-cb').forEach(cb => {
       cb.checked = false;
       cb.parentElement.style.display = 'flex';
@@ -573,6 +609,22 @@ function adminEditUser(user) {
 
   document.querySelectorAll('.group-select-all-cb').forEach(cb => {
     const groupSlug = cb.dataset.group;
+    if (groupSlug) syncGroupSelectAll(groupSlug);
+  });
+
+  // Auto-expand drawer cards that contain active permissions
+  document.querySelectorAll('.perm-group-card').forEach(card => {
+    const checkedCount = card.querySelectorAll('.perm-view-cb:checked, .perm-edit-cb:checked').length;
+    const body = card.querySelector('.perm-group-body');
+    const icon = card.querySelector('.drawer-toggle-icon');
+    if (checkedCount > 0 && body) {
+      body.style.display = 'grid';
+      if (icon) icon.style.transform = 'rotate(180deg)';
+    } else if (body) {
+      body.style.display = 'none';
+      if (icon) icon.style.transform = 'rotate(0deg)';
+    }
+    const groupSlug = card.id;
     if (groupSlug) syncGroupSelectAll(groupSlug);
   });
   
