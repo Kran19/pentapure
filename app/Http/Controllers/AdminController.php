@@ -503,13 +503,39 @@ class AdminController extends Controller
                 $data['image_url'] = $imageUrl;
             }
 
+            $oldType = null;
             if ($request->filled('product_id')) {
                 $product = Product::findOrFail($request->product_id);
-                $product->update($data);
+                $oldType = $product->type;
+                try {
+                    $product->update($data);
+                } catch (\Throwable $saveEx) {
+                    if (str_contains($saveEx->getMessage(), '1265') || str_contains(strtolower($saveEx->getMessage()), 'truncated')) {
+                        if (\Illuminate\Support\Facades\DB::getDriverName() !== 'sqlite') {
+                            \Illuminate\Support\Facades\DB::statement("ALTER TABLE products MODIFY COLUMN type VARCHAR(50) NOT NULL DEFAULT 'RAW'");
+                            \Illuminate\Support\Facades\DB::statement("ALTER TABLE stocks MODIFY COLUMN stage VARCHAR(50) NOT NULL DEFAULT 'RAW'");
+                        }
+                        $product->update($data);
+                    } else {
+                        throw $saveEx;
+                    }
+                }
+
                 if (is_array($grades)) {
                     $product->grades()->sync($grades);
                 }
                 
+                // If type/category changed (e.g. RAW -> PACKAGING), update existing stocks stage
+                if (!empty($oldType) && $oldType !== $data['type']) {
+                    try {
+                        \App\Models\Stock::where('product_id', $product->id)
+                            ->where('stage', $oldType)
+                            ->update(['stage' => $data['type']]);
+                    } catch (\Throwable $stockEx) {
+                        \Illuminate\Support\Facades\Log::warning('Stock stage sync notice: ' . $stockEx->getMessage());
+                    }
+                }
+
                 // Sync to stock_limits table if present
                 try {
                     \Illuminate\Support\Facades\DB::table('stock_limits')
@@ -521,7 +547,20 @@ class AdminController extends Controller
                     
                 $msg = 'Product updated successfully!';
             } else {
-                $product = Product::create($data);
+                try {
+                    $product = Product::create($data);
+                } catch (\Throwable $saveEx) {
+                    if (str_contains($saveEx->getMessage(), '1265') || str_contains(strtolower($saveEx->getMessage()), 'truncated')) {
+                        if (\Illuminate\Support\Facades\DB::getDriverName() !== 'sqlite') {
+                            \Illuminate\Support\Facades\DB::statement("ALTER TABLE products MODIFY COLUMN type VARCHAR(50) NOT NULL DEFAULT 'RAW'");
+                            \Illuminate\Support\Facades\DB::statement("ALTER TABLE stocks MODIFY COLUMN stage VARCHAR(50) NOT NULL DEFAULT 'RAW'");
+                        }
+                        $product = Product::create($data);
+                    } else {
+                        throw $saveEx;
+                    }
+                }
+
                 if (is_array($grades) && !empty($grades)) {
                     $product->grades()->sync($grades);
                 }
