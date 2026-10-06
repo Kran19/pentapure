@@ -334,9 +334,8 @@
                     <th style="width:12%;">ID</th>
                     <th style="width:12%;">Type</th>
                     <th style="width:14%;">Date</th>
-                    <th style="width:14%;">Category</th>
                     <th style="width:14%;">Amount (₹)</th>
-                    <th style="width:29%;">Description</th>
+                    <th style="width:43%;">Description</th>
                 </tr>
             </thead>
             <tbody>
@@ -352,7 +351,6 @@
                         @endif
                     </td>
                     <td>{{ \Carbon\Carbon::parse($tx['date'])->format('d-m-Y') }}</td>
-                    <td>{{ ucwords(str_replace('_', ' ', $tx['category'] ?? 'General')) }}</td>
                     <td class="{{ $tx['type'] === 'IN' ? 'amount-in' : 'amount-out' }}">
                         {{ $tx['type'] === 'OUT' ? '−' : '+' }}{{ number_format($tx['amount'], 2) }}
                     </td>
@@ -360,7 +358,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" style="padding:20px; color:#888;">No transactions found for this period.</td>
+                    <td colspan="6" style="padding:20px; color:#888;">No transactions found for this period.</td>
                 </tr>
                 @endforelse
             </tbody>

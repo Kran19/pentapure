@@ -215,8 +215,7 @@
         <tr style="background:rgba(0,0,0,0.05); border-bottom:1px solid var(--border-soft, #DDCFAF);">
           <th style="padding:12px; text-align:left; width:125px; min-width:125px;">Date</th>
           <th style="padding:12px; text-align:center; width:80px; min-width:80px;">Type</th>
-          <th style="padding:12px; text-align:left; min-width:260px;">Details</th>
-          <th style="padding:12px; text-align:left; width:150px; min-width:150px;">Category</th>
+          <th style="padding:12px; text-align:left;">Details</th>
           <th style="padding:12px; text-align:right; width:130px; min-width:130px;">Amount</th>
           <th style="padding:12px; text-align:right; width:130px; min-width:130px;">Balance</th>
           <th style="padding:12px; text-align:center; width:100px; min-width:100px;">Bills</th>
@@ -243,16 +242,11 @@
               @if($t['reference'])
                 <div style="font-size:0.72rem; color:var(--text-muted);">Ref: {{ $t['reference'] }}</div>
               @endif
-              @if($activeTab === 'team' && isset($t['cashier_name']))
-                <div style="font-size:0.75rem; color:var(--primary-dark, #b45309); font-weight:700; margin-top:4px;">👤 {{ $t['cashier_name'] }}</div>
-              @endif
-            </td>
-            <td style="padding:12px;">
-              <span style="font-size:0.75rem; background:rgba(0,0,0,0.06); padding:2px 8px; border-radius:10px; font-weight:bold; white-space:nowrap;">
-                {{ strtoupper(str_replace('_', ' ', $t['category'])) }}
-              </span>
               @if($t['site'])
                 <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">📍 {{ $t['site'] }}</div>
+              @endif
+              @if($activeTab === 'team' && isset($t['cashier_name']))
+                <div style="font-size:0.75rem; color:var(--primary-dark, #b45309); font-weight:700; margin-top:4px;">👤 {{ $t['cashier_name'] }}</div>
               @endif
             </td>
             <td style="padding:12px; font-weight:bold; color:{{ $t['type'] === 'IN' ? '#16a34a' : '#dc2626' }}; text-align:right; white-space:nowrap;">
@@ -285,7 +279,7 @@
           </tr>
         @empty
           <tr>
-            <td colspan="8" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
+            <td colspan="7" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
               No transactions found matching criteria.
             </td>
           </tr>
@@ -536,7 +530,7 @@
     if (filtered.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="8" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
+          <td colspan="7" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
             No transactions found matching criteria.
           </td>
         </tr>
@@ -589,13 +583,8 @@
             <div style="font-weight:600;">${t.note || ('Cash ' + t.type)}</div>
             ${t.description ? `<div style="font-size:0.72rem; color:var(--text-muted);">${t.description}</div>` : ''}
             ${t.reference ? `<div style="font-size:0.72rem; color:var(--text-muted);">Ref: ${t.reference}</div>` : ''}
-            ${(tabVal === 'team' && t.cashier_name) ? `<div style="font-size:0.75rem; color:var(--primary-dark, #b45309); font-weight:700; margin-top:4px;">👤 ${t.cashier_name}</div>` : ''}
-          </td>
-          <td style="padding:12px;">
-            <span style="font-size:0.75rem; background:rgba(0,0,0,0.06); padding:2px 8px; border-radius:10px; font-weight:bold; white-space:nowrap;">
-              ${(t.category || '').replace(/_/g, ' ').toUpperCase()}
-            </span>
             ${t.site ? `<div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">📍 ${t.site}</div>` : ''}
+            ${(tabVal === 'team' && t.cashier_name) ? `<div style="font-size:0.75rem; color:var(--primary-dark, #b45309); font-weight:700; margin-top:4px;">👤 ${t.cashier_name}</div>` : ''}
           </td>
           <td style="padding:12px; font-weight:bold; color:${amtColor}; text-align:right; white-space:nowrap;">
             ${amtFormatted}

@@ -22,6 +22,12 @@ class TransactionLog extends Model
         'new_data' => 'array',
     ];
 
+    public function getResolvedTransactionIdAttribute()
+    {
+        return $this->transaction_id 
+            ?? ($this->old_data['id'] ?? ($this->new_data['id'] ?? null));
+    }
+
     public function transaction()
     {
         return $this->belongsTo(Transaction::class);

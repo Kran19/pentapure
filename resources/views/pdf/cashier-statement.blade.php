@@ -161,9 +161,8 @@ body {
             <tr>
                 <th style="width: 85px;">Date</th>
                 <th>Description</th>
-                <th style="width: 90px;">Category</th>
-                <th style="width: 85px; text-align: right;">Amt</th>
-                <th style="width: 95px; text-align: right;">Balance</th>
+                <th style="width: 95px; text-align: right;">Amt</th>
+                <th style="width: 105px; text-align: right;">Balance</th>
             </tr>
         </thead>
         <tbody>
@@ -175,8 +174,10 @@ body {
                     @if($row['reference'])
                         <br><span style="font-size: 7.5px; color: #777;">Ref: {{ $row['reference'] }}</span>
                     @endif
+                    @if(!empty($row['site']) && $row['site'] !== 'Pentapure' && $row['site'] !== 'All')
+                        <br><span style="font-size: 7.5px; color: #777;">Site: {{ $row['site'] }}</span>
+                    @endif
                 </td>
-                <td>{{ strtoupper(str_replace('_',' ', $row['category'])) }}</td>
                 <td style="text-align: right;" class="{{ $row['type'] === 'IN' ? 'amt-in' : 'amt-out' }}">
                     {{ number_format($row['amount'], 2) }}
                 </td>
@@ -186,7 +187,7 @@ body {
             </tr>
             @empty
             <tr>
-                <td colspan="5" style="padding:15px; text-align:center; color:#888;">
+                <td colspan="4" style="padding:15px; text-align:center; color:#888;">
                     No transactions found for this period.
                 </td>
             </tr>
