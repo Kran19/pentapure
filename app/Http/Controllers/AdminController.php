@@ -2330,20 +2330,20 @@ class AdminController extends Controller
         $sumOut = (float) $txs->where('type', 'OUT')->sum('amount');
 
         $cashierModel = $request->filled('cashier_id') ? \App\Models\User::find($request->cashier_id) : null;
-        $cashierName = $cashierModel ? strtoupper($cashierModel->name) : 'All Cashiers';
+        $cashierName = $cashierModel ? strtoupper($cashierModel->name) : 'ALL CASHIERS';
 
         $fromDate = $fromDateInput ?: ($txs->first()?->created_at?->format('Y-m-d') ?? now()->format('Y-m-d'));
         $toDate   = $toDateInput ?: now()->format('Y-m-d');
 
         $data = [
             'reportId'       => rand(1000, 9999),
-            'generatedOn'    => now()->format('d-M-Y H:i:s'),
+            'generatedOn'    => strtoupper(now()->format('d-M-Y H:i:s')),
             'fromDate'       => $fromDate,
             'toDate'         => $toDate,
             'cashierName'    => $cashierName,
             'cashierId'      => $cashierModel?->id ?? 'ALL',
-            'site'           => $request->site && $request->site !== 'all' ? $request->site : 'All',
-            'category'       => $request->category && $request->category !== 'all' ? ucwords(str_replace('_',' ',$request->category)) : 'All',
+            'site'           => $request->site && $request->site !== 'all' ? strtoupper($request->site) : 'ALL',
+            'category'       => $request->category && $request->category !== 'all' ? strtoupper(str_replace('_',' ',$request->category)) : 'ALL',
             'rows'           => $rows,
             'openingBalance' => $openingBalance,
             'closingBalance' => $runningBalance,

@@ -250,6 +250,41 @@ class PdfGenerationTest extends TestCase
         $this->assertNotEmpty($response->getContent());
     }
 
+    public function test_admin_cashier_overview_pdf_is_rendered_in_uppercase(): void
+    {
+        $view = view('admin.cashier_overview_pdf', [
+            'rows' => [
+                [
+                    'id' => 1,
+                    'date' => '2026-10-06 10:00:00',
+                    'note' => 'Office maintenance',
+                    'description' => 'Light bulbs and wire',
+                    'reference' => 'bill-123',
+                    'site' => 'Plant 1',
+                    'cashier_name' => 'Cashier One',
+                    'type' => 'OUT',
+                    'amount' => 500.0,
+                    'opening_bal' => 1000.0,
+                    'closing_bal' => 500.0,
+                ]
+            ],
+            'openingBalance' => 1000.0,
+            'closingBalance' => 500.0,
+            'sumIn' => 0.0,
+            'sumOut' => 500.0,
+            'cashierName' => 'All Cashiers',
+            'site' => 'All',
+            'fromDate' => '2026-10-01',
+            'toDate' => '2026-10-06',
+        ])->render();
+
+        $this->assertStringContainsString('text-transform: uppercase', $view);
+        $this->assertStringContainsString('OFFICE MAINTENANCE', $view);
+        $this->assertStringContainsString('ALL CASHIERS', $view);
+        $this->assertStringContainsString('DESCRIPTION', $view);
+        $this->assertStringContainsString('BALANCE', $view);
+    }
+
     public function test_cashier_statement_pdf_download(): void
     {
         $response = $this->withSession(['auth_user' => [

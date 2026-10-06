@@ -10,11 +10,15 @@
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'DejaVu Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 9px;
     color: #1e293b;
     line-height: 1.35;
     background: #ffffff;
+    text-transform: uppercase !important;
+}
+table, th, td, div, span, p, a, strong, small {
+    text-transform: uppercase !important;
 }
 
 .pdf-container {
