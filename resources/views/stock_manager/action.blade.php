@@ -144,10 +144,10 @@ input[type=number].no-spinners {
     <div class="form-group" style="margin-bottom:1.2rem;">
       <label>Stage *</label>
       <select id="sm-stage" onchange="onStageChange(this.value)" style="padding:0.75rem; width:100%; font-size:1rem; font-weight:600; cursor:pointer;">
-        <option value="ALL" selected>ALL (RAW, SEMI, FINISHED, PACKAGING)</option>
+        <option value="ALL" selected>ALL (RAW, SEMI, FG, PACKAGING)</option>
         <option value="RAW">RAW</option>
         <option value="SEMI">SEMI</option>
-        <option value="FINISHED">FINISHED</option>
+        <option value="FINISHED">FG</option>
         <option value="PACKAGING">PACKAGING</option>
       </select>
     </div>
@@ -158,7 +158,8 @@ input[type=number].no-spinners {
       <select id="sm-prod-id" name="product_id" onchange="onProductChange(this.value)" required style="padding:0.75rem; width:100%; font-size:0.95rem; font-weight:600; cursor:pointer;">
         <option value="" disabled selected>-- SELECT PRODUCT --</option>
         @foreach($pageData['products'] as $p)
-          <option value="{{ $p->id }}" data-type="{{ $p->type }}">{{ $p->name }} ({{ $p->type }})</option>
+          @php $dispType = in_array(strtoupper($p->type), ['FINISHED', 'FG']) ? 'FG' : $p->type; @endphp
+          <option value="{{ $p->id }}" data-type="{{ $p->type }}">{{ $p->name }} ({{ $dispType }})</option>
         @endforeach
       </select>
     </div>
@@ -259,13 +260,15 @@ function onStageChange(stage) {
   
   let html = '<option value="" disabled selected>-- SELECT PRODUCT --</option>';
   allMasterProducts.forEach(p => {
-    if (stage === 'ALL' || p.type === stage) {
-      html += `<option value="${p.id}" data-type="${p.type}">${p.name} (${p.type})</option>`;
+    const isStageMatch = stage === 'ALL' || p.type === stage || ((stage === 'FINISHED' || stage === 'FG') && (p.type === 'FINISHED' || p.type === 'FG'));
+    if (isStageMatch) {
+      const dispType = (p.type === 'FINISHED' || p.type === 'FG') ? 'FG' : p.type;
+      html += `<option value="${p.id}" data-type="${p.type}">${p.name} (${dispType})</option>`;
     }
   });
   prodSelect.innerHTML = html;
 
-  const exists = allMasterProducts.some(p => p.id == currentVal && (stage === 'ALL' || p.type === stage));
+  const exists = allMasterProducts.some(p => p.id == currentVal && (stage === 'ALL' || p.type === stage || ((stage === 'FINISHED' || stage === 'FG') && (p.type === 'FINISHED' || p.type === 'FG'))));
   if (exists) {
     prodSelect.value = currentVal;
   } else {
