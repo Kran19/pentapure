@@ -130,17 +130,33 @@ body {
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(0, 0, 0, 0.03);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(100, 116, 139, 0.4);
   border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.7);
+}
+
+html.dark-mode ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+html.dark-mode ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+html.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
 }
 
 /* Layouts */
@@ -374,27 +390,82 @@ header {
   margin-top: 0.5rem !important;
   padding-bottom: 6px;
   scrollbar-width: thin !important;
-  scrollbar-color: rgba(148, 163, 184, 0.4) rgba(0, 0, 0, 0.04) !important;
+  scrollbar-color: rgba(100, 116, 139, 0.6) rgba(0, 0, 0, 0.05) !important;
 }
 
 .table-container::-webkit-scrollbar {
-  height: 5px !important;
-  width: 5px !important;
+  height: 8px !important;
+  width: 8px !important;
 }
 
 .table-container::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.04) !important;
-  border-radius: 10px !important;
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-radius: 8px !important;
 }
 
 .table-container::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.35) !important;
-  border-radius: 10px !important;
+  background: rgba(100, 116, 139, 0.45) !important;
+  border-radius: 8px !important;
   transition: background 0.2s ease-in-out;
 }
 
 .table-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.65) !important;
+  background: rgba(100, 116, 139, 0.8) !important;
+}
+
+/* Dedicated Ledger Table Horizontal Scrollbars (Top and Bottom) */
+.ledger-table-container,
+.ledger-top-scroll {
+  width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: #94a3b8 #f1f5f9 !important;
+}
+
+.ledger-table-container::-webkit-scrollbar,
+.ledger-top-scroll::-webkit-scrollbar {
+  height: 10px !important;
+  width: 10px !important;
+  display: block !important;
+}
+
+.ledger-table-container::-webkit-scrollbar-track,
+.ledger-top-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9 !important;
+  border-radius: 6px !important;
+}
+
+.ledger-table-container::-webkit-scrollbar-thumb,
+.ledger-top-scroll::-webkit-scrollbar-thumb {
+  background: #94a3b8 !important;
+  border-radius: 6px !important;
+  border: 2px solid #f1f5f9 !important;
+  transition: background 0.2s ease !important;
+}
+
+.ledger-table-container::-webkit-scrollbar-thumb:hover,
+.ledger-top-scroll::-webkit-scrollbar-thumb:hover {
+  background: #64748b !important;
+}
+
+html.dark-mode .ledger-table-container,
+html.dark-mode .ledger-top-scroll {
+  scrollbar-color: #64748b #1e293b !important;
+}
+html.dark-mode .ledger-table-container::-webkit-scrollbar-track,
+html.dark-mode .ledger-top-scroll::-webkit-scrollbar-track {
+  background: #1e293b !important;
+}
+html.dark-mode .ledger-table-container::-webkit-scrollbar-thumb,
+html.dark-mode .ledger-top-scroll::-webkit-scrollbar-thumb {
+  background: #475569 !important;
+  border-color: #1e293b !important;
+}
+html.dark-mode .ledger-table-container::-webkit-scrollbar-thumb:hover,
+html.dark-mode .ledger-top-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8 !important;
 }
 
 .table-container table {

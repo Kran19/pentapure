@@ -202,20 +202,25 @@
 </form>
 
 <!-- Transaction Table -->
-<div class="card" style="padding:0; overflow:hidden;">
-  <div style="overflow-x:auto;">
+<div class="card" style="padding:0; overflow:hidden; border-radius:12px;">
+  <!-- Top Horizontal Scrollbar for easy scrolling from top of table -->
+  <div id="ledger-top-scroll" class="ledger-top-scroll" style="overflow-x:auto; overflow-y:hidden; height:10px; background:#f8fafc; border-bottom:1px solid var(--border-soft, #DDCFAF); display:none;">
+    <div id="ledger-top-scroll-dummy" style="height:1px;"></div>
+  </div>
+
+  <div id="ledger-table-container" class="table-container ledger-table-container" style="overflow-x:auto; overflow-y:hidden; width:100%; -webkit-overflow-scrolling:touch;">
     <!-- Standard Transaction Table -->
-    <table id="ledger-tx-table" style="display:{{ $activeTab === 'daily' ? 'none' : 'table' }}; font-size:0.85rem; width:100%; border-collapse:collapse;">
+    <table id="ledger-tx-table" style="display:{{ $activeTab === 'daily' ? 'none' : 'table' }}; font-size:0.85rem; width:100%; min-width:1050px; border-collapse:collapse;">
       <thead>
         <tr style="background:rgba(0,0,0,0.05); border-bottom:1px solid var(--border-soft, #DDCFAF);">
-          <th style="padding:12px; text-align:left;">Date</th>
-          <th style="padding:12px; text-align:center;">Type</th>
-          <th style="padding:12px; text-align:left;">Details</th>
-          <th style="padding:12px; text-align:left;">Category</th>
-          <th style="padding:12px; text-align:right;">Amount</th>
-          <th style="padding:12px; text-align:right;">Balance</th>
-          <th style="padding:12px; text-align:center;">Bills</th>
-          <th style="padding:12px; text-align:center;">Action</th>
+          <th style="padding:12px; text-align:left; width:125px; min-width:125px;">Date</th>
+          <th style="padding:12px; text-align:center; width:80px; min-width:80px;">Type</th>
+          <th style="padding:12px; text-align:left; min-width:260px;">Details</th>
+          <th style="padding:12px; text-align:left; width:150px; min-width:150px;">Category</th>
+          <th style="padding:12px; text-align:right; width:130px; min-width:130px;">Amount</th>
+          <th style="padding:12px; text-align:right; width:130px; min-width:130px;">Balance</th>
+          <th style="padding:12px; text-align:center; width:100px; min-width:100px;">Bills</th>
+          <th style="padding:12px; text-align:center; width:125px; min-width:125px;">Action</th>
         </tr>
       </thead>
       <tbody id="ledger-tx-tbody">
@@ -289,13 +294,13 @@
     </table>
 
     <!-- Daily Summary Table -->
-    <table id="ledger-daily-table" style="display:{{ $activeTab === 'daily' ? 'table' : 'none' }}; font-size:0.85rem; width:100%; border-collapse:collapse;">
+    <table id="ledger-daily-table" style="display:{{ $activeTab === 'daily' ? 'table' : 'none' }}; font-size:0.85rem; width:100%; min-width:650px; border-collapse:collapse;">
       <thead>
         <tr style="background:rgba(0,0,0,0.05); border-bottom:1px solid var(--border-soft, #DDCFAF);">
-          <th style="padding:12px; text-align:left;">Date</th>
-          <th style="padding:12px; text-align:right;">Total IN</th>
-          <th style="padding:12px; text-align:right;">Total OUT</th>
-          <th style="padding:12px; text-align:right;">Net Balance</th>
+          <th style="padding:12px; text-align:left; min-width:150px;">Date</th>
+          <th style="padding:12px; text-align:right; min-width:150px;">Total IN</th>
+          <th style="padding:12px; text-align:right; min-width:150px;">Total OUT</th>
+          <th style="padding:12px; text-align:right; min-width:150px;">Net Balance</th>
         </tr>
       </thead>
       <tbody>
@@ -385,6 +390,7 @@
     }
 
     applyLedgerFilters();
+    setTimeout(syncLedgerScrollbars, 50);
   }
 
   function applyLedgerFilters() {
@@ -610,6 +616,7 @@
         </tr>
       `;
     }).join('');
+    syncLedgerScrollbars();
 
     // Update browser URL query params without reloading page
     const params = new URLSearchParams();
@@ -715,9 +722,70 @@
     }, 4000);
   }
 
+  function initLedgerScrollSync() {
+    const topScroll = document.getElementById('ledger-top-scroll');
+    const container = document.getElementById('ledger-table-container');
+    if (!topScroll || !container || topScroll.dataset.syncInit) return;
+    topScroll.dataset.syncInit = 'true';
+
+    let isSyncingTop = false;
+    let isSyncingBottom = false;
+
+    topScroll.addEventListener('scroll', () => {
+      if (isSyncingBottom) {
+        isSyncingBottom = false;
+        return;
+      }
+      isSyncingTop = true;
+      container.scrollLeft = topScroll.scrollLeft;
+    }, { passive: true });
+
+    container.addEventListener('scroll', () => {
+      if (isSyncingTop) {
+        isSyncingTop = false;
+        return;
+      }
+      isSyncingBottom = true;
+      topScroll.scrollLeft = container.scrollLeft;
+    }, { passive: true });
+  }
+
+  function syncLedgerScrollbars() {
+    initLedgerScrollSync();
+    const topScroll = document.getElementById('ledger-top-scroll');
+    const topDummy = document.getElementById('ledger-top-scroll-dummy');
+    const container = document.getElementById('ledger-table-container');
+    if (!topScroll || !topDummy || !container) return;
+
+    const tabVal = document.getElementById('ledger-tab-select')?.value || 'personal';
+    const activeTable = (tabVal === 'daily') 
+      ? document.getElementById('ledger-daily-table') 
+      : document.getElementById('ledger-tx-table');
+
+    if (!activeTable) return;
+
+    const scrollWidth = activeTable.scrollWidth || activeTable.offsetWidth;
+    const clientWidth = container.clientWidth;
+
+    if (scrollWidth > clientWidth + 2) {
+      topDummy.style.width = scrollWidth + 'px';
+      topScroll.style.display = 'block';
+      topScroll.scrollLeft = container.scrollLeft;
+    } else {
+      topScroll.style.display = 'none';
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
+    initLedgerScrollSync();
+    syncLedgerScrollbars();
     startLedgerAutoSync();
   });
+  window.addEventListener('resize', syncLedgerScrollbars);
+
+  // Initialize immediately in case DOM is already ready
+  initLedgerScrollSync();
+  setTimeout(syncLedgerScrollbars, 100);
 
   function showVisibilityInfo() {
     const allowed = @json($pageData['allowedCashiers'] ?? []);
