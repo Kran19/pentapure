@@ -138,15 +138,45 @@ class AuthController extends Controller
 
         if (in_array($role, ['SUB_ADMIN', 'STOCK_MANAGER'])) {
             $perms = session('auth_user')['permissions'] ?? [];
+            if (is_string($perms)) {
+                $perms = json_decode($perms, true) ?: [];
+            }
+            if (!is_array($perms)) {
+                $perms = [];
+            }
 
-            $hasPerm = function($modKey) use ($perms) {
-                return in_array('view_' . $modKey, $perms) 
-                    || in_array('edit_' . $modKey, $perms)
-                    || in_array('module_' . $modKey, $perms)
-                    || in_array($modKey, $perms)
-                    || in_array('can_manage', $perms);
+            $moduleEquivalents = [
+                'admin_stock' => ['admin_stock', 'stock_manager_stock'],
+                'stock_manager_stock' => ['stock_manager_stock', 'admin_stock'],
+                'admin_products' => ['admin_products', 'stock_manager_products'],
+                'stock_manager_products' => ['stock_manager_products', 'admin_products'],
+                'admin_grades' => ['admin_grades', 'stock_manager_grades'],
+                'stock_manager_grades' => ['stock_manager_grades', 'admin_grades'],
+                'admin_locations' => ['admin_locations', 'stock_manager_locations'],
+                'stock_manager_locations' => ['stock_manager_locations', 'admin_locations'],
+                'admin_po' => ['admin_po', 'stock_manager_po'],
+                'stock_manager_po' => ['stock_manager_po', 'admin_po'],
+                'admin_categories' => ['admin_categories', 'cashier_categories'],
+                'cashier_categories' => ['cashier_categories', 'admin_categories'],
+                'stock_manager_home' => ['stock_manager_home', 'admin_dashboard'],
+                'admin_dashboard' => ['admin_dashboard', 'stock_manager_home'],
+            ];
+
+            $hasPerm = function($modKey) use ($perms, $moduleEquivalents) {
+                if (in_array('can_manage', $perms)) return true;
+                $candidates = $moduleEquivalents[$modKey] ?? [$modKey];
+                foreach ($candidates as $c) {
+                    if (in_array('view_' . $c, $perms) 
+                        || in_array('edit_' . $c, $perms)
+                        || in_array('module_' . $c, $perms)
+                        || in_array($c, $perms)) {
+                        return true;
+                    }
+                }
+                return false;
             };
 
+            $isSubAdmin = ($role === 'SUB_ADMIN');
             $routeMap = [
                 'admin_dashboard' => $slug . '.home',
                 'admin_users' => $slug . '.users',
@@ -160,29 +190,29 @@ class AuthController extends Controller
                 'admin_categories' => $slug . '.categories',
                 'admin_logs' => $slug . '.logs',
                 'admin_notifications' => $slug . '.notifications',
-                'cashier_action' => '/cashier2/action',
-                'cashier_history' => '/cashier2/history',
-                'cashier_ledger' => '/cashier2/ledger',
-                'cashier_categories' => '/cashier2/categories',
-                'sales_home' => '/sales/home',
-                'sales_action' => '/sales/action',
-                'sales_history' => '/sales/history',
-                'dispatch_home' => '/dispatch/home',
-                'dispatch_action' => '/dispatch/action',
-                'dispatch_history' => '/dispatch/history',
-                'stock_manager_home' => '/stock_manager/home',
-                'stock_manager_action' => '/stock_manager/action',
-                'stock_manager_stock' => '/stock_manager/stock',
-                'stock_manager_po' => '/stock_manager/po',
-                'stock_manager_history' => '/stock_manager/history',
-                'stock_manager_products' => '/stock_manager/products',
-                'stock_manager_grades' => '/stock_manager/grades',
-                'stock_manager_locations' => '/stock_manager/locations',
-                'attendance_dashboard' => '/attendance/dashboard',
-                'attendance_departments' => '/attendance/departments',
-                'attendance_workers' => '/attendance/workers',
-                'attendance_daily' => '/attendance/daily',
-                'attendance_reports' => '/attendance/reports',
+                'cashier_action' => $isSubAdmin ? '/' . $slug . '/cashier/action' : '/cashier2/action',
+                'cashier_history' => $isSubAdmin ? '/' . $slug . '/cashier/history' : '/cashier2/history',
+                'cashier_ledger' => $isSubAdmin ? '/' . $slug . '/cashier/ledger' : '/cashier2/ledger',
+                'cashier_categories' => $isSubAdmin ? '/' . $slug . '/categories' : '/cashier2/categories',
+                'sales_home' => $isSubAdmin ? '/' . $slug . '/sales/home' : '/sales/home',
+                'sales_action' => $isSubAdmin ? '/' . $slug . '/sales/action' : '/sales/action',
+                'sales_history' => $isSubAdmin ? '/' . $slug . '/sales/history' : '/sales/history',
+                'dispatch_home' => $isSubAdmin ? '/' . $slug . '/dispatch/home' : '/dispatch/home',
+                'dispatch_action' => $isSubAdmin ? '/' . $slug . '/dispatch/action' : '/dispatch/action',
+                'dispatch_history' => $isSubAdmin ? '/' . $slug . '/dispatch/history' : '/dispatch/history',
+                'stock_manager_home' => $isSubAdmin ? '/' . $slug . '/home' : '/stock_manager/home',
+                'stock_manager_action' => $isSubAdmin ? '/' . $slug . '/stock-manager/action' : '/stock_manager/action',
+                'stock_manager_stock' => $isSubAdmin ? '/' . $slug . '/stock' : '/stock_manager/stock',
+                'stock_manager_po' => $isSubAdmin ? '/' . $slug . '/po' : '/stock_manager/po',
+                'stock_manager_history' => $isSubAdmin ? '/' . $slug . '/stock-manager/history' : '/stock_manager/history',
+                'stock_manager_products' => $isSubAdmin ? '/' . $slug . '/products' : '/stock_manager/products',
+                'stock_manager_grades' => $isSubAdmin ? '/' . $slug . '/grades' : '/stock_manager/grades',
+                'stock_manager_locations' => $isSubAdmin ? '/' . $slug . '/locations' : '/stock_manager/locations',
+                'attendance_dashboard' => $isSubAdmin ? '/' . $slug . '/attendance/dashboard' : '/attendance/dashboard',
+                'attendance_departments' => $isSubAdmin ? '/' . $slug . '/attendance/departments' : '/attendance/departments',
+                'attendance_workers' => $isSubAdmin ? '/' . $slug . '/attendance/workers' : '/attendance/workers',
+                'attendance_daily' => $isSubAdmin ? '/' . $slug . '/attendance/daily' : '/attendance/daily',
+                'attendance_reports' => $isSubAdmin ? '/' . $slug . '/attendance/reports' : '/attendance/reports',
             ];
 
             foreach ($routeMap as $key => $target) {

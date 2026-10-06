@@ -80,9 +80,23 @@ class AuthMiddleware
             elseif (str_contains($seg1, 'attendance')) $panel = 'attendance';
             elseif ($seg1 === 'admin' || $seg1 === 'sub_admin') $panel = 'admin';
 
-            if ($panel === 'admin' && $seg2 === 'attendance') {
-                $panel = 'attendance';
-                $seg2 = strtolower($segments[2] ?? 'dashboard');
+            if ($panel === 'admin') {
+                if ($seg2 === 'attendance') {
+                    $panel = 'attendance';
+                    $seg2 = strtolower($segments[2] ?? 'dashboard');
+                } elseif ($seg2 === 'cashier') {
+                    $panel = 'cashier';
+                    $seg2 = strtolower($segments[2] ?? 'action');
+                } elseif ($seg2 === 'sales') {
+                    $panel = 'sales';
+                    $seg2 = strtolower($segments[2] ?? 'home');
+                } elseif ($seg2 === 'dispatch') {
+                    $panel = 'dispatch';
+                    $seg2 = strtolower($segments[2] ?? 'home');
+                } elseif (in_array($seg2, ['stock-manager', 'stock_manager'])) {
+                    $panel = 'stock_manager';
+                    $seg2 = strtolower($segments[2] ?? 'home');
+                }
             }
 
             // Map path to canonical module key
@@ -228,45 +242,50 @@ class AuthMiddleware
 
             if (!$hasView) {
                 if (in_array($seg2, ['home', 'dashboard'])) {
+                    $isSubAdmin = ($user['role'] === 'SUB_ADMIN');
                     $routeMap = [
                         'admin_users' => '/' . $seg1 . '/users',
                         'admin_stock' => '/' . $seg1 . '/stock',
+                        'stock_manager_stock' => '/' . $seg1 . '/stock',
                         'admin_products' => '/' . $seg1 . '/products',
+                        'stock_manager_products' => '/' . $seg1 . '/products',
                         'admin_grades' => '/' . $seg1 . '/grades',
+                        'stock_manager_grades' => '/' . $seg1 . '/grades',
                         'admin_locations' => '/' . $seg1 . '/locations',
+                        'stock_manager_locations' => '/' . $seg1 . '/locations',
                         'admin_po' => '/' . $seg1 . '/po',
+                        'stock_manager_po' => '/' . $seg1 . '/po',
                         'admin_dispatch_activity' => '/' . $seg1 . '/dispatch-activity',
                         'admin_cashier_overview' => '/' . $seg1 . '/cashier-overview',
                         'admin_categories' => '/' . $seg1 . '/categories',
+                        'cashier_categories' => '/' . $seg1 . '/categories',
                         'admin_logs' => '/' . $seg1 . '/logs',
                         'admin_notifications' => '/' . $seg1 . '/notifications',
-                        'cashier_action' => '/cashier2/action',
-                        'cashier_history' => '/cashier2/history',
-                        'cashier_ledger' => '/cashier2/ledger',
-                        'cashier_categories' => '/cashier2/categories',
-                        'sales_home' => '/sales/home',
-                        'sales_action' => '/sales/action',
-                        'sales_history' => '/sales/history',
-                        'dispatch_home' => '/dispatch/home',
-                        'dispatch_action' => '/dispatch/action',
-                        'dispatch_history' => '/dispatch/history',
-                        'stock_manager_home' => '/stock_manager/home',
-                        'stock_manager_action' => '/stock_manager/action',
-                        'stock_manager_stock' => '/stock_manager/stock',
-                        'stock_manager_po' => '/stock_manager/po',
-                        'stock_manager_history' => '/stock_manager/history',
-                        'stock_manager_products' => '/stock_manager/products',
-                        'stock_manager_grades' => '/stock_manager/grades',
-                        'stock_manager_locations' => '/stock_manager/locations',
-                        'attendance_dashboard' => '/attendance/dashboard',
-                        'attendance_departments' => '/attendance/departments',
-                        'attendance_workers' => '/attendance/workers',
-                        'attendance_daily' => '/attendance/daily',
-                        'attendance_reports' => '/attendance/reports',
+                        'cashier_action' => $isSubAdmin ? '/' . $seg1 . '/cashier/action' : '/cashier2/action',
+                        'cashier_history' => $isSubAdmin ? '/' . $seg1 . '/cashier/history' : '/cashier2/history',
+                        'cashier_ledger' => $isSubAdmin ? '/' . $seg1 . '/cashier/ledger' : '/cashier2/ledger',
+                        'sales_home' => $isSubAdmin ? '/' . $seg1 . '/sales/home' : '/sales/home',
+                        'sales_action' => $isSubAdmin ? '/' . $seg1 . '/sales/action' : '/sales/action',
+                        'sales_history' => $isSubAdmin ? '/' . $seg1 . '/sales/history' : '/sales/history',
+                        'dispatch_home' => $isSubAdmin ? '/' . $seg1 . '/dispatch/home' : '/dispatch/home',
+                        'dispatch_action' => $isSubAdmin ? '/' . $seg1 . '/dispatch/action' : '/dispatch/action',
+                        'dispatch_history' => $isSubAdmin ? '/' . $seg1 . '/dispatch/history' : '/dispatch/history',
+                        'dispatch_report' => $isSubAdmin ? '/' . $seg1 . '/dispatch/report' : '/dispatch/report',
+                        'stock_manager_home' => $isSubAdmin ? '/' . $seg1 . '/home' : '/stock_manager/home',
+                        'stock_manager_action' => $isSubAdmin ? '/' . $seg1 . '/stock-manager/action' : '/stock_manager/action',
+                        'stock_manager_history' => $isSubAdmin ? '/' . $seg1 . '/stock-manager/history' : '/stock_manager/history',
+                        'attendance_dashboard' => $isSubAdmin ? '/' . $seg1 . '/attendance/dashboard' : '/attendance/dashboard',
+                        'attendance_departments' => $isSubAdmin ? '/' . $seg1 . '/attendance/departments' : '/attendance/departments',
+                        'attendance_workers' => $isSubAdmin ? '/' . $seg1 . '/attendance/workers' : '/attendance/workers',
+                        'attendance_daily' => $isSubAdmin ? '/' . $seg1 . '/attendance/daily' : '/attendance/daily',
+                        'attendance_reports' => $isSubAdmin ? '/' . $seg1 . '/attendance/reports' : '/attendance/reports',
                     ];
                     foreach ($routeMap as $k => $targetUrl) {
-                        if (in_array('view_' . $k, $userPermissions) || in_array('edit_' . $k, $userPermissions) || in_array('module_' . $k, $userPermissions) || in_array($k, $userPermissions)) {
-                            return redirect($targetUrl);
+                        $equivs = $moduleEquivalents[$k] ?? [$k];
+                        foreach ($equivs as $eq) {
+                            if (in_array('view_' . $eq, $userPermissions) || in_array('edit_' . $eq, $userPermissions) || in_array('module_' . $eq, $userPermissions) || in_array($eq, $userPermissions)) {
+                                return redirect($targetUrl);
+                            }
                         }
                     }
                 }

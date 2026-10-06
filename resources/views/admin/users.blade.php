@@ -148,6 +148,7 @@
             ['key' => 'admin_locations', 'name' => 'Storage Location', 'url' => '/admin/locations'],
             ['key' => 'admin_dispatch_activity', 'name' => 'Dispatch Overview', 'url' => '/admin/dispatch-activity'],
             ['key' => 'admin_cashier_overview', 'name' => 'Cashier Overview', 'url' => '/admin/cashier-overview'],
+            ['key' => 'admin_categories', 'name' => 'Categories', 'url' => '/admin/categories'],
             ['key' => 'admin_notifications', 'name' => 'Notifications', 'url' => '/admin/notifications'],
         ],
         'Cashier Panel' => [
@@ -422,7 +423,24 @@ function syncGroupSelectAll(groupSlug) {
   }
 }
 
-function onPermViewToggle(viewCb) {
+const moduleEquivalentsMap = {
+  'admin_stock': 'stock_manager_stock',
+  'stock_manager_stock': 'admin_stock',
+  'admin_products': 'stock_manager_products',
+  'stock_manager_products': 'admin_products',
+  'admin_grades': 'stock_manager_grades',
+  'stock_manager_grades': 'admin_grades',
+  'admin_locations': 'stock_manager_locations',
+  'stock_manager_locations': 'admin_locations',
+  'admin_po': 'stock_manager_po',
+  'stock_manager_po': 'admin_po',
+  'admin_categories': 'cashier_categories',
+  'cashier_categories': 'admin_categories',
+  'stock_manager_home': 'admin_dashboard',
+  'admin_dashboard': 'stock_manager_home',
+};
+
+function onPermViewToggle(viewCb, skipSync) {
   const modKey = viewCb.dataset.module;
   const editCb = document.querySelector(`.perm-edit-cb[data-module="${modKey}"]`);
   if (!viewCb.checked && editCb) {
@@ -431,9 +449,17 @@ function onPermViewToggle(viewCb) {
   if (viewCb.dataset.group) {
     syncGroupSelectAll(viewCb.dataset.group);
   }
+  if (!skipSync && moduleEquivalentsMap[modKey]) {
+    const eqKey = moduleEquivalentsMap[modKey];
+    const eqViewCb = document.querySelector(`.perm-view-cb[data-module="${eqKey}"]`);
+    if (eqViewCb && eqViewCb.checked !== viewCb.checked) {
+      eqViewCb.checked = viewCb.checked;
+      onPermViewToggle(eqViewCb, true);
+    }
+  }
 }
 
-function onPermEditToggle(editCb) {
+function onPermEditToggle(editCb, skipSync) {
   const modKey = editCb.dataset.module;
   const viewCb = document.querySelector(`.perm-view-cb[data-module="${modKey}"]`);
   if (editCb.checked && viewCb) {
@@ -441,6 +467,14 @@ function onPermEditToggle(editCb) {
   }
   if (editCb.dataset.group) {
     syncGroupSelectAll(editCb.dataset.group);
+  }
+  if (!skipSync && moduleEquivalentsMap[modKey]) {
+    const eqKey = moduleEquivalentsMap[modKey];
+    const eqEditCb = document.querySelector(`.perm-edit-cb[data-module="${eqKey}"]`);
+    if (eqEditCb && eqEditCb.checked !== editCb.checked) {
+      eqEditCb.checked = editCb.checked;
+      onPermEditToggle(eqEditCb, true);
+    }
   }
 }
 
@@ -648,11 +682,25 @@ function adminEditUser(user) {
 
   document.querySelectorAll('.perm-view-cb').forEach(cb => {
     const modKey = cb.dataset.module;
-    cb.checked = permsArr.includes(cb.value) || permsArr.includes('view_' + modKey) || permsArr.includes('edit_' + modKey) || permsArr.includes('module_' + modKey) || permsArr.includes('can_manage') || (!hasGranular && permsArr.includes(modKey));
+    const eqKey = moduleEquivalentsMap[modKey];
+    const hasModPerm = permsArr.includes(cb.value) 
+      || permsArr.includes('view_' + modKey) 
+      || permsArr.includes('edit_' + modKey) 
+      || permsArr.includes('module_' + modKey)
+      || permsArr.includes(modKey)
+      || (eqKey && (permsArr.includes('view_' + eqKey) || permsArr.includes('edit_' + eqKey) || permsArr.includes('module_' + eqKey) || permsArr.includes(eqKey)))
+      || permsArr.includes('can_manage');
+    cb.checked = hasModPerm;
   });
   document.querySelectorAll('.perm-edit-cb').forEach(cb => {
     const modKey = cb.dataset.module;
-    cb.checked = permsArr.includes(cb.value) || permsArr.includes('edit_' + modKey) || permsArr.includes('edit_module_' + modKey) || permsArr.includes('can_manage') || (!hasGranular && permsArr.includes(modKey));
+    const eqKey = moduleEquivalentsMap[modKey];
+    const hasModEdit = permsArr.includes(cb.value) 
+      || permsArr.includes('edit_' + modKey) 
+      || permsArr.includes('edit_module_' + modKey)
+      || (eqKey && (permsArr.includes('edit_' + eqKey) || permsArr.includes('edit_module_' + eqKey)))
+      || permsArr.includes('can_manage');
+    cb.checked = hasModEdit;
   });
 
   document.querySelectorAll('.group-select-all-cb').forEach(cb => {
@@ -717,8 +765,22 @@ function adminSaveUser() {
     return Swal.fire('View-Only Mode', 'You have View-Only permission. Modifying users is disabled.', 'warning');
   }
   const perms = [];
-  document.querySelectorAll('.perm-view-cb:checked').forEach(cb => perms.push(cb.value));
-  document.querySelectorAll('.perm-edit-cb:checked').forEach(cb => perms.push(cb.value));
+  document.querySelectorAll('.perm-view-cb:checked').forEach(cb => {
+    if (!perms.includes(cb.value)) perms.push(cb.value);
+    const modKey = cb.dataset.module;
+    const eqKey = moduleEquivalentsMap[modKey];
+    if (eqKey && !perms.includes('view_' + eqKey)) {
+      perms.push('view_' + eqKey);
+    }
+  });
+  document.querySelectorAll('.perm-edit-cb:checked').forEach(cb => {
+    if (!perms.includes(cb.value)) perms.push(cb.value);
+    const modKey = cb.dataset.module;
+    const eqKey = moduleEquivalentsMap[modKey];
+    if (eqKey && !perms.includes('edit_' + eqKey)) {
+      perms.push('edit_' + eqKey);
+    }
+  });
   document.querySelectorAll('.attendance-dept-cb:checked').forEach(cb => perms.push(parseInt(cb.value)));
 
   const code = (document.getElementById('u-country-code').value || '').trim();
