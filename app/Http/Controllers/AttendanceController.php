@@ -110,6 +110,48 @@ class AttendanceController extends Controller
         return $this->clearAttendanceData($request);
     }
 
+    public function destroyAttendanceDate(Request $request)
+    {
+        $user = $this->authUser();
+        if (!in_array($user['role'] ?? '', ['ADMIN', 'SUB_ADMIN', 'ATTENDANCE'])) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+            }
+            abort(403);
+        }
+
+        $date = $request->input('date');
+        if (!$date) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Date is required.'], 422);
+            }
+            return back()->with('error', 'Date is required.');
+        }
+
+        $deletedPunches = \App\Models\Attendance::where(function ($q) use ($date) {
+            $q->whereDate('date', $date)
+              ->orWhere('date', $date)
+              ->orWhere('date', 'like', "{$date}%");
+        })->delete();
+
+        $deletedSub = \App\Models\AttendanceSubmission::where(function ($q) use ($date) {
+            $q->whereDate('attendance_date', $date)
+              ->orWhere('attendance_date', $date)
+              ->orWhere('attendance_date', 'like', "{$date}%");
+        })->delete();
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Attendance records for {$date} removed successfully.",
+                'deleted_punches' => $deletedPunches,
+                'deleted_submission' => $deletedSub,
+            ]);
+        }
+
+        return redirect()->back()->with('success', "Attendance records for {$date} removed successfully.");
+    }
+
     // --- DEPARTMENTS ---
     public function departments(Request $request)
     {

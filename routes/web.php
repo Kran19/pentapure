@@ -441,6 +441,7 @@ foreach ($adminSlugs as $slug) {
     Route::get('/attendance/daily',       [AttendanceController::class, 'daily'])->name($slug.'.attendance.daily');
     Route::post('/attendance/daily',      [AttendanceController::class, 'storeDailyAttendance']);
     Route::get('/attendance/daily/pdf',   [AttendanceController::class, 'downloadDailyPdf'])->name($slug.'.attendance.daily.pdf');
+    Route::match(['delete', 'post'], '/attendance/daily/delete', [AttendanceController::class, 'destroyAttendanceDate'])->name($slug.'.attendance.daily.delete');
     Route::post('/attendance/clear',      [AttendanceController::class, 'clearAttendanceData'])->name($slug.'.attendance.clear');
     Route::get('/attendance/reports',     [AttendanceController::class, 'reports'])->name($slug.'.attendance.reports');
     Route::get('/attendance/reports/summary/pdf', [AttendanceController::class, 'monthlySummaryPdf'])->name($slug.'.attendance.reports.summary.pdf');
@@ -529,6 +530,7 @@ foreach ($roleSlugs['ATTENDANCE'] ?? [] as $slug) {
     Route::get('/daily',              'daily')->name($slug.'.daily');
     Route::post('/daily',             'storeDailyAttendance');
     Route::get('/daily/pdf',          'downloadDailyPdf')->name($slug.'.daily.pdf');
+    Route::match(['delete', 'post'], '/daily/delete', 'destroyAttendanceDate')->name($slug.'.daily.delete');
     Route::post('/clear',             'clearAttendanceData')->name($slug.'.clear');
     Route::get('/team',               'team')->name($slug.'.team');
 
