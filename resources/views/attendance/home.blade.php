@@ -15,10 +15,23 @@
   </div>
 
 @php
-  $prefix = request()->segment(1) == 'admin' ? 'admin' : 'attendance';
-  $workersUrl = $prefix == 'admin' ? route(request()->segment(1) . '.attendance.workers') : route(request()->segment(1) . '.workers');
-  $dailyUrl = $prefix == 'admin' ? route(request()->segment(1) . '.attendance.daily') : route(request()->segment(1) . '.daily');
-  $reportsUrl = $prefix == 'admin' ? route(request()->segment(1) . '.attendance.reports') : route(request()->segment(1) . '.history');
+  $seg = (request()->segment(1) === 'public' ? request()->segment(2) : request()->segment(1));
+  $userRole = strtoupper(session('auth_user.role') ?? '');
+  $isAdmin = in_array($userRole, ['ADMIN', 'SUB_ADMIN']) || str_starts_with((string)$seg, 'admin') || str_starts_with((string)$seg, 'sub_admin');
+  $roleSlug = $seg ?: ($isAdmin ? 'admin' : 'attendance');
+  $prefix = $isAdmin ? 'admin' : 'attendance';
+  $workersUrl = $isAdmin 
+      ? (Route::has($roleSlug . '.attendance.workers') ? route($roleSlug . '.attendance.workers') : url($roleSlug . '/attendance/workers')) 
+      : (Route::has($roleSlug . '.workers') ? route($roleSlug . '.workers') : url($roleSlug . '/workers'));
+  $dailyUrl = $isAdmin 
+      ? (Route::has($roleSlug . '.attendance.daily') ? route($roleSlug . '.attendance.daily') : url($roleSlug . '/attendance/daily')) 
+      : (Route::has($roleSlug . '.daily') ? route($roleSlug . '.daily') : url($roleSlug . '/daily'));
+  $reportsUrl = $isAdmin 
+      ? (Route::has($roleSlug . '.attendance.reports') ? route($roleSlug . '.attendance.reports') : url($roleSlug . '/attendance/reports')) 
+      : (Route::has($roleSlug . '.history') ? route($roleSlug . '.history') : url($roleSlug . '/history'));
+  $deleteUrl = $isAdmin 
+      ? (Route::has($roleSlug . '.attendance.daily.delete') ? route($roleSlug . '.attendance.daily.delete') : url($roleSlug . '/attendance/daily/delete')) 
+      : (Route::has($roleSlug . '.daily.delete') ? route($roleSlug . '.daily.delete') : url($roleSlug . '/daily/delete'));
 @endphp
 
   <!-- Summary Cards -->
@@ -93,9 +106,10 @@
                 </a>
                 @if(in_array($sub->status, ['SUBMITTED', 'PARTIAL_SAVED']))
                   @php
-                      $pdfRoute = (isset($prefix) && $prefix === 'admin') ? 'admin.attendance.daily.pdf' : 'attendance.daily.pdf';
+                      $pdfRoute = $isAdmin ? ($roleSlug . '.attendance.daily.pdf') : ($roleSlug . '.daily.pdf');
+                      $dailyPdfUrl = Route::has($pdfRoute) ? route($pdfRoute, ['date' => $sub->attendance_date->format('Y-m-d')]) : url($roleSlug . '/attendance/daily/pdf?date=' . $sub->attendance_date->format('Y-m-d'));
                   @endphp
-                  <a href="{{ route($pdfRoute, ['date' => $sub->attendance_date->format('Y-m-d')]) }}" class="btn" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; background: #c0392b; color: white; font-size: 0.85rem;" target="_blank">
+                  <a href="{{ $dailyPdfUrl }}" class="btn" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; background: #c0392b; color: white; font-size: 0.85rem;" target="_blank">
                     PDF ↓
                   </a>
                 @endif
@@ -195,7 +209,7 @@ function deleteAttendanceRecord(dateStr, formattedDate, btn) {
   btn.disabled = true;
   btn.innerText = '⏳ Deleting...';
 
-  const deleteUrl = '{{ $prefix === "admin" ? route(request()->segment(1) . ".attendance.daily.delete") : route(request()->segment(1) . ".daily.delete") }}';
+  const deleteUrl = '{{ $deleteUrl }}';
 
   fetch(deleteUrl, {
     method: 'POST',
@@ -204,7 +218,7 @@ function deleteAttendanceRecord(dateStr, formattedDate, btn) {
       'X-CSRF-TOKEN': csrfToken,
       'Accept': 'application/json'
     },
-    body: JSON.stringify({ date: dateStr })
+    body: JSON.stringify({ date: dateStr, _token: csrfToken })
   })
   .then(res => res.json())
   .then(data => {

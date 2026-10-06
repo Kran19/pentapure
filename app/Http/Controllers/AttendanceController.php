@@ -128,28 +128,36 @@ class AttendanceController extends Controller
             return back()->with('error', 'Date is required.');
         }
 
-        $deletedPunches = \App\Models\Attendance::where(function ($q) use ($date) {
-            $q->whereDate('date', $date)
+        try {
+            $parsedDate = Carbon::parse($date)->format('Y-m-d');
+        } catch (\Exception $e) {
+            $parsedDate = $date;
+        }
+
+        $deletedPunches = \App\Models\Attendance::where(function ($q) use ($date, $parsedDate) {
+            $q->whereDate('date', $parsedDate)
+              ->orWhere('date', $parsedDate)
               ->orWhere('date', $date)
-              ->orWhere('date', 'like', "{$date}%");
+              ->orWhere('date', 'like', "{$parsedDate}%");
         })->delete();
 
-        $deletedSub = \App\Models\AttendanceSubmission::where(function ($q) use ($date) {
-            $q->whereDate('attendance_date', $date)
+        $deletedSub = \App\Models\AttendanceSubmission::where(function ($q) use ($date, $parsedDate) {
+            $q->whereDate('attendance_date', $parsedDate)
+              ->orWhere('attendance_date', $parsedDate)
               ->orWhere('attendance_date', $date)
-              ->orWhere('attendance_date', 'like', "{$date}%");
+              ->orWhere('attendance_date', 'like', "{$parsedDate}%");
         })->delete();
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => "Attendance records for {$date} removed successfully.",
+                'message' => "Attendance records for {$parsedDate} removed successfully.",
                 'deleted_punches' => $deletedPunches,
                 'deleted_submission' => $deletedSub,
             ]);
         }
 
-        return redirect()->back()->with('success', "Attendance records for {$date} removed successfully.");
+        return redirect()->back()->with('success', "Attendance records for {$parsedDate} removed successfully.");
     }
 
     // --- DEPARTMENTS ---
