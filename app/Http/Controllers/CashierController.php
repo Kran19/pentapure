@@ -206,13 +206,26 @@ class CashierController extends Controller
     {
         $request->validate([
             'transaction_id' => 'required|exists:transactions,id',
-            'bill_file'      => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+            'bill_file'      => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:10240',
         ]);
 
-        // Ensure transaction belongs to this cashier
-        $tx = Transaction::where('id', $request->transaction_id)
-            ->where('user_id', $this->authUser()['id'])
-            ->firstOrFail();
+        $user = $this->authUser();
+        $tx = Transaction::where('id', $request->transaction_id)->firstOrFail();
+
+        $userModel = User::find($user['id']);
+        $visibleIds = $userModel ? ($userModel->visible_cashiers ?? []) : [];
+        if (is_string($visibleIds)) {
+            $visibleIds = json_decode($visibleIds, true) ?? [];
+        }
+        $visibleIds = array_map('intval', $visibleIds);
+
+        $isAllowed = in_array($user['role'], ['ADMIN', 'SUB_ADMIN']) || 
+                     ((int)$tx->user_id === (int)$user['id']) || 
+                     in_array((int)$tx->user_id, $visibleIds);
+
+        if (!$isAllowed) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized to attach bill to this transaction.'], 403);
+        }
 
         $sortOrder = TransactionBill::where('transaction_id', $tx->id)->max('sort_order') + 1;
         $bill = $this->saveBillFile($request->file('bill_file'), $tx->id, $sortOrder);
@@ -234,11 +247,25 @@ class CashierController extends Controller
     {
         $bill = TransactionBill::with('transaction')->findOrFail($id);
 
-        // Security: only owner can delete
-        if ($bill->transaction->user_id !== $this->authUser()['id']) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        $user = $this->authUser();
+        $userModel = User::find($user['id']);
+        $visibleIds = $userModel ? ($userModel->visible_cashiers ?? []) : [];
+        if (is_string($visibleIds)) {
+            $visibleIds = json_decode($visibleIds, true) ?? [];
+        }
+        $visibleIds = array_map('intval', $visibleIds);
+
+        $isAllowed = in_array($user['role'], ['ADMIN', 'SUB_ADMIN']) || 
+                     ((int)$bill->transaction->user_id === (int)$user['id']) || 
+                     in_array((int)$bill->transaction->user_id, $visibleIds);
+
+        if (!$isAllowed) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized to delete this bill.'], 403);
         }
 
+        if ($bill->file_path && file_exists(storage_path('app/public/' . $bill->file_path))) {
+            @unlink(storage_path('app/public/' . $bill->file_path));
+        }
         Storage::delete($bill->file_path);
         $bill->delete();
 

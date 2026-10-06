@@ -2909,9 +2909,14 @@ const app = {
   },
 
   showBillUpload(txId) {
-    const txs = (window.serverPageData?.transactions || []);
-    const tx  = txs.find(t => t.id == txId);
+    const allTxs = [
+      ...(window.serverPageData?.transactions || []),
+      ...(window.serverPageData?.teamTransactions || [])
+    ];
+    const tx  = allTxs.find(t => t.id == txId);
     const existingBills = tx?.bills || [];
+    let selectedBillFile = null;
+    let originalBillFile = null;
 
     Swal.fire({
       title: '📎 Manage Bills',
@@ -2919,14 +2924,14 @@ const app = {
         <div style="text-align:left;">
           ${existingBills.length > 0 ? `
             <div style="margin-bottom:1rem;">
-              <div style="font-size:0.8rem; color:#4b5563; margin-bottom:0.5rem;">Attached Bills (${existingBills.length}):</div>
-              <div style="display:flex; flex-direction:column; gap:0.4rem;">
+              <div style="font-size:0.8rem; font-weight:600; color:#4b5563; margin-bottom:0.5rem;">Attached Bills (${existingBills.length}):</div>
+              <div style="display:flex; flex-direction:column; gap:0.4rem; max-height:160px; overflow-y:auto;">
                 ${existingBills.map(b => `
                   <div style="display:flex; align-items:center; justify-content:space-between; background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px; padding:0.5rem 0.7rem;">
-                    <span style="font-size:0.82rem; color:#111;">${b.file_type==='pdf'?'📄':'🖼️'} ${b.original_name}</span>
-                    <div style="display:flex; gap:0.4rem;">
-                      <button onclick="app.viewBill(${b.id}, '${b.file_type || ''}')" style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); color:#2563eb; border-radius:4px; padding:3px 8px; font-size:0.75rem; cursor:pointer;">View</button>
-                      <button onclick="app.deleteBill(${b.id}, ${txId})" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); color:#dc2626; border-radius:4px; padding:3px 8px; font-size:0.75rem; cursor:pointer;">Delete</button>
+                    <span style="font-size:0.82rem; color:#111; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${String(b.original_name||'').replace(/"/g, '&quot;')}">${b.file_type==='pdf'?'📄':'🖼️'} ${String(b.original_name||'')}</span>
+                    <div style="display:flex; gap:0.4rem; flex-shrink:0;">
+                      <button type="button" onclick="app.viewBill(${b.id}, '${b.file_type || ''}')" style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); color:#2563eb; border-radius:4px; padding:3px 8px; font-size:0.75rem; cursor:pointer;">View</button>
+                      <button type="button" onclick="app.deleteBill(${b.id}, ${txId})" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); color:#dc2626; border-radius:4px; padding:3px 8px; font-size:0.75rem; cursor:pointer;">Delete</button>
                     </div>
                   </div>
                 `).join('')}
@@ -2934,10 +2939,42 @@ const app = {
             </div>
           ` : '<p style="color:#6b7280; font-size:0.85rem; margin-bottom:0.8rem;">No bills attached yet.</p>'}
 
-          <div style="background:#f3f4f6; border:2px dashed #d1d5db; border-radius:8px; padding:1rem; text-align:center;">
-            <div style="font-size:0.85rem; color:#4b5563; margin-bottom:0.5rem;">📁 Upload New Bill</div>
-            <input type="file" id="bill-upload-input" accept="image/jpeg,image/png,application/pdf" style="display:block; margin:0 auto; font-size:0.8rem; color:#111;">
-            <div style="font-size:0.72rem; color:#6b7280; margin-top:0.4rem;">JPG, PNG or PDF · Max 10MB</div>
+          <div style="background:#f8fafc; border:2px dashed #cbd5e1; border-radius:10px; padding:1.1rem; text-align:center;">
+            <div style="font-size:0.88rem; font-weight:700; color:#334155; margin-bottom:0.65rem;">📁 Upload New Bill</div>
+            
+            <!-- Camera & Gallery Choice Buttons -->
+            <div style="display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap; margin-bottom:0.6rem;">
+              <button type="button" class="btn btn-sm btn-bill-camera" id="btn-swal-cam" style="background:#f59e0b; color:#1e293b; border:1.5px solid #d97706; font-weight:700; border-radius:8px; padding:0.55rem 1.15rem; font-size:0.85rem; display:inline-flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 2px 5px rgba(245,158,11,0.25); cursor:pointer;">
+                📷 Camera
+              </button>
+              <button type="button" class="btn btn-sm btn-bill-gallery" id="btn-swal-gallery" style="background:#ffffff; color:#1e293b; border:1.5px solid #cbd5e1; font-weight:700; border-radius:8px; padding:0.55rem 1.15rem; font-size:0.85rem; display:inline-flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 1px 3px rgba(0,0,0,0.08); cursor:pointer;">
+                📁 Gallery / File
+              </button>
+            </div>
+
+            <!-- Hidden File Inputs -->
+            <input type="file" id="bill-upload-cam" accept="image/*" capture="environment" style="display:none;">
+            <input type="file" id="bill-upload-gallery" accept="image/jpeg,image/png,image/webp,application/pdf" style="display:none;">
+
+            <!-- Selected File Preview Container -->
+            <div id="bill-selected-preview" style="display:none; margin-top:0.75rem; padding:0.6rem 0.8rem; background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; text-align:left;">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1;">
+                  <img id="bill-preview-thumb" src="" style="width:40px; height:40px; object-fit:cover; border-radius:6px; border:1.5px solid #f59e0b; display:none;">
+                  <span id="bill-preview-pdf" style="font-size:1.8rem; display:none; line-height:1;">📄</span>
+                  <div style="min-width:0; flex:1;">
+                    <div id="bill-preview-name" style="font-size:0.82rem; font-weight:700; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+                    <div id="bill-preview-size" style="font-size:0.72rem; color:#64748b;"></div>
+                  </div>
+                </div>
+                <div style="display:flex; gap:6px; align-items:center; flex-shrink:0;">
+                  <button type="button" id="btn-bill-recrop" style="display:none; background:#0284c7; color:#fff; border:none; border-radius:6px; padding:5px 8px; font-size:0.75rem; font-weight:700; cursor:pointer;" title="Re-crop image">✂️ Crop</button>
+                  <button type="button" id="btn-bill-remove" style="background:#fee2e2; color:#dc2626; border:1px solid #fecaca; border-radius:6px; padding:5px 8px; font-size:0.75rem; font-weight:700; cursor:pointer;" title="Remove selected file">✕</button>
+                </div>
+              </div>
+            </div>
+
+            <div style="font-size:0.72rem; color:#64748b; margin-top:0.5rem;">Take a photo with camera or choose JPG, PNG, WEBP or PDF · Max 10MB</div>
           </div>
         </div>
       `,
@@ -2949,16 +2986,153 @@ const app = {
       confirmButtonColor: '#2563eb',
       cancelButtonColor: '#9ca3af',
       width: '480px',
+      didOpen: () => {
+        const camBtn = document.getElementById('btn-swal-cam');
+        const galBtn = document.getElementById('btn-swal-gallery');
+        const camInput = document.getElementById('bill-upload-cam');
+        const galInput = document.getElementById('bill-upload-gallery');
+        const previewBox = document.getElementById('bill-selected-preview');
+        const previewThumb = document.getElementById('bill-preview-thumb');
+        const previewPdf = document.getElementById('bill-preview-pdf');
+        const previewName = document.getElementById('bill-preview-name');
+        const previewSize = document.getElementById('bill-preview-size');
+        const recropBtn = document.getElementById('btn-bill-recrop');
+        const removeBtn = document.getElementById('btn-bill-remove');
+
+        if (camBtn && camInput) {
+          camBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            camInput.click();
+          });
+        }
+        if (galBtn && galInput) {
+          galBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            galInput.click();
+          });
+        }
+
+        const renderPreview = (file, thumbUrl) => {
+          if (!previewBox) return;
+          previewBox.style.display = 'block';
+          previewName.textContent = file.name;
+          const kb = (file.size / 1024).toFixed(1);
+          const mb = (file.size / (1024 * 1024)).toFixed(2);
+          previewSize.textContent = file.size > 1024 * 1024 ? `${mb} MB` : `${kb} KB`;
+
+          if (file.type && file.type.startsWith('image/')) {
+            if (thumbUrl) previewThumb.src = thumbUrl;
+            previewThumb.style.display = 'block';
+            previewPdf.style.display = 'none';
+            if (recropBtn && window.ImageCropper) {
+              recropBtn.style.display = 'inline-flex';
+            }
+          } else {
+            previewThumb.style.display = 'none';
+            previewPdf.style.display = 'inline-block';
+            if (recropBtn) recropBtn.style.display = 'none';
+          }
+        };
+
+        const processFile = (file) => {
+          if (!file) return;
+
+          const isImg = file.type && (file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(file.name));
+          const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+
+          if (!isImg && !isPdf) {
+            Swal.showValidationMessage('Only JPG, PNG, WEBP images or PDF files are allowed.');
+            return;
+          }
+
+          if (file.size > 10 * 1024 * 1024) {
+            Swal.showValidationMessage('File size exceeds 10MB limit.');
+            return;
+          }
+
+          Swal.resetValidationMessage();
+          originalBillFile = file;
+          selectedBillFile = file;
+
+          if (isImg && window.ImageCropper) {
+            window.ImageCropper.open({
+              file: file,
+              title: '✂️ Crop / Adjust Bill',
+              originalName: file.name,
+              onDone: (result) => {
+                selectedBillFile = result.file;
+                renderPreview(result.file, result.dataUrl);
+              },
+              onCancel: () => {
+                const reader = new FileReader();
+                reader.onload = (e) => renderPreview(file, e.target.result);
+                reader.readAsDataURL(file);
+              }
+            });
+          } else if (isImg) {
+            const reader = new FileReader();
+            reader.onload = (e) => renderPreview(file, e.target.result);
+            reader.readAsDataURL(file);
+          } else {
+            renderPreview(file, null);
+          }
+        };
+
+        if (camInput) {
+          camInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+              processFile(e.target.files[0]);
+            }
+          });
+        }
+
+        if (galInput) {
+          galInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+              processFile(e.target.files[0]);
+            }
+          });
+        }
+
+        if (recropBtn) {
+          recropBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (originalBillFile && window.ImageCropper) {
+              window.ImageCropper.open({
+                file: originalBillFile,
+                title: '✂️ Crop / Adjust Bill',
+                originalName: originalBillFile.name,
+                onDone: (result) => {
+                  selectedBillFile = result.file;
+                  renderPreview(result.file, result.dataUrl);
+                }
+              });
+            }
+          });
+        }
+
+        if (removeBtn) {
+          removeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            selectedBillFile = null;
+            originalBillFile = null;
+            if (camInput) camInput.value = '';
+            if (galInput) galInput.value = '';
+            if (previewBox) previewBox.style.display = 'none';
+            if (previewThumb) previewThumb.src = '';
+            Swal.resetValidationMessage();
+          });
+        }
+      },
       preConfirm: () => {
-        const fileInput = document.getElementById('bill-upload-input');
-        if (!fileInput.files.length) {
-          Swal.showValidationMessage('Please select a file to upload');
+        if (!selectedBillFile) {
+          Swal.showValidationMessage('Please select or capture a bill first (use Camera or Gallery).');
           return false;
         }
-        return fileInput.files[0];
+        return selectedBillFile;
       }
     }).then(result => {
-      if (!result.isConfirmed) return;
+      if (!result.isConfirmed || !result.value) return;
       const formData = new FormData();
       formData.append('transaction_id', txId);
       formData.append('bill_file', result.value);
@@ -2967,17 +3141,19 @@ const app = {
       const currentSlug = this.getCurrentSlug('cashier');
       const uploadUrl = `${this.getBaseUrl()}/${currentSlug}/bill/upload`;
 
+      this.toast('Uploading bill...', 'info');
+
       fetch(uploadUrl, { method: 'POST', body: formData })
         .then(r => r.json())
         .then(d => {
           if (d.success) {
             this.toast('Bill uploaded! ✅', 'success');
-            setTimeout(() => location.reload(), 1000);
+            setTimeout(() => location.reload(), 800);
           } else {
             this.toast(d.message || 'Upload failed', 'error');
           }
         })
-        .catch(() => this.toast('Network error', 'error'));
+        .catch(() => this.toast('Network error uploading bill', 'error'));
     });
   },
 
