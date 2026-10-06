@@ -479,6 +479,10 @@ class CashierController extends Controller
         $minDate = Transaction::min('date') ?: Transaction::min('created_at');
         $earliestDate = $minDate ? Carbon::parse($minDate)->format('Y-m-d') : now()->subMonth()->format('Y-m-d');
 
+        $userBranches = User::whereNotNull('branch')->where('branch', '!=', '')->distinct()->pluck('branch')->toArray();
+        $txSites = Transaction::whereNotNull('site')->where('site', '!=', '')->distinct()->pluck('site')->toArray();
+        $allSites = collect(array_merge($userBranches, $txSites))->filter()->unique()->sort()->values()->toArray();
+
         $pageData = [
             'transactions' => $txs->map(fn($t) => $this->txToArray($t))->values()->toArray(),
             'summary'      => $summary,
@@ -490,6 +494,7 @@ class CashierController extends Controller
             'disallowedCashiers' => $disallowedCashiers,
             'categories'   => $categories,
             'earliestDate' => $earliestDate,
+            'sites'        => $allSites,
         ];
 
         $req = $request ?: request();
@@ -580,6 +585,9 @@ class CashierController extends Controller
             $prevQuery = ($teamUserIds !== null && is_array($teamUserIds))
                 ? Transaction::whereIn('user_id', $teamUserIds)
                 : Transaction::where('user_id', $userId);
+            if ($request->site && $request->site !== 'all') {
+                $prevQuery->where('site', $request->site);
+            }
             $prevTxs = $prevQuery->where('created_at', '<', $from)->get();
             $openingBalance = (float) $prevTxs->sum(fn($t) => $t->type === 'IN' ? $t->amount : -$t->amount);
         }
@@ -645,6 +653,9 @@ class CashierController extends Controller
 
         $userModel = \App\Models\User::find($userId);
         $branchName = $userModel && $userModel->branch ? strtoupper(str_replace(' ', '_', $userModel->branch)) : 'ALL_BRANCHES';
+        if ($request->site && $request->site !== 'all') {
+            $branchName = strtoupper(preg_replace('/[^A-Za-z0-9_]/', '_', $request->site));
+        }
 
         $formattedFromDate = $from ? $from->format('d-m-Y') : ($txs->first()?->created_at?->format('d-m-Y') ?? ($to ? $to->format('d-m-Y') : now()->format('d-m-Y')));
         $formattedToDate   = $to   ? $to->format('d-m-Y')   : now()->format('d-m-Y');

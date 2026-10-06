@@ -2561,7 +2561,13 @@ const app = {
     const teamMembers = window.serverPageData?.teamMembers || [];
 
     const txs = (activeTab === 'team' ? (window.serverPageData?.teamTransactions || []) : (window.serverPageData?.transactions || []));
-    const sites = [...new Set(txs.map(t => t.site).filter(Boolean))].sort();
+    const serverSites = window.serverPageData?.sites || [];
+    const allTxs = [
+      ...(window.serverPageData?.transactions || []),
+      ...(window.serverPageData?.teamTransactions || [])
+    ];
+    const txSites = allTxs.map(t => t.site).filter(Boolean);
+    const sites = [...new Set([...serverSites, ...txSites])].filter(Boolean).sort();
 
     const today = new Date().toISOString().split('T')[0];
     let earliestDate = window.serverPageData?.earliestDate;
@@ -2625,9 +2631,9 @@ const app = {
           </div>
 
           <div style="margin-bottom:0.8rem;">
-            <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Site / Branch</label>
-            <select id="sp-site" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
-              <option value="all">All Sites</option>
+            <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Site / Branch <span style="color:#ef4444; font-weight:700;">* (Compulsory)</span></label>
+            <select id="sp-site" onchange="this.style.borderColor='#30363d';" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+              <option value="" disabled selected>-- Select Site / Branch (Compulsory) --</option>
               ${sites.map(s => `<option value="${s}">${s}</option>`).join('')}
             </select>
           </div>
@@ -2654,6 +2660,17 @@ const app = {
       cancelButtonColor: '#30363d',
       width: '500px',
       preConfirm: () => {
+        const siteEl = document.getElementById('sp-site');
+        const siteVal = (siteEl?.value || '').trim();
+        if (!siteVal || siteVal === 'all') {
+          Swal.showValidationMessage('Please select a Site / Branch (Compulsory)');
+          if (siteEl) {
+            siteEl.focus();
+            siteEl.style.borderColor = '#ef4444';
+          }
+          return false;
+        }
+
         const dateType = document.getElementById('sp-date-type').value;
         let from = '', to = '';
         if (dateType === 'as_on_date') {
@@ -2676,7 +2693,7 @@ const app = {
         return {
           from, to,
           category: 'all',
-          site: document.getElementById('sp-site').value,
+          site: siteVal,
           include_bills: document.getElementById('sp-bills').checked ? 'yes' : 'no',
           opening_balance: document.getElementById('sp-opening').value || '',
           cashier_id: memberEl ? memberEl.value : (isTeam ? selectedMember : ''),
@@ -2687,12 +2704,12 @@ const app = {
       if (!result.isConfirmed) return;
       const p = result.value;
       const currentSlug = this.getCurrentSlug('cashier');
-      let url = `${this.getBaseUrl()}/${currentSlug}/history/pdf?include_bills=${p.include_bills}&category=${p.category}&site=${p.site}`;
-      if (p.from) url += `&from=${p.from}`;
-      if (p.to) url += `&to=${p.to}`;
-      if (p.opening_balance) url += `&opening_balance=${p.opening_balance}`;
-      if (p.tab) url += `&tab=${p.tab}`;
-      if (p.cashier_id) url += `&cashier_id=${p.cashier_id}`;
+      let url = `${this.getBaseUrl()}/${currentSlug}/history/pdf?include_bills=${p.include_bills}&category=${encodeURIComponent(p.category)}&site=${encodeURIComponent(p.site)}`;
+      if (p.from) url += `&from=${encodeURIComponent(p.from)}`;
+      if (p.to) url += `&to=${encodeURIComponent(p.to)}`;
+      if (p.opening_balance) url += `&opening_balance=${encodeURIComponent(p.opening_balance)}`;
+      if (p.tab) url += `&tab=${encodeURIComponent(p.tab)}`;
+      if (p.cashier_id) url += `&cashier_id=${encodeURIComponent(p.cashier_id)}`;
       this.toast('Generating PDF... this may take a moment ⏳', 'info');
       if (typeof window.downloadPdfAsync === 'function') {
         window.downloadPdfAsync(url);
