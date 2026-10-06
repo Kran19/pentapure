@@ -2261,54 +2261,110 @@ class AdminController extends Controller
 
     public function overviewPdf(Request $request)
     {
-        $baseQuery = \App\Models\Transaction::with('user')->orderByDesc('created_at');
+        $baseQuery = \App\Models\Transaction::with('user');
 
         if ($request->filled('cashier_id')) {
             $baseQuery->where('user_id', $request->cashier_id);
         }
-        if ($request->filled('date_from')) {
-            $baseQuery->whereDate('created_at', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $baseQuery->whereDate('created_at', '<=', $request->date_to);
-        }
 
-        $allTxs = $baseQuery->get();
-        
-        $summary = [
-            'totalIn'  => $allTxs->where('type', 'IN')->sum('amount'),
-            'totalOut' => $allTxs->where('type', 'OUT')->sum('amount'),
-            'balance'  => $allTxs->where('type', 'IN')->sum('amount') - $allTxs->where('type', 'OUT')->sum('amount'),
-            'byCategory' => $allTxs->groupBy('category')->map(fn($group) => [
-                'in' => $group->where('type', 'IN')->sum('amount'),
-                'out' => $group->where('type', 'OUT')->sum('amount'),
-            ]),
-            'byCashier' => $allTxs->groupBy('user_id')->map(function($group) {
-                $user = $group->first()->user;
-                return [
-                    'name' => $user ? $user->name : 'Unknown',
-                    'in' => $group->where('type', 'IN')->sum('amount'),
-                    'out' => $group->where('type', 'OUT')->sum('amount'),
-                    'balance' => $group->where('type', 'IN')->sum('amount') - $group->where('type', 'OUT')->sum('amount'),
-                ];
-            })->values(),
-        ];
+        $fromDateInput = $request->input('date_from') ?: $request->input('from');
+        $toDateInput   = $request->input('date_to') ?: $request->input('to');
+
+        if ($fromDateInput) {
+            $baseQuery->whereDate('created_at', '>=', $fromDateInput);
+        }
+        if ($toDateInput) {
+            $baseQuery->whereDate('created_at', '<=', $toDateInput);
+        }
 
         $statusFilter = strtoupper(trim((string)($request->type ?: $request->status)));
         if ($statusFilter && in_array($statusFilter, ['IN', 'OUT'])) {
-            $txs = $allTxs->where('type', $statusFilter)->values();
-        } else {
-            $txs = $allTxs;
+            $baseQuery->where('type', $statusFilter);
         }
 
-        $pageData = [
-            'transactions' => $txs,
-            'summary' => $summary
+        // Chronological order for accurate running statement balance
+        $txs = $baseQuery->orderBy('date')->orderBy('created_at')->get();
+
+        // Calculate opening balance
+        $openingBalance = 0.00;
+        if ($request->filled('opening_balance')) {
+            $openingBalance = (float) $request->opening_balance;
+        } elseif ($fromDateInput) {
+            $prevQuery = \App\Models\Transaction::whereDate('created_at', '<', $fromDateInput);
+            if ($request->filled('cashier_id')) {
+                $prevQuery->where('user_id', $request->cashier_id);
+            }
+            if ($statusFilter && in_array($statusFilter, ['IN', 'OUT'])) {
+                $prevQuery->where('type', $statusFilter);
+            }
+            $prevTxs = $prevQuery->get();
+            $openingBalance = (float) $prevTxs->sum(fn($t) => $t->type === 'IN' ? $t->amount : -$t->amount);
+        }
+
+        $runningBalance = $openingBalance;
+        $rows = [];
+        foreach ($txs as $tx) {
+            $openBal = $runningBalance;
+            if ($tx->type === 'IN') {
+                $runningBalance += (float) $tx->amount;
+            } else {
+                $runningBalance -= (float) $tx->amount;
+            }
+            $rows[] = [
+                'id'           => $tx->id,
+                'date'         => $tx->date ?: $tx->created_at,
+                'category'     => $tx->category,
+                'note'         => $tx->note,
+                'description'  => $tx->description,
+                'reference'    => $tx->reference,
+                'site'         => $tx->site ?? 'Pentapure',
+                'cashier_name' => $tx->user ? strtoupper($tx->user->name) : 'Unknown',
+                'type'         => $tx->type,
+                'amount'       => (float) $tx->amount,
+                'opening_bal'  => $openBal,
+                'closing_bal'  => $runningBalance,
+            ];
+        }
+
+        $sumIn  = (float) $txs->where('type', 'IN')->sum('amount');
+        $sumOut = (float) $txs->where('type', 'OUT')->sum('amount');
+
+        $cashierModel = $request->filled('cashier_id') ? \App\Models\User::find($request->cashier_id) : null;
+        $cashierName = $cashierModel ? strtoupper($cashierModel->name) : 'All Cashiers';
+
+        $fromDate = $fromDateInput ?: ($txs->first()?->created_at?->format('Y-m-d') ?? now()->format('Y-m-d'));
+        $toDate   = $toDateInput ?: now()->format('Y-m-d');
+
+        $data = [
+            'reportId'       => rand(1000, 9999),
+            'generatedOn'    => now()->format('d-M-Y H:i:s'),
+            'fromDate'       => $fromDate,
+            'toDate'         => $toDate,
+            'cashierName'    => $cashierName,
+            'cashierId'      => $cashierModel?->id ?? 'ALL',
+            'site'           => $request->site && $request->site !== 'all' ? $request->site : 'All',
+            'category'       => $request->category && $request->category !== 'all' ? ucwords(str_replace('_',' ',$request->category)) : 'All',
+            'rows'           => $rows,
+            'openingBalance' => $openingBalance,
+            'closingBalance' => $runningBalance,
+            'sumIn'          => $sumIn,
+            'sumOut'         => $sumOut,
+            'totalRecords'   => count($rows),
+            'transactions'   => $txs,
+            'pageData'       => [
+                'transactions' => $txs,
+                'summary' => [
+                    'totalIn'  => $sumIn,
+                    'totalOut' => $sumOut,
+                    'balance'  => $sumIn - $sumOut,
+                    'byCashier' => [],
+                ]
+            ],
         ];
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.cashier_overview_pdf', compact('pageData'));
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.cashier_overview_pdf', $data);
         $pdf->setPaper('A4', 'portrait');
-        $filename = 'pentapure_cashier_overview_' . now()->format('d-m-Y') . '_' . rand(1000, 9999) . '.pdf';
+        $filename = 'PENTAPURE_CASHIER_OVERVIEW_' . now()->format('d-m-Y') . '_' . rand(1000, 9999) . '.pdf';
         return $pdf->download($filename);
     }
 

@@ -1,211 +1,293 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <title>Cashier Overview Statement</title>
-    <style>
-        @page {
-            size: A4 portrait;
-            margin: 15px;
-        }
-        body {
-            font-family: DejaVu Sans, 'Helvetica', 'Arial', sans-serif;
-            margin: 0;
-            padding: 10px;
-            color: #1e293b;
-            font-size: 11px;
-            text-transform: uppercase;
-            background-color: #ffffff;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 25px;
-            border-bottom: 2px solid #cbd5e1;
-            padding-bottom: 15px;
-        }
-        .header .brand-title { font-size: 22px; font-weight: bold; color: #0f172a; margin: 0; }
-        .header .tagline { font-size: 12px; font-weight: bold; color: #475569; margin-top: 4px; }
-        .header .report-title { margin-top: 12px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 13px; font-weight: bold; color: #1e293b; text-transform: uppercase; }
-        .header p {
-            margin: 4px 0 0 0;
-            color: #64748b;
-            font-size: 10px;
-        }
-        .summary-box {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-        .summary-box td {
-            width: 33.33%;
-            padding: 12px;
-            text-align: center;
-            border: 1px solid #cbd5e1;
-            background-color: #f8fafc;
-        }
-        .summary-box .label {
-            font-size: 9px;
-            text-transform: uppercase;
-            color: #64748b;
-            margin-bottom: 4px;
-            font-weight: bold;
-        }
-        .summary-box .value {
-            font-size: 16px;
-            font-weight: bold;
-        }
-        .value.income { color: #16a34a; }
-        .value.expense { color: #dc2626; }
-        .value.balance { color: #0f172a; }
-        
-        .cashier-breakdown {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 25px;
-        }
-        .cashier-breakdown th, .cashier-breakdown td {
-            border: 1px solid #cbd5e1;
-            padding: 8px 10px;
-            text-align: left;
-            font-size: 10px;
-        }
-        .cashier-breakdown th {
-            background-color: #f1f5f9;
-            color: #0f172a;
-            font-weight: bold;
-        }
+<meta charset="utf-8">
+<title>PentaPure - Cashier Overview Statement</title>
+<style>
+@page {
+    size: A4 portrait;
+    margin: 12px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 9px;
+    color: #1e293b;
+    line-height: 1.35;
+    background: #ffffff;
+}
 
-        .tx-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 25px;
-        }
-        .tx-table th, .tx-table td {
-            border: 1px solid #cbd5e1;
-            padding: 8px 10px;
-            text-align: left;
-            font-size: 10px;
-        }
-        .tx-table th {
-            background-color: #f1f5f9;
-            color: #0f172a;
-            font-weight: bold;
-        }
-        .tx-table tr:nth-child(even) { background-color: #f8fafc; }
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        
-        .footer {
-            margin-top: 30px;
-            text-align: center;
-            font-size: 9px;
-            color: #94a3b8;
-            border-top: 1px solid #cbd5e1;
-            padding-top: 12px;
-        }
-    </style>
+.pdf-container {
+    padding: 8px 12px;
+}
+
+/* ── HEADER ── */
+.header-table {
+    width: 100%;
+    background: #ffffff;
+    padding: 10px 14px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    border-collapse: collapse;
+    border: 1px solid #cbd5e1;
+    border-top: 3px solid #f59e0b;
+}
+.brand-name { font-size: 18px; font-weight: bold; color: #0f172a; letter-spacing: 0.5px; }
+.brand-sub  { font-size: 8px; font-weight: bold; color: #475569; margin-top: 1px; }
+
+/* ── META BOX ── */
+.meta-table {
+    width: 100%;
+    margin-bottom: 12px;
+    border-collapse: collapse;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+}
+.meta-table td {
+    padding: 6px 10px;
+    font-size: 9px;
+    border: 1px solid #cbd5e1;
+}
+.meta-title { font-size: 12px; font-weight: bold; color: #0f172a; }
+
+/* ── CONTENT ── */
+.content { width: 100%; }
+
+/* ── MAIN TABLE ── */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 14px;
+    font-size: 9px;
+}
+.data-table thead th {
+    background: #f1f5f9;
+    color: #0f172a;
+    padding: 7px 6px;
+    font-weight: bold;
+    text-align: left;
+    border: 1px solid #cbd5e1;
+    font-size: 9px;
+}
+.data-table tbody td {
+    padding: 6px 6px;
+    border: 1px solid #e2e8f0;
+    vertical-align: middle;
+}
+.data-table tbody tr:nth-child(even) { background: #f8fafc; }
+
+.amt-in    { color: #16a34a; font-weight: bold; }
+.amt-out   { color: #dc2626; font-weight: bold; }
+
+/* ── BALANCE BAR ── */
+.balance-table {
+    width: 100%;
+    margin-bottom: 14px;
+    border-collapse: collapse;
+}
+.balance-table td {
+    vertical-align: middle;
+}
+.bal-right {
+    text-align: right; 
+    padding: 8px 14px;
+    border-radius: 4px;
+}
+.bal-right.positive { background: #f0fdf4; border: 1px solid #86efac; }
+.bal-right.negative { background: #fef2f2; border: 1px solid #fca5a5; }
+.bal-label  { font-size: 8px; color: #64748b; font-weight: bold; text-transform: uppercase; }
+.bal-amount { font-size: 15px; font-weight: bold; margin-top: 1px; }
+.color-green { color: #16a34a; }
+.color-red   { color: #dc2626; }
+
+/* ── FOOTER ── */
+.footer-table {
+    width: 100%;
+    border-top: 1px solid #cbd5e1;
+    padding-top: 10px;
+    margin-top: 15px;
+    border-collapse: collapse;
+}
+.footer-note  { font-size: 8px; color: #64748b; line-height: 1.4; }
+.sig-line     { border-top: 1px solid #334155; width: 140px; display: inline-block; margin-bottom: 3px; }
+.sig-name     { font-size: 9px; font-weight: bold; color: #0f172a; }
+.sig-role     { font-size: 8px; color: #64748b; }
+</style>
 </head>
 <body>
+@php
+    $rowsList = $rows ?? [];
+    if (empty($rowsList) && isset($pageData['transactions'])) {
+        $runningBal = $openingBalance ?? 0.00;
+        $rowsList = [];
+        foreach ($pageData['transactions'] as $tx) {
+            $openBal = $runningBal;
+            if ($tx->type === 'IN') {
+                $runningBal += (float)$tx->amount;
+            } else {
+                $runningBal -= (float)$tx->amount;
+            }
+            $rowsList[] = [
+                'id'           => $tx->id,
+                'date'         => $tx->date ?: $tx->created_at,
+                'note'         => $tx->note,
+                'description'  => $tx->description,
+                'reference'    => $tx->reference,
+                'site'         => $tx->site ?? 'Pentapure',
+                'cashier_name' => $tx->user ? strtoupper($tx->user->name) : 'Unknown',
+                'type'         => $tx->type,
+                'amount'       => (float)$tx->amount,
+                'opening_bal'  => $openBal,
+                'closing_bal'  => $runningBal,
+            ];
+        }
+        $closingBalance = $runningBal;
+    }
+    $reportId = $reportId ?? rand(1000, 9999);
+    $generatedOn = $generatedOn ?? now()->format('d-M-Y H:i:s');
+    $cashierName = $cashierName ?? 'All Cashiers';
+    $site = $site ?? 'All';
+    $openingBalance = $openingBalance ?? 0.00;
+    $closingBalance = $closingBalance ?? 0.00;
+    $sumIn = $sumIn ?? ($pageData['summary']['totalIn'] ?? 0.00);
+    $sumOut = $sumOut ?? ($pageData['summary']['totalOut'] ?? 0.00);
+    $fromDate = $fromDate ?? now()->format('Y-m-d');
+    $toDate = $toDate ?? now()->format('Y-m-d');
+@endphp
 
-    <div class="header">
-        <table style="width: 100%; border-collapse: collapse; margin-top: 0; margin-bottom: 10px;">
+<div class="pdf-container">
+
+<table class="header-table">
+    <tr>
+        <td style="width: 60%; color: #101828; vertical-align: middle;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="width: 45px; padding: 0; vertical-align: middle; border: none; background: transparent;">
+                        @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
+                            <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 40px; height: 40px; object-fit: contain;">
+                        @endif
+                    </td>
+                    <td style="text-align: left; padding-left: 8px; vertical-align: middle; border: none; background: transparent;">
+                        <div class="brand-name">PentaPure</div>
+                        <div class="brand-sub">FOOD &amp; SPICES PVT.LTD.</div>
+                    </td>
+                </tr>
+            </table>
+        </td>
+        <td style="width: 40%; text-align: right; color: #334155; font-size: 8.5px; vertical-align: middle; line-height: 1.45;">
+            <div><strong style="color:#0f172a;">Report ID:</strong> RPT-{{ str_pad($reportId, 4, '0', STR_PAD_LEFT) }}</div>
+            <div><strong style="color:#0f172a;">Generated:</strong> {{ $generatedOn }}</div>
+            <div><strong style="color:#0f172a;">Cashier:</strong> {{ $cashierName }}</div>
+        </td>
+    </tr>
+</table>
+
+<table class="meta-table">
+    <tr>
+        <td colspan="2" style="border-bottom: 1px solid #cbd5e1; background: #f1f5f9; padding: 8px 10px;">
+            <span class="meta-title">
+                DURATION: {{ \Carbon\Carbon::parse($fromDate)->format('d-m-Y') }} - {{ \Carbon\Carbon::parse($toDate)->format('d-m-Y') }}
+            </span>
+        </td>
+    </tr>
+    <tr>
+        <td>SITE: {{ $site }}</td>
+        <td>CASHIER: {{ $cashierName }}</td>
+    </tr>
+    <tr>
+        <td style="color: #15803d; font-weight: bold;">OPENING BALANCE: {{ number_format($openingBalance, 2) }}</td>
+        <td style="color: #b91c1c; font-weight: bold;">CLOSING BALANCE: {{ number_format($closingBalance, 2) }}</td>
+    </tr>
+</table>
+
+<div class="content">
+
+    <table class="data-table">
+        <thead>
             <tr>
-                <td style="width: 20%; text-align: left; vertical-align: middle; border: none; background: transparent;">
-                    @if(file_exists(public_path('logo.png')))
-                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 50px; height: 50px; object-fit: contain;">
-                    @endif
+                <th style="width: 85px;">Date</th>
+                <th>Description</th>
+                <th style="width: 95px; text-align: right;">Amt</th>
+                <th style="width: 105px; text-align: right;">Balance</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($rowsList as $idx => $row)
+            <tr>
+                <td>
+                    {{ \Carbon\Carbon::parse($row['date'])->format('d-m-Y') }}
+                    <br><span style="font-size: 7.5px; color: #64748b;">{{ \Carbon\Carbon::parse($row['date'])->format('h:i A') }}</span>
                 </td>
-                <td style="width: 60%; text-align: center; vertical-align: middle; border: none; background: transparent;">
-                    <div class="brand-title">PENTAPURE</div>
-                    <div class="tagline">FOOD &amp; SPICES PVT.LTD.</div>
-                </td>
-                <td style="width: 20%; text-align: right; vertical-align: middle; border: none; background: transparent;">
-                    @if(file_exists(public_path('logo.png')))
-                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 50px; height: 50px; object-fit: contain;">
+                <td>
+                    <div style="font-weight: bold; color: #0f172a;">{{ $row['note'] ?: ($row['description'] ?: '—') }}</div>
+                    @if(!empty($row['description']) && !empty($row['note']) && $row['description'] !== $row['note'])
+                        <div style="font-size: 7.5px; color: #64748b;">{{ $row['description'] }}</div>
                     @endif
+                    <div style="font-size: 7.5px; color: #64748b; margin-top: 1px;">
+                        @if($cashierName === 'All Cashiers' || $cashierName === 'ALL CASHIERS' || empty($cashierId) || $cashierId === 'ALL')
+                            <span style="font-weight: bold; color: #334155;">Cashier: {{ $row['cashier_name'] }}</span>
+                        @endif
+                        @if(!empty($row['reference']))
+                            @if($cashierName === 'All Cashiers' || $cashierName === 'ALL CASHIERS' || empty($cashierId) || $cashierId === 'ALL') &nbsp;|&nbsp; @endif
+                            <span>Ref: {{ $row['reference'] }}</span>
+                        @endif
+                        @if(!empty($row['site']) && $row['site'] !== 'Pentapure' && $row['site'] !== 'All')
+                            &nbsp;|&nbsp;<span>Site: {{ $row['site'] }}</span>
+                        @endif
+                    </div>
+                </td>
+                <td style="text-align: right;" class="{{ $row['type'] === 'IN' ? 'amt-in' : 'amt-out' }}">
+                    {{ $row['type'] === 'IN' ? '+' : '-' }}{{ number_format($row['amount'], 2) }}
+                </td>
+                <td style="text-align: right;">
+                    <strong>{{ number_format($row['closing_bal'], 2) }}</strong>
                 </td>
             </tr>
-        </table>
-        <div class="report-title">Cashier Overview Statement</div>
-        <p>Generated on: {{ now()->format('d-m-Y, h:i A') }}</p>
-    </div>
+            @empty
+            <tr>
+                <td colspan="4" style="padding:15px; text-align:center; color:#888;">
+                    No transactions found for this period.
+                </td>
+            </tr>
+            @endforelse
+        </tbody>
+    </table>
 
-    <table class="summary-box">
+    <table class="balance-table">
         <tr>
-            <td>
-                <div class="label">Total Income</div>
-                <div class="value income">₹{{ number_format($pageData['summary']['totalIn'], 2) }}</div>
+            <td style="width: 55%; font-size: 8.5px; color: #555;">
+                Opening Balance: <strong>{{ number_format($openingBalance, 2) }}</strong>
+                &nbsp;+&nbsp; Income: <strong style="color:#15803d;">{{ number_format($sumIn, 2) }}</strong>
+                &nbsp;−&nbsp; Expense: <strong style="color:#b91c1c;">{{ number_format($sumOut, 2) }}</strong>
             </td>
-            <td>
-                <div class="label">Total Expenses</div>
-                <div class="value expense">₹{{ number_format($pageData['summary']['totalOut'], 2) }}</div>
-            </td>
-            <td>
-                <div class="label">Net Balance</div>
-                <div class="value balance">₹{{ number_format($pageData['summary']['balance'], 2) }}</div>
+            <td style="width: 45%;" class="bal-right {{ $closingBalance >= 0 ? 'positive' : 'negative' }}">
+                <div class="bal-label">Closing Balance</div>
+                <div class="bal-amount {{ $closingBalance >= 0 ? 'color-green' : 'color-red' }}">
+                    {{ number_format(abs($closingBalance), 2) }}
+                </div>
             </td>
         </tr>
     </table>
 
-    <h3 style="color:#344054; border-bottom:1px solid #ddd; padding-bottom:5px;">Cashier Breakdown</h3>
-    <table class="cashier-breakdown">
-        <thead>
-            <tr>
-                <th>Cashier Name</th>
-                <th class="text-right">Income</th>
-                <th class="text-right">Expense</th>
-                <th class="text-right">Net Balance</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($pageData['summary']['byCashier'] as $c)
-            <tr>
-                <td><strong>{{ strtoupper($c['name']) }}</strong></td>
-                <td class="text-right" style="color:#22c55e;">₹{{ number_format($c['in'], 2) }}</td>
-                <td class="text-right" style="color:#ef4444;">₹{{ number_format($c['out'], 2) }}</td>
-                <td class="text-right" style="font-weight:bold; color:{{ $c['balance'] >= 0 ? '#344054' : '#ef4444' }};">
-                    ₹{{ number_format($c['balance'], 2) }}
-                </td>
-            </tr>
-            @endforeach
-        </tbody>
+    <table class="footer-table">
+        <tr>
+            <td style="width: 60%; vertical-align: bottom;">
+                <div class="footer-note">
+                    This is a system-generated statement. No signature required.<br>
+                    For queries, contact the PentaPure administrator.<br>
+                    Report Period: {{ \Carbon\Carbon::parse($fromDate)->format('d-m-Y') }} to {{ \Carbon\Carbon::parse($toDate)->format('d-m-Y') }}
+                </div>
+            </td>
+            <td style="width: 40%; text-align: right; vertical-align: bottom; padding-right: 10px;">
+                <div style="font-size: 14px; font-weight: bold; color: #1a2744; margin-bottom: 2px;">PentaPure</div>
+                <div class="sig-line"></div><br>
+                <div class="sig-name">Authorized Signature</div>
+                <div class="sig-role">PentaPure Admin</div>
+            </td>
+        </tr>
     </table>
 
-    <h3 style="color:#344054; border-bottom:1px solid #ddd; padding-bottom:5px;">Transaction Ledger</h3>
-    <table class="tx-table">
-        <thead>
-            <tr>
-                <th width="15%">Date</th>
-                <th width="18%">Cashier</th>
-                <th width="42%">Particulars / Note</th>
-                <th width="10%">Ref / Bill</th>
-                <th width="15%" class="text-right">Amount (₹)</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($pageData['transactions'] as $t)
-            <tr>
-                <td>{{ $t->created_at->format('d-m-Y') }}<br><span style="color:#666;font-size:10px;">{{ $t->created_at->format('h:i A') }}</span></td>
-                <td><strong>{{ $t->user->name ?? 'Unknown' }}</strong></td>
-                <td>
-                    {{ $t->note ?? '—' }}
-                    @if($t->description)
-                        <br><span style="font-size:10px; color:#666;">{{ $t->description }}</span>
-                    @endif
-                </td>
-                <td>{{ $t->reference ?? '—' }}</td>
-                <td class="text-right" style="font-weight:bold; color: {{ $t->type === 'IN' ? '#22c55e' : '#ef4444' }}">
-                    {{ $t->type === 'IN' ? '+' : '-' }}{{ number_format($t->amount, 2) }}
-                </td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
-
-    <div class="footer">
-        This is a system-generated statement. No signature required.<br>
-        PentaPure Production Management System
-    </div>
-
+</div>
+</div>
 </body>
 </html>
