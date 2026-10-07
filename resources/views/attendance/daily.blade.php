@@ -108,15 +108,17 @@
                 $rawSalType = 'DAILY';
             }
 
-            if (in_array($rawSalType, ['FIXED_MONTHLY', 'FIX_MONTHLY', 'FIXED', 'FIXED_SALARY'])) {
+            $isMukadam = ($rawSalType === 'LABOUR_MUKADAM' || strtolower($deptName) === 'mukadam' || stripos($w->department->name ?? '', 'MUKADAM') !== false);
+
+            if ($isMukadam || $rawSalType === 'LABOUR_MUKADAM') {
+                $salaryBadgeLabel = 'PER LABOUR SALARY';
+                $salaryBadgeStyle = 'background:#fef3c7; color:#b45309; border:1px solid #fde68a;';
+            } elseif (in_array($rawSalType, ['FIXED_MONTHLY', 'FIX_MONTHLY', 'FIXED', 'FIXED_SALARY'])) {
                 $salaryBadgeLabel = 'FIXED SALARY';
                 $salaryBadgeStyle = 'background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;';
             } elseif ($rawSalType === 'MONTHLY') {
                 $salaryBadgeLabel = 'MONTHLY';
                 $salaryBadgeStyle = 'background:#f3e8ff; color:#7e22ce; border:1px solid #e9d5ff;';
-            } elseif ($rawSalType === 'LABOUR_MUKADAM') {
-                $salaryBadgeLabel = 'LABOUR MUKADAM';
-                $salaryBadgeStyle = 'background:#fef3c7; color:#b45309; border:1px solid #fde68a;';
             } elseif ($rawSalType === 'DAILY') {
                 $salaryBadgeLabel = 'DAILY';
                 $salaryBadgeStyle = 'background:#ecfdf5; color:#047857; border:1px solid #a7f3d0;';

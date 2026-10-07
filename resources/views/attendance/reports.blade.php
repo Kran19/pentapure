@@ -43,6 +43,7 @@
             <th class="no-print">Action</th>
             <th>Total Present</th>
             <th>Total OT Hrs</th>
+            <th>Advance (₹)</th>
             <th>Total Payable (₹)</th>
             <th style="min-width:220px;">Mark as Paid</th>
           </tr>
@@ -62,6 +63,7 @@
             @php
               $deptTotalPresent = array_sum(array_column($workers, 'present'));
               $deptTotalOt = array_sum(array_column($workers, 'total_ot'));
+              $deptTotalAdvance = array_sum(array_column($workers, 'advance'));
               $deptTotalPayable = array_sum(array_map(fn($w) => (float)($w['payable_salary'] ?? $w['total_wage']), $workers));
               $deptWorkerCount = count($workers);
             @endphp
@@ -71,6 +73,7 @@
               </td>
               <td style="font-weight:bold; color:#000000; font-size:0.95rem;">{{ $deptTotalPresent > 0 ? (floor($deptTotalPresent) == $deptTotalPresent ? number_format($deptTotalPresent, 0) : number_format($deptTotalPresent, 1)) : 0 }}</td>
               <td style="font-weight:bold; font-size:0.9rem;">{{ number_format($deptTotalOt, 1) }}</td>
+              <td style="font-weight:bold; font-size:0.95rem; color:#dc2626;" data-csv-value="{{ number_format($deptTotalAdvance, 2, '.', '') }}">{{ $deptTotalAdvance > 0 ? '₹' . number_format($deptTotalAdvance, 0) : '—' }}</td>
               <td style="font-weight:bold; color:var(--primary-light); font-size:1.05rem;" data-csv-value="{{ number_format($deptTotalPayable, 2, '.', '') }}">₹{{ number_format($deptTotalPayable, 2) }}</td>
               <td></td>
             </tr>
@@ -109,6 +112,13 @@
                 </td>
                 <td style="color:#000000; font-weight:bold;">{{ $data['present'] }}</td>
                 <td style="font-weight:bold;">{{ number_format($data['total_ot'], 1) }}</td>
+                <td style="font-weight:bold; color:{{ ($data['advance'] ?? 0) > 0 ? '#dc2626' : 'var(--text-muted)' }}; font-size:0.95rem;" data-csv-value="{{ number_format($data['advance'] ?? 0, 2, '.', '') }}">
+                  @if(($data['advance'] ?? 0) > 0)
+                    ₹{{ number_format($data['advance'], 0) }}
+                  @else
+                    <span style="color:var(--text-muted); opacity:0.6;">—</span>
+                  @endif
+                </td>
                 <td style="font-weight:bold; color:var(--primary-light); font-size:1.05rem;" data-csv-value="{{ number_format($payable, 2, '.', '') }}">
                   <div>₹{{ number_format($payable, 2) }}</div>
                   <div style="font-size:0.7rem; font-weight:500; color:var(--text-muted); margin-top:2px; line-height:1.3;">
@@ -157,12 +167,16 @@
           @endforeach
           
           @if(empty($reportData))
-            <tr><td colspan="9" style="text-align:center; color:var(--text-muted);">No attendance records found for this month.</td></tr>
+            <tr><td colspan="10" style="text-align:center; color:var(--text-muted);">No attendance records found for this month.</td></tr>
           @else
+            @php
+              $grandTotalAdvance = array_sum(array_column($reportData, 'advance'));
+            @endphp
             <tr style="background:var(--glass-bg); font-weight:bold;">
               <td colspan="4" style="text-align:right;">Grand Total Payroll Liability:</td>
               <td class="no-print"></td>
               <td colspan="2"></td>
+              <td style="color:#dc2626; font-size:1.05rem;" data-csv-value="{{ number_format($grandTotalAdvance, 2, '.', '') }}">{{ $grandTotalAdvance > 0 ? '₹' . number_format($grandTotalAdvance, 0) : '—' }}</td>
               <td style="color:var(--secondary); font-size:1.2rem;" data-csv-value="{{ number_format($grandTotal, 2, '.', '') }}">₹{{ number_format($grandTotal, 2) }}</td>
               <td></td>
             </tr>

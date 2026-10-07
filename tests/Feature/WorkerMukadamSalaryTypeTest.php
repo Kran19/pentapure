@@ -273,5 +273,68 @@ class WorkerMukadamSalaryTypeTest extends TestCase
         $this->assertStringContainsString('PER LABOUR SALARY', $renderedPdfView);
         $this->assertStringNotContainsString('(LABOUR_MUKADAM)', $renderedPdfView);
     }
+
+    public function test_daily_attendance_displays_per_labour_salary_for_mukadam(): void
+    {
+        $admin = $this->createUser('ADMIN');
+        $sessionAdmin = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
+
+        $mukadamDept = Department::create(['name' => 'MUKADAM']);
+        Worker::create([
+            'name'          => 'Mukadam Contractor 1',
+            'department_id' => $mukadamDept->id,
+            'role'          => 'Mukadam',
+            'shift_type'    => 'DAY',
+            'salary_type'   => 'LABOUR_MUKADAM',
+            'salary_amount' => 500,
+            'daily_salary'  => 500,
+            'status'        => 'ACTIVE',
+        ]);
+
+        $resAdminDaily = $this->withSession($sessionAdmin)->get('/admin/attendance/daily');
+        $resAdminDaily->assertStatus(200);
+        $resAdminDaily->assertSee('PER LABOUR SALARY');
+        $resAdminDaily->assertDontSee('LABOUR MUKADAM');
+
+        $attendanceUser = $this->createUser('ATTENDANCE');
+        $sessionAttendance = ['auth_user' => ['id' => $attendanceUser->id, 'name' => $attendanceUser->name, 'role' => 'ATTENDANCE']];
+
+        $resDaily = $this->withSession($sessionAttendance)->get('/attendance/daily');
+        $resDaily->assertStatus(200);
+        $resDaily->assertSee('PER LABOUR SALARY');
+        $resDaily->assertDontSee('LABOUR MUKADAM');
+    }
+
+    public function test_workers_table_displays_per_labour_salary_for_mukadam(): void
+    {
+        $admin = $this->createUser('ADMIN');
+        $sessionAdmin = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
+
+        $mukadamDept = Department::create(['name' => 'MUKADAM']);
+        Worker::create([
+            'name'          => 'Mukadam Worker Table',
+            'department_id' => $mukadamDept->id,
+            'role'          => 'Mukadam',
+            'shift_type'    => 'DAY',
+            'salary_type'   => 'LABOUR_MUKADAM',
+            'salary_amount' => 170,
+            'daily_salary'  => 170,
+            'status'        => 'ACTIVE',
+        ]);
+
+        $resAdminWorkers = $this->withSession($sessionAdmin)->get('/admin/attendance/workers');
+        $resAdminWorkers->assertStatus(200);
+        $resAdminWorkers->assertSee('PER LABOUR SALARY');
+        $this->assertStringNotContainsString('<div style="font-size:0.65rem; opacity:0.7; color:var(--text-muted);">LABOUR_MUKADAM</div>', $resAdminWorkers->getContent());
+
+        $attendanceUser = $this->createUser('ATTENDANCE');
+        $sessionAttendance = ['auth_user' => ['id' => $attendanceUser->id, 'name' => $attendanceUser->name, 'role' => 'ATTENDANCE']];
+
+        $resWorkers = $this->withSession($sessionAttendance)->get('/attendance/workers');
+        $resWorkers->assertStatus(200);
+        $resWorkers->assertSee('PER LABOUR SALARY');
+        $this->assertStringNotContainsString('<div style="font-size:0.65rem; opacity:0.7; color:var(--text-muted);">LABOUR_MUKADAM</div>', $resWorkers->getContent());
+    }
 }
+
 

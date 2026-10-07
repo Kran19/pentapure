@@ -203,6 +203,7 @@ class MonthlyWorkerSalaryCalculationTest extends TestCase
         $this->assertStringContainsString('5,500.00', $content);
         $this->assertStringContainsString('Earned: ₹6,000', $content);
         $this->assertStringContainsString('- Adv: ₹500', $content);
+        $this->assertStringContainsString('<th>Advance (₹)</th>', $content);
 
         // Check Summary PDF endpoint
         $pdfResponse = $this->withSession($session)->get('/admin/attendance/reports/summary/pdf?month=2026-09');

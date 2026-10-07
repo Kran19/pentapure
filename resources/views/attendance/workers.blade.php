@@ -94,7 +94,14 @@
             <td><span class="badge {{ $w->shift_type=='NIGHT'?'badge-danger':'badge-info' }}">{{ $w->shift_type }}</span></td>
             <td style="font-weight:bold; color:var(--primary-light);">
               ₹{{ number_format($w->salary_amount, 2) }}
-              <div style="font-size:0.65rem; opacity:0.7; color:var(--text-muted);">{{ $w->salary_type }}</div>
+              @php
+                $isMukadam = ($w->salary_type === 'LABOUR_MUKADAM' || stripos($w->department->name ?? '', 'MUKADAM') !== false);
+              @endphp
+              @if($isMukadam)
+                <div style="font-size:0.65rem; font-weight:bold; color:var(--primary, #2563eb);">PER LABOUR SALARY</div>
+              @else
+                <div style="font-size:0.65rem; opacity:0.7; color:var(--text-muted);">{{ $w->salary_type }}</div>
+              @endif
             </td>
             <td>
               <span class="badge {{ $w->status=='ACTIVE'?'badge-done':'badge-danger' }}">{{ $w->status }}</span>
