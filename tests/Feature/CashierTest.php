@@ -523,6 +523,26 @@ class CashierTest extends TestCase
             'site' => 'pPF gpay expenses',
         ]);
 
+        // Another user and transaction in the system with a different branch
+        $otherCashier = User::create([
+            'name' => 'OTHER CASHIER',
+            'username' => 'other_cashier',
+            'phone' => '+91 9999000088',
+            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+            'role' => 'CASHIER',
+            'branch' => 'PFSPL GPAY EXPENSES',
+            'status' => 'ACTIVE',
+        ]);
+
+        Transaction::create([
+            'user_id' => $otherCashier->id,
+            'type' => 'OUT',
+            'amount' => 500.00,
+            'category' => 'expenses',
+            'note' => 'Other Branch Payment',
+            'site' => 'PFSPL GPAY EXPENSES',
+        ]);
+
         $session = ['auth_user' => [
             'id' => $branchCashier->id,
             'name' => $branchCashier->name,
@@ -536,11 +556,16 @@ class CashierTest extends TestCase
         $pageData = $response->viewData('pageData');
         $this->assertEquals('pPF gpay expenses', $pageData['userBranch']);
 
+        // Assert only admin-defined branch is available in sites, NOT other branches
+        $this->assertEquals(['pPF gpay expenses'], $pageData['sites']);
+        $this->assertFalse(in_array('PFSPL GPAY EXPENSES', $pageData['sites']));
+
         // Assert branch appears in the rendered HTML
         $response->assertSee('BRANCH: PPF GPAY EXPENSES');
         $response->assertSee('PERSONAL LEDGER (PPF GPAY EXPENSES)');
         $response->assertSee('PPF GPAY EXPENSES');
         $response->assertSee('GPay Vendor Payment');
+        $response->assertDontSee('PFSPL GPAY EXPENSES');
     }
 }
 

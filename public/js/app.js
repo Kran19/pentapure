@@ -2561,14 +2561,6 @@ const app = {
     const teamMembers = window.serverPageData?.teamMembers || [];
 
     const txs = (activeTab === 'team' ? (window.serverPageData?.teamTransactions || []) : (window.serverPageData?.transactions || []));
-    const serverSites = window.serverPageData?.sites || [];
-    const allTxs = [
-      ...(window.serverPageData?.transactions || []),
-      ...(window.serverPageData?.teamTransactions || [])
-    ];
-    const txSites = allTxs.map(t => t.site).filter(Boolean);
-    const sites = [...new Set([...serverSites, ...txSites])].filter(Boolean).sort();
-
     const userBranch = window.serverPageData?.userBranch || '';
     const isTeam = (activeTab === 'team' && teamMembers.length > 0);
     let defaultBranch = userBranch;
@@ -2578,9 +2570,19 @@ const app = {
         defaultBranch = tm.branch;
       }
     }
-    if (defaultBranch && !sites.includes(defaultBranch)) {
-      sites.push(defaultBranch);
-      sites.sort();
+
+    let sites = [];
+    if (defaultBranch) {
+      // Show ONLY that branch which admin defined in user
+      sites = [defaultBranch];
+    } else {
+      const serverSites = window.serverPageData?.sites || [];
+      const allTxs = [
+        ...(window.serverPageData?.transactions || []),
+        ...(window.serverPageData?.teamTransactions || [])
+      ];
+      const txSites = allTxs.map(t => t.site).filter(Boolean);
+      sites = [...new Set([...serverSites, ...txSites])].filter(Boolean).sort();
     }
 
     const today = new Date().toISOString().split('T')[0];
@@ -2609,11 +2611,18 @@ const app = {
               const siteEl = document.getElementById('sp-site');
               if (siteEl) {
                 const members = window.serverPageData?.teamMembers || [];
-                const tm = members.find(m => String(m.id) === String(tmId));
-                const b = (tm && tm.branch) ? tm.branch : (window.serverPageData?.userBranch || '');
+                let b = window.serverPageData?.userBranch || '';
+                if (tmId !== 'all') {
+                  const tm = members.find(m => String(m.id) === String(tmId));
+                  if (tm && tm.branch) b = tm.branch;
+                }
                 if (b) {
+                  siteEl.innerHTML = '<option value=\x22' + b + '\x22 selected>' + b + '</option>';
                   siteEl.value = b;
                   siteEl.style.borderColor = '#30363d';
+                } else {
+                  const allSites = window.serverPageData?.sites || [];
+                  siteEl.innerHTML = allSites.map(s => '<option value=\x22' + s + '\x22>' + s + '</option>').join('');
                 }
               }
             " style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">

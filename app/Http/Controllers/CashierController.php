@@ -24,9 +24,17 @@ class CashierController extends Controller
         $txQuery = Transaction::with('bills');
         if (!empty($userBranch)) {
             $txQuery->where(function($q) use ($user, $userBranch) {
-                $q->where('user_id', $user['id'])
-                  ->orWhere('site', $userBranch)
-                  ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
+                $q->where('site', $userBranch)
+                  ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))])
+                  ->orWhere(function($sub) use ($user, $userBranch) {
+                      $sub->where('user_id', $user['id'])
+                          ->where(function($s) use ($userBranch) {
+                              $s->whereNull('site')
+                                ->orWhere('site', '')
+                                ->orWhere('site', $userBranch)
+                                ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
+                          });
+                  });
             });
         } else {
             $txQuery->where('user_id', $user['id']);
@@ -385,9 +393,17 @@ class CashierController extends Controller
         $txQuery = Transaction::with('bills');
         if (!empty($userBranch)) {
             $txQuery->where(function($q) use ($user, $userBranch) {
-                $q->where('user_id', $user['id'])
-                  ->orWhere('site', $userBranch)
-                  ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
+                $q->where('site', $userBranch)
+                  ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))])
+                  ->orWhere(function($sub) use ($user, $userBranch) {
+                      $sub->where('user_id', $user['id'])
+                          ->where(function($s) use ($userBranch) {
+                              $s->whereNull('site')
+                                ->orWhere('site', '')
+                                ->orWhere('site', $userBranch)
+                                ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
+                          });
+                  });
             });
         } else {
             $txQuery->where('user_id', $user['id']);
@@ -410,9 +426,17 @@ class CashierController extends Controller
         $txQuery = Transaction::with(['bills', 'user']);
         if (!empty($userBranch)) {
             $txQuery->where(function($q) use ($user, $userBranch) {
-                $q->where('user_id', $user['id'])
-                  ->orWhere('site', $userBranch)
-                  ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
+                $q->where('site', $userBranch)
+                  ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))])
+                  ->orWhere(function($sub) use ($user, $userBranch) {
+                      $sub->where('user_id', $user['id'])
+                          ->where(function($s) use ($userBranch) {
+                              $s->whereNull('site')
+                                ->orWhere('site', '')
+                                ->orWhere('site', $userBranch)
+                                ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
+                          });
+                  });
             });
         } else {
             $txQuery->where('user_id', $user['id']);
@@ -527,12 +551,17 @@ class CashierController extends Controller
         $minDate = Transaction::min('date') ?: Transaction::min('created_at');
         $earliestDate = $minDate ? Carbon::parse($minDate)->format('Y-m-d') : now()->subMonth()->format('Y-m-d');
 
-        $userBranches = User::whereNotNull('branch')->where('branch', '!=', '')->distinct()->pluck('branch')->toArray();
-        $txSites = Transaction::whereNotNull('site')->where('site', '!=', '')->distinct()->pluck('site')->toArray();
-        $allSites = collect(array_merge($userBranches, $txSites))->filter()->unique()->sort()->values()->toArray();
-
         $currentUserModel = User::find($user['id']);
-        $currentUserBranch = $currentUserModel ? ($currentUserModel->branch ?? '') : '';
+        $currentUserBranch = $currentUserModel ? ($currentUserModel->branch ?? '') : ($user['branch'] ?? '');
+
+        if (!empty($currentUserBranch)) {
+            // Show only that branch which admin defined in user
+            $allSites = [$currentUserBranch];
+        } else {
+            $userBranches = User::whereNotNull('branch')->where('branch', '!=', '')->distinct()->pluck('branch')->toArray();
+            $txSites = Transaction::whereNotNull('site')->where('site', '!=', '')->distinct()->pluck('site')->toArray();
+            $allSites = collect(array_merge($userBranches, $txSites))->filter()->unique()->sort()->values()->toArray();
+        }
 
         $pageData = [
             'transactions' => $txs->map(fn($t) => $this->txToArray($t))->values()->toArray(),
@@ -629,10 +658,20 @@ class CashierController extends Controller
             $query = Transaction::with('bills')->whereIn('user_id', $teamUserIds)->orderBy('created_at');
         } else {
             $query = Transaction::with('bills')->where(function($q) use ($userId, $userBranch) {
-                $q->where('user_id', $userId);
                 if (!empty($userBranch)) {
-                    $q->orWhere('site', $userBranch)
-                      ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
+                    $q->where('site', $userBranch)
+                      ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))])
+                      ->orWhere(function($sub) use ($userId, $userBranch) {
+                          $sub->where('user_id', $userId)
+                              ->where(function($s) use ($userBranch) {
+                                  $s->whereNull('site')
+                                    ->orWhere('site', '')
+                                    ->orWhere('site', $userBranch)
+                                    ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
+                              });
+                      });
+                } else {
+                    $q->where('user_id', $userId);
                 }
             })->orderBy('created_at');
         }
@@ -670,10 +709,20 @@ class CashierController extends Controller
             $prevQuery = ($teamUserIds !== null && is_array($teamUserIds))
                 ? Transaction::whereIn('user_id', $teamUserIds)
                 : Transaction::where(function($q) use ($userId, $userBranch) {
-                    $q->where('user_id', $userId);
                     if (!empty($userBranch)) {
-                        $q->orWhere('site', $userBranch)
-                          ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
+                        $q->where('site', $userBranch)
+                          ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))])
+                          ->orWhere(function($sub) use ($userId, $userBranch) {
+                              $sub->where('user_id', $userId)
+                                  ->where(function($s) use ($userBranch) {
+                                      $s->whereNull('site')
+                                        ->orWhere('site', '')
+                                        ->orWhere('site', $userBranch)
+                                        ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
+                                  });
+                          });
+                    } else {
+                        $q->where('user_id', $userId);
                     }
                 });
             if ($selectedSite && $selectedSite !== 'all') {
