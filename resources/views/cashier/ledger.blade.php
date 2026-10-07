@@ -114,9 +114,18 @@
   ];
 @endphp
 
+@php
+  $currentBranch = $pageData['userBranch'] ?? ($authUser['branch'] ?? (session('auth_user.branch') ?? ''));
+@endphp
+
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
-  <div style="display:flex; align-items:center; gap:15px;">
+  <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
     <h2 style="margin:0;">💰 Account Ledger</h2>
+    @if(!empty($currentBranch))
+      <span class="badge" id="ledger-branch-badge" style="background:var(--primary, #2563eb); color:white; font-size:0.85rem; font-weight:700; padding:4px 12px; border-radius:20px; display:inline-flex; align-items:center; gap:6px; letter-spacing:0.5px; box-shadow:0 2px 4px rgba(37,99,235,0.2);">
+        🏢 BRANCH: {{ strtoupper($currentBranch) }}
+      </span>
+    @endif
   </div>
   <button class="btn btn-sm" style="width:auto; padding:0.5rem 1.1rem; display:flex; align-items:center; gap:0.4rem; font-weight:600;" onclick="app.downloadCashierPdf()">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -148,7 +157,7 @@
     
     <!-- Ledger Type (Personal / Team) -->
     <select name="tab" id="ledger-tab-select" onchange="onLedgerTabChange(this.value)" style="width:auto; flex:1; min-width:160px; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600;">
-      <option value="personal" {{ $activeTab==='personal'?'selected':'' }}>PERSONAL LEDGER</option>
+      <option value="personal" {{ $activeTab==='personal'?'selected':'' }}>PERSONAL LEDGER{{ !empty($currentBranch) ? ' (' . strtoupper($currentBranch) . ')' : '' }}</option>
       @if($hasTeamMembers)
         <option value="team" {{ $activeTab==='team'?'selected':'' }}>TEAM LEDGER</option>
       @endif
@@ -158,8 +167,8 @@
     <select id="team-member-select" name="team_member" onchange="applyLedgerFilters()" style="display:{{ ($activeTab === 'team' && $hasTeamMembers) ? 'block' : 'none' }}; width:auto; flex:1; min-width:160px; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600;">
       <option value="all" {{ $teamMember === 'all' ? 'selected' : '' }}>ALL TEAM MEMBERS</option>
       @foreach($visibleTeamMembers as $tm)
-        <option value="{{ $tm['id'] }}" {{ ((string)$teamMember === (string)$tm['id'] || strtolower($teamMember) === strtolower($tm['name'])) ? 'selected' : '' }}>
-          {{ strtoupper($tm['name']) }}
+        <option value="{{ $tm['id'] }}" data-branch="{{ $tm['branch'] ?? '' }}" {{ ((string)$teamMember === (string)$tm['id'] || strtolower($teamMember) === strtolower($tm['name'])) ? 'selected' : '' }}>
+          {{ strtoupper($tm['name']) }}{{ !empty($tm['branch']) ? ' (' . strtoupper($tm['branch']) . ')' : '' }}
         </option>
       @endforeach
     </select>
@@ -244,8 +253,11 @@
               @if($t['reference'])
                 <div style="font-size:0.72rem; color:var(--text-muted);">Ref: {{ $t['reference'] }}</div>
               @endif
-              @if($t['site'])
-                <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">📍 {{ $t['site'] }}</div>
+              @php
+                $rowBranch = $t['site'] ?: ($t['user_branch'] ?? '');
+              @endphp
+              @if(!empty($rowBranch))
+                <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px; font-weight:600;">📍 {{ strtoupper($rowBranch) }}</div>
               @endif
               @if($activeTab === 'team' && isset($t['cashier_name']))
                 <div style="font-size:0.75rem; color:var(--primary-dark, #b45309); font-weight:700; margin-top:4px;">👤 {{ $t['cashier_name'] }}</div>
@@ -406,6 +418,37 @@
     const startDate = document.getElementById('ledger-start-date').value;
     const endDate = document.getElementById('ledger-end-date').value;
     const q = (document.getElementById('ledger-search-input').value || '').trim().toLowerCase();
+
+    // Dynamic branch badge update
+    const branchBadge = document.getElementById('ledger-branch-badge');
+    if (branchBadge) {
+      const userBranch = window.serverPageData?.userBranch || '';
+      if (tabVal === 'personal') {
+        if (userBranch) {
+          branchBadge.style.display = 'inline-flex';
+          branchBadge.innerHTML = `🏢 BRANCH: ${userBranch.toUpperCase()}`;
+        } else {
+          branchBadge.style.display = 'none';
+        }
+      } else if (tabVal === 'team') {
+        if (selectedMember && selectedMember !== 'all') {
+          const teamMembers = window.serverPageData?.teamMembers || [];
+          const tm = teamMembers.find(m => String(m.id) === String(selectedMember) || m.name.toLowerCase() === selectedMember.toLowerCase());
+          if (tm && tm.branch) {
+            branchBadge.style.display = 'inline-flex';
+            branchBadge.innerHTML = `🏢 BRANCH: ${tm.branch.toUpperCase()}`;
+          } else if (userBranch) {
+            branchBadge.style.display = 'inline-flex';
+            branchBadge.innerHTML = `🏢 BRANCH: ${userBranch.toUpperCase()}`;
+          }
+        } else {
+          if (userBranch) {
+            branchBadge.style.display = 'inline-flex';
+            branchBadge.innerHTML = `🏢 BRANCH: ${userBranch.toUpperCase()} (TEAM)`;
+          }
+        }
+      }
+    }
 
     // Pick source dataset
     const source = (tabVal === 'team') 
@@ -590,7 +633,7 @@
             <div style="font-weight:600;">${t.note || ('Cash ' + t.type)}</div>
             ${t.description ? `<div style="font-size:0.72rem; color:var(--text-muted);">${t.description}</div>` : ''}
             ${t.reference ? `<div style="font-size:0.72rem; color:var(--text-muted);">Ref: ${t.reference}</div>` : ''}
-            ${t.site ? `<div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">📍 ${t.site}</div>` : ''}
+            ${(t.site || t.user_branch) ? `<div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px; font-weight:600;">📍 ${(t.site || t.user_branch).toUpperCase()}</div>` : ''}
             ${(tabVal === 'team' && t.cashier_name) ? `<div style="font-size:0.75rem; color:var(--primary-dark, #b45309); font-weight:700; margin-top:4px;">👤 ${t.cashier_name}</div>` : ''}
           </td>
           <td style="padding:12px; font-weight:bold; color:${amtColor}; text-align:right; white-space:nowrap;">

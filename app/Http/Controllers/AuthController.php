@@ -94,6 +94,7 @@ class AuthController extends Controller
             'name'        => $user->name,
             'username'    => $hasUsernameCol ? ($user->username ?? $user->name) : $user->name,
             'role'        => $user->role,
+            'branch'      => $user->branch,
             'permissions' => $user->permissions,
             'login_slug'  => $login_slug,
         ]]);

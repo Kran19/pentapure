@@ -90,7 +90,21 @@
         <div id="admin-mobile-header" class="admin-mobile-header" style="justify-content:space-between; padding:0.4rem 1rem 0.4rem 52px;">
           <div class="user-info" style="display:flex; flex-direction:column; gap:2px; text-align:left;">
             <span class="user-name" style="font-size:0.92rem; font-weight:700; color:var(--text-main); line-height:1.2;">{{ $userName }}</span>
-            <span class="role-badge" style="font-size:0.65rem; background:var(--primary); color:#000000; font-weight:700; padding:2px 7px; border-radius:20px; text-transform:uppercase; letter-spacing:0.5px; width:fit-content; line-height:1.2;">{{ $roleLabel }}</span>
+            <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+              <span class="role-badge" style="font-size:0.65rem; background:var(--primary); color:#000000; font-weight:700; padding:2px 7px; border-radius:20px; text-transform:uppercase; letter-spacing:0.5px; width:fit-content; line-height:1.2;">{{ $roleLabel }}</span>
+              @php
+                $mobileHeaderBranch = $sessUser['branch'] ?? ($authUser['branch'] ?? null);
+                if (empty($mobileHeaderBranch) && isset($sessUser['id'])) {
+                  $dbUser = \App\Models\User::find($sessUser['id']);
+                  $mobileHeaderBranch = $dbUser?->branch;
+                }
+              @endphp
+              @if(!empty($mobileHeaderBranch))
+                <span class="branch-badge" style="font-size:0.62rem; background:rgba(245,158,11,0.15); color:#d97706; border:1px solid rgba(245,158,11,0.3); font-weight:700; padding:1px 6px; border-radius:12px; letter-spacing:0.3px;">
+                  📍 {{ strtoupper($mobileHeaderBranch) }}
+                </span>
+              @endif
+            </div>
           </div>
           <a href="{{ url(request()->segment(1) . '/notifications') }}" id="notif-bell-container" style="position:relative; cursor:pointer; color:inherit; text-decoration:none; display:flex; align-items:center;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -477,6 +491,18 @@
             <div class="user-info">
               <span class="user-name" id="current-user-name">{{ $userName }}</span>
               <span class="role-badge" id="current-user-role">{{ $roleLabel }}</span>
+              @php
+                $adminHeaderBranch = $sessUser['branch'] ?? ($authUser['branch'] ?? null);
+                if (empty($adminHeaderBranch) && isset($sessUser['id'])) {
+                  $dbUser = \App\Models\User::find($sessUser['id']);
+                  $adminHeaderBranch = $dbUser?->branch;
+                }
+              @endphp
+              @if(!empty($adminHeaderBranch))
+                <span class="branch-badge" id="current-user-branch" style="font-size:0.75rem; background:rgba(245,158,11,0.15); color:#d97706; border:1px solid rgba(245,158,11,0.3); font-weight:700; padding:2px 8px; border-radius:12px; letter-spacing:0.3px; display:inline-flex; align-items:center; gap:4px;">
+                  📍 {{ strtoupper($adminHeaderBranch) }}
+                </span>
+              @endif
             </div>
             <div class="header-actions" style="display:flex; align-items:center;">
               <div class="nav-item desktop-only" style="cursor:pointer; display:flex; align-items:center; gap:0.4rem; padding:0.4rem 0.8rem; margin-right:12px; font-size:0.85rem; border-radius:8px; border:1px solid var(--glass-border);" onclick="toggleTheme()" title="Toggle Theme">

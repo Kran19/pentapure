@@ -242,8 +242,9 @@ class WorkerMukadamSalaryTypeTest extends TestCase
         $reportsContent = $reportsRes->getContent();
 
         $this->assertStringContainsString('₹500', $reportsContent);
-        $this->assertStringContainsString('/ Per Labour', $reportsContent);
-        $this->assertStringContainsString('PER LABOUR SALARY (LABOUR_MUKADAM)', $reportsContent);
+        $this->assertStringNotContainsString('/ Per Labour', $reportsContent);
+        $this->assertStringContainsString('PER LABOUR SALARY', $reportsContent);
+        $this->assertStringNotContainsString('(LABOUR_MUKADAM)', $reportsContent);
 
         // 2. Summary PDF export: /attendance/reports/summary/pdf?month=2026-09
         $pdfRes = $this->withSession($sessionAttendance)->get('/attendance/reports/summary/pdf?month=2026-09');
@@ -268,8 +269,9 @@ class WorkerMukadamSalaryTypeTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('₹500', $renderedPdfView);
-        $this->assertStringContainsString('/ Per Labour', $renderedPdfView);
-        $this->assertStringContainsString('PER LABOUR SALARY (LABOUR_MUKADAM)', $renderedPdfView);
+        $this->assertStringNotContainsString('/ Per Labour', $renderedPdfView);
+        $this->assertStringContainsString('PER LABOUR SALARY', $renderedPdfView);
+        $this->assertStringNotContainsString('(LABOUR_MUKADAM)', $renderedPdfView);
     }
 }
 

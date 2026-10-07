@@ -2569,6 +2569,20 @@ const app = {
     const txSites = allTxs.map(t => t.site).filter(Boolean);
     const sites = [...new Set([...serverSites, ...txSites])].filter(Boolean).sort();
 
+    const userBranch = window.serverPageData?.userBranch || '';
+    const isTeam = (activeTab === 'team' && teamMembers.length > 0);
+    let defaultBranch = userBranch;
+    if (isTeam && selectedMember !== 'all') {
+      const tm = teamMembers.find(m => String(m.id) === String(selectedMember) || m.name.toLowerCase() === selectedMember.toLowerCase());
+      if (tm && tm.branch) {
+        defaultBranch = tm.branch;
+      }
+    }
+    if (defaultBranch && !sites.includes(defaultBranch)) {
+      sites.push(defaultBranch);
+      sites.sort();
+    }
+
     const today = new Date().toISOString().split('T')[0];
     let earliestDate = window.serverPageData?.earliestDate;
     if (!earliestDate && txs && txs.length > 0) {
@@ -2583,8 +2597,6 @@ const app = {
     }
     const defaultFromDate = earliestDate || new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
 
-    const isTeam = (activeTab === 'team' && teamMembers.length > 0);
-
     Swal.fire({
       title: '📄 Generate Account Statement',
       html: `
@@ -2592,9 +2604,21 @@ const app = {
           ${isTeam ? `
           <div style="margin-bottom:0.8rem;">
             <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Team Member</label>
-            <select id="sp-member" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+            <select id="sp-member" onchange="
+              const tmId = this.value;
+              const siteEl = document.getElementById('sp-site');
+              if (siteEl) {
+                const members = window.serverPageData?.teamMembers || [];
+                const tm = members.find(m => String(m.id) === String(tmId));
+                const b = (tm && tm.branch) ? tm.branch : (window.serverPageData?.userBranch || '');
+                if (b) {
+                  siteEl.value = b;
+                  siteEl.style.borderColor = '#30363d';
+                }
+              }
+            " style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
               <option value="all" ${selectedMember === 'all' ? 'selected' : ''}>ALL TEAM MEMBERS</option>
-              ${teamMembers.map(m => `<option value="${m.id}" ${(String(selectedMember) === String(m.id) || selectedMember.toLowerCase() === m.name.toLowerCase()) ? 'selected' : ''}>${m.name}</option>`).join('')}
+              ${teamMembers.map(m => `<option value="${m.id}" ${(String(selectedMember) === String(m.id) || selectedMember.toLowerCase() === m.name.toLowerCase()) ? 'selected' : ''}>${m.name}${m.branch ? ' (' + m.branch + ')' : ''}</option>`).join('')}
             </select>
           </div>
           ` : ''}
@@ -2633,8 +2657,8 @@ const app = {
           <div style="margin-bottom:0.8rem;">
             <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Site / Branch <span style="color:#ef4444; font-weight:700;">* (Compulsory)</span></label>
             <select id="sp-site" onchange="this.style.borderColor='#30363d';" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
-              <option value="" disabled selected>-- Select Site / Branch (Compulsory) --</option>
-              ${sites.map(s => `<option value="${s}">${s}</option>`).join('')}
+              ${!defaultBranch ? `<option value="" disabled selected>-- Select Site / Branch (Compulsory) --</option>` : ''}
+              ${sites.map(s => `<option value="${s}" ${s === defaultBranch ? 'selected' : ''}>${s}</option>`).join('')}
             </select>
           </div>
 
@@ -2661,14 +2685,18 @@ const app = {
       width: '500px',
       preConfirm: () => {
         const siteEl = document.getElementById('sp-site');
-        const siteVal = (siteEl?.value || '').trim();
+        let siteVal = (siteEl?.value || '').trim();
         if (!siteVal || siteVal === 'all') {
-          Swal.showValidationMessage('Please select a Site / Branch (Compulsory)');
-          if (siteEl) {
-            siteEl.focus();
-            siteEl.style.borderColor = '#ef4444';
+          if (defaultBranch) {
+            siteVal = defaultBranch;
+          } else {
+            Swal.showValidationMessage('Please select a Site / Branch (Compulsory)');
+            if (siteEl) {
+              siteEl.focus();
+              siteEl.style.borderColor = '#ef4444';
+            }
+            return false;
           }
-          return false;
         }
 
         const dateType = document.getElementById('sp-date-type').value;

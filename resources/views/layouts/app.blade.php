@@ -173,6 +173,18 @@
               @endphp
             <span class="user-name" id="current-user-name">{{ $userName }}</span>
             <span class="role-badge" id="current-user-role">{{ $userRole }}</span>
+            @php
+              $headerBranch = $sessUser['branch'] ?? null;
+              if (empty($headerBranch) && isset($sessUser['id'])) {
+                $dbUser = \App\Models\User::find($sessUser['id']);
+                $headerBranch = $dbUser?->branch;
+              }
+            @endphp
+            @if(!empty($headerBranch))
+              <span class="branch-badge" id="current-user-branch" style="font-size:0.75rem; background:rgba(37,99,235,0.12); color:#2563eb; border:1px solid rgba(37,99,235,0.25); font-weight:700; padding:2px 8px; border-radius:12px; letter-spacing:0.3px; display:inline-flex; align-items:center; gap:4px;">
+                📍 {{ strtoupper($headerBranch) }}
+              </span>
+            @endif
           </div>
           <div class="header-actions" style="display:flex; align-items:center;">
             <div id="notif-bell-container" style="position:relative; cursor:pointer; margin-right:15px; color:var(--text-main);" onclick="app.toggleNotifications()">

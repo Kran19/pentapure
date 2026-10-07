@@ -17,7 +17,21 @@ class CashierController extends Controller
     // ── HOME ──────────────────────────────────────────────────────────────
     public function home()
     {
-        $txs     = Transaction::with('bills')->where('user_id', $this->authUser()['id'])->orderByDesc('created_at')->get();
+        $user = $this->authUser();
+        $userModel = User::find($user['id']);
+        $userBranch = $userModel ? ($userModel->branch ?? '') : ($user['branch'] ?? '');
+
+        $txQuery = Transaction::with('bills');
+        if (!empty($userBranch)) {
+            $txQuery->where(function($q) use ($user, $userBranch) {
+                $q->where('user_id', $user['id'])
+                  ->orWhere('site', $userBranch)
+                  ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
+            });
+        } else {
+            $txQuery->where('user_id', $user['id']);
+        }
+        $txs = $txQuery->orderByDesc('created_at')->get();
         $balance = $txs->sum(fn($t) => $t->type === 'IN' ? $t->amount : -$t->amount);
 
         $pageData = [
@@ -364,9 +378,21 @@ class CashierController extends Controller
     // ── HISTORY ────────────────────────────────────────────────────────────
     public function history()
     {
-        $txs = Transaction::with('bills')
-            ->where('user_id', $this->authUser()['id'])
-            ->orderByDesc('created_at')
+        $user = $this->authUser();
+        $userModel = User::find($user['id']);
+        $userBranch = $userModel ? ($userModel->branch ?? '') : ($user['branch'] ?? '');
+
+        $txQuery = Transaction::with('bills');
+        if (!empty($userBranch)) {
+            $txQuery->where(function($q) use ($user, $userBranch) {
+                $q->where('user_id', $user['id'])
+                  ->orWhere('site', $userBranch)
+                  ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
+            });
+        } else {
+            $txQuery->where('user_id', $user['id']);
+        }
+        $txs = $txQuery->orderByDesc('created_at')
             ->get()
             ->map(fn($t) => $this->txToArray($t));
 
@@ -378,7 +404,20 @@ class CashierController extends Controller
     public function ledger(Request $request = null)
     {
         $user = $this->authUser();
-        $txs = Transaction::with(['bills', 'user'])->where('user_id', $user['id'])->orderByDesc('created_at')->get();
+        $userModel = User::find($user['id']);
+        $userBranch = $userModel ? ($userModel->branch ?? '') : ($user['branch'] ?? '');
+
+        $txQuery = Transaction::with(['bills', 'user']);
+        if (!empty($userBranch)) {
+            $txQuery->where(function($q) use ($user, $userBranch) {
+                $q->where('user_id', $user['id'])
+                  ->orWhere('site', $userBranch)
+                  ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
+            });
+        } else {
+            $txQuery->where('user_id', $user['id']);
+        }
+        $txs = $txQuery->orderByDesc('created_at')->get();
 
         $summary = [
             'totalIn'  => $txs->where('type', 'IN')->sum('amount'),
@@ -386,7 +425,6 @@ class CashierController extends Controller
             'balance'  => $txs->where('type', 'IN')->sum('amount') - $txs->where('type', 'OUT')->sum('amount'),
         ];
 
-        $userModel = User::find($user['id']);
         $isAdmin = in_array($user['role'] ?? '', ['ADMIN', 'SUB_ADMIN']);
         $visibleIds = $userModel ? ($userModel->visible_cashiers ?? []) : [];
         if (is_string($visibleIds)) {
@@ -417,8 +455,9 @@ class CashierController extends Controller
             if ($isAdmin || in_array((int)$c->id, $visibleIds)) {
                 $allowedCashiers[] = $c->name;
                 $teamMembers[] = [
-                    'id'   => $c->id,
-                    'name' => strtoupper($c->name),
+                    'id'     => $c->id,
+                    'name'   => strtoupper($c->name),
+                    'branch' => $c->branch ?? '',
                 ];
                 $addedUserIds[] = $c->id;
             } else {
@@ -428,14 +467,23 @@ class CashierController extends Controller
 
         $allowedIds = $addedUserIds;
 
-        // Team Ledger (Includes all allowed active team cashiers + logged in user transactions)
+        // Team Ledger (Includes all allowed active team cashiers + logged in user transactions + branch transactions)
         if (empty($allowedIds)) {
             $teamTxs = collect([]);
         } else {
             $teamTxs = Transaction::with(['bills', 'user'])
-                ->whereIn('user_id', $allowedIds)
-                ->whereHas('user', function($q) {
-                    $q->where('status', 'ACTIVE');
+                ->where(function($q) use ($allowedIds, $userBranch) {
+                    $q->whereIn('user_id', $allowedIds);
+                    if (!empty($userBranch)) {
+                        $q->orWhere('site', $userBranch)
+                          ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
+                    }
+                })
+                ->where(function($q) {
+                    $q->whereNull('user_id')
+                      ->orWhereHas('user', function($uq) {
+                          $uq->where('status', 'ACTIVE');
+                      });
                 })
                 ->orderByDesc('created_at')
                 ->get();
@@ -483,6 +531,9 @@ class CashierController extends Controller
         $txSites = Transaction::whereNotNull('site')->where('site', '!=', '')->distinct()->pluck('site')->toArray();
         $allSites = collect(array_merge($userBranches, $txSites))->filter()->unique()->sort()->values()->toArray();
 
+        $currentUserModel = User::find($user['id']);
+        $currentUserBranch = $currentUserModel ? ($currentUserModel->branch ?? '') : '';
+
         $pageData = [
             'transactions' => $txs->map(fn($t) => $this->txToArray($t))->values()->toArray(),
             'summary'      => $summary,
@@ -495,6 +546,7 @@ class CashierController extends Controller
             'categories'   => $categories,
             'earliestDate' => $earliestDate,
             'sites'        => $allSites,
+            'userBranch'   => $currentUserBranch,
         ];
 
         $req = $request ?: request();
@@ -526,6 +578,9 @@ class CashierController extends Controller
             }
             $targetUser = User::find($targetId);
             $targetName = $targetUser ? strtoupper($targetUser->name) : $user['name'];
+            if ((!$request->filled('site') || $request->site === 'all') && $targetUser && !empty($targetUser->branch)) {
+                $request->merge(['site' => $targetUser->branch]);
+            }
             return $this->generateCashierPdf($request, $targetId, $targetName);
         }
 
@@ -542,6 +597,9 @@ class CashierController extends Controller
             return $this->generateCashierPdf($request, 0, 'TEAM LEDGER', $allowedIds);
         }
 
+        if ((!$request->filled('site') || $request->site === 'all') && $userModel && !empty($userModel->branch)) {
+            $request->merge(['site' => $userModel->branch]);
+        }
         return $this->generateCashierPdf($request, $user['id'], $user['name']);
     }
 
@@ -559,10 +617,24 @@ class CashierController extends Controller
         $from = $request->from ? Carbon::parse($request->from)->startOfDay() : null;
         $to   = $request->to   ? Carbon::parse($request->to)->endOfDay()     : null;
 
+        $targetUserModel = $userId > 0 ? \App\Models\User::find($userId) : null;
+        $userBranch = $targetUserModel ? $targetUserModel->branch : null;
+
+        $selectedSite = $request->site;
+        if ((empty($selectedSite) || $selectedSite === 'all') && !empty($userBranch)) {
+            $selectedSite = $userBranch;
+        }
+
         if ($teamUserIds !== null && is_array($teamUserIds)) {
             $query = Transaction::with('bills')->whereIn('user_id', $teamUserIds)->orderBy('created_at');
         } else {
-            $query = Transaction::with('bills')->where('user_id', $userId)->orderBy('created_at');
+            $query = Transaction::with('bills')->where(function($q) use ($userId, $userBranch) {
+                $q->where('user_id', $userId);
+                if (!empty($userBranch)) {
+                    $q->orWhere('site', $userBranch)
+                      ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
+                }
+            })->orderBy('created_at');
         }
 
         if ($from) $query->where('created_at', '>=', $from);
@@ -570,8 +642,21 @@ class CashierController extends Controller
         if ($request->category && $request->category !== 'all') {
             $query->where('category', $request->category);
         }
-        if ($request->site && $request->site !== 'all') {
-            $query->where('site', $request->site);
+        if ($selectedSite && $selectedSite !== 'all') {
+            if ($userBranch && strtolower(trim($selectedSite)) === strtolower(trim($userBranch))) {
+                $query->where(function($q) use ($selectedSite, $userId) {
+                    $q->where('site', $selectedSite)
+                      ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($selectedSite))])
+                      ->orWhere(function($sub) use ($userId) {
+                          $sub->where('user_id', $userId)->whereNull('site');
+                      });
+                });
+            } else {
+                $query->where(function($q) use ($selectedSite) {
+                    $q->where('site', $selectedSite)
+                      ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($selectedSite))]);
+                });
+            }
         }
 
         $txs = $query->get();
@@ -584,9 +669,28 @@ class CashierController extends Controller
         if ($from && !($request->has('opening_balance') && $request->opening_balance !== '')) {
             $prevQuery = ($teamUserIds !== null && is_array($teamUserIds))
                 ? Transaction::whereIn('user_id', $teamUserIds)
-                : Transaction::where('user_id', $userId);
-            if ($request->site && $request->site !== 'all') {
-                $prevQuery->where('site', $request->site);
+                : Transaction::where(function($q) use ($userId, $userBranch) {
+                    $q->where('user_id', $userId);
+                    if (!empty($userBranch)) {
+                        $q->orWhere('site', $userBranch)
+                          ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
+                    }
+                });
+            if ($selectedSite && $selectedSite !== 'all') {
+                if ($userBranch && strtolower(trim($selectedSite)) === strtolower(trim($userBranch))) {
+                    $prevQuery->where(function($q) use ($selectedSite, $userId) {
+                        $q->where('site', $selectedSite)
+                          ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($selectedSite))])
+                          ->orWhere(function($sub) use ($userId) {
+                              $sub->where('user_id', $userId)->whereNull('site');
+                          });
+                    });
+                } else {
+                    $prevQuery->where(function($q) use ($selectedSite) {
+                        $q->where('site', $selectedSite)
+                          ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($selectedSite))]);
+                    });
+                }
             }
             $prevTxs = $prevQuery->where('created_at', '<', $from)->get();
             $openingBalance = (float) $prevTxs->sum(fn($t) => $t->type === 'IN' ? $t->amount : -$t->amount);
@@ -631,6 +735,8 @@ class CashierController extends Controller
         $includeBills = $request->include_bills !== 'no';
         $showBalance = $request->show_balance !== 'no';
 
+        $effectiveSite = ($selectedSite && $selectedSite !== 'all') ? $selectedSite : ($userBranch ?: 'ALL');
+
         $data = [
             'reportId'       => $userId * 100 + rand(1, 99),
             'generatedOn'    => strtoupper(now()->format('d-M-Y H:i:s')),
@@ -639,7 +745,7 @@ class CashierController extends Controller
             'cashierName'    => strtoupper((string)$cashierName),
             'cashierId'      => $userId,
             'accountName'    => 'FOODS AND SPICES',
-            'site'           => strtoupper((string)($request->site && $request->site !== 'all' ? $request->site : 'ALL')),
+            'site'           => strtoupper((string)$effectiveSite),
             'category'       => strtoupper((string)($request->category && $request->category !== 'all' ? str_replace('_',' ',$request->category) : 'ALL')),
             'rows'           => $rows,
             'openingBalance' => $openingBalance,
@@ -652,11 +758,9 @@ class CashierController extends Controller
             'billPages'      => [], // no embedded blade bills, using FPDI
         ];
 
-        $userModel = \App\Models\User::find($userId);
-        $branchName = $userModel && $userModel->branch ? strtoupper(str_replace(' ', '_', $userModel->branch)) : 'ALL_BRANCHES';
-        if ($request->site && $request->site !== 'all') {
-            $branchName = strtoupper(preg_replace('/[^A-Za-z0-9_]/', '_', $request->site));
-        }
+        $branchName = $effectiveSite !== 'ALL'
+            ? strtoupper(preg_replace('/[^A-Za-z0-9_]/', '_', $effectiveSite))
+            : ($userBranch ? strtoupper(str_replace(' ', '_', $userBranch)) : 'ALL_BRANCHES');
 
         $formattedFromDate = $from ? $from->format('d-m-Y') : ($txs->first()?->created_at?->format('d-m-Y') ?? ($to ? $to->format('d-m-Y') : now()->format('d-m-Y')));
         $formattedToDate   = $to   ? $to->format('d-m-Y')   : now()->format('d-m-Y');
@@ -841,7 +945,8 @@ class CashierController extends Controller
             'category'     => $t->category,
             'note'         => $t->note,
             'reference'    => $t->reference,
-            'site'         => $t->site,
+            'site'         => $t->site ?: ($t->user?->branch ?? null),
+            'user_branch'  => $t->user?->branch ?? null,
             'description'  => $t->description,
             'date'        => ($t->date ? \Carbon\Carbon::parse($t->date) : $t->created_at)->toISOString(),
             'bills'       => $t->bills->map(fn($b) => [

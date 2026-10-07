@@ -430,5 +430,117 @@ class CashierTest extends TestCase
         $resp->assertStatus(200);
         $this->assertStringContainsString('application/pdf', $resp->headers->get('content-type'));
     }
+
+    public function test_cashier_statement_pdf_uses_user_branch_and_omits_cashier_and_site_in_row_description(): void
+    {
+        $this->cashierA->update(['branch' => 'FACTORY EXPENSES']);
+
+        Transaction::create([
+            'user_id' => $this->cashierA->id,
+            'type' => 'OUT',
+            'amount' => 1500.00,
+            'category' => 'expense',
+            'note' => 'factory maintenance',
+            'reference' => 'REF-999',
+            'site' => 'FACTORY EXPENSES',
+        ]);
+
+        $sessionA = ['auth_user' => ['id' => $this->cashierA->id, 'name' => $this->cashierA->name, 'role' => 'CASHIER', 'branch' => 'FACTORY EXPENSES']];
+        
+        // Calling without site should automatically default to the user's branch
+        $resp = $this->withSession($sessionA)->get('/cashier/history/pdf');
+        $resp->assertStatus(200);
+        $this->assertStringContainsString('application/pdf', $resp->headers->get('content-type'));
+
+        // Also test rendered view directly to assert HTML contents
+        $viewHtml = view('pdf.cashier-statement', [
+            'reportId' => 101,
+            'generatedOn' => strtoupper(now()->format('d-M-Y H:i:s')),
+            'fromDate' => now()->format('Y-m-d'),
+            'toDate' => now()->format('Y-m-d'),
+            'cashierName' => 'ONALI LAKHANI',
+            'cashierId' => $this->cashierA->id,
+            'accountName' => 'FOODS AND SPICES',
+            'site' => 'FACTORY EXPENSES',
+            'category' => 'ALL',
+            'rows' => [
+                [
+                    'id' => 1,
+                    'date' => now()->toDateTimeString(),
+                    'category' => 'EXPENSE',
+                    'note' => 'FACTORY MAINTENANCE',
+                    'description' => '',
+                    'reference' => 'REF-999',
+                    'site' => 'FACTORY EXPENSES',
+                    'cashier_name' => 'ONALI LAKHANI',
+                    'type' => 'OUT',
+                    'amount' => 1500.0,
+                    'opening_bal' => 0.0,
+                    'closing_bal' => -1500.0,
+                    'bills' => [],
+                ]
+            ],
+            'openingBalance' => 0.0,
+            'closingBalance' => -1500.0,
+            'sumIn' => 0.0,
+            'sumOut' => 1500.0,
+            'totalRecords' => 1,
+            'includeBills' => false,
+            'showBalance' => true,
+            'billPages' => [],
+        ])->render();
+
+        // Top meta table should show Cashier and Site
+        $this->assertStringContainsString('CASHIER:</strong> ONALI LAKHANI', $viewHtml);
+        $this->assertStringContainsString('SITE: FACTORY EXPENSES', $viewHtml);
+
+        // Row description should show note and reference, but NOT "CASHIER: ONALI LAKHANI" or "SITE: FACTORY EXPENSES"
+        $this->assertStringContainsString('FACTORY MAINTENANCE', $viewHtml);
+        $this->assertStringContainsString('REF: REF-999', $viewHtml);
+        $this->assertStringNotContainsString('CASHIER: ONALI LAKHANI</span>', $viewHtml);
+        $this->assertStringNotContainsString('SITE: FACTORY EXPENSES</span>', $viewHtml);
+    }
+
+    public function test_cashier_assigned_branch_displays_on_ledger_page_and_includes_branch_transactions(): void
+    {
+        $branchCashier = User::create([
+            'name' => 'GPAY CASHIER',
+            'username' => 'gpay_cashier',
+            'phone' => '+91 9999000077',
+            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+            'role' => 'CASHIER',
+            'branch' => 'pPF gpay expenses',
+            'status' => 'ACTIVE',
+        ]);
+
+        // Transaction created with site matching the branch
+        Transaction::create([
+            'user_id' => $branchCashier->id,
+            'type' => 'OUT',
+            'amount' => 750.00,
+            'category' => 'expenses',
+            'note' => 'GPay Vendor Payment',
+            'site' => 'pPF gpay expenses',
+        ]);
+
+        $session = ['auth_user' => [
+            'id' => $branchCashier->id,
+            'name' => $branchCashier->name,
+            'role' => 'CASHIER',
+            'branch' => $branchCashier->branch,
+        ]];
+
+        $response = $this->withSession($session)->get('/cashier/ledger');
+
+        $response->assertStatus(200);
+        $pageData = $response->viewData('pageData');
+        $this->assertEquals('pPF gpay expenses', $pageData['userBranch']);
+
+        // Assert branch appears in the rendered HTML
+        $response->assertSee('BRANCH: PPF GPAY EXPENSES');
+        $response->assertSee('PERSONAL LEDGER (PPF GPAY EXPENSES)');
+        $response->assertSee('PPF GPAY EXPENSES');
+        $response->assertSee('GPay Vendor Payment');
+    }
 }
 

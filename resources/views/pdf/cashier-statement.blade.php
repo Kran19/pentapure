@@ -190,18 +190,11 @@ table, th, td, div, span, p, a, strong, small {
                     @if(!empty($row['description']) && !empty($row['note']) && strtoupper($row['description']) !== strtoupper($row['note']))
                         <div style="font-size: 7.5px; color: #64748b;">{{ strtoupper($row['description']) }}</div>
                     @endif
-                    <div style="font-size: 7.5px; color: #64748b; margin-top: 1px;">
-                        @if(!empty($row['cashier_name']))
-                            <span style="font-weight: bold; color: #334155;">CASHIER: {{ strtoupper($row['cashier_name']) }}</span>
-                        @endif
-                        @if(!empty($row['reference']))
-                            @if(!empty($row['cashier_name'])) &nbsp;|&nbsp; @endif
+                    @if(!empty($row['reference']))
+                        <div style="font-size: 7.5px; color: #64748b; margin-top: 1px;">
                             <span>REF: {{ strtoupper($row['reference']) }}</span>
-                        @endif
-                        @if(!empty($row['site']) && strtoupper($row['site']) !== 'PENTAPURE' && strtoupper($row['site']) !== 'ALL')
-                            &nbsp;|&nbsp;<span>SITE: {{ strtoupper($row['site']) }}</span>
-                        @endif
-                    </div>
+                        </div>
+                    @endif
                 </td>
                 <td style="text-align: right;" class="{{ $row['type'] === 'IN' ? 'amt-in' : 'amt-out' }}">
                     {{ $row['type'] === 'IN' ? '+' : '-' }}{{ number_format($row['amount'], 2) }}
