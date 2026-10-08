@@ -609,12 +609,6 @@
             </a>
             @endif
 
-            @if($can('admin_categories'))
-            <a href="{{ url(request()->segment(1) . '/categories') }}" class="nav-item {{ $seg=='categories'?'active':'' }}">
-              Categories
-            </a>
-            @endif
-
             @if($can('admin_dispatch_activity'))
             <a href="{{ url(request()->segment(1) . '/dispatch-activity') }}" class="nav-item {{ $seg=='dispatch-activity'?'active':'' }}">
               <span>Dispatch Overview</span>

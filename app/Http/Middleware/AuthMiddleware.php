@@ -23,7 +23,9 @@ class AuthMiddleware
                     session()->forget('auth_user');
                     return redirect()->route('global.login')->with('error', 'Your account has been blocked.');
                 }
-                $user['permissions'] = $dbUser->permissions ?? [];
+                if ($dbUser->permissions !== null) {
+                    $user['permissions'] = $dbUser->permissions;
+                }
                 $user['role'] = $dbUser->role;
                 session(['auth_user' => $user]);
             }
