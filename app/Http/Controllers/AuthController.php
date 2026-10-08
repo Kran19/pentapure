@@ -137,6 +137,10 @@ class AuthController extends Controller
         $role = $role ?? (session('auth_user')['role'] ?? null);
         $slug = session('auth_user')['login_slug'] ?? strtolower($role ?? '');
 
+        if ($role === 'SUB_ADMIN') {
+            return redirect('/' . $slug . '/home');
+        }
+
         if (in_array($role, ['SUB_ADMIN', 'STOCK_MANAGER'])) {
             $perms = session('auth_user')['permissions'] ?? [];
             if (is_string($perms)) {

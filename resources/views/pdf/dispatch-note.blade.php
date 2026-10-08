@@ -55,9 +55,9 @@
         
         /* Items Table */
         .items-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; table-layout: fixed; }
-        .items-table th { background: #f8c300; color: #101828; padding: 6px 6px; font-weight: bold; text-align: left; font-size: 9px; border: 1px solid #344054; vertical-align: middle; }
-        .items-table td { padding: 6px 6px; border: 1px solid #d0d5dd; font-size: 9px; vertical-align: middle; }
-        .items-table tr.total-row td { font-weight: bold; background: #f9fafb; border-top: 2px solid #f8c300; }
+        .items-table th { background: #f8c300; color: #101828; padding: 5px 3px; font-weight: bold; text-align: left; font-size: 8px; border: 1px solid #344054; vertical-align: middle; line-height: 1.15; }
+        .items-table td { padding: 5px 4px; border: 1px solid #d0d5dd; font-size: 8.5px; vertical-align: middle; }
+        .items-table tr.total-row td { font-weight: bold; background: #f9fafb; border-top: 2px solid #f8c300; font-size: 8.5px; }
         
         /* Footer signatures */
         .footer-table { width: 100%; border-collapse: collapse; margin-top: 15px; border-top: 1px solid #eaecf0; padding-top: 10px; }
@@ -195,8 +195,8 @@
                 <div class="section-box">
                     <table>
                         <tr><td class="lbl">Transporter</td><td class="val">: <strong>{{ $transporter->name ?? 'N/A' }}</strong></td></tr>
-                        <tr><td class="lbl">Contact Number</td><td class="val">: {{ $transporter->contact ?? 'N/A' }}</td></tr>
-                        <tr><td class="lbl">Vehicle Number</td><td class="val">: {{ $transporter->vehicles ?? 'N/A' }}</td></tr>
+                        <tr><td class="lbl">Contact Number</td><td class="val">: {{ !empty($log->driver_no) ? $log->driver_no : (!empty($transporter->contact) && $transporter->contact !== '—' ? $transporter->contact : 'N/A') }}</td></tr>
+                        <tr><td class="lbl">Vehicle Number</td><td class="val">: {{ !empty($log->vehicle_no) ? $log->vehicle_no : (!empty($transporter->vehicles) && $transporter->vehicles !== '—' ? $transporter->vehicles : 'N/A') }}</td></tr>
                         <tr><td class="lbl">Dispatch Date</td><td class="val">: {{ $dispatchDate }}</td></tr>
                     </table>
                 </div>
@@ -219,14 +219,14 @@
     <table class="items-table">
         <thead>
             <tr>
-                <th style="width: 5%; text-align: center;" class="text-center nowrap">No.</th>
+                <th style="width: 4%; text-align: center;" class="text-center">No.</th>
                 <th style="width: 25%;">Product Name</th>
-                <th style="width: 11%; text-align: right;" class="text-right nowrap">Ordered Qty</th>
-                <th style="width: 12%; text-align: right;" class="text-right nowrap">Prev. Dispatched Qty.</th>
-                <th style="width: 12%; text-align: right;" class="text-right nowrap">Current Dispatch Qty.</th>
-                <th style="width: 11%; text-align: right;" class="text-right nowrap">Rate (&#8377;)</th>
-                <th style="width: 12%; text-align: right;" class="text-right nowrap">Amount (&#8377;)</th>
-                <th style="width: 12%; text-align: right;" class="text-right nowrap">Pending Qty</th>
+                <th style="width: 12%; text-align: right;" class="text-right">Ordered<br>Qty</th>
+                <th style="width: 12%; text-align: right;" class="text-right">Prev. Disp.<br>Qty.</th>
+                <th style="width: 13%; text-align: right;" class="text-right">Current Disp.<br>Qty.</th>
+                <th style="width: 10%; text-align: right;" class="text-right">Rate<br>(&#8377;)</th>
+                <th style="width: 12%; text-align: right;" class="text-right">Amount<br>(&#8377;)</th>
+                <th style="width: 12%; text-align: right;" class="text-right">Pending<br>Qty</th>
             </tr>
         </thead>
         <tbody>
@@ -263,12 +263,12 @@
             @endforeach
             <tr class="total-row">
                 <td colspan="2" style="text-align: right; padding-right: 8px;">TOTAL</td>
-                <td class="text-right text-green nowrap" style="text-align: right; white-space: nowrap;">{{ number_format($totalOrderedQty) }}&nbsp;KG</td>
-                <td class="text-right nowrap" style="text-align: right; white-space: nowrap;">{{ number_format($totalPrevDispatchedQty) }}&nbsp;KG</td>
-                <td class="text-right nowrap" style="text-align: right; white-space: nowrap;"><strong>{{ number_format($totalDispatchedQty) }}&nbsp;KG</strong></td>
+                <td class="text-right text-green" style="text-align: right;">{{ number_format($totalOrderedQty) }}&nbsp;KG</td>
+                <td class="text-right" style="text-align: right;">{{ number_format($totalPrevDispatchedQty) }}&nbsp;KG</td>
+                <td class="text-right" style="text-align: right;"><strong>{{ number_format($totalDispatchedQty) }}&nbsp;KG</strong></td>
                 <td class="text-right"></td>
-                <td class="text-right nowrap" style="text-align: right; white-space: nowrap;">&#8377;{{ number_format($totalAmount, 2) }}</td>
-                <td class="text-right text-red nowrap" style="text-align: right; white-space: nowrap;">{{ number_format($totalPendingQty) }}&nbsp;KG</td>
+                <td class="text-right" style="text-align: right;">&#8377;{{ number_format($totalAmount, 2) }}</td>
+                <td class="text-right text-red" style="text-align: right;">{{ number_format($totalPendingQty) }}&nbsp;KG</td>
             </tr>
         </tbody>
     </table>

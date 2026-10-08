@@ -125,8 +125,13 @@
 </style>
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
   <h2 style="margin:0;">📦 Dispatch Logs History</h2>
-  <button id="export-pdf-btn" class="btn btn-sm btn-secondary" style="width:auto; padding:0.5rem 1rem;"
-    onclick="app.exportHistoryPdf(this, '{{ $pdfUrl }}')">📄 Export PDF</button>
+  <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <button type="button" class="btn btn-sm" style="width:auto; padding:0.5rem 1rem; background:#059669; color:#fff; font-weight:600; border:none; border-radius:6px; cursor:pointer;" onclick="app.toggleSelectAllLR()">
+      ☑️ Select All LR
+    </button>
+    <button id="export-pdf-btn" class="btn btn-sm btn-secondary" style="width:auto; padding:0.5rem 1rem;"
+      onclick="app.exportHistoryPdf(this, '{{ $pdfUrl }}')">📄 Export PDF</button>
+  </div>
 </div>
 
 <form method="GET" action="" style="margin-bottom:1.2rem; display:flex; flex-direction:column; gap:10px;">
@@ -197,20 +202,29 @@
     <div class="card dispatch-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--glass-border, rgba(255,255,255,0.06)); background:var(--card-bg, rgba(255,255,255,0.03)); transition:all 0.2s ease;">
       <!-- Clickable Header Row -->
       <div onclick="toggleHistoryAccordion('disp-acc-{{ $d['id'] }}', this)" style="cursor:pointer; padding:1.1rem; display:flex; justify-content:space-between; align-items:center; user-select:none;">
-        <div style="flex:1; padding-right:15px;">
-          <div style="font-weight:600; font-size:1rem; color:var(--text-main); line-height:1.3;">
-            Order #{{ strtoupper((string)$d['orderId']) }} - {{ $d['companyName'] ?? 'N/A' }}
+        <div style="display:flex; align-items:center; flex:1; padding-right:15px;">
+          <div onclick="event.stopPropagation()" style="display:inline-flex; align-items:center; margin-right:12px; flex-shrink:0;">
+            @if($lrUploaded)
+              <input type="checkbox" class="lr-select-check" data-id="{{ $d['id'] }}" data-order-id="{{ $d['orderId'] }}" data-has-lr="1" onclick="app.updateLRSelection();" style="width:18px; height:18px; cursor:pointer; accent-color:#059669;" title="Select to download LR copy">
+            @else
+              <input type="checkbox" disabled style="width:18px; height:18px; opacity:0.25; cursor:not-allowed;" title="LR copy not uploaded yet">
+            @endif
           </div>
-          <div style="margin-top:6px; font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-            {!! $statusBadge !!}
-            <span>•</span>
-            {!! $lrStatus !!}
-            <span>•</span>
-            <span>Sales By: <strong style="color:var(--text-main, #fff);">{{ $d['salesPerson'] ?? 'N/A' }}</strong></span>
-            <span>•</span>
-            <span>Transporter: {{ $d['transportName'] ?? 'N/A' }}</span>
-            <span>•</span>
-            <span>{{ \Carbon\Carbon::parse($d['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }}</span>
+          <div style="flex:1;">
+            <div style="font-weight:600; font-size:1rem; color:var(--text-main); line-height:1.3;">
+              Order #{{ strtoupper((string)$d['orderId']) }} - {{ $d['companyName'] ?? 'N/A' }}
+            </div>
+            <div style="margin-top:6px; font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              {!! $statusBadge !!}
+              <span>•</span>
+              {!! $lrStatus !!}
+              <span>•</span>
+              <span>Sales By: <strong style="color:var(--text-main, #fff);">{{ $d['salesPerson'] ?? 'N/A' }}</strong></span>
+              <span>•</span>
+              <span>Transporter: {{ $d['transportName'] ?? 'N/A' }}</span>
+              <span>•</span>
+              <span>{{ \Carbon\Carbon::parse($d['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }}</span>
+            </div>
           </div>
         </div>
         <div style="display:flex; align-items:center; gap:10px; text-align:right; flex-wrap:nowrap;">
@@ -218,9 +232,24 @@
             <a href="{{ url(request()->segment(1) . '/pdf/' . $d['id']) }}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm" style="width:100%; padding:0.3rem 0.75rem; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-weight:600; background:var(--primary, #D88A00); color:#000; white-space:nowrap;">
               📄 Download PDF
             </a>
+            @if($lrUploaded)
+            <a href="{{ url(request()->segment(1) . '/dispatch/download-lr/' . $d['id']) }}" download onclick="event.stopPropagation()" class="btn btn-sm" style="width:100%; padding:0.3rem 0.75rem; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-weight:600; background:#059669 !important; color:#ffffff !important; white-space:nowrap; border-radius:4px; border:none;" title="Download LR Copy">
+              📥 Download LR
+            </a>
+            @endif
+            @if(!empty($d['orderLrCopies']) && count($d['orderLrCopies']) > 1)
+            <a href="{{ url(request()->segment(1) . '/dispatch/download-multiple-lr?order_id=' . $d['orderId']) }}" download onclick="event.stopPropagation()" class="btn btn-sm" style="width:100%; padding:0.3rem 0.75rem; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-weight:700; background:#0284c7 !important; color:#ffffff !important; white-space:nowrap; border-radius:4px; border:none;" title="Download all {{ count($d['orderLrCopies']) }} LR copies for this order">
+              📥 All {{ count($d['orderLrCopies']) }} LRs
+            </a>
+            @endif
+            @if(empty($isReadOnly))
+            <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); app.openEditDispatchModal({{ json_encode($d) }})" style="width:100%; padding:0.3rem 0.75rem; font-size:0.75rem; background:#2563eb !important; color:#ffffff !important; display:inline-flex; align-items:center; justify-content:center; gap:4px; white-space:nowrap; border:none; border-radius:4px; font-weight:600;">
+              ✏️ Edit Qty
+            </button>
             <button type="button" class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); app.revertDispatch({{ $d['id'] }})" style="width:100%; padding:0.3rem 0.75rem; font-size:0.75rem; border-color:#ef4444 !important; color:#ef4444 !important; display:inline-flex; align-items:center; justify-content:center; gap:4px; white-space:nowrap;">
               ↩ Revert Dispatch
             </button>
+            @endif
           </div>
           <div class="acc-chevron" style="transition:transform 0.25s ease; color:var(--text-muted); display:flex; align-items:center;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -293,19 +322,26 @@
                   @endif
                   <span style="color:var(--text-muted, #9ca3af); font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
                 </div>
-                <div class="dispatch-item-badges" style="display:grid; grid-template-columns:135px 145px 145px; gap:8px; align-items:center; flex-shrink:0;">
-                  <span style="background:rgba(255,255,255,0.08); padding:4px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.15); font-weight:600; color:var(--text-main, #fff); width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
-                    <span style="color:var(--text-muted, #9ca3af); font-size:0.72rem; font-weight:700;">ORDER:</span>
-                    <strong style="color:var(--primary, #D88A00);">{{ $fmtQty($tot) }}</strong>
-                  </span>
-                  <span style="background:rgba(22,163,74,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(22,163,74,0.3); font-weight:700; color:#16a34a; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
-                    <span style="font-size:0.72rem;">DISPATCHED:</span>
-                    <strong>{{ $fmtQty($disp) }}</strong>
-                  </span>
-                  <span style="background:rgba(239,68,68,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(239,68,68,0.3); font-weight:700; color:#ef4444; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
-                    <span style="font-size:0.72rem;">PENDING:</span>
-                    <strong>{{ $fmtQty($rem) }}</strong>
-                  </span>
+                <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                  <div class="dispatch-item-badges" style="display:grid; grid-template-columns:135px 145px 145px; gap:8px; align-items:center;">
+                    <span style="background:rgba(255,255,255,0.08); padding:4px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.15); font-weight:600; color:var(--text-main, #fff); width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                      <span style="color:var(--text-muted, #9ca3af); font-size:0.72rem; font-weight:700;">ORDER:</span>
+                      <strong style="color:var(--primary, #D88A00);">{{ $fmtQty($tot) }}</strong>
+                    </span>
+                    <span style="background:rgba(22,163,74,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(22,163,74,0.3); font-weight:700; color:#16a34a; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                      <span style="font-size:0.72rem;">DISPATCHED:</span>
+                      <strong>{{ $fmtQty($disp) }}</strong>
+                    </span>
+                    <span style="background:rgba(239,68,68,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(239,68,68,0.3); font-weight:700; color:#ef4444; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                      <span style="font-size:0.72rem;">PENDING:</span>
+                      <strong>{{ $fmtQty($rem) }}</strong>
+                    </span>
+                  </div>
+                  @if(empty($isReadOnly))
+                  <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); app.openEditDispatchModal({{ json_encode($d) }}, {{ $item['id'] ?? $item['dispatchItemId'] ?? 'null' }})" style="padding:0.35rem 0.65rem; font-size:0.75rem; background:#2563eb !important; color:#ffffff !important; font-weight:600; border:none; border-radius:6px; display:inline-flex; align-items:center; gap:3px; cursor:pointer; white-space:nowrap;" title="Edit this item quantity">
+                    ✏️ Edit
+                  </button>
+                  @endif
                 </div>
               </div>
             @endforeach
@@ -314,9 +350,17 @@
 
         @if($lrUploaded)
           <div style="margin-bottom:1rem;">
-            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:0.5rem;">LR Copy</div>
-            <img src="{{ $d['lrImage'] }}" style="width:100%; border-radius:10px; max-height:200px; object-fit:contain; cursor:pointer; background:rgba(0,0,0,0.2);" onclick="app.viewImage(this.src)">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:6px;">
+              <span style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600;">LR Copy (Round #{{ $d['id'] }})</span>
+              <a href="{{ url(request()->segment(1) . '/dispatch/download-lr/' . $d['id']) }}" download class="btn btn-sm" style="font-size:0.75rem; padding:0.25rem 0.65rem; background:#059669; color:#fff !important; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:4px;">
+                📥 Download LR Copy
+              </a>
+            </div>
+            <img src="{{ $d['lrImage'] }}" style="width:100%; border-radius:10px; max-height:220px; object-fit:contain; cursor:pointer; background:rgba(0,0,0,0.2);" onclick="app.viewImage(this.src)">
             <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+              <a href="{{ url(request()->segment(1) . '/dispatch/download-lr/' . $d['id']) }}" download class="btn btn-sm" style="font-size:0.78rem; padding:0.45rem 0.8rem; background:#059669; color:#fff !important; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:6px;">
+                📥 Download LR
+              </a>
               <button type="button" class="btn btn-sm btn-media-camera" style="font-size:0.78rem; padding:0.45rem 0.8rem;" onclick="document.getElementById('late-lr-cam-{{ $d['id'] }}').click()">📷 Camera</button>
               <button type="button" class="btn btn-sm btn-media-gallery" style="font-size:0.78rem; padding:0.45rem 0.8rem;" onclick="document.getElementById('late-lr-input-{{ $d['id'] }}').click()">📁 Update LR</button>
             </div>
@@ -327,6 +371,42 @@
             <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
               <button type="button" class="btn btn-sm btn-media-camera" style="font-size:0.82rem; padding:0.5rem 0.9rem;" onclick="document.getElementById('late-lr-cam-{{ $d['id'] }}').click()">📷 Camera</button>
               <button type="button" class="btn btn-sm btn-media-gallery" style="font-size:0.82rem; padding:0.5rem 0.9rem;" onclick="document.getElementById('late-lr-input-{{ $d['id'] }}').click()">📁 Upload LR Now</button>
+            </div>
+          </div>
+        @endif
+
+        @if(!empty($d['orderLrCopies']) && count($d['orderLrCopies']) > 1)
+          <div style="margin-bottom:1rem; padding:1rem; background:rgba(2,132,199,0.06); border-radius:10px; border:1px solid rgba(2,132,199,0.25);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:0.82rem; font-weight:700; color:#38bdf8; display:flex; align-items:center; gap:6px;">
+                <span>📦 All LR Copies for Order #{{ strtoupper((string)$d['orderId']) }}</span>
+                <span class="badge" style="background:#0284c7; color:#fff; font-size:0.7rem; padding:2px 8px; border-radius:10px;">{{ count($d['orderLrCopies']) }} Copies</span>
+              </div>
+              <a href="{{ url(request()->segment(1) . '/dispatch/download-multiple-lr?order_id=' . $d['orderId']) }}" download class="btn btn-sm" style="padding:0.35rem 0.85rem; font-size:0.75rem; background:#0284c7; color:#fff !important; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:700; border-radius:6px;">
+                📥 Download All ({{ count($d['orderLrCopies']) }}) LRs (ZIP)
+              </a>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:10px;">
+              @foreach($d['orderLrCopies'] as $olr)
+                <div style="background:rgba(0,0,0,0.25); border:1px solid {{ $olr['isCurrent'] ? '#38bdf8' : 'rgba(255,255,255,0.08)' }}; border-radius:8px; padding:8px; display:flex; flex-direction:column; gap:6px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem;">
+                    <span style="font-weight:700; color:var(--text-main);">Dispatch #{{ $olr['logId'] }}</span>
+                    @if($olr['isCurrent'])
+                      <span style="color:#38bdf8; font-weight:700; font-size:0.65rem;">(CURRENT)</span>
+                    @endif
+                  </div>
+                  <img src="{{ $olr['url'] }}" style="width:100%; height:90px; object-fit:contain; border-radius:6px; cursor:pointer; background:rgba(0,0,0,0.3);" onclick="app.viewImage(this.src)">
+                  <div style="font-size:0.7rem; color:var(--text-muted); display:flex; justify-content:space-between; flex-wrap:wrap;">
+                    <span>{{ $olr['date'] }}</span>
+                    @if(!empty($olr['lrNo']))
+                      <span style="font-weight:600; color:var(--text-main);">LR: {{ $olr['lrNo'] }}</span>
+                    @endif
+                  </div>
+                  <a href="{{ url(request()->segment(1) . '/dispatch/download-lr/' . $olr['logId']) }}" download class="btn btn-sm" style="padding:0.25rem; font-size:0.72rem; background:#059669; color:#fff !important; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:4px; font-weight:600; border-radius:4px; margin-top:2px;">
+                    📥 Download
+                  </a>
+                </div>
+              @endforeach
             </div>
           </div>
         @endif
@@ -373,4 +453,21 @@
     }
   }
 </script>
+<!-- Floating Batch Download Bar for Multiple Selected LRs -->
+<div id="lr-batch-bar" style="display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:9999; background:linear-gradient(135deg, #0f172a, #1e293b); color:#ffffff; padding:12px 24px; border-radius:50px; box-shadow:0 12px 35px rgba(0,0,0,0.55); align-items:center; gap:14px; border:1.5px solid rgba(255,255,255,0.15); backdrop-filter:blur(10px);">
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#10b981; box-shadow:0 0 8px #10b981;"></span>
+    <span id="lr-batch-count" style="font-weight:700; font-size:0.88rem; letter-spacing:0.3px;">0 Selected</span>
+  </div>
+  <div style="height:20px; width:1px; background:rgba(255,255,255,0.2);"></div>
+  <button type="button" class="btn btn-sm" onclick="app.downloadSelectedLRs('zip')" style="background:#059669; color:#fff; font-weight:700; border-radius:30px; padding:6px 16px; border:none; display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:0.82rem;" title="Download all selected LR copies in a single ZIP file">
+    📥 Download (ZIP)
+  </button>
+  <button type="button" class="btn btn-sm" onclick="app.downloadSelectedLRs('files')" style="background:#2563eb; color:#fff; font-weight:600; border-radius:30px; padding:6px 14px; border:none; display:inline-flex; align-items:center; gap:5px; cursor:pointer; font-size:0.82rem;" title="Download files individually">
+    📥 Download Files (2-3)
+  </button>
+  <button type="button" onclick="app.clearLRSelection()" style="background:transparent; color:#94a3b8; border:none; cursor:pointer; font-size:0.85rem; padding:4px 8px; font-weight:600;" title="Clear Selection">
+    ✕ Clear
+  </button>
+</div>
 @endsection

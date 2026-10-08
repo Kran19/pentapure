@@ -289,6 +289,9 @@ class DispatchController extends Controller
             'items.*.location_splits.*.dispatch_location_qty' => 'required_with:items.*.location_splits|numeric|min:0.001',
             'lr_image'                    => 'nullable|string',
             'driver_no'                   => 'nullable|string',
+            'driver_number'               => 'nullable|string',
+            'vehicle_no'                  => 'nullable|string',
+            'vehicle_number'              => 'nullable|string',
             'lr_no'                       => 'nullable|string',
             'notes'                       => 'nullable|string',
             'transporter_id'              => 'nullable|exists:transporters,id',
@@ -432,16 +435,40 @@ class DispatchController extends Controller
                 } catch (\Throwable $ignored) {}
             }
 
+            $driverNo = $request->driver_no ?? $request->driver_number;
+            $vehicleNo = $request->vehicle_number ?? $request->vehicle_no;
+
+            // If vehicle or driver contact provided, ensure transporter has it
+            if ($dispatchTransporterId) {
+                $transporter = \App\Models\Transporter::find($dispatchTransporterId);
+                if ($transporter) {
+                    $updates = [];
+                    if (!empty($vehicleNo) && (empty($transporter->vehicles) || $transporter->vehicles === '—' || $transporter->vehicles === 'N/A')) {
+                        $updates['vehicles'] = $vehicleNo;
+                    }
+                    if (!empty($driverNo) && (empty($transporter->contact) || $transporter->contact === '—' || $transporter->contact === 'N/A')) {
+                        $updates['contact'] = $driverNo;
+                    }
+                    if (!empty($updates)) {
+                        $transporter->update($updates);
+                    }
+                }
+            }
+
             // Create dispatch log for this round
-            $dispatchLog = DispatchLog::create([
+            $dispatchLogData = [
                 'user_id'        => $user['id'],
                 'order_id'       => $order->id,
                 'transporter_id' => $dispatchTransporterId,
                 'lr_image_path'  => $lrPath,
-                'driver_no'      => $request->driver_no,
+                'driver_no'      => $driverNo,
                 'lr_no'          => $request->lr_no,
                 'notes'          => $request->notes,
-            ]);
+            ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('dispatch_logs', 'vehicle_no')) {
+                $dispatchLogData['vehicle_no'] = $vehicleNo;
+            }
+            $dispatchLog = DispatchLog::create($dispatchLogData);
 
             // Process each item
             foreach ($request->items as $dispatchItem) {
@@ -542,118 +569,181 @@ class DispatchController extends Controller
 
     public function updateDispatch(Request $request, $id)
     {
+        $user = $this->authUser();
+        if (!empty($user['is_view_only'])) {
+            return response()->json(['success' => false, 'message' => 'You have View-Only permission. Updating dispatch is disabled.'], 403);
+        }
+
         $request->validate([
-            'items'                       => 'required|array|min:1',
-            'items.*.dispatch_item_id'    => 'required|exists:dispatch_log_items,id',
-            'items.*.quantity'            => 'required|numeric|min:0.001',
-            'items.*.location_splits'     => 'nullable|array',
-            'items.*.location_splits.*.location_key' => 'required_with:items.*.location_splits|string',
+            'items'                                           => 'required|array|min:1',
+            'items.*.dispatch_item_id'                        => 'required|exists:dispatch_log_items,id',
+            'items.*.quantity'                                => 'required|numeric|min:0.001',
+            'items.*.location_splits'                         => 'nullable|array',
+            'items.*.location_splits.*.location_key'          => 'required_with:items.*.location_splits|string',
             'items.*.location_splits.*.dispatch_location_qty' => 'required_with:items.*.location_splits|numeric|min:0.001',
+            'notes'                                           => 'nullable|string',
         ]);
 
-        $user = $this->authUser();
-        $log = DispatchLog::with('order.items', 'dispatchItems')->findOrFail($id);
+        $log = DispatchLog::with(['order.items', 'dispatchItems.orderItem.product'])->findOrFail($id);
         $order = $log->order;
 
-        // Restore stock from original dispatch
-        DB::transaction(function () use ($request, $user, $log, $order, $id) {
-            // Delete existing stock OUT transactions for this dispatch
-            $stockIds = \App\Models\DispatchLogItem::where('dispatch_log_id', $log->id)
-                ->with('locationAllocations')
-                ->get()
-                ->flatMap(fn($di) => $di->locationAllocations->pluck('stock_id'))
-                ->unique()
-                ->toArray();
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Associated order not found.'], 404);
+        }
 
-            Stock::whereIn('id', array_filter($stockIds))->delete();
+        if ($order->status === 'CANCELLED') {
+            return response()->json(['success' => false, 'message' => 'Cannot update dispatch for a cancelled order.'], 422);
+        }
 
-            // Restore dispatched_qty on order items
-            foreach ($log->dispatchItems as $di) {
-                $di->orderItem->decrement('dispatched_qty', $di->quantity);
-            }
+        try {
+            DB::transaction(function () use ($request, $user, $log, $order) {
+                // 1. Collect and delete all stock OUT records created for this dispatch log
+                $stockIdsFromLocations = \App\Models\DispatchItemLocation::whereIn(
+                    'dispatch_log_item_id', 
+                    $log->dispatchItems->pluck('id')->toArray()
+                )->pluck('stock_id')->toArray();
 
-            // Delete dispatch item locations
-            \App\Models\DispatchItemLocation::whereIn('dispatch_log_item_id', 
-                $log->dispatchItems->pluck('id')->toArray()
-            )->delete();
+                $stockIdsFromNotes = Stock::where('notes', 'LIKE', "%round #{$log->id}%")
+                    ->orWhere('notes', 'LIKE', "%round #{$log->id})%")
+                    ->pluck('id')
+                    ->toArray();
 
-            // Process new dispatch items
-            $totalDispatched = 0;
-            foreach ($request->items as $dispatchItem) {
-                $dispatchLogItem = $log->dispatchItems->firstWhere('id', $dispatchItem['dispatch_item_id']);
-                if (!$dispatchLogItem) continue;
-
-                $newQty = (float) $dispatchItem['quantity'];
-                $orderItem = $dispatchLogItem->orderItem;
-                
-                // Validate against remaining qty
-                $remaining = $orderItem->quantity - (float) $orderItem->dispatched_qty + (float) $dispatchLogItem->quantity;
-                if ($newQty > $remaining) {
-                    throw new \Exception("Cannot update to {$newQty} kg. Available: {$remaining} kg");
+                $allStockIds = array_unique(array_filter(array_merge($stockIdsFromLocations, $stockIdsFromNotes)));
+                if (!empty($allStockIds)) {
+                    Stock::whereIn('id', $allStockIds)->delete();
                 }
 
-                // Update dispatch log item quantity
-                $dispatchLogItem->update(['quantity' => $newQty]);
-                $totalDispatched += $newQty;
+                // Delete previous location allocations
+                \App\Models\DispatchItemLocation::whereIn(
+                    'dispatch_log_item_id', 
+                    $log->dispatchItems->pluck('id')->toArray()
+                )->delete();
 
-                // Create stock transactions per location
-                $locationSplits = $dispatchItem['location_splits'] ?? [];
-                if (!empty($locationSplits)) {
-                    foreach ($locationSplits as $split) {
-                        $locationName = $split['location_key'];
-                        $allocQty = (float) $split['dispatch_location_qty'];
-                        $locationId = \App\Models\Location::firstOrCreate(['name' => $locationName])->id;
-
-                        $stock = Stock::create([
-                            'product_id'       => $orderItem->product_id,
-                            'user_id'          => $user['id'],
-                            'stage'            => $orderItem->product->type,
-                            'grade'            => $orderItem->grade,
-                            'location_id'      => $locationId,
-                            'quantity'         => $allocQty,
-                            'transaction_type' => 'OUT',
-                            'notes'            => "Dispatch Updated: Order #{$order->id} from Location #{$locationId}",
-                        ]);
-
-                        \App\Models\DispatchItemLocation::create([
-                            'dispatch_log_item_id' => $dispatchLogItem->id,
-                            'location_id'          => $locationId,
-                            'quantity'             => $allocQty,
-                            'stock_id'             => $stock->id,
-                        ]);
+                // 2. Temporarily decrement order item dispatched_qty by the previous round quantities
+                foreach ($log->dispatchItems as $di) {
+                    if ($di->orderItem) {
+                        $di->orderItem->decrement('dispatched_qty', $di->quantity);
+                        $di->orderItem->refresh();
                     }
-                } else {
-                    // Create single stock transaction without location
-                    Stock::deductStock(
-                        $orderItem->product_id,
-                        $orderItem->product->type,
-                        $orderItem->grade,
-                        $newQty,
-                        $user['id'],
-                        "Dispatch Updated: Order #{$order->id} (No specific location)"
-                    );
                 }
 
-                // Update order item dispatched_qty
-                $orderItem->increment('dispatched_qty', $newQty);
-            }
+                // 3. Process new dispatch quantities
+                foreach ($request->items as $dispatchItem) {
+                    $dispatchLogItem = $log->dispatchItems->firstWhere('id', $dispatchItem['dispatch_item_id']);
+                    if (!$dispatchLogItem) {
+                        throw new \Exception("Invalid dispatch log item #{$dispatchItem['dispatch_item_id']}.");
+                    }
 
-            // Check if order is now fully dispatched
-            $order->refresh();
-            $allDone = $order->items->every(fn($item) => $item->remainingQty() <= 0);
+                    $newQty = (float) $dispatchItem['quantity'];
+                    if ($newQty <= 0) {
+                        throw new \Exception("Dispatch quantity must be greater than 0.");
+                    }
 
-            if ($allDone) {
-                $order->update(['status' => 'CLOSED', 'dispatch_status' => 'DONE']);
-            } else {
-                $anyDispatched = $order->items->filter(fn($item) => $item->dispatched_qty > 0)->isNotEmpty();
+                    $orderItem = $dispatchLogItem->orderItem;
+                    if (!$orderItem) {
+                        throw new \Exception("Order item not found for dispatch item #{$dispatchLogItem->id}.");
+                    }
+
+                    $orderItem->refresh();
+                    // Remaining order quantity available for this item
+                    $maxAllowed = (float) $orderItem->quantity - (float) $orderItem->dispatched_qty;
+                    if ($newQty > $maxAllowed + 0.0001) {
+                        $formattedName = $orderItem->product ? $orderItem->product->formatName($orderItem->grade) : ($orderItem->product?->name ?? 'Product');
+                        throw new \Exception("Cannot dispatch {$newQty} kg of {$formattedName}. Maximum allowed for this round: " . round($maxAllowed, 3) . " kg.");
+                    }
+
+                    // Check stock inventory availability
+                    $itemGrade = (!empty($orderItem->grade) && $orderItem->grade !== 'NONE') ? $orderItem->grade : 'NONE';
+                    $itemStage = !empty($orderItem->product?->type) ? $orderItem->product->type : 'FINISHED';
+
+                    $availableStock = DB::table('stocks')
+                        ->where('product_id', $orderItem->product_id)
+                        ->where('stage', $itemStage)
+                        ->where(function($q) use ($itemGrade) {
+                            if ($itemGrade === 'NONE') {
+                                $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '');
+                            } else {
+                                $q->where('grade', $itemGrade);
+                            }
+                        })
+                        ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
+                        ->value('net') ?? 0;
+
+                    if ($newQty > (float) $availableStock + 0.0001) {
+                        $pName = $orderItem->product?->name ?? 'Product';
+                        throw new \Exception("Insufficient stock in inventory for {$pName} ({$orderItem->grade}). Requested: {$newQty} kg, Available: " . round($availableStock, 3) . " kg.");
+                    }
+
+                    // Update dispatch log item quantity
+                    $dispatchLogItem->update(['quantity' => $newQty]);
+
+                    // Deduct new stock with location splits or general deductStock
+                    $locationSplits = $dispatchItem['location_splits'] ?? [];
+                    if (!empty($locationSplits)) {
+                        foreach ($locationSplits as $split) {
+                            $locationName = $split['location_key'];
+                            $allocQty = (float) ($split['dispatch_location_qty'] ?? $split['dispatch_qty'] ?? 0);
+                            if ($allocQty <= 0) continue;
+                            $locationId = \App\Models\Location::firstOrCreate(['name' => $locationName])->id;
+
+                            $stock = Stock::create([
+                                'product_id'       => $orderItem->product_id,
+                                'user_id'          => $user['id'],
+                                'stage'            => $itemStage,
+                                'grade'            => $itemGrade,
+                                'location_id'      => $locationId,
+                                'quantity'         => $allocQty,
+                                'transaction_type' => 'OUT',
+                                'notes'            => "Dispatched: Order #{$order->id} (Partial round #{$log->id}) from Loc#{$locationId}",
+                            ]);
+
+                            \App\Models\DispatchItemLocation::create([
+                                'dispatch_log_item_id' => $dispatchLogItem->id,
+                                'location_id'          => $locationId,
+                                'quantity'             => $allocQty,
+                                'stock_id'             => $stock->id,
+                            ]);
+                        }
+                    } else {
+                        Stock::deductStock(
+                            $orderItem->product_id,
+                            $itemStage,
+                            $itemGrade,
+                            $newQty,
+                            $user['id'],
+                            "Dispatched: Order #{$order->id} (Partial round #{$log->id})"
+                        );
+                    }
+
+                    // Increment order item dispatched_qty with new quantity
+                    $orderItem->increment('dispatched_qty', $newQty);
+                    $orderItem->refresh();
+                }
+
+                // Update notes if provided
+                if ($request->has('notes')) {
+                    $log->update(['notes' => $request->notes]);
+                }
+
+                // 4. Recalculate order status accurately
+                $order->refresh();
+                $order->load('items');
+                $anyDispatched = $order->items->filter(fn($item) => (float) $item->dispatched_qty > 0)->isNotEmpty();
+                $allDone = $order->items->isNotEmpty() && $order->items->every(fn($item) => $item->remainingQty() <= 0.0001);
+
                 $order->update([
-                    'status' => 'OPEN',
-                    'dispatch_status' => $anyDispatched ? 'PARTIAL PENDING' : 'PENDING'
+                    'status'          => $allDone ? 'CLOSED' : 'OPEN',
+                    'dispatch_status' => $allDone ? 'DONE' : ($anyDispatched ? 'PARTIAL PENDING' : 'PENDING')
                 ]);
-            }
-        });
+            });
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 422);
+        }
 
-        return response()->json(['success' => true, 'message' => 'Dispatch updated successfully!']);
+        return response()->json(['success' => true, 'message' => 'Dispatch quantity updated successfully!']);
     }
 
     public function updateLR(Request $request)
@@ -686,12 +776,235 @@ class DispatchController extends Controller
         ]);
     }
 
+    /**
+     * Helper to retrieve all image paths associated with a dispatch log.
+     */
+    public static function getLrImagePaths($log): array
+    {
+        if (!$log || empty($log->lr_image_path)) {
+            return [];
+        }
+        $raw = trim($log->lr_image_path);
+        if (str_starts_with($raw, '[') && str_ends_with($raw, ']')) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                return array_values(array_filter($decoded));
+            }
+        }
+        if (str_contains($raw, ',')) {
+            return array_values(array_filter(array_map('trim', explode(',', $raw))));
+        }
+        return [$raw];
+    }
+
+    /**
+     * Download LR copy file for a specific dispatch log.
+     */
+    public function downloadLR($id)
+    {
+        $log = DispatchLog::findOrFail($id);
+        $rawPaths = self::getLrImagePaths($log);
+
+        if (empty($rawPaths)) {
+            return back()->with('error', 'No LR image attached to this dispatch record.');
+        }
+
+        $validFiles = [];
+        foreach ($rawPaths as $idx => $rp) {
+            $relative = ltrim(str_replace('\\', '/', $rp), '/');
+            $fullPath = public_path($relative);
+            if (!file_exists($fullPath)) {
+                if (file_exists(storage_path('app/public/' . $relative))) {
+                    $fullPath = storage_path('app/public/' . $relative);
+                } elseif (file_exists(storage_path($relative))) {
+                    $fullPath = storage_path($relative);
+                }
+            }
+            if (file_exists($fullPath)) {
+                $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION) ?: 'jpg');
+                $lrNo = $log->lr_no ? '_' . preg_replace('/[^A-Za-z0-9_-]/', '', $log->lr_no) : '';
+                $suffix = count($rawPaths) > 1 ? "_img" . ($idx + 1) : '';
+                $name = "LR_Order_{$log->order_id}_Log_{$log->id}{$lrNo}{$suffix}.{$ext}";
+                $validFiles[] = [
+                    'path' => $fullPath,
+                    'name' => $name,
+                ];
+            }
+        }
+
+        if (empty($validFiles)) {
+            return back()->with('error', 'LR image file not found on server.');
+        }
+
+        if (count($validFiles) === 1) {
+            return response()->download($validFiles[0]['path'], $validFiles[0]['name']);
+        }
+
+        // Multiple images in single dispatch - create ZIP
+        if (class_exists('ZipArchive')) {
+            $tempDir = storage_path('app');
+            if (!file_exists($tempDir)) {
+                @mkdir($tempDir, 0777, true);
+            }
+            $zipFileName = "LR_Order_{$log->order_id}_Log_{$log->id}_" . count($validFiles) . '_files.zip';
+            $tempZipPath = $tempDir . '/lr_export_' . uniqid() . '.zip';
+
+            $zip = new \ZipArchive();
+            if ($zip->open($tempZipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+                foreach ($validFiles as $item) {
+                    $zip->addFile($item['path'], $item['name']);
+                }
+                $zip->close();
+                return response()->download($tempZipPath, $zipFileName)->deleteFileAfterSend(true);
+            }
+        }
+
+        return response()->download($validFiles[0]['path'], $validFiles[0]['name']);
+    }
+
+    /**
+     * Download multiple LR copies (e.g. 2, 3 or more selected, or all for an order).
+     */
+    public function downloadMultipleLR(Request $request)
+    {
+        $ids = [];
+        if ($request->filled('ids')) {
+            $rawIds = $request->input('ids');
+            $ids = is_array($rawIds) ? $rawIds : explode(',', (string) $rawIds);
+        } elseif ($request->filled('order_id')) {
+            $ids = DispatchLog::where('order_id', $request->order_id)
+                ->whereNotNull('lr_image_path')
+                ->pluck('id')
+                ->toArray();
+        }
+
+        $ids = array_values(array_filter(array_map('intval', (array) $ids)));
+
+        if (empty($ids)) {
+            return back()->with('error', 'No dispatch records selected for download.');
+        }
+
+        $logs = DispatchLog::whereIn('id', $ids)
+            ->whereNotNull('lr_image_path')
+            ->get();
+
+        $validFiles = [];
+        foreach ($logs as $log) {
+            $rawPaths = self::getLrImagePaths($log);
+            foreach ($rawPaths as $idx => $rp) {
+                $relative = ltrim(str_replace('\\', '/', $rp), '/');
+                $fullPath = public_path($relative);
+                if (!file_exists($fullPath)) {
+                    if (file_exists(storage_path('app/public/' . $relative))) {
+                        $fullPath = storage_path('app/public/' . $relative);
+                    } elseif (file_exists(storage_path($relative))) {
+                        $fullPath = storage_path($relative);
+                    }
+                }
+                if (file_exists($fullPath)) {
+                    $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION) ?: 'jpg');
+                    $lrNo = $log->lr_no ? '_' . preg_replace('/[^A-Za-z0-9_-]/', '', $log->lr_no) : '';
+                    $suffix = count($rawPaths) > 1 ? "_img" . ($idx + 1) : '';
+                    $name = "LR_Order_{$log->order_id}_Log_{$log->id}{$lrNo}{$suffix}.{$ext}";
+                    $validFiles[] = [
+                        'path' => $fullPath,
+                        'name' => $name,
+                    ];
+                }
+            }
+        }
+
+        if (empty($validFiles)) {
+            return back()->with('error', 'No LR image files found on server for the selected records.');
+        }
+
+        // If only 1 file is selected, download directly
+        if (count($validFiles) === 1) {
+            return response()->download($validFiles[0]['path'], $validFiles[0]['name']);
+        }
+
+        // 2, 3 or more files: bundle into ZIP
+        if (class_exists('ZipArchive')) {
+            $tempDir = storage_path('app');
+            if (!file_exists($tempDir)) {
+                @mkdir($tempDir, 0777, true);
+            }
+            $prefix = $request->filled('order_id') ? "LR_Copies_Order_{$request->order_id}_" : "LR_Copies_Batch_";
+            $zipFileName = $prefix . count($validFiles) . '_files_' . date('Ymd_His') . '.zip';
+            $tempZipPath = $tempDir . '/lr_export_' . uniqid() . '.zip';
+
+            $zip = new \ZipArchive();
+            if ($zip->open($tempZipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+                $usedNames = [];
+                foreach ($validFiles as $item) {
+                    $entryName = $item['name'];
+                    $counter = 1;
+                    while (in_array($entryName, $usedNames)) {
+                        $pInfo = pathinfo($item['name']);
+                        $entryName = $pInfo['filename'] . "_{$counter}." . ($pInfo['extension'] ?? 'jpg');
+                        $counter++;
+                    }
+                    $usedNames[] = $entryName;
+                    $zip->addFile($item['path'], $entryName);
+                }
+                $zip->close();
+
+                return response()->download($tempZipPath, $zipFileName)->deleteFileAfterSend(true);
+            }
+        }
+
+        // Fallback to first file if ZipArchive is unavailable
+        return response()->download($validFiles[0]['path'], $validFiles[0]['name']);
+    }
+
     public function history()
     {
-        $logs = DispatchLog::with(['order.company', 'order.transporter', 'order.creator', 'user', 'dispatchItems.orderItem.product'])
+        $logs = DispatchLog::with([
+            'order.company',
+            'order.transporter',
+            'order.creator',
+            'order.dispatchLogs',
+            'user',
+            'dispatchItems.orderItem.product'
+        ])
             ->orderByDesc('created_at')
-            ->get()
-            ->map(fn($d) => [
+            ->get();
+
+        // Sync order items dispatched quantities for data consistency
+        foreach ($logs as $d) {
+            if ($d->order && $d->order->items) {
+                foreach ($d->order->items as $oi) {
+                    $oi->syncDispatchedQty();
+                }
+            }
+        }
+
+        $logsData = $logs->map(function($d) {
+            $rawPaths = self::getLrImagePaths($d);
+            $lrImages = array_map(fn($p) => ['path' => $p, 'url' => asset($p)], $rawPaths);
+
+            // Collect all LR copies for this entire order (across all dispatch rounds, e.g. 2 or 3 rounds)
+            $orderLrCopies = [];
+            if ($d->order && $d->order->dispatchLogs) {
+                foreach ($d->order->dispatchLogs as $ol) {
+                    if ($ol->lr_image_path) {
+                        $olPaths = self::getLrImagePaths($ol);
+                        foreach ($olPaths as $idx => $olp) {
+                            $orderLrCopies[] = [
+                                'logId'      => $ol->id,
+                                'url'        => asset($olp),
+                                'path'       => $olp,
+                                'lrNo'       => $ol->lr_no,
+                                'date'       => $ol->created_at ? $ol->created_at->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') : '',
+                                'isCurrent'  => $ol->id === $d->id,
+                                'roundIndex' => $idx + 1,
+                            ];
+                        }
+                    }
+                }
+            }
+
+            return [
                 'id'            => $d->id,
                 'orderId'       => $d->order_id,
                 'companyId'     => $d->order?->company_id,
@@ -701,6 +1014,8 @@ class DispatchController extends Controller
                 'salesBy'       => $d->order?->creator?->name ?? 'N/A',
                 'dispatchedBy'  => $d->user?->name,
                 'lrImage'       => $d->lr_image_path ? asset($d->lr_image_path) : null,
+                'lrImages'      => $lrImages,
+                'orderLrCopies' => $orderLrCopies,
                 'orderTotal'    => $d->order?->total,
                 'status'        => $d->order?->status,
                 'dispatchStatus'=> $d->order?->dispatch_status,
@@ -709,6 +1024,9 @@ class DispatchController extends Controller
                 'dispatchNotes' => $d->notes,
                 'orderNotes'    => $d->order?->notes,
                 'items'         => $d->dispatchItems->filter(fn($di) => $di->orderItem && $di->orderItem->order_id == $d->order_id)->map(fn($di) => [
+                    'id'            => $di->id,
+                    'dispatchItemId'=> $di->id,
+                    'orderItemId'   => $di->order_item_id,
                     'productName'   => $di->orderItem?->product?->name ?? 'Unknown',
                     'rawProductName'=> $di->orderItem?->product?->name ?? 'Unknown',
                     'formattedName' => $di->orderItem?->product ? $di->orderItem->product->formatName($di->orderItem->grade) : 'Unknown',
@@ -718,7 +1036,8 @@ class DispatchController extends Controller
                     'dispatchedQty' => (float) $di->quantity,
                     'remainingQty'  => (float) max(0, ($di->orderItem?->quantity ?? 0) - ($di->orderItem?->dispatched_qty ?? 0)),
                 ])->values(),
-            ]);
+            ];
+        });
 
         $companies = Company::orderBy('name')->get()->map(fn($c) => [
             'id' => $c->id,
@@ -726,7 +1045,7 @@ class DispatchController extends Controller
         ]);
 
         $pageData = [
-            'dispatchLogs' => $logs,
+            'dispatchLogs' => $logsData,
             'companies'    => $companies,
         ];
         return view('dispatch.history', compact('pageData'));

@@ -315,5 +315,46 @@ class SubAdminPermissionsTest extends TestCase
         $response->assertDontSee('Stock Manager Panel');
         $response->assertDontSee('Cashier Panel');
     }
+
+    public function test_sub_admin_home_shows_stock_manager_dashboard()
+    {
+        $subAdmin = User::create([
+            'name' => 'Sub Admin Home User',
+            'username' => 'subadmin_home_user',
+            'phone' => '+91 9898000020',
+            'password' => Hash::make('password123'),
+            'role' => 'SUB_ADMIN',
+            'status' => 'ACTIVE',
+            'permissions' => ['view_stock_manager_home']
+        ]);
+
+        $response = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->get('/sub_admin/home');
+
+        $response->assertStatus(200);
+        $response->assertSee('Stock Manager Dashboard');
+        $response->assertSee('Stock Inward / Outward');
+        $response->assertSee('Live Stock Panel');
+    }
+
+    public function test_sub_admin_login_redirects_to_sub_admin_home()
+    {
+        $subAdmin = User::create([
+            'name' => 'Login Sub Admin',
+            'username' => 'login_subadmin',
+            'phone' => '+91 9898000021',
+            'password' => Hash::make('password123'),
+            'role' => 'SUB_ADMIN',
+            'status' => 'ACTIVE',
+            'permissions' => ['view_stock_manager_home']
+        ]);
+
+        $response = $this->post('/login', [
+            'username' => 'login_subadmin',
+            'password' => 'password123',
+        ]);
+
+        $response->assertRedirect('/sub_admin/home');
+    }
 }
 

@@ -2102,28 +2102,28 @@ const app = {
         return `
         <div style="display:flex; flex-direction:column; gap:8px; padding:12px 0;">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-            <span style="font-weight:600; font-size:0.95rem; color:#fff;">
-              ${baseName} ${displayGrade ? `<strong style="font-weight:800; color:var(--primary-light, #F4B400);">${displayGrade}</strong> ` : ''}(${displayType})
+            <span style="font-weight:700; font-size:0.95rem; color:#111827;">
+              ${baseName} ${displayGrade ? `<strong style="font-weight:800; color:var(--primary, #D88A00);">${displayGrade}</strong> ` : ''}(${displayType})
             </span>
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-              <span style="background:rgba(216,138,0,0.2); border:1px solid rgba(216,138,0,0.5); color:#F4B400; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.8rem;">
-                Total Order Qty: <span style="color:#fff;">${i.quantity} kg</span>
+              <span style="background:#fef3c7; border:1px solid #fde68a; color:#b45309; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.8rem;">
+                Total Order Qty: <span style="color:#111827;">${i.quantity} kg</span>
               </span>
-              <span id="pending-badge-${i.id}" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.5); color:#f87171; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.8rem;">
-                Pending Order: <span style="color:#fff;">${remaining} kg</span>
+              <span id="pending-badge-${i.id}" style="background:#fee2e2; border:1px solid #fecaca; color:#b91c1c; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.8rem;">
+                Pending Order: <span style="color:#111827;">${remaining} kg</span>
               </span>
             </div>
           </div>
           
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; align-items:end; margin-top:6px;">
             <div id="loc-splits-${i.id}" data-item-id="${i.id}" data-max="${remaining}">
-              <div style="font-size:0.75rem; color:var(--text-muted);">⏳ Loading stock locations...</div>
+              <div style="font-size:0.75rem; color:#64748b;">⏳ Loading stock locations...</div>
             </div>
             <div>
-              <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted, #9ca3af); text-transform:uppercase; display:block; margin-bottom:4px;">Dispatch Qty *</label>
+              <label style="font-size:0.75rem; font-weight:700; color:#475467; text-transform:uppercase; display:block; margin-bottom:4px;">Dispatch Qty *</label>
               <input type="number" class="dispatch-item-qty no-spinners" data-item-id="${i.id}" data-max="${remaining}" 
                      value="" placeholder="Enter quantity..." max="${remaining}" min="0.001" step="0.001"
-                     style="width:100%; padding:0.65rem 0.75rem; font-size:0.95rem; font-weight:bold; color:var(--secondary, #16a34a); background:rgba(0,0,0,0.2); border:1px solid var(--glass-border, rgba(255,255,255,0.15)); border-radius:8px; box-sizing:border-box;">
+                     style="width:100%; padding:0.65rem 0.75rem; font-size:0.95rem; font-weight:bold; color:#16a34a; background:#ffffff; border:1.5px solid #cbd5e1; border-radius:8px; box-sizing:border-box;">
             </div>
           </div>
         </div>
@@ -2131,47 +2131,47 @@ const app = {
       `;}).join('');
       
       div.innerHTML = `
-        <div style="background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:20px; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--primary-light); padding-bottom:10px;">
-            <h3 style="margin:0; color:var(--primary-light); font-size:1.3rem; letter-spacing:1px;">ORDER #${String(o.id).toUpperCase()}</h3>
+        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:20px; box-shadow:0 4px 15px rgba(0,0,0,0.04);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1.5px solid #e2e8f0; padding-bottom:10px;">
+            <h3 style="margin:0; color:var(--primary, #D88A00); font-size:1.3rem; letter-spacing:1px; font-weight:800;">ORDER #${String(o.id).toUpperCase()}</h3>
             <span class="badge badge-pending" style="padding:4px 12px; font-size:0.75rem;">READY FOR DISPATCH</span>
           </div>
           
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:25px; margin-bottom:20px;">
             <div>
-              <div style="display:flex; align-items:center; gap:8px; color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">
+              <div style="display:flex; align-items:center; gap:8px; color:#64748b; font-size:0.7rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                 Customer Details
               </div>
-              <div style="font-size:1.1rem; font-weight:700; margin-bottom:4px; color:#fff;">${o.company.name}</div>
-              <div style="color:var(--secondary); font-size:0.85rem; font-weight:500; margin-bottom:4px;">${o.company.contact}</div>
-              <div style="font-size:0.8rem; opacity:0.7; line-height:1.4;">${o.company.address}</div>
-              <div style="margin-top:6px; font-size:0.75rem; font-family:monospace; background:rgba(255,255,255,0.05); padding:2px 6px; display:inline-block; border-radius:4px;">GST: ${o.company.gst}</div>
+              <div style="font-size:1.1rem; font-weight:800; margin-bottom:4px; color:#111827;">${o.company.name}</div>
+              <div style="color:#16a34a; font-size:0.85rem; font-weight:600; margin-bottom:4px;">${o.company.contact}</div>
+              <div style="font-size:0.8rem; color:#64748b; line-height:1.4;">${o.company.address}</div>
+              <div style="margin-top:6px; font-size:0.75rem; font-family:monospace; background:#f1f5f9; color:#1e293b; padding:2px 6px; display:inline-block; border-radius:4px; border:1px solid #e2e8f0;">GST: ${o.company.gst}</div>
             </div>
             
             <div>
-              <div style="display:flex; align-items:center; gap:8px; color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">
+              <div style="display:flex; align-items:center; gap:8px; color:#64748b; font-size:0.7rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
                 Transport Info
               </div>
-              <div style="font-size:1.1rem; font-weight:700; margin-bottom:4px; color:#fff;">${o.transporter.name}</div>
-              <div style="color:var(--secondary); font-size:0.85rem; font-weight:500; margin-bottom:4px;">${o.transporter.contact}</div>
-              <div style="font-size:0.8rem; background:rgba(255,107,107,0.1); color:var(--secondary); padding:4px 8px; border-radius:4px; display:inline-block; font-weight:bold;">Vehicles: ${o.transporter.vehicles || 'N/A'}</div>
+              <div style="font-size:1.1rem; font-weight:800; margin-bottom:4px; color:#111827;">${o.transporter.name}</div>
+              <div style="color:#16a34a; font-size:0.85rem; font-weight:600; margin-bottom:4px;">${o.transporter.contact}</div>
+              <div style="font-size:0.8rem; background:rgba(216,138,0,0.1); color:var(--primary, #D88A00); padding:4px 8px; border-radius:4px; display:inline-block; font-weight:bold;">Vehicles: ${o.transporter.vehicles || 'N/A'}</div>
             </div>
           </div>
 
           ${o.notes ? `
-          <div style="margin-bottom:20px; background:rgba(244,180,0,0.06); border:1px dashed rgba(244,180,0,0.3); border-radius:8px; padding:15px; border-left:4px solid var(--primary-light);">
-            <div style="display:flex; align-items:center; gap:8px; color:var(--primary-light); font-size:0.75rem; text-transform:uppercase; margin-bottom:6px; font-weight:bold;">
+          <div style="margin-bottom:20px; background:#fffbeb; border:1.5px dashed #fde68a; border-radius:8px; padding:15px; border-left:4px solid var(--primary, #D88A00);">
+            <div style="display:flex; align-items:center; gap:8px; color:#92400e; font-size:0.75rem; text-transform:uppercase; margin-bottom:6px; font-weight:bold;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
               Notes & Special Instructions (Sales)
             </div>
-            <div style="font-size:0.95rem; color:#fff; line-height:1.5; font-style:italic; word-break:break-word; overflow-wrap:anywhere; white-space:pre-wrap;">"${o.notes}"</div>
+            <div style="font-size:0.95rem; color:#92400e; line-height:1.5; font-style:italic; word-break:break-word; overflow-wrap:anywhere; white-space:pre-wrap;">"${o.notes}"</div>
           </div>
           ` : ''}
 
-          <div style="background:rgba(0,0,0,0.2); border-radius:8px; padding:15px; border-left:4px solid var(--secondary);">
-            <div style="display:flex; align-items:center; gap:8px; color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; margin-bottom:10px; font-weight:bold;">
+          <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:8px; padding:15px; border-left:4px solid var(--primary, #D88A00); box-shadow:0 1px 4px rgba(0,0,0,0.02);">
+            <div style="display:flex; align-items:center; gap:8px; color:#64748b; font-size:0.7rem; text-transform:uppercase; margin-bottom:10px; font-weight:bold;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
               Items to Dispatch (Edit quantities for partial dispatch)
             </div>
@@ -3701,7 +3701,163 @@ const app = {
     `);
   },
 
+  openEditDispatchModal(d, targetItemId = null) {
+    if (window.isReadOnly) {
+      return this.toast('You have View-Only permission. Updating dispatch is disabled.', 'error');
+    }
+    if (!d || !d.items || d.items.length === 0) {
+      return this.toast('No dispatch items found to edit.', 'warning');
+    }
+
+    const token = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const currentSlug = this.getCurrentSlug('dispatch');
+    const updateUrl = (currentSlug === 'admin' || currentSlug.startsWith('sub_admin'))
+      ? `${this.getBaseUrl()}/${currentSlug}/dispatch/update/${d.id}`
+      : `${this.getBaseUrl()}/${currentSlug}/update/${d.id}`;
+
+    const itemsHtml = d.items.map(item => {
+      const currentQty = Number(item.dispatchedQty || 0);
+      const remainingQty = Number(item.remainingQty || 0);
+      const maxAllowed = Number((currentQty + remainingQty).toFixed(3));
+      const itemId = item.id || item.dispatchItemId;
+      const isTarget = targetItemId && (itemId == targetItemId);
+
+      return `
+        <div style="background: rgba(255,255,255,0.05); border: 1.5px solid ${isTarget ? 'var(--primary, #D88A00)' : 'rgba(255,255,255,0.12)'}; border-radius: 8px; padding: 12px; margin-bottom: 12px; text-align: left;">
+          <div style="font-weight: 700; font-size: 0.95rem; color: #fff; margin-bottom: 6px;">
+            ${item.formattedName || item.productName || 'Product'} ${item.grade && item.grade !== 'NONE' ? `<span style="color:var(--primary, #D88A00);">(${item.grade})</span>` : ''}
+          </div>
+          <div style="display: flex; gap: 8px; font-size: 0.78rem; margin-bottom: 10px; flex-wrap: wrap;">
+            <span style="background: rgba(255,255,255,0.08); padding: 3px 8px; border-radius: 4px; color:#d1d5db;">Total Order: <strong>${item.totalQty} kg</strong></span>
+            <span style="background: rgba(22,163,74,0.15); color: #4ade80; padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(22,163,74,0.3);">This Round: <strong>${currentQty} kg</strong></span>
+            <span style="background: rgba(239,68,68,0.15); color: #f87171; padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(239,68,68,0.3);">Pending: <strong>${remainingQty} kg</strong></span>
+          </div>
+          <label style="font-size: 0.75rem; font-weight: 700; color: #d1d5db; text-transform: uppercase; display: block; margin-bottom: 4px;">
+            New Dispatched Quantity (kg) *
+          </label>
+          <input type="number" 
+                 id="edit-disp-qty-${itemId}" 
+                 class="swal2-input edit-dispatch-item-input" 
+                 data-dispatch-item-id="${itemId}"
+                 data-max="${maxAllowed}"
+                 data-current="${currentQty}"
+                 value="${currentQty}" 
+                 min="0.001" 
+                 max="${maxAllowed}" 
+                 step="any"
+                 style="margin: 0; width: 100%; box-sizing: border-box; font-size: 1.05rem; font-weight: 700; color: #10b981; background: rgba(0,0,0,0.35); border: 1.5px solid #4b5563; border-radius: 6px; padding: 8px 12px;">
+          <div style="font-size: 0.72rem; color: #9ca3af; margin-top: 4px;">
+            Maximum allowed for this item: <strong style="color:#f3f4f6;">${maxAllowed} kg</strong>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    Swal.fire({
+      title: `<span style="font-size:1.15rem; font-weight:700;">✏️ Edit Dispatched Quantity</span>`,
+      html: `
+        <div style="font-size:0.85rem; color:var(--text-muted, #9ca3af); margin-bottom:12px; text-align:left;">
+          Order <strong>#${String(d.orderId || '').toUpperCase()}</strong> — ${d.companyName || 'N/A'}
+        </div>
+        <div style="max-height: 50vh; overflow-y: auto; padding-right: 4px;">
+          ${itemsHtml}
+          <div style="text-align: left; margin-top: 8px;">
+            <label style="font-size: 0.75rem; font-weight: 700; color: #d1d5db; text-transform: uppercase; display: block; margin-bottom: 4px;">
+              Dispatch Notes (Optional)
+            </label>
+            <textarea id="edit-disp-notes" class="swal2-textarea" placeholder="Reason for quantity update..." style="margin: 0; width: 100%; box-sizing: border-box; height: 55px; font-size: 0.85rem; background: rgba(0,0,0,0.35); border: 1px solid #4b5563; border-radius: 6px; color: #fff; padding: 8px;">${d.dispatchNotes || d.notes || ''}</textarea>
+          </div>
+        </div>
+      `,
+      background: 'var(--card-bg, #1e293b)',
+      color: 'var(--text-main, #ffffff)',
+      showCancelButton: true,
+      confirmButtonText: '💾 Save & Update Quantity',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#2563eb',
+      cancelButtonColor: '#4b5563',
+      focusConfirm: false,
+      didOpen: () => {
+        if (targetItemId) {
+          const targetInput = document.getElementById(`edit-disp-qty-${targetItemId}`);
+          if (targetInput) targetInput.focus();
+        }
+      },
+      preConfirm: () => {
+        const inputs = document.querySelectorAll('.edit-dispatch-item-input');
+        const itemsPayload = [];
+        for (const input of inputs) {
+          const itemId = input.dataset.dispatchItemId;
+          const val = parseFloat(input.value);
+          const max = parseFloat(input.dataset.max);
+          if (isNaN(val) || val <= 0) {
+            Swal.showValidationMessage('Quantity must be a positive number greater than 0.');
+            return false;
+          }
+          if (val > max + 0.0001) {
+            Swal.showValidationMessage(`Quantity cannot exceed maximum allowed (${max} kg).`);
+            return false;
+          }
+          itemsPayload.push({
+            dispatch_item_id: itemId,
+            quantity: val
+          });
+        }
+        const notes = document.getElementById('edit-disp-notes')?.value || '';
+        return { items: itemsPayload, notes };
+      }
+    }).then(result => {
+      if (result.isConfirmed && result.value) {
+        Swal.fire({
+          title: 'Updating Quantities...',
+          text: 'Restoring stock and applying updated dispatch...',
+          allowOutsideClick: false,
+          didOpen: () => Swal.showLoading()
+        });
+
+        fetch(updateUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': token
+          },
+          body: JSON.stringify(result.value)
+        })
+        .then(r => r.json())
+        .then(res => {
+          if (res.success) {
+            Swal.fire({
+              title: 'Updated!',
+              text: res.message || 'Dispatch quantity updated successfully!',
+              icon: 'success',
+              timer: 1200,
+              showConfirmButton: false
+            });
+            setTimeout(() => location.reload(), 800);
+          } else {
+            Swal.fire({
+              title: 'Update Failed',
+              text: res.message || 'Could not update dispatch quantity.',
+              icon: 'error'
+            });
+          }
+        })
+        .catch(err => {
+          Swal.fire({
+            title: 'Network Error',
+            text: err.message || 'Could not communicate with the server.',
+            icon: 'error'
+          });
+        });
+      }
+    });
+  },
+
   revertDispatch(id) {
+    if (window.isReadOnly) {
+      return this.toast('You have View-Only permission. Reverting dispatch is disabled.', 'error');
+    }
     const token = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
     Swal.fire({
       title: 'Revert Dispatch?',
@@ -3714,7 +3870,9 @@ const app = {
     }).then(result => {
       if (result.isConfirmed) {
         const currentSlug = this.getCurrentSlug('dispatch');
-        const revertUrl = `${this.getBaseUrl()}/${currentSlug}/revert/${id}`;
+        const revertUrl = (currentSlug === 'admin' || currentSlug.startsWith('sub_admin'))
+          ? `${this.getBaseUrl()}/${currentSlug}/dispatch/revert/${id}`
+          : `${this.getBaseUrl()}/${currentSlug}/revert/${id}`;
 
         fetch(revertUrl, {
           method: 'POST',
@@ -3738,6 +3896,84 @@ const app = {
         });
       }
     });
+  },
+
+  downloadLR(id) {
+    if (!id) return;
+    const currentSlug = this.getCurrentSlug('dispatch');
+    const url = `${this.getBaseUrl()}/${currentSlug}/dispatch/download-lr/${id}`;
+    window.location.href = url;
+  },
+
+  downloadOrderAllLR(orderId) {
+    if (!orderId) return;
+    const currentSlug = this.getCurrentSlug('dispatch');
+    const url = `${this.getBaseUrl()}/${currentSlug}/dispatch/download-multiple-lr?order_id=${orderId}`;
+    window.location.href = url;
+  },
+
+  updateLRSelection() {
+    const checked = document.querySelectorAll('.lr-select-check:checked');
+    const count = checked.length;
+    const bar = document.getElementById('lr-batch-bar');
+    const countEl = document.getElementById('lr-batch-count');
+    
+    if (countEl) {
+      countEl.textContent = `${count} Selected`;
+    }
+
+    if (bar) {
+      if (count > 0) {
+        bar.style.display = 'flex';
+      } else {
+        bar.style.display = 'none';
+      }
+    }
+  },
+
+  toggleSelectAllLR() {
+    const available = document.querySelectorAll('.lr-select-check[data-has-lr="1"]');
+    if (available.length === 0) {
+      return this.toast('No LR copies available on this page.', 'warning');
+    }
+    const allChecked = Array.from(available).every(cb => cb.checked);
+    available.forEach(cb => {
+      cb.checked = !allChecked;
+    });
+    this.updateLRSelection();
+  },
+
+  clearLRSelection() {
+    document.querySelectorAll('.lr-select-check').forEach(cb => cb.checked = false);
+    this.updateLRSelection();
+  },
+
+  downloadSelectedLRs(mode = 'zip') {
+    const checked = Array.from(document.querySelectorAll('.lr-select-check:checked'));
+    const ids = checked.map(cb => cb.dataset.id).filter(Boolean);
+
+    if (ids.length === 0) {
+      return this.toast('Please select at least 1 dispatch with LR copy.', 'warning');
+    }
+
+    const currentSlug = this.getCurrentSlug('dispatch');
+
+    if (mode === 'zip' || ids.length === 1) {
+      const url = `${this.getBaseUrl()}/${currentSlug}/dispatch/download-multiple-lr?ids=${ids.join(',')}`;
+      this.toast(`Downloading ${ids.length} LR ${ids.length === 1 ? 'copy' : 'copies (ZIP)'}...`, 'info');
+      window.location.href = url;
+    } else {
+      this.toast(`Downloading ${ids.length} LR copies individually...`, 'info');
+      ids.forEach((id, index) => {
+        setTimeout(() => {
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = `${this.getBaseUrl()}/${currentSlug}/dispatch/download-lr/${id}`;
+          document.body.appendChild(iframe);
+          setTimeout(() => iframe.remove(), 10000);
+        }, index * 500);
+      });
+    }
   },
 
   viewImage(src) {

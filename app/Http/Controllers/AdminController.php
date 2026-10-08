@@ -26,6 +26,10 @@ class AdminController extends Controller
 {
     public function dashboard()
     {
+        if (str_contains(request()->path(), 'sub_admin') && request()->is('*home')) {
+            return app(\App\Http\Controllers\StockManagerController::class)->home();
+        }
+
         $getStockByUnits = function (string $stage) {
             return DB::table('stocks')
                 ->leftJoin('products', 'stocks.product_id', '=', 'products.id')

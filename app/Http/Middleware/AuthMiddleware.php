@@ -257,7 +257,7 @@ class AuthMiddleware
             $dispSub = ($section === 'dispatch') ? $action : $section;
             if (in_array($dispSub, ['home', 'dashboard', ''])) return 'dispatch_home';
             if (in_array($dispSub, ['action', 'update-lr', 'revert'])) return 'dispatch_action';
-            if (in_array($dispSub, ['history', 'pdf'])) return 'dispatch_history';
+            if (in_array($dispSub, ['history', 'pdf', 'download-lr', 'download-multiple-lr'])) return 'dispatch_history';
             if (in_array($dispSub, ['report'])) return 'dispatch_report';
             return 'dispatch_action';
         }
@@ -281,7 +281,12 @@ class AuthMiddleware
         }
 
         // 6. Admin Panel routes (or under admin / sub_admin prefix)
-        if (in_array($section, ['home', 'dashboard', ''])) return 'admin_dashboard';
+        if (in_array($section, ['home', 'dashboard', ''])) {
+            if ($prefix === 'sub_admin' && in_array($section, ['home', ''])) {
+                return 'stock_manager_home';
+            }
+            return 'admin_dashboard';
+        }
         if (in_array($section, ['action', 'outward'])) return 'stock_manager_action';
         if (in_array($section, ['history'])) return 'stock_manager_history';
         if (in_array($section, ['users'])) return 'admin_users';
@@ -335,7 +340,7 @@ class AuthMiddleware
             'dispatch_action'         => $isSubAdmin ? '/' . $slug . '/dispatch/action' : '/dispatch/action',
             'dispatch_history'        => $isSubAdmin ? '/' . $slug . '/dispatch/history' : '/dispatch/history',
             'dispatch_report'         => $isSubAdmin ? '/' . $slug . '/dispatch/report' : '/dispatch/report',
-            'stock_manager_home'      => $isSubAdmin ? '/' . $slug . '/stock-manager/home' : '/stock_manager/home',
+            'stock_manager_home'      => $isSubAdmin ? '/' . $slug . '/home' : '/stock_manager/home',
             'stock_manager_action'    => $isSubAdmin ? '/' . $slug . '/stock-manager/action' : '/stock_manager/action',
             'stock_manager_history'   => $isSubAdmin ? '/' . $slug . '/stock-manager/history' : '/stock_manager/history',
             'attendance_dashboard'    => $isSubAdmin ? '/' . $slug . '/attendance/dashboard' : '/attendance/dashboard',

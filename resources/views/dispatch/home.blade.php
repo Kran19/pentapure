@@ -223,30 +223,30 @@
             $statusBadgeFg = '#ffffff';
           }
         @endphp
-        <div class="card" style="border-left: 4px solid {{ $progressColor }}; background:rgba(255,255,255,0.02); transition: transform 0.2s; margin-bottom: 0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--glass-border, rgba(255,255,255,0.06));">
+        <div class="card dispatch-order-card" style="border-left: 4px solid {{ $progressColor }}; background:#ffffff; box-shadow:0 2px 10px rgba(0,0,0,0.04); transition: transform 0.2s; margin-bottom: 0; padding:0; overflow:hidden; border-radius:12px; border:1px solid #e2e8f0;">
           <!-- Clickable Header Row -->
           <div onclick="toggleHomeAccordion('home-acc-{{ $o['id'] }}', this)" style="cursor:pointer; padding:1.1rem; user-select:none;">
             <div class="flex-between mb-1" style="align-items:flex-start; gap:10px;">
               <div>
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                  <span style="font-weight:bold; font-size:1.1rem; color:#fff;">Order #{{ strtoupper((string)$o['id']) }}</span>
+                  <span style="font-weight:bold; font-size:1.1rem; color:var(--text-main, #111827);">Order #{{ strtoupper((string)$o['id']) }}</span>
                   <span class="badge" style="font-size:0.65rem; background:{{ $statusBadgeBg }}; color:{{ $statusBadgeFg }}; padding:3px 8px; border-radius:4px; font-weight:700;">{{ $statusBadgeLabel }}</span>
                 </div>
                 
                 <!-- Expected Delivery Date & Sales Person Highlights -->
-                <div style="font-size:0.83rem; color:var(--text-muted); margin-top:6px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                <div style="font-size:0.83rem; color:var(--text-muted, #64748b); margin-top:6px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
                   <span class="highlight-expected-delivery">
                     EXPECTED DELIVERY DATE: {{ !empty($o['dueDate']) && $o['dueDate'] !== 'Not Specified' ? strtoupper($o['dueDate']) : 'NOT SPECIFIED' }}
                   </span>
                   <span>•</span>
-                  <span><strong>Sales By:</strong> <span style="color:var(--primary-light, #F4B400); font-weight:600;">{{ $o['salesPerson'] ?? 'N/A' }}</span></span>
+                  <span><strong>Sales By:</strong> <span style="color:var(--primary, #D88A00); font-weight:600;">{{ $o['salesPerson'] ?? 'N/A' }}</span></span>
                 </div>
               </div>
               <div style="display:flex; align-items:center; gap:10px;">
                 <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action') }}" onclick="event.stopPropagation(); localStorage.setItem('auto_dispatch_id', '{{ $o['id'] }}');" style="width:auto; text-decoration:none; background:{{ $readinessBg }}; color:{{ $readinessFg }}; font-weight:700; padding:4px 12px; border-radius:6px; font-size:0.8rem;">
                   {{ $readinessLabel }}
                 </a>
-                <div class="acc-chevron" style="transition:transform 0.25s ease; color:var(--text-muted); display:flex; align-items:center;">
+                <div class="acc-chevron" style="transition:transform 0.25s ease; color:var(--text-muted, #64748b); display:flex; align-items:center;">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="6 9 12 15 18 9"></polyline>
                   </svg>
@@ -254,11 +254,11 @@
               </div>
             </div>
 
-            <div style="font-size:0.85rem; color:var(--text-muted); line-height:1.5;">
+            <div style="font-size:0.85rem; color:var(--text-muted, #4b5563); line-height:1.5;">
               <strong>Customer:</strong> {{ $o['companyName'] ?? 'N/A' }} <br>
               <strong>Transport:</strong> {{ $o['transporterName'] ?? 'N/A' }}
               @if(!empty($o['notes']))
-                <div style="margin-top:8px; padding:8px 12px; background:rgba(244,180,0,0.06); border-left:3px solid var(--primary-light); border-radius:4px; font-size:0.8rem; color:#fff; word-break:break-word;">
+                <div style="margin-top:8px; padding:8px 12px; background:#fffbeb; border-left:3px solid var(--primary, #D88A00); border-radius:4px; font-size:0.8rem; color:#92400e; word-break:break-word;">
                   <strong>Notes:</strong> {{ $o['notes'] }}
                 </div>
               @endif
@@ -266,40 +266,40 @@
 
             <div style="margin-top:12px;">
               <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:4px;">
-                <span style="color:var(--text-muted);">Dispatch Progress</span>
+                <span style="color:var(--text-muted, #64748b);">Dispatch Progress</span>
                 <span style="color:{{ $progressColor }}; font-weight:bold;">{{ number_format($dispatchedQty, 2) }}/{{ number_format($totalQty, 2) }} kg ({{ $pct }}%)</span>
               </div>
-              <div style="background:rgba(255,255,255,0.1); border-radius:6px; height:6px; overflow:hidden;">
+              <div style="background:#e2e8f0; border-radius:6px; height:6px; overflow:hidden;">
                 <div style="background:{{ $progressColor }}; height:100%; width:{{ $pct }}%; border-radius:6px; transition:width 0.3s;"></div>
               </div>
             </div>
           </div>
 
           <!-- Expandable Products List Drawer -->
-          <div id="home-acc-{{ $o['id'] }}" class="home-accordion-content" style="display:none; padding:1.2rem; border-top:1px solid var(--glass-border, rgba(255,255,255,0.06)); background:rgba(0,0,0,0.02);">
+          <div id="home-acc-{{ $o['id'] }}" class="home-accordion-content" style="display:none; padding:1.2rem; border-top:1px solid #e2e8f0; background:#ffffff;">
             <!-- Key Details Bar -->
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:12px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:12px; padding:10px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
               <div style="background:rgba(2, 132, 199, 0.08); padding:8px 12px; border-radius:8px; border:1px solid rgba(2, 132, 199, 0.25);">
                 <div style="font-size:0.72rem; color:#0284c7; text-transform:uppercase; font-weight:800; letter-spacing:0.3px;">Expected Delivery Date</div>
                 <div style="font-size:1.05rem; font-weight:800; color:#0284c7; margin-top:2px;">{{ !empty($o['dueDate']) && $o['dueDate'] !== 'Not Specified' ? strtoupper($o['dueDate']) : 'NOT SPECIFIED' }}</div>
               </div>
               <div>
-                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Sales By</div>
-                <div style="font-size:0.95rem; font-weight:600; color:var(--primary-light, #F4B400);">{{ $o['salesPerson'] ?? 'N/A' }}</div>
+                <div style="font-size:0.72rem; color:var(--text-muted, #64748b); text-transform:uppercase; font-weight:600;">Sales By</div>
+                <div style="font-size:0.95rem; font-weight:600; color:var(--text-main, #111827);">{{ $o['salesPerson'] ?? 'N/A' }}</div>
               </div>
               <div>
-                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Order Date</div>
-                <div style="font-size:0.95rem; font-weight:500;">{{ \Carbon\Carbon::parse($o['date'])->format('d-m-Y, h:i A') }}</div>
+                <div style="font-size:0.72rem; color:var(--text-muted, #64748b); text-transform:uppercase; font-weight:600;">Order Date</div>
+                <div style="font-size:0.95rem; font-weight:500; color:var(--text-main, #111827);">{{ \Carbon\Carbon::parse($o['date'])->format('d-m-Y, h:i A') }}</div>
               </div>
               <div>
-                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Quantity</div>
+                <div style="font-size:0.72rem; color:var(--text-muted, #64748b); text-transform:uppercase; font-weight:600;">Total Quantity</div>
                 <div style="font-size:0.95rem; font-weight:700; color:var(--primary, #D88A00);">{{ number_format($totalQty, 2) }} kg</div>
               </div>
             </div>
 
             @if(!empty($o['items']) && count($o['items']) > 0)
-              <div style="background:rgba(0,0,0,0.15); border-radius:8px; padding:12px; border-left:3px solid var(--primary, #D88A00);">
-                <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">Order Items & Dispatch Status</div>
+              <div style="background:#ffffff; border-radius:8px; padding:12px; border:1px solid #e2e8f0; border-left:4px solid var(--primary, #D88A00); box-shadow:0 1px 4px rgba(0,0,0,0.03);">
+                <div style="color:var(--text-muted, #64748b); font-size:0.75rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">Order Items & Dispatch Status</div>
                 @foreach($o['items'] as $item)
                   @php
                     $rawName = $item['rawProductName'] ?? $item['productName'] ?? 'Unknown';
@@ -315,17 +315,17 @@
                     $rem = (float)($item['remainingQty'] ?? 0);
                     $fmtQty = fn($val) => (floor($val) == $val ? number_format($val, 0) : number_format($val, 2)) . ' kg';
                   @endphp
-                  <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.88rem; flex-wrap:wrap; gap:12px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:0.88rem; flex-wrap:wrap; gap:12px;">
                     <div style="flex:1; min-width:200px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                      <span style="font-weight:600; color:var(--text-main, #fff);">{{ $pName }}</span>
+                      <span style="font-weight:600; color:var(--text-main, #111827);">{{ $pName }}</span>
                       @if($gName)
                         <strong style="font-weight:800; color:var(--primary, #D88A00);">{{ $gName }}</strong>
                       @endif
-                      <span style="color:var(--text-muted, #9ca3af); font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
+                      <span style="color:var(--text-muted, #64748b); font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
                     </div>
                     <div class="dispatch-item-badges" style="display:grid; grid-template-columns:135px 145px 145px; gap:8px; align-items:center; flex-shrink:0;">
-                      <span style="background:rgba(255,255,255,0.08); padding:4px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.15); font-weight:600; color:var(--text-main, #fff); width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
-                        <span style="color:var(--text-muted, #9ca3af); font-size:0.72rem; font-weight:700;">ORDER:</span>
+                      <span style="background:#f1f5f9; padding:4px 8px; border-radius:6px; border:1px solid #e2e8f0; font-weight:600; color:#1e293b; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                        <span style="color:#64748b; font-size:0.72rem; font-weight:700;">ORDER:</span>
                         <strong style="color:var(--primary, #D88A00);">{{ $fmtQty($tot) }}</strong>
                       </span>
                       <span style="background:rgba(22,163,74,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(22,163,74,0.3); font-weight:700; color:#16a34a; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">

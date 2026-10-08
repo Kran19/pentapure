@@ -90,6 +90,10 @@ Route::middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CA
     Route::get('/order-details/{id}', [\App\Http\Controllers\DispatchController::class, 'getOrderDetails']);
     Route::get('/dispatch/order-details/{id}', [\App\Http\Controllers\DispatchController::class, 'getOrderDetails']);
     Route::get('/dispatch/api/dispatch/order-details/{id}', [\App\Http\Controllers\DispatchController::class, 'getOrderDetails']);
+    Route::post('/dispatch/update/{id}', [\App\Http\Controllers\DispatchController::class, 'updateDispatch']);
+    Route::post('/dispatch/revert/{id}', [\App\Http\Controllers\DispatchController::class, 'revertDispatch']);
+    Route::post('/revert/{id}', [\App\Http\Controllers\DispatchController::class, 'revertDispatch']);
+    Route::post('/dispatch/update-lr', [\App\Http\Controllers\DispatchController::class, 'updateLR']);
     Route::post('/admin/logs/clear', [\App\Http\Controllers\AdminController::class, 'clearLogs']);
     Route::post('/admin/attendance/clear', [\App\Http\Controllers\AttendanceController::class, 'clearAllAttendanceData']);
     Route::post('/attendance/clear', [\App\Http\Controllers\AttendanceController::class, 'clearAllAttendanceData']);
@@ -265,6 +269,15 @@ foreach ($roleSlugs['DISPATCH'] ?? [] as $slug) {
     Route::get('/api/dispatch/order-details/{id}', 'getOrderDetails');
     Route::post('/update-lr', 'updateLR');
     Route::post('/revert/{id}', 'revertDispatch');
+    Route::post('/dispatch/revert/{id}', 'revertDispatch');
+    Route::post('/update/{id}', 'updateDispatch');
+    Route::post('/dispatch/update/{id}', 'updateDispatch');
+    Route::get('/download-lr/{id}', 'downloadLR')->name($slug.'.download_lr');
+    Route::get('/dispatch/download-lr/{id}', 'downloadLR');
+    Route::get('/download-multiple-lr', 'downloadMultipleLR')->name($slug.'.download_multiple_lr');
+    Route::post('/download-multiple-lr', 'downloadMultipleLR');
+    Route::get('/dispatch/download-multiple-lr', 'downloadMultipleLR');
+    Route::post('/dispatch/download-multiple-lr', 'downloadMultipleLR');
     Route::get('/history',  'history')->name($slug.'.history');
     Route::get('/report',   'report')->name($slug.'.report');
     Route::get('/profile',  'profile')->name($slug.'.profile');
@@ -385,10 +398,15 @@ foreach ($adminSlugs as $slug) {
         Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
-    Route::prefix($slug)->middleware('auth.role:ADMIN,SUB_ADMIN')->controller(AdminController::class)->group(function () use ($slug) {
+    Route::prefix($slug)->middleware('auth.role:ADMIN,SUB_ADMIN')->controller(AdminController::class)->group(function () use ($slug, $roleSlugs) {
 
     Route::get('/dashboard',          'dashboard')->name($slug.'.dashboard');
-    Route::get('/home',               'dashboard')->name($slug.'.home');
+    $isSubAdminSlug = in_array($slug, $roleSlugs['SUB_ADMIN'] ?? []) || str_starts_with($slug, 'sub_admin');
+    if ($isSubAdminSlug) {
+        Route::get('/home',           [\App\Http\Controllers\StockManagerController::class, 'home'])->name($slug.'.home');
+    } else {
+        Route::get('/home',           'dashboard')->name($slug.'.home');
+    }
     Route::get('/users',              'users')->name($slug.'.users');
     Route::post('/users',             'storeUser');
     Route::post('/users/toggle',      'toggleUserStatus');
@@ -501,6 +519,15 @@ foreach ($adminSlugs as $slug) {
     Route::post('/dispatch/action',      [DispatchController::class, 'storeDispatch']);
     Route::get('/dispatch/order-details/{id}', [DispatchController::class, 'getOrderDetails']);
     Route::get('/dispatch/history',      [DispatchController::class, 'history'])->name($slug.'.dispatch.history');
+    Route::post('/dispatch/update/{id}', [DispatchController::class, 'updateDispatch']);
+    Route::post('/dispatch/revert/{id}', [DispatchController::class, 'revertDispatch']);
+    Route::post('/dispatch/update-lr',   [DispatchController::class, 'updateLR']);
+    Route::get('/dispatch/download-lr/{id}', [DispatchController::class, 'downloadLR'])->name($slug.'.dispatch.download_lr');
+    Route::get('/download-lr/{id}',          [DispatchController::class, 'downloadLR']);
+    Route::get('/dispatch/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR'])->name($slug.'.dispatch.download_multiple_lr');
+    Route::post('/dispatch/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
+    Route::get('/download-multiple-lr',          [DispatchController::class, 'downloadMultipleLR']);
+    Route::post('/download-multiple-lr',         [DispatchController::class, 'downloadMultipleLR']);
     Route::get('/dispatch/report',       [DispatchController::class, 'report'])->name($slug.'.dispatch.report');
     Route::get('/dispatch/order/pdf/{id}', [HistoryPdfController::class, 'salesOrderPdf']);
     Route::get('/dispatch/pdf/{id}',     [HistoryPdfController::class, 'dispatchNotePdf']);
@@ -622,4 +649,15 @@ Route::middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTE
     Route::get('/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill']);
     Route::get('/{user_slug}/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill']);
     Route::get('/{user_slug}/cashier/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill']);
+    Route::get('/download-lr/{id}', [DispatchController::class, 'downloadLR']);
+    Route::get('/dispatch/download-lr/{id}', [DispatchController::class, 'downloadLR']);
+    Route::get('/{user_slug}/download-lr/{id}', [DispatchController::class, 'downloadLR']);
+    Route::get('/{user_slug}/dispatch/download-lr/{id}', [DispatchController::class, 'downloadLR']);
+    Route::get('/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
+    Route::post('/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
+    Route::get('/dispatch/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
+    Route::post('/dispatch/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
+    Route::get('/{user_slug}/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
+    Route::get('/{user_slug}/dispatch/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
+    Route::post('/{user_slug}/dispatch/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
 });

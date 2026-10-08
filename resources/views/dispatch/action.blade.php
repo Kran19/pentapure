@@ -49,12 +49,12 @@ input[type=number].no-spinners {
 }
 </style>
 
-<div class="card">
-  <div class="card-title">Dispatch Customer Order</div>
+<div class="card" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
+  <div class="card-title" style="color:#111827; font-weight:800;">Dispatch Customer Order</div>
   
   <div class="form-group" style="margin-bottom:1.5rem;">
-    <label>Select Order</label>
-    <select id="dispatch-order" onchange="app.onDispatchOrderSelect(this.value)">
+    <label style="color:#374151; font-weight:700;">Select Order</label>
+    <select id="dispatch-order" onchange="app.onDispatchOrderSelect(this.value)" style="background:#ffffff; border:1.5px solid #d1d5db; color:#111827; padding:0.7rem; border-radius:8px; width:100%; font-weight:600;">
       <option value="" disabled selected>-- Select Order --</option>
       @foreach($pageData['pendingOrders'] as $o)
         <option value="{{ $o['id'] }}">#{{ strtoupper((string)$o['id']) }} - {{ $o['company']['name'] }}</option>
@@ -62,7 +62,7 @@ input[type=number].no-spinners {
     </select>
   </div>
   
-  <div id="order-preview" style="display:none; background:rgba(0,0,0,0.1); padding:1rem; border-radius:8px; margin-bottom:1.5rem; font-size:0.9rem;"></div>
+  <div id="order-preview" style="display:none; background:#ffffff; border:1px solid #e2e8f0; padding:1.2rem; border-radius:12px; margin-bottom:1.5rem; font-size:0.9rem; box-shadow:0 2px 8px rgba(0,0,0,0.03);"></div>
   
   <div id="dispatch-details" style="display:none;">
     <div class="form-group">

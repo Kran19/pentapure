@@ -282,7 +282,7 @@
               </div>
 
               @if($can('stock_manager_home'))
-              <a href="{{ url(request()->segment(1) . '/stock-manager/home') }}" class="nav-item {{ in_array($subSeg2, ['stock-manager', 'stock_manager']) && ($subSeg3=='home' || $subSeg3=='') ? 'active' : '' }}">
+              <a href="{{ url(request()->segment(1) . '/home') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && ($subSeg3=='home' || $subSeg3=='')) || ($seg=='home') ? 'active' : '' }}">
                 Stock Manager Home
               </a>
               @endif
@@ -345,7 +345,7 @@
               </div>
 
               @if($can('admin_dashboard'))
-              <a href="{{ url(request()->segment(1) . '/dashboard') }}" class="nav-item {{ ($seg=='dashboard' || $seg=='home') && !in_array($subSeg2, ['stock-manager', 'stock_manager', 'cashier', 'sales', 'dispatch', 'attendance']) ? 'active' : '' }}">
+              <a href="{{ url(request()->segment(1) . '/dashboard') }}" class="nav-item {{ $seg=='dashboard' ? 'active' : '' }}">
                 Admin Dashboard
               </a>
               @endif

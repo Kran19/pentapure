@@ -468,4 +468,191 @@ class DispatchTest extends TestCase
         $this->assertCount(1, $orderData['items']);
         $this->assertEquals(300, $orderData['items'][0]['remainingQty']);
     }
+
+    public function test_dispatch_quantity_can_be_updated_and_stock_adjusted(): void
+    {
+        $session = ['auth_user' => [
+            'id'   => $this->dispatchUser->id,
+            'name' => $this->dispatchUser->name,
+            'role' => 'DISPATCH',
+        ]];
+
+        // 1. Dispatch 100 kg initially
+        $postResp = $this->withSession($session)->postJson('/dispatch/action', [
+            'order_id' => $this->order->id,
+            'items'    => [
+                [
+                    'order_item_id' => $this->orderItem->id,
+                    'quantity'      => 100,
+                    'location_splits' => [
+                        ['location_key' => $this->location->name, 'dispatch_location_qty' => 100]
+                    ]
+                ]
+            ]
+        ]);
+        $postResp->assertStatus(200);
+        $postResp->assertJson(['success' => true]);
+
+        $log = DispatchLog::where('order_id', $this->order->id)->latest()->first();
+        $this->assertNotNull($log);
+        $logItem = $log->dispatchItems->first();
+        $this->assertEquals(100, (float) $logItem->quantity);
+
+        $this->orderItem->refresh();
+        $this->assertEquals(100, (float) $this->orderItem->dispatched_qty);
+        $this->assertEquals(200, $this->orderItem->remainingQty());
+
+        // 2. Update dispatched quantity from 100 kg to 150 kg
+        $updateResp = $this->withSession($session)->postJson("/dispatch/update/{$log->id}", [
+            'items' => [
+                [
+                    'dispatch_item_id' => $logItem->id,
+                    'quantity'         => 150,
+                    'location_splits'  => [
+                        ['location_key' => $this->location->name, 'dispatch_location_qty' => 150]
+                    ]
+                ]
+            ],
+            'notes' => 'Updated quantity to 150'
+        ]);
+        $updateResp->assertStatus(200);
+        $updateResp->assertJson(['success' => true]);
+
+        // 3. Verify dispatch log item, order item, and remaining quantities
+        $logItem->refresh();
+        $this->assertEquals(150, (float) $logItem->quantity);
+
+        $this->orderItem->refresh();
+        $this->assertEquals(150, (float) $this->orderItem->dispatched_qty);
+        $this->assertEquals(150, $this->orderItem->remainingQty());
+
+        $this->order->refresh();
+        $this->assertEquals('PARTIAL PENDING', $this->order->dispatch_status);
+        $this->assertEquals('OPEN', $this->order->status);
+
+        // 4. Verify total stock deductions net 150 kg
+        $totalOut = Stock::where('product_id', $this->finishedProduct->id)
+            ->where('transaction_type', 'OUT')
+            ->sum('quantity');
+        $this->assertEquals(150, (float) $totalOut);
+    }
+
+    public function test_dispatch_quantity_update_exceeding_order_limit_fails(): void
+    {
+        $session = ['auth_user' => [
+            'id'   => $this->dispatchUser->id,
+            'name' => $this->dispatchUser->name,
+            'role' => 'DISPATCH',
+        ]];
+
+        // Dispatch 100 kg initially
+        $this->withSession($session)->postJson('/dispatch/action', [
+            'order_id' => $this->order->id,
+            'items'    => [
+                [
+                    'order_item_id' => $this->orderItem->id,
+                    'quantity'      => 100,
+                    'location_splits' => [
+                        ['location_key' => $this->location->name, 'dispatch_location_qty' => 100]
+                    ]
+                ]
+            ]
+        ]);
+
+        $log = DispatchLog::where('order_id', $this->order->id)->latest()->first();
+        $logItem = $log->dispatchItems->first();
+
+        // Attempting to update to 350 kg (order total is only 300 kg)
+        $resp = $this->withSession($session)->postJson("/dispatch/update/{$log->id}", [
+            'items' => [
+                [
+                    'dispatch_item_id' => $logItem->id,
+                    'quantity'         => 350,
+                ]
+            ]
+        ]);
+        $resp->assertStatus(422);
+        $resp->assertJson(['success' => false]);
+        $this->assertStringContainsString('Maximum allowed', $resp->json('message'));
+    }
+
+    public function test_dispatch_quantity_update_to_full_order_marks_order_as_done(): void
+    {
+        $session = ['auth_user' => [
+            'id'   => $this->dispatchUser->id,
+            'name' => $this->dispatchUser->name,
+            'role' => 'DISPATCH',
+        ]];
+
+        // Dispatch 100 kg initially
+        $this->withSession($session)->postJson('/dispatch/action', [
+            'order_id' => $this->order->id,
+            'items'    => [
+                [
+                    'order_item_id' => $this->orderItem->id,
+                    'quantity'      => 100,
+                ]
+            ]
+        ]);
+
+        $log = DispatchLog::where('order_id', $this->order->id)->latest()->first();
+        $logItem = $log->dispatchItems->first();
+
+        // Update to 300 kg (full order total)
+        $resp = $this->withSession($session)->postJson("/dispatch/update/{$log->id}", [
+            'items' => [
+                [
+                    'dispatch_item_id' => $logItem->id,
+                    'quantity'         => 300,
+                ]
+            ]
+        ]);
+        $resp->assertStatus(200);
+        $resp->assertJson(['success' => true]);
+
+        $this->order->refresh();
+        $this->assertEquals('DONE', $this->order->dispatch_status);
+        $this->assertEquals('CLOSED', $this->order->status);
+
+        // Now reduce back to 200 kg and verify order reopens
+        $resp2 = $this->withSession($session)->postJson("/dispatch/update/{$log->id}", [
+            'items' => [
+                [
+                    'dispatch_item_id' => $logItem->id,
+                    'quantity'         => 200,
+                ]
+            ]
+        ]);
+        $resp2->assertStatus(200);
+        $resp2->assertJson(['success' => true]);
+
+        $this->order->refresh();
+        $this->assertEquals('PARTIAL PENDING', $this->order->dispatch_status);
+        $this->assertEquals('OPEN', $this->order->status);
+    }
+
+    public function test_dispatch_history_renders_edit_qty_buttons(): void
+    {
+        $session = ['auth_user' => [
+            'id'   => $this->dispatchUser->id,
+            'name' => $this->dispatchUser->name,
+            'role' => 'DISPATCH',
+        ]];
+
+        $this->withSession($session)->postJson('/dispatch/action', [
+            'order_id' => $this->order->id,
+            'items'    => [
+                [
+                    'order_item_id' => $this->orderItem->id,
+                    'quantity'      => 100,
+                ]
+            ]
+        ]);
+
+        $resp = $this->withSession($session)->get('/dispatch/history');
+        $resp->assertStatus(200);
+        $content = $resp->getContent();
+        $this->assertStringContainsString('Edit Qty', $content);
+        $this->assertStringContainsString('openEditDispatchModal', $content);
+    }
 }
