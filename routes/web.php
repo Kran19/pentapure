@@ -457,11 +457,16 @@ foreach ($adminSlugs as $slug) {
     Route::post('/attendance/history/worker/{id}/adjust', [AttendanceController::class, 'updateMonthlyAdjustment'])->name($slug.'.attendance.history.worker.adjust');
     Route::post('/attendance/history/worker/{id}/toggle-paid', [AttendanceController::class, 'togglePaymentStatus'])->name($slug.'.attendance.history.worker.toggle-paid');
     Route::get('/attendance/history/worker/{id}/pdf', [AttendanceController::class, 'workerMonthlySalaryPdf'])->name($slug.'.attendance.history.worker.pdf');
-    // ── Integrated Sub-Admin Panel Routes ──────────────────────────────
     Route::get('/cashier/action',        [CashierController::class, 'action'])->name($slug.'.cashier.action');
     Route::post('/cashier/action',       [CashierController::class, 'storeTransaction']);
+    Route::put('/cashier/action/{id}',   [CashierController::class, 'updateTransaction'])->name($slug.'.cashier.action.update');
+    Route::delete('/cashier/action/{id}',[CashierController::class, 'destroyTransaction'])->name($slug.'.cashier.action.destroy');
+    Route::put('/action/{id}',           [CashierController::class, 'updateTransaction']);
+    Route::delete('/action/{id}',        [CashierController::class, 'destroyTransaction']);
     Route::get('/cashier/history',       [CashierController::class, 'history'])->name($slug.'.cashier.history');
     Route::get('/cashier/ledger',        [CashierController::class, 'ledger'])->name($slug.'.cashier.ledger');
+    Route::delete('/bill/{id}',          [CashierController::class, 'destroyBill'])->name($slug.'.bill.destroy');
+    Route::post('/bill/upload',          [CashierController::class, 'uploadBill'])->name($slug.'.bill.upload');
 
     Route::get('/sales/home',            [SalesController::class, 'home'])->name($slug.'.sales.home');
     Route::get('/sales/action',          [SalesController::class, 'action'])->name($slug.'.sales.action');

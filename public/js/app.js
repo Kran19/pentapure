@@ -2851,6 +2851,9 @@ const app = {
   },
 
   deleteTransaction(id) {
+    if (window.isReadOnly) {
+      return this.toast('You have View-Only permission. Deleting transactions is disabled.', 'error');
+    }
     Swal.fire({
       title: 'Delete Transaction?',
       text: 'Are you sure you want to completely delete this transaction? This action is permanent and will affect the balance.',
@@ -2864,9 +2867,16 @@ const app = {
     }).then(result => {
       if (!result.isConfirmed) return;
       const currentSlug = this.getCurrentSlug('cashier');
-      fetch(`${this.getBaseUrl()}/${currentSlug}/action/${id}`, {
+      const deleteUrl = (currentSlug === 'admin' || currentSlug.startsWith('sub_admin'))
+        ? `${this.getBaseUrl()}/${currentSlug}/cashier/action/${id}`
+        : `${this.getBaseUrl()}/${currentSlug}/action/${id}`;
+
+      fetch(deleteUrl, {
         method: 'DELETE',
-        headers: { 'X-CSRF-TOKEN': window.csrfToken || csrfToken }
+        headers: { 
+          'X-CSRF-TOKEN': window.csrfToken || csrfToken,
+          'Accept': 'application/json'
+        }
       })
       .then(r => r.json())
       .then(d => {
@@ -2876,7 +2886,8 @@ const app = {
         } else {
           this.toast(d.message || 'Delete failed', 'error');
         }
-      });
+      })
+      .catch(() => this.toast('Error deleting transaction', 'error'));
     });
   },
 
