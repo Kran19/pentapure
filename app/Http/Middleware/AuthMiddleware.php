@@ -67,8 +67,24 @@ class AuthMiddleware
                 }
             }
 
-            // Strict independent module check - permissions are single and discrete
-            $keysToCheck = [$moduleKey];
+            // Check module equivalents so admin and stock_manager permissions align
+            $moduleEquivalents = [
+                'admin_stock' => ['admin_stock', 'stock_manager_stock'],
+                'stock_manager_stock' => ['stock_manager_stock', 'admin_stock'],
+                'admin_products' => ['admin_products', 'stock_manager_products'],
+                'stock_manager_products' => ['stock_manager_products', 'admin_products'],
+                'admin_grades' => ['admin_grades', 'stock_manager_grades'],
+                'stock_manager_grades' => ['stock_manager_grades', 'admin_grades'],
+                'admin_locations' => ['admin_locations', 'stock_manager_locations'],
+                'stock_manager_locations' => ['stock_manager_locations', 'admin_locations'],
+                'admin_po' => ['admin_po', 'stock_manager_po'],
+                'stock_manager_po' => ['stock_manager_po', 'admin_po'],
+                'admin_categories' => ['admin_categories', 'cashier_categories'],
+                'cashier_categories' => ['cashier_categories', 'admin_categories'],
+                'stock_manager_home' => ['stock_manager_home', 'admin_dashboard'],
+                'admin_dashboard' => ['admin_dashboard', 'stock_manager_home'],
+            ];
+            $keysToCheck = $moduleEquivalents[$moduleKey] ?? [$moduleKey];
 
             // 1. Check Edit (Write) Access
             $hasEdit = false;
@@ -113,7 +129,7 @@ class AuthMiddleware
             }
 
             if (!$hasAnyModulePerm && empty($normalizedPerms)) {
-                if ($user['role'] === 'STOCK_MANAGER' && str_starts_with($moduleKey, 'stock_manager_')) {
+                if ($user['role'] === 'STOCK_MANAGER' && (str_starts_with($moduleKey, 'stock_manager_') || in_array($moduleKey, ['admin_categories', 'cashier_categories']))) {
                     $hasView = true;
                     $hasEdit = true;
                 } elseif ($user['role'] === 'SUB_ADMIN' && in_array($moduleKey, ['admin_dashboard', 'stock_manager_home'])) {
@@ -264,6 +280,8 @@ class AuthMiddleware
 
         // 6. Admin Panel routes (or under admin / sub_admin prefix)
         if (in_array($section, ['home', 'dashboard', ''])) return 'admin_dashboard';
+        if (in_array($section, ['action', 'outward'])) return 'stock_manager_action';
+        if (in_array($section, ['history'])) return 'stock_manager_history';
         if (in_array($section, ['users'])) return 'admin_users';
         if (in_array($section, ['products'])) return 'admin_products';
         if (in_array($section, ['stock'])) return 'admin_stock';
@@ -291,15 +309,15 @@ class AuthMiddleware
             'admin_dashboard'         => '/' . $slug . '/dashboard',
             'admin_users'             => '/' . $slug . '/users',
             'admin_stock'             => '/' . $slug . '/stock',
-            'stock_manager_stock'     => '/' . $slug . '/stock',
+            'stock_manager_stock'     => $isSubAdmin ? '/' . $slug . '/stock-manager/stock' : '/stock_manager/stock',
             'admin_products'          => '/' . $slug . '/products',
-            'stock_manager_products'  => '/' . $slug . '/products',
+            'stock_manager_products'  => $isSubAdmin ? '/' . $slug . '/stock-manager/products' : '/stock_manager/products',
             'admin_grades'            => '/' . $slug . '/grades',
-            'stock_manager_grades'    => '/' . $slug . '/grades',
+            'stock_manager_grades'    => $isSubAdmin ? '/' . $slug . '/stock-manager/grades' : '/stock_manager/grades',
             'admin_locations'         => '/' . $slug . '/locations',
-            'stock_manager_locations' => '/' . $slug . '/locations',
+            'stock_manager_locations' => $isSubAdmin ? '/' . $slug . '/stock-manager/locations' : '/stock_manager/locations',
             'admin_po'                => '/' . $slug . '/po',
-            'stock_manager_po'        => '/' . $slug . '/po',
+            'stock_manager_po'        => $isSubAdmin ? '/' . $slug . '/stock-manager/po' : '/stock_manager/po',
             'admin_dispatch_activity' => '/' . $slug . '/dispatch-activity',
             'admin_cashier_overview'  => '/' . $slug . '/cashier-overview',
             'admin_categories'        => '/' . $slug . '/categories',
@@ -315,7 +333,7 @@ class AuthMiddleware
             'dispatch_action'         => $isSubAdmin ? '/' . $slug . '/dispatch/action' : '/dispatch/action',
             'dispatch_history'        => $isSubAdmin ? '/' . $slug . '/dispatch/history' : '/dispatch/history',
             'dispatch_report'         => $isSubAdmin ? '/' . $slug . '/dispatch/report' : '/dispatch/report',
-            'stock_manager_home'      => $isSubAdmin ? '/' . $slug . '/home' : '/stock_manager/home',
+            'stock_manager_home'      => $isSubAdmin ? '/' . $slug . '/stock-manager/home' : '/stock_manager/home',
             'stock_manager_action'    => $isSubAdmin ? '/' . $slug . '/stock-manager/action' : '/stock_manager/action',
             'stock_manager_history'   => $isSubAdmin ? '/' . $slug . '/stock-manager/history' : '/stock_manager/history',
             'attendance_dashboard'    => $isSubAdmin ? '/' . $slug . '/attendance/dashboard' : '/attendance/dashboard',

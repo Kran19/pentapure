@@ -492,13 +492,50 @@ foreach ($adminSlugs as $slug) {
     Route::get('/dispatch/order/pdf/{id}', [HistoryPdfController::class, 'salesOrderPdf']);
     Route::get('/dispatch/pdf/{id}',     [HistoryPdfController::class, 'dispatchNotePdf']);
 
+    // Stock Manager routes for Admin & Sub-Admin (direct and sub-panel aliases)
+    Route::get('/action',                [\App\Http\Controllers\StockManagerController::class, 'action'])->name($slug.'.action');
+    Route::post('/action',               [\App\Http\Controllers\StockManagerController::class, 'storeInward'])->name($slug.'.action.store');
+    Route::post('/outward',              [\App\Http\Controllers\StockManagerController::class, 'storeOutward'])->name($slug.'.action.outward');
+    Route::get('/history',               [\App\Http\Controllers\StockManagerController::class, 'history']);
+    Route::delete('/history/{id}',       [\App\Http\Controllers\StockManagerController::class, 'destroyHistory'])->name($slug.'.history.destroy');
+    Route::post('/history/clear',        [\App\Http\Controllers\StockManagerController::class, 'clearHistory'])->name($slug.'.history.clear');
+    Route::post('/po',                   [\App\Http\Controllers\StockManagerController::class, 'storePO']);
+    Route::post('/po/{id}',              [\App\Http\Controllers\StockManagerController::class, 'updatePO']);
+
     Route::get('/stock-manager/home',    [\App\Http\Controllers\StockManagerController::class, 'home'])->name($slug.'.stock_manager.home');
     Route::get('/stock-manager/action',  [\App\Http\Controllers\StockManagerController::class, 'action'])->name($slug.'.stock_manager.action');
     Route::post('/stock-manager/action', [\App\Http\Controllers\StockManagerController::class, 'storeInward']);
     Route::post('/stock-manager/outward',[\App\Http\Controllers\StockManagerController::class, 'storeOutward']);
     Route::get('/stock-manager/stock',   [\App\Http\Controllers\StockManagerController::class, 'stock'])->name($slug.'.stock_manager.stock');
     Route::get('/stock-manager/po',      [\App\Http\Controllers\StockManagerController::class, 'po'])->name($slug.'.stock_manager.po');
+    Route::post('/stock-manager/po',     [\App\Http\Controllers\StockManagerController::class, 'storePO']);
+    Route::post('/stock-manager/po/receive', [\App\Http\Controllers\StockManagerController::class, 'receivePO']);
+    Route::post('/stock-manager/po/{id}',[\App\Http\Controllers\StockManagerController::class, 'updatePO']);
+    Route::delete('/stock-manager/po/{id}', [\App\Http\Controllers\StockManagerController::class, 'destroyPO']);
     Route::get('/stock-manager/history', [\App\Http\Controllers\StockManagerController::class, 'history'])->name($slug.'.stock_manager.history');
+    Route::delete('/stock-manager/history/{id}', [\App\Http\Controllers\StockManagerController::class, 'destroyHistory']);
+    Route::post('/stock-manager/history/clear',   [\App\Http\Controllers\StockManagerController::class, 'clearHistory']);
+    Route::get('/stock-manager/products', [AdminController::class, 'products'])->name($slug.'.stock_manager.products');
+    Route::get('/stock-manager/grades',   [AdminController::class, 'grades'])->name($slug.'.stock_manager.grades');
+    Route::get('/stock-manager/locations',[AdminController::class, 'locations'])->name($slug.'.stock_manager.locations');
+
+    // Underscore aliases for Stock Manager routes (/stock_manager/*)
+    Route::get('/stock_manager/home',    [\App\Http\Controllers\StockManagerController::class, 'home']);
+    Route::get('/stock_manager/action',  [\App\Http\Controllers\StockManagerController::class, 'action']);
+    Route::post('/stock_manager/action', [\App\Http\Controllers\StockManagerController::class, 'storeInward']);
+    Route::post('/stock_manager/outward',[\App\Http\Controllers\StockManagerController::class, 'storeOutward']);
+    Route::get('/stock_manager/stock',   [\App\Http\Controllers\StockManagerController::class, 'stock']);
+    Route::get('/stock_manager/po',      [\App\Http\Controllers\StockManagerController::class, 'po']);
+    Route::post('/stock_manager/po',     [\App\Http\Controllers\StockManagerController::class, 'storePO']);
+    Route::post('/stock_manager/po/receive', [\App\Http\Controllers\StockManagerController::class, 'receivePO']);
+    Route::post('/stock_manager/po/{id}',[\App\Http\Controllers\StockManagerController::class, 'updatePO']);
+    Route::delete('/stock_manager/po/{id}', [\App\Http\Controllers\StockManagerController::class, 'destroyPO']);
+    Route::get('/stock_manager/history', [\App\Http\Controllers\StockManagerController::class, 'history']);
+    Route::delete('/stock_manager/history/{id}', [\App\Http\Controllers\StockManagerController::class, 'destroyHistory']);
+    Route::post('/stock_manager/history/clear',   [\App\Http\Controllers\StockManagerController::class, 'clearHistory']);
+    Route::get('/stock_manager/products', [AdminController::class, 'products']);
+    Route::get('/stock_manager/grades',   [AdminController::class, 'grades']);
+    Route::get('/stock_manager/locations',[AdminController::class, 'locations']);
     });
 
     // Admin can also generate any cashier's PDF

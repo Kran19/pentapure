@@ -65,7 +65,7 @@ class SubAdminPermissionsTest extends TestCase
             ->get('/sub_admin/stock-manager/action');
 
         $response->assertStatus(200);
-        $response->assertSee('Stock Inward / Action');
+        $response->assertSee('Stock Action');
     }
 
     public function test_sub_admin_with_cashier_ledger_can_access_and_see_in_sidebar()
@@ -104,4 +104,216 @@ class SubAdminPermissionsTest extends TestCase
 
         $response->assertStatus(403);
     }
+
+    public function test_sub_admin_can_submit_inward_action_via_sub_admin_action_route()
+    {
+        $product = \App\Models\Product::create([
+            'name' => 'Test Amchur Giant',
+            'type' => 'RAW',
+            'unit' => 'kg',
+            'is_active' => true,
+        ]);
+        \App\Models\Location::firstOrCreate(['name' => 'Cold Storage']);
+
+        $subAdmin = User::create([
+            'name' => 'Inward Sub Admin',
+            'username' => 'inward_subadmin',
+            'phone' => '+91 9898000015',
+            'password' => Hash::make('password123'),
+            'role' => 'SUB_ADMIN',
+            'status' => 'ACTIVE',
+            'permissions' => ['view_stock_manager_action', 'edit_stock_manager_action']
+        ]);
+
+        $response = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->postJson('/sub_admin/action', [
+                'product_id' => $product->id,
+                'stage' => 'RAW',
+                'grade' => 'ALL',
+                'location_splits' => [
+                    ['location' => 'Cold Storage', 'quantity' => 200]
+                ],
+                'notes' => 'Testing inward via /sub_admin/action'
+            ]);
+
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('stocks', [
+            'product_id' => $product->id,
+            'quantity' => 200,
+            'transaction_type' => 'IN',
+        ]);
+    }
+
+    public function test_sub_admin_can_submit_inward_action_via_sub_admin_stock_manager_action_route()
+    {
+        $product = \App\Models\Product::create([
+            'name' => 'Test Amchur Giant 2',
+            'type' => 'RAW',
+            'unit' => 'kg',
+            'is_active' => true,
+        ]);
+        \App\Models\Location::firstOrCreate(['name' => 'Cold Storage']);
+
+        $subAdmin = User::create([
+            'name' => 'Inward Sub Admin 2',
+            'username' => 'inward_subadmin2',
+            'phone' => '+91 9898000016',
+            'password' => Hash::make('password123'),
+            'role' => 'SUB_ADMIN',
+            'status' => 'ACTIVE',
+            'permissions' => ['view_stock_manager_action', 'edit_stock_manager_action']
+        ]);
+
+        $response = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->postJson('/sub_admin/stock-manager/action', [
+                'product_id' => $product->id,
+                'stage' => 'RAW',
+                'grade' => 'ALL',
+                'location_splits' => [
+                    ['location' => 'Cold Storage', 'quantity' => 150]
+                ],
+                'notes' => 'Testing inward via /sub_admin/stock-manager/action'
+            ]);
+
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('stocks', [
+            'product_id' => $product->id,
+            'quantity' => 150,
+            'transaction_type' => 'IN',
+        ]);
+    }
+
+    public function test_sub_admin_can_submit_outward_action_via_sub_admin_outward_route()
+    {
+        $product = \App\Models\Product::create([
+            'name' => 'Test Amchur Giant Outward',
+            'type' => 'RAW',
+            'unit' => 'kg',
+            'is_active' => true,
+        ]);
+        $loc = \App\Models\Location::firstOrCreate(['name' => 'Cold Storage']);
+
+        $subAdmin = User::create([
+            'name' => 'Outward Sub Admin',
+            'username' => 'outward_subadmin',
+            'phone' => '+91 9898000017',
+            'password' => Hash::make('password123'),
+            'role' => 'SUB_ADMIN',
+            'status' => 'ACTIVE',
+            'permissions' => ['view_stock_manager_action', 'edit_stock_manager_action']
+        ]);
+
+        // Seed initial IN stock
+        \App\Models\Stock::create([
+            'product_id' => $product->id,
+            'stage' => 'RAW',
+            'grade' => 'ALL',
+            'location_id' => $loc->id,
+            'quantity' => 500,
+            'transaction_type' => 'IN',
+            'user_id' => $subAdmin->id,
+        ]);
+
+        $response = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->postJson('/sub_admin/outward', [
+                'product_id' => $product->id,
+                'stage' => 'RAW',
+                'grade' => 'ALL',
+                'location_splits' => [
+                    ['location' => 'Cold Storage', 'quantity' => 100]
+                ],
+                'notes' => 'Testing outward via /sub_admin/outward'
+            ]);
+
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('stocks', [
+            'product_id' => $product->id,
+            'quantity' => 100,
+            'transaction_type' => 'OUT',
+        ]);
+    }
+
+    public function test_sub_admin_with_all_stock_manager_permissions_sees_all_8_pages_in_sidebar()
+    {
+        $perms = [
+            'view_stock_manager_home',
+            'view_stock_manager_action',
+            'view_stock_manager_stock',
+            'view_stock_manager_po',
+            'view_stock_manager_history',
+            'view_stock_manager_products',
+            'view_stock_manager_grades',
+            'view_stock_manager_locations',
+        ];
+
+        $subAdmin = User::create([
+            'name' => 'All Stock Sub Admin',
+            'username' => 'all_stock_subadmin',
+            'phone' => '+91 9898000018',
+            'password' => Hash::make('password123'),
+            'role' => 'SUB_ADMIN',
+            'status' => 'ACTIVE',
+            'permissions' => $perms,
+        ]);
+
+        $response = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->get('/sub_admin/stock-manager/home');
+
+        $response->assertStatus(200);
+        $response->assertSee('Stock Manager Panel');
+        $response->assertSee('Stock Manager Home');
+        $response->assertSee('Stock Action');
+        $response->assertSee('Live Stock View');
+        $response->assertSee('Purchase Orders');
+        $response->assertSee('Stock Manager History');
+        $response->assertSee('Products Master');
+        $response->assertSee('Grades Master');
+        $response->assertSee('Storage Location');
+
+        // Unpermitted panels should not show
+        $response->assertDontSee('Sales Panel');
+        $response->assertDontSee('Dispatch Panel');
+        $response->assertDontSee('Cashier Panel');
+    }
+
+    public function test_sub_admin_with_dispatch_panel_permissions_sees_all_4_dispatch_pages_in_sidebar()
+    {
+        $perms = [
+            'view_dispatch_home',
+            'view_dispatch_action',
+            'view_dispatch_history',
+            'view_dispatch_report',
+        ];
+
+        $subAdmin = User::create([
+            'name' => 'Dispatch Sub Admin',
+            'username' => 'dispatch_subadmin',
+            'phone' => '+91 9898000019',
+            'password' => Hash::make('password123'),
+            'role' => 'SUB_ADMIN',
+            'status' => 'ACTIVE',
+            'permissions' => $perms,
+        ]);
+
+        $response = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->get('/sub_admin/dispatch/home');
+
+        $response->assertStatus(200);
+        $response->assertSee('Dispatch Panel');
+        $response->assertSee('Dispatch Dashboard');
+        $response->assertSee('Dispatch Action / Entry');
+        $response->assertSee('Dispatch History');
+        $response->assertSee('Dispatch Report');
+
+        // Stock Manager and Cashier panels should not show
+        $response->assertDontSee('Stock Manager Panel');
+        $response->assertDontSee('Cashier Panel');
+    }
 }
+

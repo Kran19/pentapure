@@ -250,8 +250,323 @@
             </a>
             @endif
 
+          @elseif($role === 'SUB_ADMIN')
+            @php
+              $hasAdminPanel = $can('admin_dashboard') || $can('admin_users') || $can('admin_products') || 
+                               $can('admin_stock') || $can('admin_po') || $can('admin_logs') || 
+                               $can('admin_grades') || $can('admin_locations') || $can('admin_dispatch_activity') || 
+                               $can('admin_cashier_overview') || $can('admin_categories') || $can('admin_notifications');
+
+              $hasCashierPanel = $can('cashier_action') || $can('cashier_history') || $can('cashier_ledger');
+
+              $hasSalesPanel = $can('sales_home') || $can('sales_action') || $can('sales_history');
+
+              $hasDispatchPanel = $can('dispatch_home') || $can('dispatch_action') || $can('dispatch_history') || $can('dispatch_report');
+
+              $hasStockManagerPanel = $can('stock_manager_home') || $can('stock_manager_action') || $can('stock_manager_stock') || 
+                                     $can('stock_manager_po') || $can('stock_manager_history') || $can('stock_manager_products') || 
+                                     $can('stock_manager_grades') || $can('stock_manager_locations');
+
+              $hasAttendancePanel = $can('attendance_dashboard') || $can('attendance_departments') || $can('attendance_workers') || 
+                                    $can('attendance_daily') || $can('attendance_reports');
+
+              $subSeg2 = request()->segment(2) ?? '';
+              $subSeg3 = request()->segment(3) ?? '';
+            @endphp
+
+            {{-- 1. Admin Panel Group --}}
+            @if($hasAdminPanel)
+            <div class="sidebar-panel-group">
+              <div style="font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); padding:0.6rem 0.8rem 0.2rem; display:flex; align-items:center; gap:6px;">
+                <span>🏢 Admin Panel</span>
+              </div>
+
+              @if($can('admin_dashboard'))
+              <a href="{{ url(request()->segment(1) . '/dashboard') }}" class="nav-item {{ ($seg=='dashboard' || $seg=='home') && !in_array($subSeg2, ['stock-manager', 'stock_manager', 'cashier', 'sales', 'dispatch', 'attendance']) ? 'active' : '' }}">
+                Admin Dashboard
+              </a>
+              @endif
+
+              @if($can('admin_users'))
+              <a href="{{ url(request()->segment(1) . '/users') }}" class="nav-item {{ $seg=='users'?'active':'' }}">
+                Users &amp; Hierarchy
+              </a>
+              @endif
+
+              @if($can('admin_products'))
+              <a href="{{ url(request()->segment(1) . '/products') }}" class="nav-item {{ $seg=='products' && !in_array($subSeg2, ['stock-manager', 'stock_manager']) ? 'active' : '' }}">
+                Products Master
+              </a>
+              @endif
+
+              @if($can('admin_stock'))
+              <a href="{{ url(request()->segment(1) . '/stock') }}" class="nav-item {{ $seg=='stock' && !in_array($subSeg2, ['stock-manager', 'stock_manager']) ? 'active' : '' }}">
+                <span>Live Stock</span>
+                @if(($sidebarLowStockCount ?? 0) > 0)
+                  <span class="sidebar-badge badge-warning" title="{{ $sidebarLowStockCount }} low stock alert(s)">{{ $sidebarLowStockCount }}</span>
+                @endif
+              </a>
+              @endif
+
+              @if($can('admin_po'))
+              <a href="{{ url(request()->segment(1) . '/po') }}" class="nav-item {{ $seg=='po' && !in_array($subSeg2, ['stock-manager', 'stock_manager']) ? 'active' : '' }}">
+                <span>Purchase Requests</span>
+                @if(($sidebarPendingPoCount ?? 0) > 0)
+                  <span class="sidebar-badge badge-danger" title="{{ $sidebarPendingPoCount }} pending purchase request(s)">{{ $sidebarPendingPoCount }}</span>
+                @endif
+              </a>
+              @endif
+
+              @if($can('admin_logs'))
+              <a href="{{ url(request()->segment(1) . '/logs') }}" class="nav-item {{ $seg=='logs'?'active':'' }}">
+                Activity Logs
+              </a>
+              @endif
+
+              @if($can('admin_grades'))
+              <a href="{{ url(request()->segment(1) . '/grades') }}" class="nav-item {{ $seg=='grades' && !in_array($subSeg2, ['stock-manager', 'stock_manager']) ? 'active' : '' }}">
+                Grades Master
+              </a>
+              @endif
+
+              @if($can('admin_locations'))
+              <a href="{{ url(request()->segment(1) . '/locations') }}" class="nav-item {{ $seg=='locations' && !in_array($subSeg2, ['stock-manager', 'stock_manager']) ? 'active' : '' }}">
+                Storage Location
+              </a>
+              @endif
+
+              @if($can('admin_dispatch_activity'))
+              <a href="{{ url(request()->segment(1) . '/dispatch-activity') }}" class="nav-item {{ $seg=='dispatch-activity'?'active':'' }}">
+                <span>Dispatch Overview</span>
+                @if(($sidebarPendingDispatchCount ?? 0) > 0)
+                  <span class="sidebar-badge badge-warning" title="{{ $sidebarPendingDispatchCount }} pending dispatch order(s)">{{ $sidebarPendingDispatchCount }}</span>
+                @endif
+              </a>
+              @endif
+
+              @if($can('admin_cashier_overview'))
+              <a href="{{ url(request()->segment(1) . '/cashier-overview') }}" class="nav-item {{ $seg=='cashier-overview'?'active':'' }}">
+                Cashier Overview
+              </a>
+              @endif
+
+              @if($can('admin_categories'))
+              <a href="{{ url(request()->segment(1) . '/categories') }}" class="nav-item {{ $seg=='categories'?'active':'' }}">
+                Categories
+              </a>
+              @endif
+
+              @if($can('admin_notifications'))
+              <a href="{{ url(request()->segment(1) . '/notifications') }}" class="nav-item {{ $seg=='notifications'?'active':'' }}">
+                <span>Notifications</span>
+                @if(($sidebarUnreadNotifCount ?? 0) > 0)
+                  <span class="sidebar-badge badge-danger" title="{{ $sidebarUnreadNotifCount }} unread notification(s)">{{ $sidebarUnreadNotifCount }}</span>
+                @endif
+              </a>
+              @endif
+            </div>
+            @endif
+
+            {{-- 2. Cashier Panel Group --}}
+            @if($hasCashierPanel)
+            <div class="sidebar-panel-group">
+              <div style="font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); padding:0.6rem 0.8rem 0.2rem; margin-top:0.4rem; display:flex; align-items:center; gap:6px; border-top:1px solid var(--glass-border);">
+                <span>💵 Cashier Panel</span>
+              </div>
+
+              @if($can('cashier_action'))
+              <a href="{{ url(request()->segment(1) . '/cashier/action') }}" class="nav-item {{ $subSeg2=='cashier' && $subSeg3=='action' ? 'active' : '' }}">
+                Cashier Action / Entry
+              </a>
+              @endif
+
+              @if($can('cashier_history'))
+              <a href="{{ url(request()->segment(1) . '/cashier/history') }}" class="nav-item {{ $subSeg2=='cashier' && $subSeg3=='history' ? 'active' : '' }}">
+                Cashier History
+              </a>
+              @endif
+
+              @if($can('cashier_ledger'))
+              <a href="{{ url(request()->segment(1) . '/cashier/ledger') }}" class="nav-item {{ $subSeg2=='cashier' && $subSeg3=='ledger' ? 'active' : '' }}">
+                Cashier Ledger
+              </a>
+              @endif
+            </div>
+            @endif
+
+            {{-- 3. Sales Panel Group --}}
+            @if($hasSalesPanel)
+            <div class="sidebar-panel-group">
+              <div style="font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); padding:0.6rem 0.8rem 0.2rem; margin-top:0.4rem; display:flex; align-items:center; gap:6px; border-top:1px solid var(--glass-border);">
+                <span>📈 Sales Panel</span>
+              </div>
+
+              @if($can('sales_home'))
+              <a href="{{ url(request()->segment(1) . '/sales/home') }}" class="nav-item {{ $subSeg2=='sales' && ($subSeg3=='home' || $subSeg3=='') ? 'active' : '' }}">
+                Sales Dashboard
+              </a>
+              @endif
+
+              @if($can('sales_action'))
+              <a href="{{ url(request()->segment(1) . '/sales/action') }}" class="nav-item {{ $subSeg2=='sales' && $subSeg3=='action' ? 'active' : '' }}">
+                <span>Sales Action / Orders</span>
+                @if(($sidebarPendingSalesCount ?? 0) > 0)
+                  <span class="sidebar-badge badge-warning" title="{{ $sidebarPendingSalesCount }} open sales order(s)">{{ $sidebarPendingSalesCount }}</span>
+                @endif
+              </a>
+              @endif
+
+              @if($can('sales_history'))
+              <a href="{{ url(request()->segment(1) . '/sales/history') }}" class="nav-item {{ $subSeg2=='sales' && $subSeg3=='history' ? 'active' : '' }}">
+                Sales History
+              </a>
+              @endif
+            </div>
+            @endif
+
+            {{-- 4. Dispatch Panel Group --}}
+            @if($hasDispatchPanel)
+            <div class="sidebar-panel-group">
+              <div style="font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); padding:0.6rem 0.8rem 0.2rem; margin-top:0.4rem; display:flex; align-items:center; gap:6px; border-top:1px solid var(--glass-border);">
+                <span>🚚 Dispatch Panel</span>
+              </div>
+
+              @if($can('dispatch_home'))
+              <a href="{{ url(request()->segment(1) . '/dispatch/home') }}" class="nav-item {{ $subSeg2=='dispatch' && ($subSeg3=='home' || $subSeg3=='') ? 'active' : '' }}">
+                Dispatch Dashboard
+              </a>
+              @endif
+
+              @if($can('dispatch_action'))
+              <a href="{{ url(request()->segment(1) . '/dispatch/action') }}" class="nav-item {{ $subSeg2=='dispatch' && $subSeg3=='action' ? 'active' : '' }}">
+                <span>Dispatch Action / Entry</span>
+                @if(($sidebarPendingDispatchCount ?? 0) > 0)
+                  <span class="sidebar-badge badge-warning" title="{{ $sidebarPendingDispatchCount }} pending dispatch order(s)">{{ $sidebarPendingDispatchCount }}</span>
+                @endif
+              </a>
+              @endif
+
+              @if($can('dispatch_history'))
+              <a href="{{ url(request()->segment(1) . '/dispatch/history') }}" class="nav-item {{ $subSeg2=='dispatch' && $subSeg3=='history' ? 'active' : '' }}">
+                Dispatch History
+              </a>
+              @endif
+
+              @if($can('dispatch_report'))
+              <a href="{{ url(request()->segment(1) . '/dispatch/report') }}" class="nav-item {{ $subSeg2=='dispatch' && $subSeg3=='report' ? 'active' : '' }}">
+                Dispatch Report
+              </a>
+              @endif
+            </div>
+            @endif
+
+            {{-- 5. Stock Manager Panel Group --}}
+            @if($hasStockManagerPanel)
+            <div class="sidebar-panel-group">
+              <div style="font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); padding:0.6rem 0.8rem 0.2rem; margin-top:0.4rem; display:flex; align-items:center; gap:6px; border-top:1px solid var(--glass-border);">
+                <span>📦 Stock Manager Panel</span>
+              </div>
+
+              @if($can('stock_manager_home'))
+              <a href="{{ url(request()->segment(1) . '/stock-manager/home') }}" class="nav-item {{ in_array($subSeg2, ['stock-manager', 'stock_manager']) && ($subSeg3=='home' || $subSeg3=='') ? 'active' : '' }}">
+                Stock Manager Home
+              </a>
+              @endif
+
+              @if($can('stock_manager_action'))
+              <a href="{{ url(request()->segment(1) . '/stock-manager/action') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='action') || $seg=='action' ? 'active' : '' }}">
+                Stock Action
+              </a>
+              @endif
+
+              @if($can('stock_manager_stock'))
+              <a href="{{ url(request()->segment(1) . '/stock-manager/stock') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='stock') || ($seg=='stock' && !$can('admin_stock')) ? 'active' : '' }}">
+                <span>Live Stock View</span>
+                @if(($sidebarLowStockCount ?? 0) > 0)
+                  <span class="sidebar-badge badge-warning" title="{{ $sidebarLowStockCount }} low stock alert(s)">{{ $sidebarLowStockCount }}</span>
+                @endif
+              </a>
+              @endif
+
+              @if($can('stock_manager_po'))
+              <a href="{{ url(request()->segment(1) . '/stock-manager/po') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='po') || ($seg=='po' && !$can('admin_po')) ? 'active' : '' }}">
+                <span>Purchase Orders</span>
+                @if(($sidebarPendingPoCount ?? 0) > 0)
+                  <span class="sidebar-badge badge-danger" title="{{ $sidebarPendingPoCount }} pending purchase order(s)">{{ $sidebarPendingPoCount }}</span>
+                @endif
+              </a>
+              @endif
+
+              @if($can('stock_manager_history'))
+              <a href="{{ url(request()->segment(1) . '/stock-manager/history') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='history') || ($seg=='history' && !in_array($subSeg2, ['dispatch', 'cashier', 'sales', 'attendance'])) ? 'active' : '' }}">
+                Stock Manager History
+              </a>
+              @endif
+
+              @if($can('stock_manager_products'))
+              <a href="{{ url(request()->segment(1) . '/stock-manager/products') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='products') || ($seg=='products' && !$can('admin_products')) ? 'active' : '' }}">
+                Products Master
+              </a>
+              @endif
+
+              @if($can('stock_manager_grades'))
+              <a href="{{ url(request()->segment(1) . '/stock-manager/grades') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='grades') || ($seg=='grades' && !$can('admin_grades')) ? 'active' : '' }}">
+                Grades Master
+              </a>
+              @endif
+
+              @if($can('stock_manager_locations'))
+              <a href="{{ url(request()->segment(1) . '/stock-manager/locations') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='locations') || ($seg=='locations' && !$can('admin_locations')) ? 'active' : '' }}">
+                Storage Location
+              </a>
+              @endif
+            </div>
+            @endif
+
+            {{-- 6. Attendance & HR Panel Group --}}
+            @if($hasAttendancePanel)
+            <div class="sidebar-panel-group">
+              <div style="font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); padding:0.6rem 0.8rem 0.2rem; margin-top:0.4rem; display:flex; align-items:center; gap:6px; border-top:1px solid var(--glass-border);">
+                <span>👥 Attendance &amp; HR Panel</span>
+              </div>
+
+              @if($can('attendance_dashboard'))
+              <a href="{{ url(request()->segment(1) . '/attendance/dashboard') }}" class="nav-item {{ $subSeg2=='attendance' && ($subSeg3=='dashboard' || $subSeg3=='home' || $subSeg3=='') ? 'active' : '' }}">
+                Attendance Dashboard
+              </a>
+              @endif
+
+              @if($can('attendance_daily'))
+              <a href="{{ url(request()->segment(1) . '/attendance/daily') }}" class="nav-item {{ $subSeg2=='attendance' && $subSeg3=='daily' ? 'active' : '' }}">
+                <span>Daily Attendance Entry</span>
+                @if(($sidebarPendingAttendanceCount ?? 0) > 0)
+                  <span class="sidebar-badge badge-warning" title="{{ $sidebarPendingAttendanceCount }} pending submission(s)">{{ $sidebarPendingAttendanceCount }}</span>
+                @endif
+              </a>
+              @endif
+
+              @if($can('attendance_departments'))
+              <a href="{{ url(request()->segment(1) . '/attendance/departments') }}" class="nav-item {{ $subSeg2=='attendance' && $subSeg3=='departments' ? 'active' : '' }}">
+                Departments Master
+              </a>
+              @endif
+
+              @if($can('attendance_workers'))
+              <a href="{{ url(request()->segment(1) . '/attendance/workers') }}" class="nav-item {{ $subSeg2=='attendance' && $subSeg3=='workers' ? 'active' : '' }}">
+                Workers Master
+              </a>
+              @endif
+
+              @if($can('attendance_reports'))
+              <a href="{{ url(request()->segment(1) . '/attendance/reports') }}" class="nav-item {{ $subSeg2=='attendance' && in_array($subSeg3, ['reports', 'history']) ? 'active' : '' }}">
+                Reports &amp; Payroll
+              </a>
+              @endif
+            </div>
+            @endif
+
           @else
-            {{-- Admin Panel Links --}}
+            {{-- Standard Admin Panel Links --}}
             @if($can('admin_dashboard'))
             <a href="{{ url(request()->segment(1) . '/home') }}" class="nav-item {{ $seg=='home' || $seg=='dashboard'?'active':'' }}">
               Dashboard
@@ -336,146 +651,52 @@
             </a>
             @endif
 
-
-
-            {{-- Sub-Admin Specific Module Panel Links --}}
-            @if($role !== 'ADMIN')
-              {{-- Cashier Panel Links --}}
-              @if($can('cashier_action'))
-              <a href="{{ url(request()->segment(1) . '/cashier/action') }}" class="nav-item {{ request()->segment(2)=='cashier' && request()->segment(3)=='action' ? 'active' : '' }}">
-                Cashier Entry
-              </a>
-              @endif
-              @if($can('cashier_ledger'))
-              <a href="{{ url(request()->segment(1) . '/cashier/ledger') }}" class="nav-item {{ request()->segment(2)=='cashier' && request()->segment(3)=='ledger' ? 'active' : '' }}">
-                Cashier Ledger
-              </a>
-              @endif
-              @if($can('cashier_history'))
-              <a href="{{ url(request()->segment(1) . '/cashier/history') }}" class="nav-item {{ request()->segment(2)=='cashier' && request()->segment(3)=='history' ? 'active' : '' }}">
-                Cashier History
-              </a>
-              @endif
-
-
-              {{-- Sales Panel Links --}}
-              @if($can('sales_home'))
-              <a href="{{ url(request()->segment(1) . '/sales/home') }}" class="nav-item {{ request()->segment(2)=='sales' && request()->segment(3)=='home' ? 'active' : '' }}">
-                Sales Dashboard
-              </a>
-              @endif
-              @if($can('sales_action'))
-              <a href="{{ url(request()->segment(1) . '/sales/action') }}" class="nav-item {{ request()->segment(2)=='sales' && request()->segment(3)=='action' ? 'active' : '' }}">
-                <span>Sales Orders</span>
-                @if(($sidebarPendingSalesCount ?? 0) > 0)
-                  <span class="sidebar-badge badge-warning" title="{{ $sidebarPendingSalesCount }} open sales order(s)">{{ $sidebarPendingSalesCount }}</span>
+            <!-- Attendance Accordion for Admin -->
+            @if($can('attendance_dashboard') || $can('attendance_departments') || $can('attendance_workers') || $can('attendance_daily') || $can('attendance_reports'))
+            <div>
+              <div class="nav-item" id="att-toggle" onclick="toggleAttMenu()"
+                style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                <span>Attendance & HR</span>
+                <div style="display:flex; align-items:center; gap:6px;">
+                  @if(($sidebarPendingAttendanceCount ?? 0) > 0)
+                    <span class="sidebar-badge badge-warning" title="{{ $sidebarPendingAttendanceCount }} pending attendance submission(s)">{{ $sidebarPendingAttendanceCount }}</span>
+                  @endif
+                  <svg id="att-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    style="transition:transform 0.3s;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+              </div>
+              <div id="att-submenu" style="display:none; padding-left:1rem; border-left:2px solid var(--primary);">
+                @if($can('attendance_dashboard'))
+                <a href="{{ url(request()->segment(1) . '/attendance/dashboard') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='dashboard' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
+                  Dashboard
+                </a>
                 @endif
-              </a>
-              @endif
-              @if($can('sales_history'))
-              <a href="{{ url(request()->segment(1) . '/sales/history') }}" class="nav-item {{ request()->segment(2)=='sales' && request()->segment(3)=='history' ? 'active' : '' }}">
-                Sales History
-              </a>
-              @endif
-
-              {{-- Dispatch Panel Links --}}
-              @if($can('dispatch_home'))
-              <a href="{{ url(request()->segment(1) . '/dispatch/home') }}" class="nav-item {{ request()->segment(2)=='dispatch' && request()->segment(3)=='home' ? 'active' : '' }}">
-                Dispatch Home
-              </a>
-              @endif
-              @if($can('dispatch_action'))
-              <a href="{{ url(request()->segment(1) . '/dispatch/action') }}" class="nav-item {{ request()->segment(2)=='dispatch' && request()->segment(3)=='action' ? 'active' : '' }}">
-                <span>Dispatch Entry</span>
-                @if(($sidebarPendingDispatchCount ?? 0) > 0)
-                  <span class="sidebar-badge badge-warning" title="{{ $sidebarPendingDispatchCount }} pending dispatch order(s)">{{ $sidebarPendingDispatchCount }}</span>
+                @if($can('attendance_daily'))
+                <a href="{{ url(request()->segment(1) . '/attendance/daily') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='daily' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
+                  <span>Daily Entry</span>
+                  @if(($sidebarPendingAttendanceCount ?? 0) > 0)
+                    <span class="sidebar-badge badge-warning" title="{{ $sidebarPendingAttendanceCount }} pending submission(s)">{{ $sidebarPendingAttendanceCount }}</span>
+                  @endif
+                </a>
                 @endif
-              </a>
-              @endif
-              @if($can('dispatch_history'))
-              <a href="{{ url(request()->segment(1) . '/dispatch/history') }}" class="nav-item {{ request()->segment(2)=='dispatch' && request()->segment(3)=='history' ? 'active' : '' }}">
-                History
-              </a>
-              @endif
-              @if($can('dispatch_report') || $can('dispatch_history'))
-              <a href="{{ url(request()->segment(1) . '/dispatch/report') }}" class="nav-item {{ request()->segment(2)=='dispatch' && request()->segment(3)=='report' ? 'active' : '' }}">
-                Report
-              </a>
-              @endif
-
-              {{-- Stock Manager Specific Links for Sub-Admin --}}
-              @if($can('stock_manager_action'))
-              <a href="{{ url(request()->segment(1) . '/stock-manager/action') }}" class="nav-item {{ request()->segment(2)=='stock-manager' && request()->segment(3)=='action' ? 'active' : '' }}">
-                Stock Inward / Action
-              </a>
-              @endif
-              @if($can('stock_manager_history'))
-              <a href="{{ url(request()->segment(1) . '/stock-manager/history') }}" class="nav-item {{ request()->segment(2)=='stock-manager' && request()->segment(3)=='history' ? 'active' : '' }}">
-                Stock History
-              </a>
-              @endif
-            @endif
-          @endif
-
-          <!-- Attendance Accordion -->
-          @if($can('attendance_dashboard') || $can('attendance_departments') || $can('attendance_workers') || $can('attendance_daily') || $can('attendance_reports'))
-          <div>
-            <div class="nav-item" id="att-toggle" onclick="toggleAttMenu()"
-              style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-              <span>Attendance & HR</span>
-              <div style="display:flex; align-items:center; gap:6px;">
-                @if(($sidebarPendingAttendanceCount ?? 0) > 0)
-                  <span class="sidebar-badge badge-warning" title="{{ $sidebarPendingAttendanceCount }} pending attendance submission(s)">{{ $sidebarPendingAttendanceCount }}</span>
+                @if($can('attendance_departments'))
+                <a href="{{ url(request()->segment(1) . '/attendance/departments') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='departments' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
+                  Departments
+                </a>
                 @endif
-                <svg id="att-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  style="transition:transform 0.3s;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                @if($can('attendance_reports'))
+                <a href="{{ url(request()->segment(1) . '/attendance/reports') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='reports' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
+                  Reports
+                </a>
+                @endif
+                @if($can('attendance_workers'))
+                <a href="{{ url(request()->segment(1) . '/attendance/workers') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='workers' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
+                  Workers List
+                </a>
+                @endif
               </div>
             </div>
-            <div id="att-submenu" style="display:none; padding-left:1rem; border-left:2px solid var(--primary);">
-              @if($can('attendance_dashboard'))
-              <a href="{{ url(request()->segment(1) . '/attendance/dashboard') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='dashboard' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
-                Dashboard
-              </a>
-              @endif
-              @if($can('attendance_daily'))
-              <a href="{{ url(request()->segment(1) . '/attendance/daily') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='daily' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
-                <span>Daily Entry</span>
-                @if(($sidebarPendingAttendanceCount ?? 0) > 0)
-                  <span class="sidebar-badge badge-warning" title="{{ $sidebarPendingAttendanceCount }} pending submission(s)">{{ $sidebarPendingAttendanceCount }}</span>
-                @endif
-              </a>
-              @endif
-              @if($can('attendance_departments'))
-              <a href="{{ url(request()->segment(1) . '/attendance/departments') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='departments' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
-                Departments
-              </a>
-              @endif
-              @if($can('attendance_reports'))
-              <a href="{{ url(request()->segment(1) . '/attendance/reports') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='reports' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
-                Reports
-              </a>
-              @endif
-              @if($can('attendance_workers'))
-              <a href="{{ url(request()->segment(1) . '/attendance/workers') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='workers' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
-                Workers List
-              </a>
-              @endif
-            </div>
-          </div>
-          @endif
-
-          @if($role !== 'STOCK_MANAGER' && request()->segment(1) !== 'stock_manager' && $can('admin_logs'))
-          <a href="{{ url(request()->segment(1) . '/logs') }}" class="nav-item {{ $seg=='logs'?'active':'' }}">
-            Activity Logs
-          </a>
-          @endif
-
-          @if($role !== 'STOCK_MANAGER' && request()->segment(1) !== 'stock_manager' && $can('admin_notifications'))
-          <a href="{{ url(request()->segment(1) . '/notifications') }}" class="nav-item {{ $seg=='notifications'?'active':'' }}"
-             style="display:flex; justify-content:space-between; align-items:center;">
-            <span>Notifications</span>
-            <span id="nav-notif-count" class="sidebar-badge badge-danger" style="{{ ($sidebarUnreadNotifCount ?? 0) > 0 ? '' : 'display:none;' }}">{{ $sidebarUnreadNotifCount ?? 0 }}</span>
-          </a>
+            @endif
           @endif
 
           <!-- Logout via POST to properly clear session -->
@@ -618,7 +839,7 @@
       arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
     }
     // Auto-open if on an attendance sub-page
-    if (window.location.pathname.includes('/admin/attendance')) {
+    if (window.location.pathname.includes('/attendance')) {
       document.addEventListener('DOMContentLoaded', () => {
         const menu = document.getElementById('att-submenu');
         const arrow = document.getElementById('att-arrow');

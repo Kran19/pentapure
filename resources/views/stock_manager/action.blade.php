@@ -681,9 +681,10 @@ function submitSmAction(e) {
 
   const userSlug = window.userSlug || 'stock_manager';
   const baseUrl = window.baseUrl || '';
+  const isSmPrefixed = window.location.pathname.includes('/stock-manager');
   const targetUrl = actionType === 'INWARD'
-    ? baseUrl + '/' + userSlug + '/action'
-    : baseUrl + '/' + userSlug + '/outward';
+    ? (isSmPrefixed ? baseUrl + '/' + userSlug + '/stock-manager/action' : baseUrl + '/' + userSlug + '/action')
+    : (isSmPrefixed ? baseUrl + '/' + userSlug + '/stock-manager/outward' : baseUrl + '/' + userSlug + '/outward');
 
   fetch(targetUrl, {
     method: 'POST',
