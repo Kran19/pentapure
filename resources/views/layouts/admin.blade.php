@@ -140,22 +140,6 @@
             $perms = [];
           }
 
-          $moduleEquivalents = [
-            'admin_stock' => ['admin_stock', 'stock_manager_stock'],
-            'stock_manager_stock' => ['stock_manager_stock', 'admin_stock'],
-            'admin_products' => ['admin_products', 'stock_manager_products'],
-            'stock_manager_products' => ['stock_manager_products', 'admin_products'],
-            'admin_grades' => ['admin_grades', 'stock_manager_grades'],
-            'stock_manager_grades' => ['stock_manager_grades', 'admin_grades'],
-            'admin_locations' => ['admin_locations', 'stock_manager_locations'],
-            'stock_manager_locations' => ['stock_manager_locations', 'admin_locations'],
-            'admin_po' => ['admin_po', 'stock_manager_po'],
-            'stock_manager_po' => ['stock_manager_po', 'admin_po'],
-            'admin_categories' => ['admin_categories', 'cashier_categories'],
-            'cashier_categories' => ['cashier_categories', 'admin_categories'],
-            'stock_manager_home' => ['stock_manager_home', 'admin_dashboard'],
-            'admin_dashboard' => ['admin_dashboard', 'stock_manager_home'],
-          ];
         @endphp
         <div id="admin-sidebar" class="admin-sidebar">
           <div style="text-align:center;padding:1rem 1rem 0.5rem;">
@@ -174,14 +158,11 @@
           </div>
 
           @php 
-            $can = function($m) use ($role, $perms, $moduleEquivalents) {
+            $can = function($m) use ($role, $perms) {
                 if ($role === 'ADMIN') return true;
                 if (in_array('can_manage', $perms)) return true;
-                $candidates = $moduleEquivalents[$m] ?? [$m];
-                foreach ($candidates as $c) {
-                    if (in_array($c, $perms) || in_array('view_' . $c, $perms) || in_array('edit_' . $c, $perms) || in_array('module_' . $c, $perms)) {
-                        return true;
-                    }
+                if (in_array($m, $perms) || in_array('view_' . $m, $perms) || in_array('edit_' . $m, $perms) || in_array('module_' . $m, $perms)) {
+                    return true;
                 }
                 if ($role === 'STOCK_MANAGER' && str_starts_with($m, 'stock_manager_') && empty($perms)) return true;
                 return false;
@@ -222,17 +203,17 @@
               Stock Manager History
             </a>
             @endif
-            @if($can('stock_manager_products') || $can('admin_products'))
+            @if($can('stock_manager_products'))
             <a href="{{ url(request()->segment(1) . '/products') }}" class="nav-item {{ $seg=='products'?'active':'' }}">
               Products Master
             </a>
             @endif
-            @if($can('stock_manager_grades') || $can('admin_grades'))
+            @if($can('stock_manager_grades'))
             <a href="{{ url(request()->segment(1) . '/grades') }}" class="nav-item {{ $seg=='grades'?'active':'' }}">
               Grades Master
             </a>
             @endif
-            @if($can('stock_manager_locations') || $can('admin_locations'))
+            @if($can('stock_manager_locations'))
             <a href="{{ url(request()->segment(1) . '/locations') }}" class="nav-item {{ $seg=='locations'?'active':'' }}">
               Storage Location
             </a>
@@ -319,7 +300,7 @@
             </a>
             @endif
 
-            @if($can('admin_categories') || $can('cashier_categories'))
+            @if($can('admin_categories'))
             <a href="{{ url(request()->segment(1) . '/categories') }}" class="nav-item {{ $seg=='categories'?'active':'' }}">
               Categories
             </a>

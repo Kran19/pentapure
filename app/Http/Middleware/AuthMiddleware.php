@@ -67,25 +67,8 @@ class AuthMiddleware
                 }
             }
 
-            // Equivalent module keys across panels
-            $moduleEquivalents = [
-                'admin_stock' => ['admin_stock', 'stock_manager_stock'],
-                'stock_manager_stock' => ['stock_manager_stock', 'admin_stock'],
-                'admin_products' => ['admin_products', 'stock_manager_products'],
-                'stock_manager_products' => ['stock_manager_products', 'admin_products'],
-                'admin_grades' => ['admin_grades', 'stock_manager_grades'],
-                'stock_manager_grades' => ['stock_manager_grades', 'admin_grades'],
-                'admin_locations' => ['admin_locations', 'stock_manager_locations'],
-                'stock_manager_locations' => ['stock_manager_locations', 'admin_locations'],
-                'admin_po' => ['admin_po', 'stock_manager_po'],
-                'stock_manager_po' => ['stock_manager_po', 'admin_po'],
-                'admin_categories' => ['admin_categories', 'cashier_categories'],
-                'cashier_categories' => ['cashier_categories', 'admin_categories'],
-                'stock_manager_home' => ['stock_manager_home', 'admin_dashboard'],
-                'admin_dashboard' => ['admin_dashboard', 'stock_manager_home'],
-            ];
-
-            $keysToCheck = $moduleEquivalents[$moduleKey] ?? [$moduleKey];
+            // Strict independent module check - permissions are single and discrete
+            $keysToCheck = [$moduleKey];
 
             // 1. Check Edit (Write) Access
             $hasEdit = false;
@@ -143,7 +126,7 @@ class AuthMiddleware
             if (!$hasView) {
                 // If hitting the home/dashboard without view permission, redirect to their first permitted page
                 if ($request->isMethod('GET') && in_array($moduleKey, ['admin_dashboard', 'stock_manager_home'])) {
-                    $firstUrl = $this->getFirstPermittedUrl($user, $normalizedPerms, $moduleEquivalents);
+                    $firstUrl = $this->getFirstPermittedUrl($user, $normalizedPerms);
                     if ($firstUrl && $firstUrl !== $request->url()) {
                         return redirect($firstUrl);
                     }
@@ -299,7 +282,7 @@ class AuthMiddleware
     /**
      * Get the first permitted URL for a user to redirect to
      */
-    protected function getFirstPermittedUrl(array $user, array $normalizedPerms, array $moduleEquivalents): ?string
+    protected function getFirstPermittedUrl(array $user, array $normalizedPerms): ?string
     {
         $slug = $user['login_slug'] ?? strtolower($user['role'] ?? 'sub_admin');
         $isSubAdmin = ($user['role'] === 'SUB_ADMIN');
@@ -343,16 +326,13 @@ class AuthMiddleware
         ];
 
         foreach ($routeMap as $k => $targetUrl) {
-            $equivs = $moduleEquivalents[$k] ?? [$k];
-            foreach ($equivs as $eq) {
-                if (
-                    in_array('view_' . $eq, $normalizedPerms, true) ||
-                    in_array('edit_' . $eq, $normalizedPerms, true) ||
-                    in_array('module_' . $eq, $normalizedPerms, true) ||
-                    in_array($eq, $normalizedPerms, true)
-                ) {
-                    return $targetUrl;
-                }
+            if (
+                in_array('view_' . $k, $normalizedPerms, true) ||
+                in_array('edit_' . $k, $normalizedPerms, true) ||
+                in_array('module_' . $k, $normalizedPerms, true) ||
+                in_array($k, $normalizedPerms, true)
+            ) {
+                return $targetUrl;
             }
         }
 
