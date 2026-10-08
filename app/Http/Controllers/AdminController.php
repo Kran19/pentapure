@@ -2202,6 +2202,7 @@ class AdminController extends Controller
                 $user = $group->first()->user;
                 return [
                     'name' => $user ? $user->name : 'Unknown',
+                    'username' => $user ? $user->username : null,
                     'in' => $group->where('type', 'IN')->sum('amount'),
                     'out' => $group->where('type', 'OUT')->sum('amount'),
                     'balance' => $group->where('type', 'IN')->sum('amount') - $group->where('type', 'OUT')->sum('amount'),

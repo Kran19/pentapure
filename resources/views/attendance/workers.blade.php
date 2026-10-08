@@ -100,7 +100,7 @@
                 $isMukadam = ($w->salary_type === 'LABOUR_MUKADAM' || stripos($w->department->name ?? '', 'MUKADAM') !== false);
               @endphp
               @if($isMukadam)
-                <div style="font-size:0.65rem; font-weight:bold; color:var(--primary, #2563eb);">PER LABOUR SALARY</div>
+                <div style="font-size:0.65rem; font-weight:bold; color:#000000;">PER LABOUR SALARY</div>
               @else
                 <div style="font-size:0.65rem; opacity:0.7; color:var(--text-muted);">{{ $w->salary_type }}</div>
               @endif

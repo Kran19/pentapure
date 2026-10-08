@@ -96,7 +96,7 @@
                   @endphp
                   @if($isMukadam)
                     <div style="font-weight:bold;">₹{{ number_format($data['worker']->salary_amount, 0) }}</div>
-                    <div style="font-size:0.65rem; font-weight:bold; color:var(--primary, #2563eb);">PER LABOUR SALARY</div>
+                    <div style="font-size:0.65rem; font-weight:bold; color:#000000;">PER LABOUR SALARY</div>
                   @else
                     <div style="font-weight:bold;">₹{{ number_format($data['worker']->salary_amount, 0) }}</div>
                     <div style="font-size:0.65rem; opacity:0.7;">{{ $data['worker']->salary_type }}</div>

@@ -74,7 +74,10 @@
             @foreach($pageData['summary']['byCashier'] as $vals)
             <div class="card" style="padding:1rem;">
                 <div style="font-weight:600; color:var(--primary-light); margin-bottom:8px; border-bottom:1px solid var(--glass-border); padding-bottom:5px;">
-                    {{ strtoupper($vals['name']) }}
+                    <div>{{ strtoupper($vals['name']) }}</div>
+                    @if(!empty($vals['username']))
+                        <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600; text-transform:none; margin-top:2px;">User ID: {{ $vals['username'] }}</div>
+                    @endif
                 </div>
                 <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
                     <span style="color:var(--text-muted);">In:</span>
@@ -134,7 +137,12 @@
                             <span style="color:var(--text-muted);">{{ \Carbon\Carbon::parse($tx->date ?: $tx->created_at)->format('h:i A') }}</span>
                         </td>
                         <td style="padding:12px; font-weight:600; color:var(--text-main); white-space:nowrap;">
-                            👤 {{ $tx->user?->name ?? 'Unknown' }}
+                            <div>👤 {{ $tx->user?->name ?? 'Unknown' }}</div>
+                            @if($tx->user)
+                                <div style="font-size:0.75rem; color:var(--primary-light); font-weight:700; margin-top:2px;">
+                                    User ID: {{ $tx->user->username ?: $tx->user->id }}
+                                </div>
+                            @endif
                         </td>
                         <td style="padding:12px; text-align:center;">
                             <span style="display:inline-block; min-width:55px; text-align:center; padding:4px 8px; border-radius:4px; font-weight:bold; background: #d3d3d3de; color:{{ $tx->type === 'IN' ? '#2ecc71' : 'red' }};">
