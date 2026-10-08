@@ -6,11 +6,7 @@
     <h2 style="margin:0; color:var(--text-main);">📜 Stock Activity History</h2>
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
       <input type="text" id="history-search" placeholder="🔍 Search history..." oninput="filterHistoryTable(this.value)" style="padding:0.6rem 1rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main);">
-      @if(empty($isReadOnly) && $pageData['history']->total() > 0)
-        <button type="button" onclick="clearAllStockHistory()" class="btn btn-sm" style="background:#dc2626; color:#ffffff; padding:0.6rem 1rem; border-radius:8px; font-weight:700; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; box-shadow:0 2px 4px rgba(220,38,38,0.2);">
-          🗑️ Clear All History
-        </button>
-      @endif
+
     </div>
   </div>
 
@@ -29,14 +25,12 @@
             <th style="white-space: nowrap;">Location</th>
             <th style="white-space: nowrap;">Notes</th>
             <th style="white-space: nowrap;">Recorded By</th>
-            @if(empty($isReadOnly))
-            <th style="white-space: nowrap; text-align:center;">Action</th>
-            @endif
+
           </tr>
         </thead>
         <tbody>
           @forelse($pageData['history'] as $s)
-          <tr id="history-row-{{ $s->id }}" class="history-row" data-name="{{ strtolower(($s->product?->name ?? '') . ' ' . ($s->notes ?? '') . ' ' . ($s->location?->name ?? '') . ' ' . ($s->stage ?? '') . ' ' . ($s->grade ?? '')) }}">
+          <tr id="history-row-{{ $s->id }}" class="history-row" data-name="{{ strtolower(($s->product?->name ?? '') . ' ' . ($s->notes ?? '') . ' ' . ($s->location?->name ?? '') . ' ' . ($s->stage ?? '') . ' ' . ($s->grade ?? '') . ' ' . ($s->user?->name ?? '') . ' ' . ($s->user?->username ?? '')) }}">
             <td style="white-space: nowrap;">{{ $loop->iteration }}</td>
             <td style="font-size:0.85rem; color:var(--text-muted); white-space: nowrap;">
               {{ $s->created_at ? $s->created_at->format('d-m-Y, h:i A') : '-' }}
@@ -74,18 +68,22 @@
                 @endif
               </div>
             </td>
-            <td style="font-size:0.85rem; white-space: nowrap;">{{ $s->user?->name ?? 'System' }}</td>
-            @if(empty($isReadOnly))
-            <td style="white-space: nowrap; text-align:center;">
-              <button type="button" onclick="deleteStockHistory({{ $s->id }})" title="Delete this entry" style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); color:#ef4444; cursor:pointer; padding:3px 8px; border-radius:6px; font-size:0.82rem; font-weight:600; display:inline-flex; align-items:center; gap:4px; transition:all 0.15s ease;" onmouseover="this.style.background='rgba(239,68,68,0.18)'" onmouseout="this.style.background='rgba(239,68,68,0.08)'">
-                🗑️ Delete
-              </button>
+            <td style="font-size:0.85rem; white-space: nowrap;">
+              <div style="font-weight:600; color:var(--text-main);">{{ $s->user?->name ?? 'System' }}</div>
+              @if($s->user)
+                <div style="font-size:0.75rem; color:var(--primary-light); font-weight:700; margin-top:2px;">
+                  User ID: {{ $s->user->username ?: $s->user->id }}
+                </div>
+              @elseif(!empty($s->user_id))
+                <div style="font-size:0.75rem; color:var(--primary-light); font-weight:700; margin-top:2px;">
+                  User ID: {{ $s->user_id }}
+                </div>
+              @endif
             </td>
-            @endif
           </tr>
           @empty
           <tr>
-            <td colspan="11" style="text-align:center; padding:2rem; color:var(--text-muted);">No stock history logs recorded yet.</td>
+            <td colspan="10" style="text-align:center; padding:2rem; color:var(--text-muted);">No stock history logs recorded yet.</td>
           </tr>
           @endforelse
         </tbody>
@@ -186,150 +184,5 @@ function saveStockNote(id, newNote) {
   });
 }
 
-function deleteStockHistory(id) {
-  if (window.isReadOnly) {
-    if (window.app && window.app.toast) window.app.toast('You have View-Only access.', 'warning');
-    return;
-  }
-  const token = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-  const targetUrl = getStockHistoryUrl(`history/${id}`);
-
-  const doDelete = () => {
-    fetch(targetUrl, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': token,
-        'Accept': 'application/json',
-      }
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        const row = document.getElementById(`history-row-${id}`);
-        if (row) {
-          row.style.transition = 'opacity 0.3s ease';
-          row.style.opacity = '0';
-          setTimeout(() => row.remove(), 300);
-        }
-        if (typeof Swal !== 'undefined') {
-          Swal.fire({ icon: 'success', title: 'Deleted!', text: data.message || 'Entry deleted successfully.', timer: 1500, showConfirmButton: false });
-        }
-      } else {
-        if (typeof Swal !== 'undefined') {
-          Swal.fire('Error', data.message || 'Failed to delete entry.', 'error');
-        } else {
-          alert(data.message || 'Failed to delete entry.');
-        }
-      }
-    })
-    .catch(err => {
-      console.error(err);
-      if (typeof Swal !== 'undefined') {
-        Swal.fire('Error', 'An error occurred while deleting the entry.', 'error');
-      } else {
-        alert('An error occurred while deleting the entry.');
-      }
-    });
-  };
-
-  if (typeof Swal !== 'undefined') {
-    Swal.fire({
-      title: 'Delete this history record?',
-      text: 'Are you sure you want to delete this stock history log entry?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#dc2626',
-      cancelButtonColor: '#6b7280',
-      confirmButtonText: 'Yes, Delete',
-      cancelButtonText: 'Cancel'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        doDelete();
-      }
-    });
-  } else {
-    if (confirm('Are you sure you want to delete this stock history entry?')) {
-      doDelete();
-    }
-  }
-}
-
-function clearAllStockHistory() {
-  if (window.isReadOnly) {
-    if (window.app && window.app.toast) window.app.toast('You have View-Only access.', 'warning');
-    return;
-  }
-  const token = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-  const targetUrl = getStockHistoryUrl(`history/clear`);
-
-  const doClear = () => {
-    if (typeof Swal !== 'undefined') {
-      Swal.fire({
-        title: 'Clearing history...',
-        text: 'Please wait while all stock history logs are deleted.',
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading()
-      });
-    }
-
-    fetch(targetUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': token,
-        'Accept': 'application/json',
-      }
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        if (typeof Swal !== 'undefined') {
-          Swal.fire({ icon: 'success', title: 'Cleared!', text: data.message || 'All stock history has been cleared.', timer: 1800, showConfirmButton: false }).then(() => {
-            window.location.reload();
-          });
-        } else {
-          alert(data.message || 'All stock history has been cleared.');
-          window.location.reload();
-        }
-      } else {
-        if (typeof Swal !== 'undefined') {
-          Swal.fire('Error', data.message || 'Failed to clear stock history.', 'error');
-        } else {
-          alert(data.message || 'Failed to clear stock history.');
-        }
-      }
-    })
-    .catch(err => {
-      console.error(err);
-      if (typeof Swal !== 'undefined') {
-        Swal.fire('Error', 'An error occurred while clearing history.', 'error');
-      } else {
-        alert('An error occurred while clearing history.');
-      }
-    });
-  };
-
-  if (typeof Swal !== 'undefined') {
-    Swal.fire({
-      title: 'Clear All Stock History?',
-      text: 'Are you sure you want to delete ALL stock history records? This cannot be undone.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#dc2626',
-      cancelButtonColor: '#6b7280',
-      confirmButtonText: 'Yes, Delete All',
-      cancelButtonText: 'Cancel'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        doClear();
-      }
-    });
-  } else {
-    if (confirm('Are you sure you want to delete ALL stock history records? This cannot be undone.')) {
-      doClear();
-    }
-  }
-}
 </script>
 @endsection

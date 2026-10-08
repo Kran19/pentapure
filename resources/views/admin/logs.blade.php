@@ -20,6 +20,7 @@
         <option value="Purchase">Purchase</option>
         <option value="Inventory">Inventory</option>
         <option value="Cashier">Cashier</option>
+        <option value="Attendance">Attendance</option>
       </select>
       <select id="blade-user-filter" class="btn-sm" style="background:var(--glass-bg); color:white; border:1px solid var(--glass-border); padding:5px 10px;" onchange="applyBladeFilters()">
         <option value="">All Users</option>
@@ -29,11 +30,7 @@
       </select>
       <input type="date" id="blade-date-filter" class="btn-sm" style="background:var(--glass-bg); color:white; border:1px solid var(--glass-border); padding:5px 10px;" onchange="applyBladeFilters()">
       <button class="btn btn-sm btn-secondary" onclick="resetBladeFilters()">Reset</button>
-      @if(empty($isReadOnly))
-      <button type="button" class="btn btn-sm" onclick="confirmClearLogs()" style="background:#dc2626; border:1px solid #dc2626; color:#ffffff !important; font-weight:700; padding:5px 12px; border-radius:6px; cursor:pointer; width:auto;" title="Clear all activity logs from view">
-        🗑️ Clear All Logs
-      </button>
-      @endif
+
     </div>
   </div>
 
@@ -50,21 +47,42 @@
         </thead>
         <tbody id="logs-tbody">
           @forelse($pageData['logs'] as $log)
-          <tr class="log-row" data-category="{{ $log['category'] }}" data-user="{{ $log['by'] }}" data-date="{{ explode(' ', $log['date'])[0] }}">
-            <td style="font-size:0.85rem; font-family:monospace; color:var(--text-muted);">
-              {{ \Carbon\Carbon::parse($log['date'])->format('d-m-Y, H:i') }}
+          @php
+            $cat = $log['category'] ?? 'General';
+            $badgeBg = match($cat) {
+              'Production' => 'background:#3b82f6; color:#ffffff !important;',
+              'Sales'      => 'background:#10b981; color:#ffffff !important;',
+              'Dispatch'   => 'background:#8b5cf6; color:#ffffff !important;',
+              'Purchase'   => 'background:#f59e0b; color:#ffffff !important;',
+              'Inventory'  => 'background:#06b6d4; color:#ffffff !important;',
+              'Cashier'    => 'background:#ec4899; color:#ffffff !important;',
+              'Attendance' => 'background:#14b8a6; color:#ffffff !important;',
+              default      => 'background:#64748b; color:#ffffff !important;',
+            };
+            $logDate = explode('T', explode(' ', $log['date'] ?? '')[0])[0];
+          @endphp
+          <tr class="log-row" data-category="{{ $cat }}" data-user="{{ $log['by'] }}" data-date="{{ $logDate }}">
+            <td style="font-size:0.85rem; font-family:monospace; color:var(--text-muted); white-space:nowrap;">
+              {{ \Carbon\Carbon::parse($log['date'])->format('d-m-Y, h:i A') }}
             </td>
             <td>
-              <span class="badge {{ $log['category'] === 'Production' ? 'badge-pending' : ($log['category'] === 'Sales' ? 'badge-open' : ($log['category'] === 'Inventory' ? 'badge-closed' : ($log['category'] === 'Cashier' ? 'badge-open' : 'badge-done'))) }}" style="font-size:0.7rem;">
-                {{ $log['category'] }}
+              <span class="badge" style="font-size:0.75rem; padding:3px 8px; border-radius:6px; font-weight:700; {{ $badgeBg }}">
+                {{ $cat }}
               </span>
             </td>
             <td style="font-size:0.9rem;">
               <div style="font-weight:600; color:var(--text-main);">{{ $log['description'] }}</div>
             </td>
-            <td>
-              <div style="font-weight:bold;">{{ $log['by'] ?? 'System' }}</div>
-              <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">{{ $log['role'] ?? '' }}</div>
+            <td style="white-space:nowrap;">
+              <div style="font-weight:bold; color:var(--text-main);">{{ $log['by'] ?? 'System' }}</div>
+              @if(!empty($log['user_id']))
+                <div style="font-size:0.75rem; color:var(--primary-light); font-weight:700; margin-top:2px;">
+                  User ID: {{ $log['user_id'] }}
+                </div>
+              @endif
+              @if(!empty($log['role']))
+                <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">{{ $log['role'] }}</div>
+              @endif
             </td>
           </tr>
           @empty
@@ -102,32 +120,5 @@ function resetBladeFilters() {
   applyBladeFilters();
 }
 
-@php
-  $currentSlug = auth()->user()?->login_slug 
-      ?? (request()->segment(1) === 'public' ? request()->segment(2) : request()->segment(1)) 
-      ?: 'admin';
-  $clearUrl = Route::has($currentSlug . '.logs.clear') 
-      ? route($currentSlug . '.logs.clear') 
-      : (Route::has('admin.logs.clear') ? route('admin.logs.clear') : url('admin/logs/clear'));
-@endphp
-
-function confirmClearLogs() {
-  if (!confirm('Are you sure you want to permanently clear all activity logs? This action will clear the logs view while keeping current stock balances, users, and products 100% intact.')) {
-    return;
-  }
-  const clearUrl = @json($clearUrl);
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = clearUrl;
-  
-  const csrf = document.createElement('input');
-  csrf.type = 'hidden';
-  csrf.name = '_token';
-  csrf.value = '{{ csrf_token() }}';
-  form.appendChild(csrf);
-  
-  document.body.appendChild(form);
-  form.submit();
-}
 </script>
 @endsection

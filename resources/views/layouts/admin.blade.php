@@ -274,10 +274,73 @@
               $subSeg3 = request()->segment(3) ?? '';
             @endphp
 
-            {{-- 1. Admin Panel Group --}}
-            @if($hasAdminPanel)
+            {{-- 1. Stock Manager Panel Group --}}
+            @if($hasStockManagerPanel)
             <div class="sidebar-panel-group">
               <div style="font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); padding:0.6rem 0.8rem 0.2rem; display:flex; align-items:center; gap:6px;">
+                <span>📦 Stock Manager Panel</span>
+              </div>
+
+              @if($can('stock_manager_home'))
+              <a href="{{ url(request()->segment(1) . '/stock-manager/home') }}" class="nav-item {{ in_array($subSeg2, ['stock-manager', 'stock_manager']) && ($subSeg3=='home' || $subSeg3=='') ? 'active' : '' }}">
+                Stock Manager Home
+              </a>
+              @endif
+
+              @if($can('stock_manager_action'))
+              <a href="{{ url(request()->segment(1) . '/stock-manager/action') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='action') || $seg=='action' ? 'active' : '' }}">
+                Stock Action
+              </a>
+              @endif
+
+              @if($can('stock_manager_stock'))
+              <a href="{{ url(request()->segment(1) . '/stock-manager/stock') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='stock') || ($seg=='stock' && !$can('admin_stock')) ? 'active' : '' }}">
+                <span>Live Stock View</span>
+                @if(($sidebarLowStockCount ?? 0) > 0)
+                  <span class="sidebar-badge badge-warning" title="{{ $sidebarLowStockCount }} low stock alert(s)">{{ $sidebarLowStockCount }}</span>
+                @endif
+              </a>
+              @endif
+
+              @if($can('stock_manager_po'))
+              <a href="{{ url(request()->segment(1) . '/stock-manager/po') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='po') || ($seg=='po' && !$can('admin_po')) ? 'active' : '' }}">
+                <span>Purchase Orders</span>
+                @if(($sidebarPendingPoCount ?? 0) > 0)
+                  <span class="sidebar-badge badge-danger" title="{{ $sidebarPendingPoCount }} pending purchase order(s)">{{ $sidebarPendingPoCount }}</span>
+                @endif
+              </a>
+              @endif
+
+              @if($can('stock_manager_history'))
+              <a href="{{ url(request()->segment(1) . '/stock-manager/history') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='history') || ($seg=='history' && !in_array($subSeg2, ['dispatch', 'cashier', 'sales', 'attendance'])) ? 'active' : '' }}">
+                Stock Manager History
+              </a>
+              @endif
+
+              @if($can('stock_manager_products'))
+              <a href="{{ url(request()->segment(1) . '/stock-manager/products') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='products') || ($seg=='products' && !$can('admin_products')) ? 'active' : '' }}">
+                Products Master
+              </a>
+              @endif
+
+              @if($can('stock_manager_grades'))
+              <a href="{{ url(request()->segment(1) . '/stock-manager/grades') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='grades') || ($seg=='grades' && !$can('admin_grades')) ? 'active' : '' }}">
+                Grades Master
+              </a>
+              @endif
+
+              @if($can('stock_manager_locations'))
+              <a href="{{ url(request()->segment(1) . '/stock-manager/locations') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='locations') || ($seg=='locations' && !$can('admin_locations')) ? 'active' : '' }}">
+                Storage Location
+              </a>
+              @endif
+            </div>
+            @endif
+
+            {{-- 2. Admin Panel Group --}}
+            @if($hasAdminPanel)
+            <div class="sidebar-panel-group">
+              <div style="font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); padding:0.6rem 0.8rem 0.2rem; margin-top:0.4rem; display:flex; align-items:center; gap:6px; border-top:1px solid var(--glass-border);">
                 <span>🏢 Admin Panel</span>
               </div>
 
@@ -454,68 +517,6 @@
             </div>
             @endif
 
-            {{-- 5. Stock Manager Panel Group --}}
-            @if($hasStockManagerPanel)
-            <div class="sidebar-panel-group">
-              <div style="font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); padding:0.6rem 0.8rem 0.2rem; margin-top:0.4rem; display:flex; align-items:center; gap:6px; border-top:1px solid var(--glass-border);">
-                <span>📦 Stock Manager Panel</span>
-              </div>
-
-              @if($can('stock_manager_home'))
-              <a href="{{ url(request()->segment(1) . '/stock-manager/home') }}" class="nav-item {{ in_array($subSeg2, ['stock-manager', 'stock_manager']) && ($subSeg3=='home' || $subSeg3=='') ? 'active' : '' }}">
-                Stock Manager Home
-              </a>
-              @endif
-
-              @if($can('stock_manager_action'))
-              <a href="{{ url(request()->segment(1) . '/stock-manager/action') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='action') || $seg=='action' ? 'active' : '' }}">
-                Stock Action
-              </a>
-              @endif
-
-              @if($can('stock_manager_stock'))
-              <a href="{{ url(request()->segment(1) . '/stock-manager/stock') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='stock') || ($seg=='stock' && !$can('admin_stock')) ? 'active' : '' }}">
-                <span>Live Stock View</span>
-                @if(($sidebarLowStockCount ?? 0) > 0)
-                  <span class="sidebar-badge badge-warning" title="{{ $sidebarLowStockCount }} low stock alert(s)">{{ $sidebarLowStockCount }}</span>
-                @endif
-              </a>
-              @endif
-
-              @if($can('stock_manager_po'))
-              <a href="{{ url(request()->segment(1) . '/stock-manager/po') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='po') || ($seg=='po' && !$can('admin_po')) ? 'active' : '' }}">
-                <span>Purchase Orders</span>
-                @if(($sidebarPendingPoCount ?? 0) > 0)
-                  <span class="sidebar-badge badge-danger" title="{{ $sidebarPendingPoCount }} pending purchase order(s)">{{ $sidebarPendingPoCount }}</span>
-                @endif
-              </a>
-              @endif
-
-              @if($can('stock_manager_history'))
-              <a href="{{ url(request()->segment(1) . '/stock-manager/history') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='history') || ($seg=='history' && !in_array($subSeg2, ['dispatch', 'cashier', 'sales', 'attendance'])) ? 'active' : '' }}">
-                Stock Manager History
-              </a>
-              @endif
-
-              @if($can('stock_manager_products'))
-              <a href="{{ url(request()->segment(1) . '/stock-manager/products') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='products') || ($seg=='products' && !$can('admin_products')) ? 'active' : '' }}">
-                Products Master
-              </a>
-              @endif
-
-              @if($can('stock_manager_grades'))
-              <a href="{{ url(request()->segment(1) . '/stock-manager/grades') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='grades') || ($seg=='grades' && !$can('admin_grades')) ? 'active' : '' }}">
-                Grades Master
-              </a>
-              @endif
-
-              @if($can('stock_manager_locations'))
-              <a href="{{ url(request()->segment(1) . '/stock-manager/locations') }}" class="nav-item {{ (in_array($subSeg2, ['stock-manager', 'stock_manager']) && $subSeg3=='locations') || ($seg=='locations' && !$can('admin_locations')) ? 'active' : '' }}">
-                Storage Location
-              </a>
-              @endif
-            </div>
-            @endif
 
             {{-- 6. Attendance & HR Panel Group --}}
             @if($hasAttendancePanel)
