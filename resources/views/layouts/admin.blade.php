@@ -255,7 +255,7 @@
               $hasAdminPanel = $can('admin_dashboard') || $can('admin_users') || $can('admin_products') || 
                                $can('admin_stock') || $can('admin_po') || $can('admin_logs') || 
                                $can('admin_grades') || $can('admin_locations') || $can('admin_dispatch_activity') || 
-                               $can('admin_cashier_overview') || $can('admin_categories') || $can('admin_notifications');
+                               $can('admin_cashier_overview') || $can('admin_notifications');
 
               $hasCashierPanel = $can('cashier_action') || $can('cashier_history') || $can('cashier_ledger');
 
@@ -347,12 +347,6 @@
               @if($can('admin_cashier_overview'))
               <a href="{{ url(request()->segment(1) . '/cashier-overview') }}" class="nav-item {{ $seg=='cashier-overview'?'active':'' }}">
                 Cashier Overview
-              </a>
-              @endif
-
-              @if($can('admin_categories'))
-              <a href="{{ url(request()->segment(1) . '/categories') }}" class="nav-item {{ $seg=='categories'?'active':'' }}">
-                Categories
               </a>
               @endif
 

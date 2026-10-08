@@ -156,7 +156,6 @@
             ['key' => 'admin_locations', 'name' => 'Storage Location', 'url' => '/admin/locations'],
             ['key' => 'admin_dispatch_activity', 'name' => 'Dispatch Overview', 'url' => '/admin/dispatch-activity'],
             ['key' => 'admin_cashier_overview', 'name' => 'Cashier Overview', 'url' => '/admin/cashier-overview'],
-            ['key' => 'admin_categories', 'name' => 'Categories', 'url' => '/admin/categories'],
             ['key' => 'admin_notifications', 'name' => 'Notifications', 'url' => '/admin/notifications'],
         ],
         'Cashier Panel' => [
