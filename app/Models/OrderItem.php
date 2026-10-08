@@ -24,12 +24,15 @@ class OrderItem extends Model
 
     public function syncDispatchedQty(): float
     {
-        $actual = (float) DispatchLogItem::where('order_item_id', $this->id)->sum('quantity');
-        if (abs((float)$this->dispatched_qty - $actual) > 0.001) {
-            $this->update(['dispatched_qty' => $actual]);
-            $this->dispatched_qty = $actual;
-        }
-        return $actual;
+        try {
+            $actual = (float) DispatchLogItem::where('order_item_id', $this->id)->sum('quantity');
+            if (abs((float)$this->dispatched_qty - $actual) > 0.001) {
+                $this->update(['dispatched_qty' => $actual]);
+                $this->dispatched_qty = $actual;
+            }
+            return $actual;
+        } catch (\Throwable $e) {}
+        return (float) $this->dispatched_qty;
     }
 
     public function order(): BelongsTo

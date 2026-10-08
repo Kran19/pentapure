@@ -2174,10 +2174,14 @@ const app = {
       `;
 
       // Live background sync to guarantee real-time pending quantities from server
-      fetch(`/api/dispatch/order-details/${id}`)
-        .then(r => r.ok ? r.json() : null)
+      const syncUrl = window.location.pathname.replace(/\/action.*$/, '') + '/order-details/' + id;
+      fetch(syncUrl)
+        .then(r => {
+          if (!r.ok || !(r.headers.get('content-type') || '').includes('application/json')) return null;
+          return r.json();
+        })
         .then(data => {
-          if (data && data.success && data.order && data.order.items) {
+          if (data && data.success && data.order && Array.isArray(data.order.items)) {
             data.order.items.forEach(freshItem => {
               const freshRem = freshItem.remainingQty;
               const badge = document.getElementById(`pending-badge-${freshItem.id}`);

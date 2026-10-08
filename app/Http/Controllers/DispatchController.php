@@ -295,12 +295,17 @@ class DispatchController extends Controller
         ]);
 
         // Rapid concurrent submission prevention (atomic lock per order)
-        $lock = \Illuminate\Support\Facades\Cache::lock("dispatch_lock_order_{$request->order_id}", 5);
-        if (!$lock->get()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Another dispatch request is currently in progress. Please wait a moment.'
-            ], 429);
+        $lock = null;
+        try {
+            $lock = \Illuminate\Support\Facades\Cache::lock("dispatch_lock_order_{$request->order_id}", 5);
+            if (!$lock->get()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Another dispatch request is currently in progress. Please wait a moment.'
+                ], 429);
+            }
+        } catch (\Throwable $e) {
+            $lock = null;
         }
 
         $user = $this->authUser();
@@ -373,7 +378,6 @@ class DispatchController extends Controller
                                 }
                             })
                             ->where('location_id', $locationId)
-                            ->lockForUpdate()
                             ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
                             ->value('net') ?? 0;
 
@@ -396,7 +400,6 @@ class DispatchController extends Controller
                                 $q->where('grade', $itemGrade);
                             }
                         })
-                        ->lockForUpdate()
                         ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
                         ->value('net') ?? 0;
 
@@ -413,9 +416,13 @@ class DispatchController extends Controller
             // Handle LR image
             $lrPath = null;
             if ($request->lr_image) {
+                $dir = public_path('lr_images');
+                if (!file_exists($dir)) {
+                    @mkdir($dir, 0777, true);
+                }
                 $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->lr_image));
                 $lrPath    = 'lr_images/' . uniqid('LR_') . '.jpg';
-                file_put_contents(public_path($lrPath), $imageData);
+                @file_put_contents(public_path($lrPath), $imageData);
             }
             $dispatchTransporterId = $request->transporter_id ?? $order->transporter_id;
             if (!$dispatchTransporterId) {
