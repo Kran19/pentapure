@@ -51,7 +51,7 @@
     }
   </script>
 </head>
-<body class="admin-mode">
+<body class="admin-mode {{ !empty($isReadOnly) ? 'is-read-only' : '' }}">
   <div id="toast-container"></div>
 
   <div id="modal-overlay" class="modal-overlay" onclick="if(event.target.id==='modal-overlay') app.closeModal()">
@@ -102,6 +102,19 @@
               @if(!empty($mobileHeaderBranch))
                 <span class="branch-badge" style="font-size:0.62rem; background:rgba(245,158,11,0.15); color:#d97706; border:1px solid rgba(245,158,11,0.3); font-weight:700; padding:1px 6px; border-radius:12px; letter-spacing:0.3px;">
                   📍 {{ strtoupper($mobileHeaderBranch) }}
+                </span>
+              @endif
+              @php
+                $mobilePerms = $headerUser['permissions'] ?? ($authUser['permissions'] ?? ($sessUser['permissions'] ?? []));
+                if (is_string($mobilePerms)) {
+                  $mobilePerms = json_decode($mobilePerms, true) ?: [];
+                }
+                $mobileDeptIds = is_array($mobilePerms) ? array_values(array_filter($mobilePerms, fn($p) => is_numeric($p))) : [];
+                $mobileDeptNames = !empty($mobileDeptIds) ? \App\Models\Department::whereIn('id', $mobileDeptIds)->pluck('name')->toArray() : [];
+              @endphp
+              @if(!empty($mobileDeptNames))
+                <span class="dept-badge" title="Assigned Departments: {{ implode(', ', $mobileDeptNames) }}" style="font-size:0.62rem; background:rgba(16,185,129,0.15); color:#059669; border:1px solid rgba(16,185,129,0.3); font-weight:700; padding:1px 6px; border-radius:12px; letter-spacing:0.3px; display:inline-flex; align-items:center; gap:3px;">
+                  🏢 {{ count($mobileDeptNames) > 2 ? count($mobileDeptNames) . ' Depts' : implode(', ', $mobileDeptNames) }}
                 </span>
               @endif
             </div>
@@ -327,6 +340,21 @@
             </a>
             @endif
 
+            @if($can('admin_logs'))
+            <a href="{{ url(request()->segment(1) . '/logs') }}" class="nav-item {{ $seg=='logs'?'active':'' }}">
+              Activity Logs
+            </a>
+            @endif
+
+            @if($can('admin_notifications'))
+            <a href="{{ url(request()->segment(1) . '/notifications') }}" class="nav-item {{ $seg=='notifications'?'active':'' }}">
+              <span>Notifications</span>
+              @if(($sidebarUnreadNotifCount ?? 0) > 0)
+                <span class="sidebar-badge badge-danger" title="{{ $sidebarUnreadNotifCount }} unread notification(s)">{{ $sidebarUnreadNotifCount }}</span>
+              @endif
+            </a>
+            @endif
+
 
 
             {{-- Sub-Admin Specific Module Panel Links --}}
@@ -501,6 +529,19 @@
               @if(!empty($adminHeaderBranch))
                 <span class="branch-badge" id="current-user-branch" style="font-size:0.75rem; background:rgba(245,158,11,0.15); color:#d97706; border:1px solid rgba(245,158,11,0.3); font-weight:700; padding:2px 8px; border-radius:12px; letter-spacing:0.3px; display:inline-flex; align-items:center; gap:4px;">
                   📍 {{ strtoupper($adminHeaderBranch) }}
+                </span>
+              @endif
+              @php
+                $adminPerms = $headerUser['permissions'] ?? ($authUser['permissions'] ?? ($sessUser['permissions'] ?? []));
+                if (is_string($adminPerms)) {
+                  $adminPerms = json_decode($adminPerms, true) ?: [];
+                }
+                $adminDeptIds = is_array($adminPerms) ? array_values(array_filter($adminPerms, fn($p) => is_numeric($p))) : [];
+                $adminDeptNames = !empty($adminDeptIds) ? \App\Models\Department::whereIn('id', $adminDeptIds)->pluck('name')->toArray() : [];
+              @endphp
+              @if(!empty($adminDeptNames))
+                <span class="dept-badge" title="Assigned Departments: {{ implode(', ', $adminDeptNames) }}" style="font-size:0.75rem; background:rgba(16,185,129,0.15); color:#059669; border:1px solid rgba(16,185,129,0.3); font-weight:700; padding:2px 8px; border-radius:12px; letter-spacing:0.3px; display:inline-flex; align-items:center; gap:4px;">
+                  🏢 {{ count($adminDeptNames) > 2 ? count($adminDeptNames) . ' Depts' : implode(', ', $adminDeptNames) }}
                 </span>
               @endif
             </div>

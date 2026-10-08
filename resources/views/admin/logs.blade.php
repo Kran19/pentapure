@@ -29,9 +29,11 @@
       </select>
       <input type="date" id="blade-date-filter" class="btn-sm" style="background:var(--glass-bg); color:white; border:1px solid var(--glass-border); padding:5px 10px;" onchange="applyBladeFilters()">
       <button class="btn btn-sm btn-secondary" onclick="resetBladeFilters()">Reset</button>
+      @if(empty($isReadOnly))
       <button type="button" class="btn btn-sm" onclick="confirmClearLogs()" style="background:#dc2626; border:1px solid #dc2626; color:#ffffff !important; font-weight:700; padding:5px 12px; border-radius:6px; cursor:pointer; width:auto;" title="Clear all activity logs from view">
         🗑️ Clear All Logs
       </button>
+      @endif
     </div>
   </div>
 

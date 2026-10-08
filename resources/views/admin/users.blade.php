@@ -121,17 +121,25 @@
       </div>
     </div>
     
-    <div id="attendance-permissions-container" style="display:none; margin-top:1rem; border:1px solid var(--glass-border); padding:1.2rem; border-radius:8px; background:var(--glass-bg);">
-      <h4 style="margin-top:0; margin-bottom:1rem; color:var(--primary); font-size:1.1rem; text-transform:none;">Assigned Departments (Attendance Only)</h4>
-      <div style="margin-bottom:1rem; font-size:0.9rem; color:var(--text-muted);">
-        Select which departments this user is allowed to manage attendance for.
-      </div>
-      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:1rem;">
-        @foreach($pageData['departments'] as $d)
-          <div style="display:flex; align-items:center; gap:8px;">
-            <input type="checkbox" class="attendance-dept-cb" value="{{ $d->id }}" style="width:16px;height:16px;margin:0;">
-            <span style="font-size:0.9rem; text-transform:none;">{{ $d->name }}</span>
+    <div id="attendance-permissions-container" style="display:none; margin-top:1rem; border:1px solid #cbd5e1; padding:1.2rem; border-radius:10px; background:#f8fafc;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.8rem; padding-bottom:0.6rem; border-bottom:1px solid #cbd5e1;">
+        <div>
+          <h4 style="margin:0; color:#1e293b; font-size:1.05rem; font-weight:700;">Assigned Departments (Attendance & HR)</h4>
+          <div style="font-size:0.82rem; color:#64748b; margin-top:2px;">
+            Select departments this user can access in Attendance & HR. For Sub-Admin: if none are selected, access to all departments is granted.
           </div>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+          <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllAttendanceDepts(true)" style="padding:3px 8px; font-size:0.75rem;">Select All</button>
+          <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllAttendanceDepts(false)" style="padding:3px 8px; font-size:0.75rem;">Clear All</button>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:0.75rem;">
+        @foreach($pageData['departments'] as $d)
+          <label style="display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:6px; background:#ffffff; border:1px solid #e2e8f0; margin:0; cursor:pointer;">
+            <input type="checkbox" class="attendance-dept-cb" value="{{ $d->id }}" id="att-dept-{{ $d->id }}" style="width:16px;height:16px;margin:0; cursor:pointer;">
+            <span style="font-size:0.85rem; font-weight:600; color:#334155;">{{ $d->name }}</span>
+          </label>
         @endforeach
       </div>
     </div>
@@ -304,6 +312,65 @@
                 <div style="font-size:0.72rem; color:{{ $vcCount > 0 ? '#10b981' : 'var(--text-muted)' }}; margin-top:2px; font-weight:600;">
                   👁️ {{ $vcCount }} visible cashier{{ $vcCount === 1 ? '' : 's' }}
                 </div>
+              @elseif(in_array($user['role'], ['SUB_ADMIN', 'STOCK_MANAGER']))
+                @php
+                  $uPerms = $user['permissions'] ?? [];
+                  if (is_string($uPerms)) $uPerms = json_decode($uPerms, true) ?? [];
+                  if (!is_array($uPerms)) $uPerms = [];
+                  
+                  $viewCount = 0;
+                  $editCount = 0;
+                  $uDeptIds = [];
+                  foreach ($uPerms as $p) {
+                    if (is_numeric($p) && (int)$p > 0) {
+                      $uDeptIds[] = (int)$p;
+                    } elseif (is_string($p)) {
+                      if (str_starts_with($p, 'edit_') || str_starts_with($p, 'edit_module_')) {
+                        $editCount++;
+                      } elseif (str_starts_with($p, 'view_') || str_starts_with($p, 'module_')) {
+                        $viewCount++;
+                      }
+                    }
+                  }
+                  if (in_array('can_manage', $uPerms, true)) {
+                    $editCount = 'All';
+                    $viewCount = 'All';
+                  }
+                @endphp
+                <div style="font-size:0.72rem; color:#2563eb; margin-top:3px; font-weight:600;">
+                  🔑 {{ $viewCount }} View | {{ $editCount }} Edit
+                </div>
+                @if($user['role'] === 'SUB_ADMIN')
+                  @if(!empty($uDeptIds))
+                    @php
+                      $deptNames = $pageData['departments']->whereIn('id', $uDeptIds)->pluck('name')->toArray();
+                    @endphp
+                    <div style="font-size:0.72rem; color:#059669; margin-top:2px; font-weight:600;" title="{{ implode(', ', $deptNames) }}">
+                      🏢 {{ count($deptNames) }} Dept{{ count($deptNames) > 1 ? 's' : '' }}: {{ implode(', ', array_slice($deptNames, 0, 2)) }}{{ count($deptNames) > 2 ? '...' : '' }}
+                    </div>
+                  @else
+                    <div style="font-size:0.72rem; color:#64748b; margin-top:2px; font-weight:500;">
+                      🏢 All Departments
+                    </div>
+                  @endif
+                @endif
+              @elseif($user['role'] === 'ATTENDANCE')
+                @php
+                  $uPerms = $user['permissions'] ?? [];
+                  if (is_string($uPerms)) $uPerms = json_decode($uPerms, true) ?? [];
+                  if (!is_array($uPerms)) $uPerms = [];
+                  $uDeptIds = array_values(array_filter(array_map('intval', $uPerms)));
+                  $deptNames = $pageData['departments']->whereIn('id', $uDeptIds)->pluck('name')->toArray();
+                @endphp
+                @if(!empty($deptNames))
+                  <div style="font-size:0.72rem; color:#059669; margin-top:3px; font-weight:600;" title="{{ implode(', ', $deptNames) }}">
+                    🏢 {{ count($deptNames) }} Dept{{ count($deptNames) > 1 ? 's' : '' }}: {{ implode(', ', array_slice($deptNames, 0, 2)) }}{{ count($deptNames) > 2 ? '...' : '' }}
+                  </div>
+                @else
+                  <div style="font-size:0.72rem; color:#dc2626; margin-top:3px; font-weight:500;">
+                    🏢 No Depts Assigned
+                  </div>
+                @endif
               @endif
             </td>
             <td>
@@ -631,7 +698,7 @@ function toggleRoleFields(role) {
     });
   }
 
-  if (role === 'ATTENDANCE') {
+  if (role === 'ATTENDANCE' || role === 'SUB_ADMIN') {
     if(attPermContainer) attPermContainer.style.display = 'block';
   } else {
     if(attPermContainer) {
@@ -639,6 +706,10 @@ function toggleRoleFields(role) {
         document.querySelectorAll('.attendance-dept-cb').forEach(cb => cb.checked = false);
     }
   }
+}
+
+function toggleAllAttendanceDepts(checked) {
+  document.querySelectorAll('.attendance-dept-cb').forEach(cb => cb.checked = checked);
 }
 
 function toggleAllVisibleCashiers(checked) {
@@ -725,7 +796,8 @@ function adminEditUser(user) {
   });
   
   document.querySelectorAll('.attendance-dept-cb').forEach(cb => {
-      cb.checked = perms.includes(parseInt(cb.value)) || perms.includes(cb.value.toString());
+      const val = parseInt(cb.value);
+      cb.checked = permsArr.includes(val) || permsArr.includes(cb.value) || permsArr.includes(val.toString());
   });
 
   // Set visible cashiers if it's a CASHIER
@@ -781,7 +853,12 @@ function adminSaveUser() {
       perms.push('edit_' + eqKey);
     }
   });
-  document.querySelectorAll('.attendance-dept-cb:checked').forEach(cb => perms.push(parseInt(cb.value)));
+  document.querySelectorAll('.attendance-dept-cb:checked').forEach(cb => {
+    const v = parseInt(cb.value);
+    if (!isNaN(v) && !perms.includes(v)) {
+      perms.push(v);
+    }
+  });
 
   const code = (document.getElementById('u-country-code').value || '').trim();
   const phone = (document.getElementById('u-phone').value || '').trim();

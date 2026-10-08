@@ -178,6 +178,7 @@
           </div>
         @endif
 
+        @if(empty($isReadOnly))
         <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:0.8rem;">
           <button class="btn btn-sm" onclick="app.editTransaction({{ $t['id'] }})" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; display:inline-flex; align-items:center; gap:5px;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
@@ -192,6 +193,7 @@
             Delete
           </button>
         </div>
+        @endif
       </div>
     </div>
   @empty

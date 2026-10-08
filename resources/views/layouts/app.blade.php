@@ -44,7 +44,7 @@
     }, { passive: false });
   </script>
 </head>
-<body class="{{ str_contains(request()->path(), 'attendance') ? 'admin-mode attendance-mode' : '' }}">
+<body class="{{ str_contains(request()->path(), 'attendance') ? 'admin-mode attendance-mode' : '' }} {{ !empty($isReadOnly) ? 'is-read-only' : '' }}">
   <!-- Toast Notification Container -->
   <div id="toast-container"></div>
 
@@ -185,6 +185,19 @@
                 📍 {{ strtoupper($headerBranch) }}
               </span>
             @endif
+            @php
+              $appUserPerms = $sessUser['permissions'] ?? [];
+              if (is_string($appUserPerms)) {
+                $appUserPerms = json_decode($appUserPerms, true) ?: [];
+              }
+              $appDeptIds = is_array($appUserPerms) ? array_values(array_filter($appUserPerms, fn($p) => is_numeric($p))) : [];
+              $appDeptNames = !empty($appDeptIds) ? \App\Models\Department::whereIn('id', $appDeptIds)->pluck('name')->toArray() : [];
+            @endphp
+            @if(!empty($appDeptNames))
+              <span class="dept-badge" title="Assigned Departments: {{ implode(', ', $appDeptNames) }}" style="font-size:0.75rem; background:rgba(16,185,129,0.15); color:#059669; border:1px solid rgba(16,185,129,0.3); font-weight:700; padding:2px 8px; border-radius:12px; letter-spacing:0.3px; display:inline-flex; align-items:center; gap:4px;">
+                🏢 {{ count($appDeptNames) > 2 ? count($appDeptNames) . ' Depts' : implode(', ', $appDeptNames) }}
+              </span>
+            @endif
           </div>
           <div class="header-actions" style="display:flex; align-items:center;">
             <div id="notif-bell-container" style="position:relative; cursor:pointer; margin-right:15px; color:var(--text-main);" onclick="app.toggleNotifications()">
@@ -216,6 +229,11 @@
                 </svg>
                 Back
               </button>
+            </div>
+          @endif
+          @if(!empty($isReadOnly))
+            <div style="margin-bottom:1rem; padding:0.75rem 1.2rem; background:#fffbe8; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:8px; color:#92400e; font-weight:600; display:flex; align-items:center; gap:8px; font-size:0.9rem; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+              <span>🔒 <strong>View-Only Mode</strong>: You have read-only access to this page. Action buttons like Add, Edit, Delete, or Save are disabled.</span>
             </div>
           @endif
           @yield('content')

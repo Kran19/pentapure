@@ -2685,3 +2685,17 @@ a.btn-danger:hover,
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
 }
+
+/* View-Only Mode Styles */
+body.is-read-only .read-only-hide,
+body.is-read-only .hide-in-read-only,
+body.is-read-only [data-read-only-hide] {
+  display: none !important;
+}
+
+body.is-read-only .read-only-disable,
+body.is-read-only [data-read-only-disable] {
+  pointer-events: none !important;
+  opacity: 0.55 !important;
+  cursor: not-allowed !important;
+}

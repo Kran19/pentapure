@@ -135,6 +135,7 @@
                   </div>
                 </td>
                 <td>
+                  @if(empty($isReadOnly))
                   <div style="display:flex; align-items:center; gap:6px;">
                     <button type="button" 
                             onclick="togglePaidStatus({{ $data['worker']->id }}, true)"
@@ -158,7 +159,8 @@
                             style="padding:4px 8px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.78rem; width:135px; background:white; color:#0f172a; outline:none; cursor:pointer; font-weight:500;"
                             title="Click to open calendar and select payment date">
                   </div>
-                  <div id="paid-badge-{{ $data['worker']->id }}" style="margin-top:3px; font-size:0.68rem; font-weight:bold; color:{{ $isPaid ? '#22c55e' : '#ef4444' }};">
+                  @endif
+                  <div id="paid-badge-{{ $data['worker']->id }}" style="margin-top:3px; font-size:0.75rem; font-weight:bold; color:{{ $isPaid ? '#22c55e' : '#ef4444' }};">
                     {{ $isPaid ? '✓ PAID' . ($paidDate ? ' (' . \Carbon\Carbon::parse($paidDate)->format('d-m-Y') . ')' : '') : '✕ UNPAID' }}
                   </div>
                 </td>

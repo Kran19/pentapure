@@ -126,7 +126,13 @@ input[type=number].no-spinners {
 
   </div>
   
+  @if(empty($isReadOnly))
   <button class="btn mt-2" onclick="app.submitDispatch()">Dispatch Items</button>
+  @else
+  <div style="margin-top:1rem; padding:0.75rem 1.2rem; background:#fffbe8; border:1px solid #fde68a; border-radius:8px; color:#92400e; font-weight:600; text-align:center;">
+    🔒 View-Only Mode: Dispatching items is disabled.
+  </div>
+  @endif
 
 </div>
 

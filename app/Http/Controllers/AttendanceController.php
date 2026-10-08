@@ -14,12 +14,58 @@ class AttendanceController extends Controller
 {
     private function authUser() { return session('auth_user'); }
 
+    public function getAllowedDeptIds(): array
+    {
+        $user = $this->authUser();
+        if (!$user) {
+            return [];
+        }
+
+        // Full Admin has unrestricted access to all departments
+        if (in_array($user['role'] ?? '', ['ADMIN', 'SUPER_ADMIN'])) {
+            return [];
+        }
+
+        $perms = $user['permissions'] ?? [];
+        if (is_string($perms)) {
+            $perms = json_decode($perms, true) ?? [];
+        }
+        if (!is_array($perms)) {
+            $perms = [];
+        }
+
+        if (($user['role'] ?? '') === 'ATTENDANCE') {
+            return array_values(array_filter(array_map('intval', $perms)));
+        }
+
+        if (($user['role'] ?? '') === 'SUB_ADMIN') {
+            $deptIds = [];
+            foreach ($perms as $p) {
+                if (is_numeric($p) && (int)$p > 0) {
+                    $deptIds[] = (int)$p;
+                }
+            }
+            // If SUB_ADMIN has specifically assigned department IDs, restrict to them
+            // If empty, SUB_ADMIN has access across all departments
+            return $deptIds;
+        }
+
+        return [];
+    }
+
     public function team(Request $request)
     {
+        $allowedDeptIds = $this->getAllowedDeptIds();
+        $workersQuery = Worker::with('department');
+        $deptsQuery = Department::withCount('workers');
+        if (!empty($allowedDeptIds)) {
+            $workersQuery->whereIn('department_id', $allowedDeptIds);
+            $deptsQuery->whereIn('id', $allowedDeptIds);
+        }
         return response()->json([
             'success' => true,
-            'workers' => Worker::with('department')->get(),
-            'departments' => Department::withCount('workers')->get()
+            'workers' => $workersQuery->get(),
+            'departments' => $deptsQuery->get()
         ]);
     }
 
@@ -29,7 +75,7 @@ class AttendanceController extends Controller
         $user = $this->authUser();
         
         $today = Carbon::today()->toDateString();
-        $allowedDeptIds = ($user && $user['role'] === 'ATTENDANCE') ? ($user['permissions'] ?? []) : [];
+        $allowedDeptIds = $this->getAllowedDeptIds();
 
         $workersBase = Worker::query();
         if (!empty($allowedDeptIds)) {
@@ -134,19 +180,27 @@ class AttendanceController extends Controller
             $parsedDate = $date;
         }
 
-        $deletedPunches = \App\Models\Attendance::where(function ($q) use ($date, $parsedDate) {
+        $allowedDeptIds = $this->getAllowedDeptIds();
+        $punchesQuery = \App\Models\Attendance::where(function ($q) use ($date, $parsedDate) {
             $q->whereDate('date', $parsedDate)
               ->orWhere('date', $parsedDate)
               ->orWhere('date', $date)
               ->orWhere('date', 'like', "{$parsedDate}%");
-        })->delete();
+        });
+        if (!empty($allowedDeptIds)) {
+            $punchesQuery->whereHas('worker', fn($q) => $q->whereIn('department_id', $allowedDeptIds));
+        }
+        $deletedPunches = $punchesQuery->delete();
 
-        $deletedSub = \App\Models\AttendanceSubmission::where(function ($q) use ($date, $parsedDate) {
-            $q->whereDate('attendance_date', $parsedDate)
-              ->orWhere('attendance_date', $parsedDate)
-              ->orWhere('attendance_date', $date)
-              ->orWhere('attendance_date', 'like', "{$parsedDate}%");
-        })->delete();
+        $deletedSub = 0;
+        if (empty($allowedDeptIds)) {
+            $deletedSub = \App\Models\AttendanceSubmission::where(function ($q) use ($date, $parsedDate) {
+                $q->whereDate('attendance_date', $parsedDate)
+                  ->orWhere('attendance_date', $parsedDate)
+                  ->orWhere('attendance_date', $date)
+                  ->orWhere('attendance_date', 'like', "{$parsedDate}%");
+            })->delete();
+        }
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
@@ -164,7 +218,12 @@ class AttendanceController extends Controller
     public function departments(Request $request)
     {
         Department::firstOrCreate(['name' => 'MUKADAM'], ['is_active' => true]);
-        $departments = Department::withCount('workers')->get();
+        $allowedDeptIds = $this->getAllowedDeptIds();
+        $departmentsQuery = Department::withCount('workers')->orderBy('name');
+        if (!empty($allowedDeptIds)) {
+            $departmentsQuery->whereIn('id', $allowedDeptIds);
+        }
+        $departments = $departmentsQuery->get();
         return view('attendance.departments', [
             'departments' => $departments,
             'layout'      => $this->getLayout($request)
@@ -174,6 +233,11 @@ class AttendanceController extends Controller
     public function storeDepartment(Request $request)
     {
         $request->validate(['name' => 'required|string|max:255']);
+        $allowedDeptIds = $this->getAllowedDeptIds();
+        if (!empty($allowedDeptIds) && $request->department_id && !in_array((int)$request->department_id, $allowedDeptIds, true)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized department.'], 403);
+        }
+
         if ($request->department_id) {
             $dept = Department::findOrFail($request->department_id);
             if (strtoupper(trim($dept->name)) === 'MUKADAM' && strtoupper(trim($request->name)) !== 'MUKADAM') {
@@ -188,6 +252,10 @@ class AttendanceController extends Controller
 
     public function destroyDepartment($id)
     {
+        $allowedDeptIds = $this->getAllowedDeptIds();
+        if (!empty($allowedDeptIds) && !in_array((int)$id, $allowedDeptIds, true)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized department.'], 403);
+        }
         $dept = Department::find($id);
         if ($dept && strtoupper(trim($dept->name)) === 'MUKADAM') {
             return response()->json(['success' => false, 'message' => 'MUKADAM is a fixed system department and cannot be deleted.'], 422);
@@ -202,13 +270,10 @@ class AttendanceController extends Controller
         $workersQuery = Worker::with('department')->orderBy('id');
         $departmentsQuery = Department::where('is_active', true)->orderBy('name');
 
-        $authUser = $this->authUser();
-        if ($authUser && $authUser['role'] === 'ATTENDANCE') {
-            $allowedDeptIds = $authUser['permissions'] ?? [];
-            if (!empty($allowedDeptIds)) {
-                $workersQuery->whereIn('department_id', $allowedDeptIds);
-                $departmentsQuery->whereIn('id', $allowedDeptIds);
-            }
+        $allowedDeptIds = $this->getAllowedDeptIds();
+        if (!empty($allowedDeptIds)) {
+            $workersQuery->whereIn('department_id', $allowedDeptIds);
+            $departmentsQuery->whereIn('id', $allowedDeptIds);
         }
 
         $workers     = $workersQuery->get();
@@ -224,12 +289,9 @@ class AttendanceController extends Controller
     public function workersJson()
     {
         $workersQuery = Worker::with('department')->orderBy('name');
-        $authUser = $this->authUser();
-        if ($authUser && $authUser['role'] === 'ATTENDANCE') {
-            $allowedDeptIds = $authUser['permissions'] ?? [];
-            if (!empty($allowedDeptIds)) {
-                $workersQuery->whereIn('department_id', $allowedDeptIds);
-            }
+        $allowedDeptIds = $this->getAllowedDeptIds();
+        if (!empty($allowedDeptIds)) {
+            $workersQuery->whereIn('department_id', $allowedDeptIds);
         }
 
         $workers = $workersQuery->get()->map(fn($w) => [
@@ -249,7 +311,12 @@ class AttendanceController extends Controller
 
     public function departmentsJson()
     {
-        $depts = Department::where('is_active', true)->orderBy('name')->get(['id','name']);
+        $allowedDeptIds = $this->getAllowedDeptIds();
+        $deptsQuery = Department::where('is_active', true)->orderBy('name');
+        if (!empty($allowedDeptIds)) {
+            $deptsQuery->whereIn('id', $allowedDeptIds);
+        }
+        $depts = $deptsQuery->get(['id','name']);
         return response()->json(['success' => true, 'departments' => $depts]);
     }
 
@@ -265,6 +332,19 @@ class AttendanceController extends Controller
             'per_hour_salary' => 'nullable|numeric|min:0',
             'status'        => 'required|in:ACTIVE,INACTIVE'
         ]);
+
+        $allowedDeptIds = $this->getAllowedDeptIds();
+        if (!empty($allowedDeptIds)) {
+            if (!in_array((int)$request->department_id, $allowedDeptIds, true)) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized department selected.'], 403);
+            }
+            if ($request->worker_id) {
+                $existingWorker = Worker::findOrFail($request->worker_id);
+                if (!in_array((int)$existingWorker->department_id, $allowedDeptIds, true)) {
+                    return response()->json(['success' => false, 'message' => 'Unauthorized worker modification.'], 403);
+                }
+            }
+        }
 
         $data = $request->all();
         
@@ -301,7 +381,15 @@ class AttendanceController extends Controller
 
     public function destroyWorker($id)
     {
-        Worker::destroy($id);
+        $worker = Worker::find($id);
+        if (!$worker) {
+            return response()->json(['success' => false, 'message' => 'Worker not found'], 404);
+        }
+        $allowedDeptIds = $this->getAllowedDeptIds();
+        if (!empty($allowedDeptIds) && !in_array((int)$worker->department_id, $allowedDeptIds, true)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized department.'], 403);
+        }
+        $worker->delete();
         return response()->json(['success' => true, 'message' => 'Worker deleted']);
     }
 
@@ -324,13 +412,10 @@ class AttendanceController extends Controller
             
         $departmentsQuery = \App\Models\Department::orderBy('name');
 
-        $authUser = $this->authUser();
-        if ($authUser && $authUser['role'] === 'ATTENDANCE') {
-            $allowedDeptIds = $authUser['permissions'] ?? [];
-            if (!empty($allowedDeptIds)) {
-                $workersQuery->whereIn('department_id', $allowedDeptIds);
-                $departmentsQuery->whereIn('id', $allowedDeptIds);
-            }
+        $allowedDeptIds = $this->getAllowedDeptIds();
+        if (!empty($allowedDeptIds)) {
+            $workersQuery->whereIn('department_id', $allowedDeptIds);
+            $departmentsQuery->whereIn('id', $allowedDeptIds);
         }
 
         $workers = $workersQuery->get();
@@ -366,12 +451,9 @@ class AttendanceController extends Controller
             })
             ->orderBy('name');
             
-        $authUser = $this->authUser();
-        if ($authUser && $authUser['role'] === 'ATTENDANCE') {
-            $allowedDeptIds = $authUser['permissions'] ?? [];
-            if (!empty($allowedDeptIds)) {
-                $workersQuery->whereIn('department_id', $allowedDeptIds);
-            }
+        $allowedDeptIds = $this->getAllowedDeptIds();
+        if (!empty($allowedDeptIds)) {
+            $workersQuery->whereIn('department_id', $allowedDeptIds);
         }
         
         $workers = $workersQuery->get();
@@ -570,7 +652,7 @@ class AttendanceController extends Controller
         $status = $submission ? $submission->status : 'PENDING';
         
         $authUser = $this->authUser();
-        $allowedDeptIds = ($authUser && $authUser['role'] === 'ATTENDANCE') ? ($authUser['permissions'] ?? []) : [];
+        $allowedDeptIds = $this->getAllowedDeptIds();
 
         $attQuery = Attendance::with(['worker.department'])
             ->where('date', $date)
@@ -649,12 +731,9 @@ class AttendanceController extends Controller
               });
         });
 
-        $authUser = $this->authUser();
-        if ($authUser && $authUser['role'] === 'ATTENDANCE') {
-            $allowedDeptIds = $authUser['permissions'] ?? [];
-            if (!empty($allowedDeptIds)) {
-                $workersQuery->whereIn('department_id', $allowedDeptIds);
-            }
+        $allowedDeptIds = $this->getAllowedDeptIds();
+        if (!empty($allowedDeptIds)) {
+            $workersQuery->whereIn('department_id', $allowedDeptIds);
         }
 
         $workers = $workersQuery->orderBy('name')->get();
@@ -688,6 +767,12 @@ class AttendanceController extends Controller
             'paid_date' => 'nullable|string',
             'paid_note' => 'nullable|string'
         ]);
+
+        $worker = Worker::findOrFail($id);
+        $allowedDeptIds = $this->getAllowedDeptIds();
+        if (!empty($allowedDeptIds) && !in_array((int)$worker->department_id, $allowedDeptIds, true)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized department.'], 403);
+        }
 
         $adj = WorkerMonthlyAdjustment::firstOrNew([
             'worker_id' => $id,
@@ -736,6 +821,12 @@ class AttendanceController extends Controller
             'advance' => 'nullable|numeric',
             'remark' => 'nullable|string'
         ]);
+
+        $worker = Worker::findOrFail($id);
+        $allowedDeptIds = $this->getAllowedDeptIds();
+        if (!empty($allowedDeptIds) && !in_array((int)$worker->department_id, $allowedDeptIds, true)) {
+            abort(403, 'Unauthorized department.');
+        }
 
         $label = $request->filled('other_allowance_label') ? trim($request->other_allowance_label) : null;
         if ($label === 'OTHER' || $label === 'PETROL / FOODS') {
@@ -786,12 +877,9 @@ class AttendanceController extends Controller
               });
         });
 
-        $authUser = $this->authUser();
-        if ($authUser && $authUser['role'] === 'ATTENDANCE') {
-            $allowedDeptIds = $authUser['permissions'] ?? [];
-            if (!empty($allowedDeptIds)) {
-                $workersQuery->whereIn('department_id', $allowedDeptIds);
-            }
+        $allowedDeptIds = $this->getAllowedDeptIds();
+        if (!empty($allowedDeptIds)) {
+            $workersQuery->whereIn('department_id', $allowedDeptIds);
         }
 
         $workers = $workersQuery->orderBy('name')->get();
@@ -834,12 +922,9 @@ class AttendanceController extends Controller
               });
         });
 
-        $authUser = $this->authUser();
-        if ($authUser && $authUser['role'] === 'ATTENDANCE') {
-            $allowedDeptIds = $authUser['permissions'] ?? [];
-            if (!empty($allowedDeptIds)) {
-                $workersQuery->whereIn('department_id', $allowedDeptIds);
-            }
+        $allowedDeptIds = $this->getAllowedDeptIds();
+        if (!empty($allowedDeptIds)) {
+            $workersQuery->whereIn('department_id', $allowedDeptIds);
         }
 
         $workers = $workersQuery->orderBy('name')->get();
@@ -872,6 +957,10 @@ class AttendanceController extends Controller
     private function prepareWorkerReportData(Request $request, $id)
     {
         $worker = Worker::with('department')->findOrFail($id);
+        $allowedDeptIds = $this->getAllowedDeptIds();
+        if (!empty($allowedDeptIds) && !in_array((int)$worker->department_id, $allowedDeptIds, true)) {
+            abort(403, 'Unauthorized. You do not have permission to view or manage this worker\'s department.');
+        }
 
         $allWorkersOrder = Worker::orderBy('id')->pluck('id')->toArray();
         $workerNumber = array_search($worker->id, $allWorkersOrder);

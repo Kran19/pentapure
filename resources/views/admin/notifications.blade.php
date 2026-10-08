@@ -11,7 +11,7 @@
         <span id="notif-total-count">{{ $pageData['totalCount'] }}</span> total notifications
       </p>
     </div>
-    @if($pageData['totalCount'] > 0)
+    @if($pageData['totalCount'] > 0 && empty($isReadOnly))
     <div style="display:flex; gap:0.5rem;" id="clear-all-wrap">
       <button type="button" onclick="clearAllNotifications()" class="btn" style="background:rgba(239,68,68,0.1); color:#ef4444; border:1px solid rgba(239,68,68,0.3); padding:0.5rem 1rem; border-radius:8px; font-size:0.85rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px;" onmouseover="this.style.background='#ef4444'; this.style.color='#fff';" onmouseout="this.style.background='rgba(239,68,68,0.1)'; this.style.color='#ef4444';">
         🗑️ Clear All Notifications
@@ -82,6 +82,7 @@
                 &nbsp;·&nbsp;
                 {{ $n->created_at->format('d-m-Y, H:i') }}
               </div>
+              @if(empty($isReadOnly))
               <button type="button" 
                       onclick="deleteNotification('{{ $n->id }}', this)" 
                       title="Remove notification"
@@ -90,6 +91,7 @@
                       onmouseout="this.style.background='rgba(239,68,68,0.08)'; this.style.color='#ef4444';">
                 🗑️ Delete
               </button>
+              @endif
             </div>
           </div>
 

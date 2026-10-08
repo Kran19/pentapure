@@ -11,7 +11,9 @@
 
   <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px;">
     <h2 style="margin:0;">📊 Attendance Dashboard</h2>
+    @if(empty($isReadOnly))
     <button class="btn" onclick="openAddWorkerModal()" style="width:auto; padding:0.6rem 1.5rem;">+ Add Worker</button>
+    @endif
   </div>
 
 @php
@@ -113,7 +115,7 @@
                     PDF ↓
                   </a>
                 @endif
-                @if(in_array(session('auth_user.role') ?? '', ['ADMIN', 'SUB_ADMIN', 'ATTENDANCE']))
+                @if(empty($isReadOnly) && in_array(session('auth_user.role') ?? '', ['ADMIN', 'SUB_ADMIN', 'ATTENDANCE']))
                   <button type="button" 
                           onclick="deleteAttendanceRecord('{{ $sub->attendance_date->format('Y-m-d') }}', '{{ $sub->attendance_date->format('d-m-Y') }}', this)" 
                           class="btn" 

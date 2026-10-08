@@ -50,7 +50,7 @@
         </a>
       @endif
 
-      @if(!$isLocked)
+      @if(!$isLocked && empty($isReadOnly))
         @if($authUser['role'] !== 'ADMIN')
           <button class="btn btn-secondary" onclick="markAllPresent()" style="width:auto; padding:0.4rem 1rem;">Present All</button>
         @endif
@@ -64,7 +64,11 @@
     </div>
   </div>
 
-  @if($isLocked)
+  @if(!empty($isReadOnly))
+    <div style="background:#fffbe8; border:1px solid #fde68a; border-left:4px solid #f59e0b; color:#92400e; padding:1rem; border-radius:5px; margin-bottom:1rem; font-weight:bold;">
+      🔒 View-Only Mode: You have read-only access to Daily Attendance. Modifying or submitting attendance is disabled.
+    </div>
+  @elseif($isLocked)
     <div style="background:#fce4e4; border:1px solid #fccacb; color:#c0392b; padding:1rem; border-radius:5px; margin-bottom:1rem; font-weight:bold;">
       🔒 This attendance record has been SUBMITTED and is locked. Only an Administrator can make changes.
     </div>
@@ -101,7 +105,7 @@
             $isFinished = $att ? ($att->is_finished ? true : false) : false;
             
             $isAdmin = ($authUser['role'] === 'ADMIN');
-            $disableInputs = $isLocked; // Normal users are locked if SUBMITTED. Admin can always edit.
+            $disableInputs = $isLocked || !empty($isReadOnly); // Locked if SUBMITTED or read-only mode
             $isFixedSalary = in_array(strtoupper($w->salary_type ?? ''), ['FIXED_MONTHLY', 'FIX_MONTHLY', 'FIXED', 'FIXED_SALARY']);
             $rawSalType = strtoupper(trim((string)($w->salary_type ?? 'DAILY')));
             if (empty($rawSalType)) {

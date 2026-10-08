@@ -39,138 +39,35 @@ class AuthMiddleware
 
         // Granular permission check for SUB_ADMIN and STOCK_MANAGER
         if (in_array($user['role'], ['SUB_ADMIN', 'STOCK_MANAGER'])) {
-            $path = trim($request->path(), '/');
-            $segments = explode('/', $path);
-            if (strtolower($segments[0] ?? '') === 'public') {
-                array_shift($segments);
-            }
-            $seg1 = strtolower($segments[0] ?? '');
-            $seg2 = strtolower($segments[1] ?? 'home');
-            $seg3 = strtolower($segments[2] ?? '');
-
             $isWrite = in_array($request->method(), ['POST', 'PUT', 'PATCH', 'DELETE']);
+            $moduleKey = $this->resolveModuleKey($request);
 
-            // Skip strict checks for profile, logout, notifications, or GET API helpers
-            if (in_array($seg2, ['profile', 'logout']) || $seg1 === 'notifications' || $seg1 === 'logout' || (!$isWrite && str_contains($path, 'api/'))) {
+            // Skip strict checks for routes that are not module-specific (profile, logout, notifications, etc.)
+            if ($moduleKey === null) {
+                view()->share('isReadOnly', false);
                 view()->share('authUser', $user);
                 return $next($request);
-            }
-
-            // Determine panel type
-            $panel = 'admin';
-            if (in_array($seg1, ['admin', 'sub_admin', 'stock_manager']) && $seg2 === 'order' && $seg3 === 'pdf') {
-                $panel = 'sales';
-                $seg2 = 'history';
-            } elseif (in_array($seg1, ['admin', 'sub_admin', 'stock_manager']) && $seg2 === 'dispatch' && $seg3 === 'pdf') {
-                $panel = 'dispatch';
-                $seg2 = 'history';
-            } elseif ($seg1 === 'order' && $seg2 === 'pdf') {
-                $panel = 'sales';
-                $seg2 = 'history';
-            } elseif (in_array($seg1, ['admin', 'sub_admin', 'stock_manager']) && in_array($seg2, ['cashier', 'sales', 'dispatch', 'stock-manager', 'stock_manager', 'attendance']) && !empty($seg3)) {
-                $panel = str_replace('-', '_', $seg2);
-                $seg2 = $seg3;
-            } elseif (str_contains($seg1, 'cashier')) $panel = 'cashier';
-            elseif (str_contains($seg1, 'sales')) $panel = 'sales';
-            elseif (str_contains($seg1, 'dispatch')) $panel = 'dispatch';
-            elseif (str_contains($seg1, 'raw')) $panel = 'raw';
-            elseif (str_contains($seg1, 'semi')) $panel = 'semi';
-            elseif (str_contains($seg1, 'finished')) $panel = 'finished';
-            elseif (str_contains($seg1, 'stock_manager')) $panel = 'stock_manager';
-            elseif (str_contains($seg1, 'attendance')) $panel = 'attendance';
-            elseif ($seg1 === 'admin' || $seg1 === 'sub_admin') $panel = 'admin';
-
-            if ($panel === 'admin') {
-                if ($seg2 === 'attendance') {
-                    $panel = 'attendance';
-                    $seg2 = strtolower($segments[2] ?? 'dashboard');
-                } elseif ($seg2 === 'cashier') {
-                    $panel = 'cashier';
-                    $seg2 = strtolower($segments[2] ?? 'action');
-                } elseif ($seg2 === 'sales') {
-                    $panel = 'sales';
-                    $seg2 = strtolower($segments[2] ?? 'home');
-                } elseif ($seg2 === 'dispatch') {
-                    $panel = 'dispatch';
-                    $seg2 = strtolower($segments[2] ?? 'home');
-                } elseif (in_array($seg2, ['stock-manager', 'stock_manager'])) {
-                    $panel = 'stock_manager';
-                    $seg2 = strtolower($segments[2] ?? 'home');
-                }
-            }
-
-            // Map path to canonical module key
-            $moduleKey = $panel . '_' . $seg2;
-            
-            if ($panel === 'cashier') {
-                if ($seg2 === 'categories') $moduleKey = 'cashier_categories';
-                elseif (in_array($seg2, ['home', 'bill', 'action'])) $moduleKey = 'cashier_action';
-                elseif ($seg2 === 'ledger') $moduleKey = 'cashier_ledger';
-                elseif ($seg2 === 'history') $moduleKey = 'cashier_history';
-            } elseif ($panel === 'sales') {
-                if (in_array($seg2, ['order', 'company', 'transport', 'action'])) $moduleKey = 'sales_action';
-                elseif ($seg2 === 'history') $moduleKey = 'sales_history';
-                elseif ($seg2 === 'home') $moduleKey = 'sales_home';
-            } elseif ($panel === 'dispatch') {
-                if (in_array($seg2, ['update-lr', 'revert', 'pdf', 'action'])) $moduleKey = 'dispatch_action';
-                elseif ($seg2 === 'history') $moduleKey = 'dispatch_history';
-                elseif ($seg2 === 'home') $moduleKey = 'dispatch_home';
-            } elseif ($panel === 'raw') {
-                if (in_array($seg2, ['transfer-to-semi', 'action'])) $moduleKey = 'raw_action';
-                elseif ($seg2 === 'po') $moduleKey = 'raw_po';
-                elseif ($seg2 === 'history') $moduleKey = 'raw_history';
-                elseif ($seg2 === 'home') $moduleKey = 'raw_home';
-            } elseif ($panel === 'semi') {
-                if (in_array($seg2, ['transfer-to-semi', 'action'])) $moduleKey = 'semi_action';
-                elseif ($seg2 === 'po') $moduleKey = 'semi_po';
-                elseif ($seg2 === 'history') $moduleKey = 'semi_history';
-                elseif ($seg2 === 'home') $moduleKey = 'semi_home';
-            } elseif ($panel === 'finished') {
-                if (in_array($seg2, ['quick-product', 'action'])) $moduleKey = 'finished_action';
-                elseif ($seg2 === 'po') $moduleKey = 'finished_po';
-                elseif ($seg2 === 'history') $moduleKey = 'finished_history';
-                elseif ($seg2 === 'home') $moduleKey = 'finished_home';
-            } elseif ($panel === 'stock_manager') {
-                if ($seg2 === 'admin' && $seg3 === 'stock') $moduleKey = 'admin_stock';
-                elseif (in_array($seg2, ['outward', 'action'])) $moduleKey = 'stock_manager_action';
-                elseif (in_array($seg2, ['stock', 'note'])) $moduleKey = 'stock_manager_stock';
-                elseif ($seg2 === 'po') $moduleKey = 'stock_manager_po';
-                elseif ($seg2 === 'history') $moduleKey = 'stock_manager_history';
-                elseif ($seg2 === 'home') $moduleKey = 'stock_manager_home';
-                elseif ($seg2 === 'users') $moduleKey = 'admin_users';
-                elseif ($seg2 === 'products') $moduleKey = 'stock_manager_products';
-                elseif ($seg2 === 'grades') $moduleKey = 'stock_manager_grades';
-                elseif ($seg2 === 'locations') $moduleKey = 'stock_manager_locations';
-                elseif ($seg2 === 'categories') $moduleKey = 'admin_categories';
-                elseif ($seg2 === 'dispatch-activity') $moduleKey = 'admin_dispatch_activity';
-                elseif ($seg2 === 'cashier-overview') $moduleKey = 'admin_cashier_overview';
-            } elseif ($panel === 'attendance') {
-                if (in_array($seg2, ['home', 'dashboard'])) $moduleKey = 'attendance_dashboard';
-                elseif ($seg2 === 'departments') $moduleKey = 'attendance_departments';
-                elseif (in_array($seg2, ['workers', 'team'])) $moduleKey = 'attendance_workers';
-                elseif (in_array($seg2, ['daily', 'action'])) $moduleKey = 'attendance_daily';
-                elseif (in_array($seg2, ['reports', 'history'])) $moduleKey = 'attendance_reports';
-            } elseif ($panel === 'admin') {
-                if (in_array($seg2, ['home', 'dashboard'])) $moduleKey = 'admin_dashboard';
-                elseif ($seg2 === 'users') $moduleKey = 'admin_users';
-                elseif ($seg2 === 'products') $moduleKey = 'admin_products';
-                elseif ($seg2 === 'stock') $moduleKey = 'admin_stock';
-                elseif ($seg2 === 'po') $moduleKey = 'admin_po';
-                elseif (in_array($seg2, ['logs', 'cashier-logs'])) $moduleKey = 'admin_logs';
-                elseif ($seg2 === 'grades') $moduleKey = 'admin_grades';
-                elseif ($seg2 === 'locations') $moduleKey = 'admin_locations';
-                elseif ($seg2 === 'categories') $moduleKey = 'admin_categories';
-                elseif ($seg2 === 'dispatch-activity') $moduleKey = 'admin_dispatch_activity';
-                elseif ($seg2 === 'cashier-overview') $moduleKey = 'admin_cashier_overview';
-                elseif ($seg2 === 'notifications') $moduleKey = 'admin_notifications';
             }
 
             $userPermissions = $user['permissions'] ?? [];
             if (is_string($userPermissions)) {
                 $userPermissions = json_decode($userPermissions, true) ?: [];
             }
+            if (!is_array($userPermissions)) {
+                $userPermissions = [];
+            }
 
-            // Equivalent module keys across Admin and Stock Manager
+            // Normalise permissions for case-insensitive and string matching
+            $normalizedPerms = [];
+            foreach ($userPermissions as $p) {
+                if (is_string($p)) {
+                    $normalizedPerms[] = strtolower(trim($p));
+                } elseif (is_numeric($p)) {
+                    $normalizedPerms[] = (int)$p;
+                }
+            }
+
+            // Equivalent module keys across panels
             $moduleEquivalents = [
                 'admin_stock' => ['admin_stock', 'stock_manager_stock'],
                 'stock_manager_stock' => ['stock_manager_stock', 'admin_stock'],
@@ -189,34 +86,33 @@ class AuthMiddleware
             ];
 
             $keysToCheck = $moduleEquivalents[$moduleKey] ?? [$moduleKey];
-            if (!empty($seg2)) {
-                $keysToCheck[] = $seg2;
-            }
-            $keysToCheck = array_values(array_unique(array_filter($keysToCheck)));
 
-            // Check Edit (Write) Access
+            // 1. Check Edit (Write) Access
             $hasEdit = false;
-            if (in_array('can_manage', $userPermissions)) {
+            if (in_array('can_manage', $normalizedPerms, true)) {
                 $hasEdit = true;
             } else {
                 foreach ($keysToCheck as $k) {
-                    if (in_array('edit_' . $k, $userPermissions) || in_array('edit_module_' . $k, $userPermissions)) {
+                    if (
+                        in_array('edit_' . $k, $normalizedPerms, true) ||
+                        in_array('edit_module_' . $k, $normalizedPerms, true)
+                    ) {
                         $hasEdit = true;
                         break;
                     }
                 }
             }
 
-            // Check View (Read) Access
+            // 2. Check View (Read) Access: Edit automatically grants View
             $hasView = false;
-            if ($hasEdit || in_array('can_manage', $userPermissions)) {
+            if ($hasEdit || in_array('can_manage', $normalizedPerms, true)) {
                 $hasView = true;
             } else {
                 foreach ($keysToCheck as $k) {
                     if (
-                        in_array('view_' . $k, $userPermissions) ||
-                        in_array('module_' . $k, $userPermissions) ||
-                        in_array($k, $userPermissions)
+                        in_array('view_' . $k, $normalizedPerms, true) ||
+                        in_array('module_' . $k, $normalizedPerms, true) ||
+                        in_array($k, $normalizedPerms, true)
                     ) {
                         $hasView = true;
                         break;
@@ -224,73 +120,36 @@ class AuthMiddleware
                 }
             }
 
-            // Fallback for users with no granular permissions configured
-            if (empty($userPermissions)) {
-                $hasView = (
-                    ($user['role'] === 'STOCK_MANAGER' && (str_starts_with($moduleKey, 'stock_manager_') || str_starts_with($moduleKey, 'admin_'))) ||
-                    ($user['role'] === 'SUB_ADMIN' && (str_starts_with($moduleKey, 'admin_') || str_starts_with($moduleKey, 'sub_admin_') || str_starts_with($moduleKey, 'stock_manager_'))) ||
-                    ($user['role'] === 'CASHIER' && str_starts_with($moduleKey, 'cashier_')) ||
-                    ($user['role'] === 'SALES' && str_starts_with($moduleKey, 'sales_')) ||
-                    ($user['role'] === 'DISPATCH' && str_starts_with($moduleKey, 'dispatch_')) ||
-                    ($user['role'] === 'ATTENDANCE' && str_starts_with($moduleKey, 'attendance_')) ||
-                    ($user['role'] === 'RAW' && str_starts_with($moduleKey, 'raw_')) ||
-                    ($user['role'] === 'SEMI' && str_starts_with($moduleKey, 'semi_')) ||
-                    ($user['role'] === 'FINISHED' && str_starts_with($moduleKey, 'finished_'))
-                );
-                $hasEdit = $hasView;
+            // Fallback for role defaults only if no granular module permissions configured at all
+            $hasAnyModulePerm = false;
+            foreach ($normalizedPerms as $np) {
+                if (is_string($np) && (str_starts_with($np, 'view_') || str_starts_with($np, 'edit_'))) {
+                    $hasAnyModulePerm = true;
+                    break;
+                }
             }
 
+            if (!$hasAnyModulePerm && empty($normalizedPerms)) {
+                if ($user['role'] === 'STOCK_MANAGER' && str_starts_with($moduleKey, 'stock_manager_')) {
+                    $hasView = true;
+                    $hasEdit = true;
+                } elseif ($user['role'] === 'SUB_ADMIN' && in_array($moduleKey, ['admin_dashboard', 'stock_manager_home'])) {
+                    $hasView = true;
+                    $hasEdit = false;
+                }
+            }
+
+            // Deny if no View access
             if (!$hasView) {
-                if (in_array($seg2, ['home', 'dashboard'])) {
-                    $isSubAdmin = ($user['role'] === 'SUB_ADMIN');
-                    $routeMap = [
-                        'admin_users' => '/' . $seg1 . '/users',
-                        'admin_stock' => '/' . $seg1 . '/stock',
-                        'stock_manager_stock' => '/' . $seg1 . '/stock',
-                        'admin_products' => '/' . $seg1 . '/products',
-                        'stock_manager_products' => '/' . $seg1 . '/products',
-                        'admin_grades' => '/' . $seg1 . '/grades',
-                        'stock_manager_grades' => '/' . $seg1 . '/grades',
-                        'admin_locations' => '/' . $seg1 . '/locations',
-                        'stock_manager_locations' => '/' . $seg1 . '/locations',
-                        'admin_po' => '/' . $seg1 . '/po',
-                        'stock_manager_po' => '/' . $seg1 . '/po',
-                        'admin_dispatch_activity' => '/' . $seg1 . '/dispatch-activity',
-                        'admin_cashier_overview' => '/' . $seg1 . '/cashier-overview',
-                        'admin_categories' => '/' . $seg1 . '/categories',
-                        'cashier_categories' => '/' . $seg1 . '/categories',
-                        'admin_logs' => '/' . $seg1 . '/logs',
-                        'admin_notifications' => '/' . $seg1 . '/notifications',
-                        'cashier_action' => $isSubAdmin ? '/' . $seg1 . '/cashier/action' : '/cashier2/action',
-                        'cashier_history' => $isSubAdmin ? '/' . $seg1 . '/cashier/history' : '/cashier2/history',
-                        'cashier_ledger' => $isSubAdmin ? '/' . $seg1 . '/cashier/ledger' : '/cashier2/ledger',
-                        'sales_home' => $isSubAdmin ? '/' . $seg1 . '/sales/home' : '/sales/home',
-                        'sales_action' => $isSubAdmin ? '/' . $seg1 . '/sales/action' : '/sales/action',
-                        'sales_history' => $isSubAdmin ? '/' . $seg1 . '/sales/history' : '/sales/history',
-                        'dispatch_home' => $isSubAdmin ? '/' . $seg1 . '/dispatch/home' : '/dispatch/home',
-                        'dispatch_action' => $isSubAdmin ? '/' . $seg1 . '/dispatch/action' : '/dispatch/action',
-                        'dispatch_history' => $isSubAdmin ? '/' . $seg1 . '/dispatch/history' : '/dispatch/history',
-                        'dispatch_report' => $isSubAdmin ? '/' . $seg1 . '/dispatch/report' : '/dispatch/report',
-                        'stock_manager_home' => $isSubAdmin ? '/' . $seg1 . '/home' : '/stock_manager/home',
-                        'stock_manager_action' => $isSubAdmin ? '/' . $seg1 . '/stock-manager/action' : '/stock_manager/action',
-                        'stock_manager_history' => $isSubAdmin ? '/' . $seg1 . '/stock-manager/history' : '/stock_manager/history',
-                        'attendance_dashboard' => $isSubAdmin ? '/' . $seg1 . '/attendance/dashboard' : '/attendance/dashboard',
-                        'attendance_departments' => $isSubAdmin ? '/' . $seg1 . '/attendance/departments' : '/attendance/departments',
-                        'attendance_workers' => $isSubAdmin ? '/' . $seg1 . '/attendance/workers' : '/attendance/workers',
-                        'attendance_daily' => $isSubAdmin ? '/' . $seg1 . '/attendance/daily' : '/attendance/daily',
-                        'attendance_reports' => $isSubAdmin ? '/' . $seg1 . '/attendance/reports' : '/attendance/reports',
-                    ];
-                    foreach ($routeMap as $k => $targetUrl) {
-                        $equivs = $moduleEquivalents[$k] ?? [$k];
-                        foreach ($equivs as $eq) {
-                            if (in_array('view_' . $eq, $userPermissions) || in_array('edit_' . $eq, $userPermissions) || in_array('module_' . $eq, $userPermissions) || in_array($eq, $userPermissions)) {
-                                return redirect($targetUrl);
-                            }
-                        }
+                // If hitting the home/dashboard without view permission, redirect to their first permitted page
+                if ($request->isMethod('GET') && in_array($moduleKey, ['admin_dashboard', 'stock_manager_home'])) {
+                    $firstUrl = $this->getFirstPermittedUrl($user, $normalizedPerms, $moduleEquivalents);
+                    if ($firstUrl && $firstUrl !== $request->url()) {
+                        return redirect($firstUrl);
                     }
                 }
 
-                if ($request->expectsJson()) {
+                if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
                     return response()->json(['success' => false, 'message' => 'Unauthorized. You do not have View access to this section.'], 403);
                 }
                 abort(403, 'Unauthorized. You do not have View access to this section.');
@@ -299,13 +158,12 @@ class AuthMiddleware
             $isReadOnly = !$hasEdit;
             view()->share('isReadOnly', $isReadOnly);
 
-            if ($isWrite) {
-                if (!$hasEdit) {
-                    if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
-                        return response()->json(['success' => false, 'message' => 'Unauthorized. You only have View-Only permissions for this section.'], 403);
-                    }
-                    return redirect()->back()->with('error', 'Unauthorized. You only have View-Only permissions for this section.');
+            // Block write requests if user only has View-Only permission
+            if ($isWrite && !$hasEdit) {
+                if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => 'Unauthorized. You only have View-Only permissions for this section.'], 403);
                 }
+                return redirect()->back()->with('error', 'Unauthorized. You only have View-Only permissions for this section.');
             }
         } else {
             view()->share('isReadOnly', false);
@@ -315,6 +173,190 @@ class AuthMiddleware
         view()->share('authUser', $user);
 
         return $next($request);
+    }
+
+    /**
+     * Map request path to canonical permission module key
+     */
+    protected function resolveModuleKey(Request $request): ?string
+    {
+        $path = trim($request->path(), '/');
+        $segments = explode('/', $path);
+        if (strtolower($segments[0] ?? '') === 'public') {
+            array_shift($segments);
+        }
+
+        $seg1 = strtolower($segments[0] ?? '');
+        $seg2 = strtolower($segments[1] ?? 'home');
+        $seg3 = strtolower($segments[2] ?? '');
+        $seg4 = strtolower($segments[3] ?? '');
+
+        // Skip auth/session helpers
+        if (in_array($seg1, ['logout', 'notifications']) || in_array($seg2, ['profile', 'logout'])) {
+            return null;
+        }
+        if ($seg1 === 'api' && in_array($seg2, ['notifications', 'locations'])) {
+            return null;
+        }
+
+        // Check if $seg1 is a role or user slug prefix (e.g. admin, sub_admin, sub_admin2, cashier, etc.)
+        $isRoleSlug = preg_match('/^(admin|sub_admin|stock_manager|cashier|sales|dispatch|attendance|raw|semi|finished)\d*$/i', $seg1);
+
+        if ($isRoleSlug) {
+            $prefix = preg_replace('/\d+$/', '', $seg1);
+            $section = $seg2;
+            $action = $seg3;
+            $subaction = $seg4;
+        } else {
+            $prefix = '';
+            $section = $seg1;
+            $action = $seg2;
+            $subaction = $seg3;
+        }
+
+        // 1. Attendance module
+        if ($section === 'attendance' || $prefix === 'attendance') {
+            $attSub = ($section === 'attendance') ? $action : $section;
+            if (in_array($attSub, ['dashboard', 'home', ''])) return 'attendance_dashboard';
+            if (in_array($attSub, ['departments', 'department'])) return 'attendance_departments';
+            if (in_array($attSub, ['workers', 'worker', 'team'])) return 'attendance_workers';
+            if (in_array($attSub, ['daily', 'clear'])) return 'attendance_daily';
+            if (in_array($attSub, ['reports', 'history', 'report'])) return 'attendance_reports';
+            return 'attendance_dashboard';
+        }
+
+        // 2. Cashier module
+        if ($section === 'cashier' || $prefix === 'cashier') {
+            $cashierSub = ($section === 'cashier') ? $action : $section;
+            if (in_array($cashierSub, ['action', 'home', 'bill'])) return 'cashier_action';
+            if (in_array($cashierSub, ['history'])) return 'cashier_history';
+            if (in_array($cashierSub, ['ledger'])) return 'cashier_ledger';
+            if (in_array($cashierSub, ['categories', 'category'])) return 'admin_categories';
+            if (in_array($cashierSub, ['products'])) return 'admin_products';
+            if (in_array($cashierSub, ['grades'])) return 'admin_grades';
+            if (in_array($cashierSub, ['locations'])) return 'admin_locations';
+            if (in_array($cashierSub, ['stock'])) return 'admin_stock';
+            return 'cashier_action';
+        }
+
+        // 3. Sales module
+        if ($section === 'sales' || $prefix === 'sales') {
+            $salesSub = ($section === 'sales') ? $action : $section;
+            if (in_array($salesSub, ['home', 'dashboard', ''])) return 'sales_home';
+            if (in_array($salesSub, ['action', 'order', 'company', 'transport'])) return 'sales_action';
+            if (in_array($salesSub, ['history'])) return 'sales_history';
+            return 'sales_action';
+        }
+        if (in_array($section, ['order', 'company', 'transport'])) {
+            return ($action === 'pdf' || $subaction === 'pdf') ? 'sales_history' : 'sales_action';
+        }
+
+        // 4. Dispatch module
+        if ($section === 'dispatch' || $prefix === 'dispatch') {
+            $dispSub = ($section === 'dispatch') ? $action : $section;
+            if (in_array($dispSub, ['home', 'dashboard', ''])) return 'dispatch_home';
+            if (in_array($dispSub, ['action', 'update-lr', 'revert'])) return 'dispatch_action';
+            if (in_array($dispSub, ['history', 'pdf'])) return 'dispatch_history';
+            if (in_array($dispSub, ['report'])) return 'dispatch_report';
+            return 'dispatch_action';
+        }
+
+        // 5. Stock Manager panel routes
+        if (in_array($section, ['stock-manager', 'stock_manager']) || $prefix === 'stock_manager') {
+            $smSub = in_array($section, ['stock-manager', 'stock_manager']) ? $action : $section;
+            if (in_array($smSub, ['home', 'dashboard', ''])) return 'stock_manager_home';
+            if (in_array($smSub, ['action', 'outward'])) return 'stock_manager_action';
+            if (in_array($smSub, ['stock', 'live', 'adjust', 'limit', 'delete', 'bulk-add', 'note'])) return 'stock_manager_stock';
+            if (in_array($smSub, ['po'])) return 'stock_manager_po';
+            if (in_array($smSub, ['history'])) return 'stock_manager_history';
+            if (in_array($smSub, ['products'])) return 'stock_manager_products';
+            if (in_array($smSub, ['grades'])) return 'stock_manager_grades';
+            if (in_array($smSub, ['locations'])) return 'stock_manager_locations';
+            if (in_array($smSub, ['categories'])) return 'admin_categories';
+            if (in_array($smSub, ['dispatch-activity'])) return 'admin_dispatch_activity';
+            if (in_array($smSub, ['cashier-overview'])) return 'admin_cashier_overview';
+            if (in_array($smSub, ['users'])) return 'admin_users';
+            return 'stock_manager_home';
+        }
+
+        // 6. Admin Panel routes (or under admin / sub_admin prefix)
+        if (in_array($section, ['home', 'dashboard', ''])) return 'admin_dashboard';
+        if (in_array($section, ['users'])) return 'admin_users';
+        if (in_array($section, ['products'])) return 'admin_products';
+        if (in_array($section, ['stock'])) return 'admin_stock';
+        if (in_array($section, ['po'])) return 'admin_po';
+        if (in_array($section, ['logs', 'cashier-logs'])) return 'admin_logs';
+        if (in_array($section, ['grades'])) return 'admin_grades';
+        if (in_array($section, ['locations'])) return 'admin_locations';
+        if (in_array($section, ['dispatch-activity'])) return 'admin_dispatch_activity';
+        if (in_array($section, ['cashier-overview'])) return 'admin_cashier_overview';
+        if (in_array($section, ['categories'])) return 'admin_categories';
+        if (in_array($section, ['notifications'])) return 'admin_notifications';
+
+        return null;
+    }
+
+    /**
+     * Get the first permitted URL for a user to redirect to
+     */
+    protected function getFirstPermittedUrl(array $user, array $normalizedPerms, array $moduleEquivalents): ?string
+    {
+        $slug = $user['login_slug'] ?? strtolower($user['role'] ?? 'sub_admin');
+        $isSubAdmin = ($user['role'] === 'SUB_ADMIN');
+
+        $routeMap = [
+            'admin_dashboard'         => '/' . $slug . '/dashboard',
+            'admin_users'             => '/' . $slug . '/users',
+            'admin_stock'             => '/' . $slug . '/stock',
+            'stock_manager_stock'     => '/' . $slug . '/stock',
+            'admin_products'          => '/' . $slug . '/products',
+            'stock_manager_products'  => '/' . $slug . '/products',
+            'admin_grades'            => '/' . $slug . '/grades',
+            'stock_manager_grades'    => '/' . $slug . '/grades',
+            'admin_locations'         => '/' . $slug . '/locations',
+            'stock_manager_locations' => '/' . $slug . '/locations',
+            'admin_po'                => '/' . $slug . '/po',
+            'stock_manager_po'        => '/' . $slug . '/po',
+            'admin_dispatch_activity' => '/' . $slug . '/dispatch-activity',
+            'admin_cashier_overview'  => '/' . $slug . '/cashier-overview',
+            'admin_categories'        => '/' . $slug . '/categories',
+            'admin_logs'              => '/' . $slug . '/logs',
+            'admin_notifications'     => '/' . $slug . '/notifications',
+            'cashier_action'          => $isSubAdmin ? '/' . $slug . '/cashier/action' : '/cashier2/action',
+            'cashier_history'         => $isSubAdmin ? '/' . $slug . '/cashier/history' : '/cashier2/history',
+            'cashier_ledger'          => $isSubAdmin ? '/' . $slug . '/cashier/ledger' : '/cashier2/ledger',
+            'sales_home'              => $isSubAdmin ? '/' . $slug . '/sales/home' : '/sales/home',
+            'sales_action'            => $isSubAdmin ? '/' . $slug . '/sales/action' : '/sales/action',
+            'sales_history'           => $isSubAdmin ? '/' . $slug . '/sales/history' : '/sales/history',
+            'dispatch_home'           => $isSubAdmin ? '/' . $slug . '/dispatch/home' : '/dispatch/home',
+            'dispatch_action'         => $isSubAdmin ? '/' . $slug . '/dispatch/action' : '/dispatch/action',
+            'dispatch_history'        => $isSubAdmin ? '/' . $slug . '/dispatch/history' : '/dispatch/history',
+            'dispatch_report'         => $isSubAdmin ? '/' . $slug . '/dispatch/report' : '/dispatch/report',
+            'stock_manager_home'      => $isSubAdmin ? '/' . $slug . '/home' : '/stock_manager/home',
+            'stock_manager_action'    => $isSubAdmin ? '/' . $slug . '/stock-manager/action' : '/stock_manager/action',
+            'stock_manager_history'   => $isSubAdmin ? '/' . $slug . '/stock-manager/history' : '/stock_manager/history',
+            'attendance_dashboard'    => $isSubAdmin ? '/' . $slug . '/attendance/dashboard' : '/attendance/dashboard',
+            'attendance_daily'        => $isSubAdmin ? '/' . $slug . '/attendance/daily' : '/attendance/daily',
+            'attendance_departments'  => $isSubAdmin ? '/' . $slug . '/attendance/departments' : '/attendance/departments',
+            'attendance_workers'      => $isSubAdmin ? '/' . $slug . '/attendance/workers' : '/attendance/workers',
+            'attendance_reports'      => $isSubAdmin ? '/' . $slug . '/attendance/reports' : '/attendance/reports',
+        ];
+
+        foreach ($routeMap as $k => $targetUrl) {
+            $equivs = $moduleEquivalents[$k] ?? [$k];
+            foreach ($equivs as $eq) {
+                if (
+                    in_array('view_' . $eq, $normalizedPerms, true) ||
+                    in_array('edit_' . $eq, $normalizedPerms, true) ||
+                    in_array('module_' . $eq, $normalizedPerms, true) ||
+                    in_array($eq, $normalizedPerms, true)
+                ) {
+                    return $targetUrl;
+                }
+            }
+        }
+
+        return null;
     }
 }
 

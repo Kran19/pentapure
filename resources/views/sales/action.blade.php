@@ -377,7 +377,9 @@ html.dark-mode .info-preview-box .info-label {
       <div class="form-group">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
           <label style="margin-bottom:0;">Select Transport</label>
+          @if(empty($isReadOnly))
           <button type="button" class="btn btn-sm" onclick="app.openAddTransportModal()" style="padding:0.35rem 0.8rem; font-size:0.78rem; font-weight:700; width:auto; border-radius:6px; letter-spacing:0.3px;">+ ADD TRANSPORT</button>
+          @endif
         </div>
         <select id="order-transport" onchange="app.onSalesTransportSelect(this.value)">
           <option value="" {{ (empty($pageData['editOrder']) || empty($pageData['editOrder']->transporter_id)) ? 'selected' : '' }}>NA</option>
@@ -399,7 +401,9 @@ html.dark-mode .info-preview-box .info-label {
       <div style="margin-top:1.5rem;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:8px;">
           <h4 style="margin:0;">Products / Goods</h4>
+          @if(empty($isReadOnly))
           <button type="button" class="btn btn-sm" onclick="app.addOrderProductRow()" style="width:auto; padding:0.4rem 0.8rem; font-weight:bold;">+ Add Product</button>
+          @endif
         </div>
 
         <div id="order-products"></div>
@@ -410,9 +414,15 @@ html.dark-mode .info-preview-box .info-label {
         <textarea id="order-notes" rows="2">{{ !empty($pageData['editOrder']) ? $pageData['editOrder']->notes : '' }}</textarea>
       </div>
 
+      @if(empty($isReadOnly))
       <button class="btn" onclick="app.submitOrder()" style="padding:1rem; font-size:1.1rem; margin-top:1rem;">
         {{ !empty($pageData['editOrder']) ? 'Update Sales Order' : 'Generate Sales Order' }}
       </button>
+      @else
+      <div style="margin-top:1rem; padding:0.75rem 1.2rem; background:#fffbe8; border:1px solid #fde68a; border-radius:8px; color:#92400e; font-weight:600; text-align:center;">
+        🔒 View-Only Mode: Creating and modifying sales orders is disabled.
+      </div>
+      @endif
     </div>
   </div>
 
@@ -426,7 +436,9 @@ html.dark-mode .info-preview-box .info-label {
         </div>
         <div style="display:flex; align-items:center; gap:10px;">
           <input type="text" placeholder="Search company, GST, city..." oninput="filterActionCompaniesTable(this)" style="width:220px; padding:0.4rem 0.8rem; font-size:0.85rem; border-radius:6px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+          @if(empty($isReadOnly))
           <button type="button" class="btn btn-sm" onclick="openCompanyModal()" style="width:auto; padding:0.45rem 0.9rem; font-size:0.85rem; font-weight:700; white-space:nowrap; border-radius:6px;">+ ADD COMPANY</button>
+          @endif
         </div>
       </div>
       <div class="table-container" style="overflow-x:auto;">
@@ -452,6 +464,7 @@ html.dark-mode .info-preview-box .info-label {
                 <td style="padding:8px 6px;">{{ $comp['contact'] ?: '—' }}</td>
                 <td style="padding:8px 6px; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ $comp['address'] }}">{{ $comp['address'] ?: '—' }}</td>
                 <td style="padding:8px 6px; text-align:center;">
+                  @if(empty($isReadOnly))
                   <div style="display:flex; justify-content:center; gap:6px;">
                     <button type="button" class="btn btn-sm" onclick="openCompanyModal({{ json_encode($comp) }})" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; background:var(--warning, #FFA500); color:#000; font-weight:600; border:none; border-radius:4px; cursor:pointer;">
                       ✏️ Edit
@@ -460,6 +473,9 @@ html.dark-mode .info-preview-box .info-label {
                       🗑️ Delete
                     </button>
                   </div>
+                  @else
+                    <span style="font-size:0.8rem; color:var(--text-muted);">View Only</span>
+                  @endif
                 </td>
               </tr>
             @empty
@@ -483,7 +499,9 @@ html.dark-mode .info-preview-box .info-label {
         </div>
         <div style="display:flex; align-items:center; gap:10px;">
           <input type="text" placeholder="Search transporter, GST..." oninput="filterActionTransportersTable(this)" style="width:220px; padding:0.4rem 0.8rem; font-size:0.85rem; border-radius:6px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+          @if(empty($isReadOnly))
           <button type="button" class="btn btn-sm" onclick="app.openAddTransportModal()" style="width:auto; padding:0.45rem 0.9rem; font-size:0.85rem; font-weight:700; white-space:nowrap; border-radius:6px;">+ ADD TRANSPORT</button>
+          @endif
         </div>
       </div>
       <div class="table-container" style="overflow-x:auto;">
@@ -507,6 +525,7 @@ html.dark-mode .info-preview-box .info-label {
                 <td style="padding:8px 6px;">{{ $trans['contact'] ?: '—' }}</td>
                 <td style="padding:8px 6px;">{{ $trans['vehicles'] ?: '—' }}</td>
                 <td style="padding:8px 6px; text-align:center;">
+                  @if(empty($isReadOnly))
                   <div style="display:flex; justify-content:center; gap:6px;">
                     <button type="button" class="btn btn-sm" onclick="app.editTransporterPrompt({{ json_encode($trans) }})" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; background:var(--warning, #FFA500); color:#000; font-weight:600; border:none; border-radius:4px; cursor:pointer;">
                       ✏️ Edit
@@ -515,6 +534,9 @@ html.dark-mode .info-preview-box .info-label {
                       🗑️ Delete
                     </button>
                   </div>
+                  @else
+                    <span style="font-size:0.8rem; color:var(--text-muted);">View Only</span>
+                  @endif
                 </td>
               </tr>
             @empty

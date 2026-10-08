@@ -164,10 +164,16 @@ input[type="number"],
     <!-- Rows injected here -->
   </div>
 
+  @if(empty($isReadOnly))
   <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:2.2rem;">
     <button class="btn btn-secondary" onclick="addTransactionRow()" style="flex:1; padding:0.9rem; font-weight:600; font-size:1rem;">+ Add Row</button>
     <button class="btn" onclick="saveTransactions(this)" style="flex:2; padding:0.9rem; font-weight:700; font-size:1rem; letter-spacing:0.5px;">Save Transactions</button>
   </div>
+  @else
+  <div style="margin-top:1.5rem; padding:0.75rem; background:#fffbe8; border:1px solid #fde68a; border-radius:6px; color:#92400e; font-size:0.85rem; text-align:center;">
+    🔒 View-Only Mode: Adding and saving transactions is disabled.
+  </div>
+  @endif
 </div>
 
 <script>
