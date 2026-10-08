@@ -1954,17 +1954,24 @@ const app = {
       },
       body: JSON.stringify(payload)
     })
-    .then(r => r.json())
+    .then(async r => {
+      let data = null;
+      try { data = await r.json(); } catch(e) {}
+      if (!data) {
+        throw new Error(`Server returned HTTP ${r.status}`);
+      }
+      return data;
+    })
     .then(res => {
-      if (res.success) {
+      if (res && res.success) {
         this.toast(res.message || 'Dispatch recorded successfully!');
         setTimeout(() => { window.location.href = historyRedirectUrl; }, 700);
       } else {
         resetDispatchBtn();
-        this.toast(res.message || 'Error recording dispatch', 'error');
+        this.toast((res && res.message) ? res.message : 'Error recording dispatch', 'error');
 
         // Dynamically update UI if server returned updated remaining quantity
-        if (res.item_id && res.remaining_qty !== undefined) {
+        if (res && res.item_id && res.remaining_qty !== undefined) {
           const splitContainer = document.getElementById(`loc-splits-${res.item_id}`);
           if (splitContainer) splitContainer.dataset.max = res.remaining_qty;
           const directInp = document.querySelector(`.dispatch-item-qty[data-item-id="${res.item_id}"]`);
@@ -1982,9 +1989,9 @@ const app = {
         }
       }
     })
-    .catch(() => {
+    .catch(err => {
       resetDispatchBtn();
-      this.toast('Network error while recording dispatch.', 'error');
+      this.toast(err && err.message ? err.message : 'Network error while recording dispatch.', 'error');
     });
   },
 

@@ -427,13 +427,9 @@ class DispatchController extends Controller
             $dispatchTransporterId = $request->transporter_id ?? $order->transporter_id;
             if (!$dispatchTransporterId) {
                 try {
-                    DB::statement("ALTER TABLE `dispatch_logs` MODIFY `transporter_id` BIGINT UNSIGNED NULL");
-                } catch (\Throwable $e) {
-                    try {
-                        $fallback = \App\Models\Transporter::firstOrCreate(['name' => 'N/A'], ['contact' => '—', 'gst' => '—']);
-                        $dispatchTransporterId = $fallback->id;
-                    } catch (\Throwable $ignored) {}
-                }
+                    $fallback = \App\Models\Transporter::firstOrCreate(['name' => 'N/A'], ['contact' => '—', 'gst' => '—']);
+                    $dispatchTransporterId = $fallback->id;
+                } catch (\Throwable $ignored) {}
             }
 
             // Create dispatch log for this round
@@ -528,8 +524,19 @@ class DispatchController extends Controller
             }
 
             return response()->json(['success' => true, 'message' => $message]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Dispatch store error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'order_id' => $request->order_id,
+                'items' => $request->items
+            ]);
+            return response()->json(['success' => false, 'message' => 'Dispatch error: ' . $e->getMessage()], 500);
         } finally {
-            $lock->release();
+            if ($lock) {
+                try {
+                    $lock->release();
+                } catch (\Throwable $e) {}
+            }
         }
     }
 
