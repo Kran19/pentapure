@@ -169,7 +169,22 @@ class SalesController extends Controller
 
         $editOrder = null;
         if ($request->edit) {
-            $editOrder = Order::with('items.product')->find($request->edit);
+            $editOrder = Order::with('items.product.grades')->find($request->edit);
+            if ($editOrder) {
+                $existingProdIds = $products->pluck('id')->toArray();
+                foreach ($editOrder->items as $item) {
+                    if ($item->product && !in_array($item->product->id, $existingProdIds)) {
+                        $products->push([
+                            'id' => $item->product->id,
+                            'name' => strtoupper($item->product->name ?? ''),
+                            'unit' => $item->product->unit,
+                            'type' => $item->product->type,
+                            'grades' => $item->product->grades ? $item->product->grades->pluck('name')->map('strtoupper')->toArray() : []
+                        ]);
+                        $existingProdIds[] = $item->product->id;
+                    }
+                }
+            }
         }
 
         $editCompany = null;

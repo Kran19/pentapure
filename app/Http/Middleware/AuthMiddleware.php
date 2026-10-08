@@ -90,7 +90,7 @@ class AuthMiddleware
 
             // 1. Check Edit (Write) Access
             $hasEdit = false;
-            if (in_array('can_manage', $normalizedPerms, true)) {
+            if ($user['role'] === 'STOCK_MANAGER' || in_array('can_manage', $normalizedPerms, true)) {
                 $hasEdit = true;
             } else {
                 foreach ($keysToCheck as $k) {

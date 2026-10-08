@@ -100,7 +100,7 @@
                                     }
                                 }
                             @endphp
-                            <div style="font-size:10px; color:{{ $diffDays < 0 ? '#dc2626' : '#b45309' }}; font-weight:bold; margin-top:2px;">Due: {{ \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') }}{{ $overdueText }}</div>
+                            <div style="font-size:10px; color:#dc2626; font-weight:bold; margin-top:2px;">DUE DATE: {{ \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') }}{{ $overdueText }}</div>
                         @endif
                     </td>
                     <td>

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OrderItem extends Model
 {
@@ -13,7 +14,22 @@ class OrderItem extends Model
 
     public function remainingQty(): float
     {
-        return (float) $this->quantity - (float) $this->dispatched_qty;
+        return max(0, (float) $this->quantity - (float) $this->dispatched_qty);
+    }
+
+    public function dispatchLogItems(): HasMany
+    {
+        return $this->hasMany(DispatchLogItem::class, 'order_item_id');
+    }
+
+    public function syncDispatchedQty(): float
+    {
+        $actual = (float) DispatchLogItem::where('order_item_id', $this->id)->sum('quantity');
+        if (abs((float)$this->dispatched_qty - $actual) > 0.001) {
+            $this->update(['dispatched_qty' => $actual]);
+            $this->dispatched_qty = $actual;
+        }
+        return $actual;
     }
 
     public function order(): BelongsTo

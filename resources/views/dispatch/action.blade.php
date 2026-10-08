@@ -152,6 +152,12 @@ input[type=number].no-spinners {
     }
   });
 
+  window.addEventListener('pageshow', function(event) {
+    if (event.persisted || (window.performance && window.performance.navigation && window.performance.navigation.type === 2)) {
+      window.location.reload();
+    }
+  });
+
   document.addEventListener('click', function(e) {
     if (!e.target.closest('.custom-location-dropdown')) {
       document.querySelectorAll('.custom-location-dropdown .dropdown-menu').forEach(menu => {

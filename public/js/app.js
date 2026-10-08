@@ -1121,20 +1121,39 @@ const app = {
 
     let html = `<option value="" disabled ${!selectedProdId ? 'selected' : ''}>-- SELECT PRODUCT --</option>`;
     
+    const formatOption = (p) => {
+      const isSel = (p.id == selectedProdId) ? 'selected' : '';
+      const normType = (p.type || '').toUpperCase();
+      let displayType = normType;
+      if (normType === 'FINISHED' || normType === 'FG') displayType = 'FG';
+      else if (normType === 'PACKAGING' || normType === 'PKG') displayType = 'pkg';
+      else if (normType) displayType = normType.toLowerCase();
+
+      const gradesStr = Array.isArray(p.grades) ? p.grades.filter(g => g && g !== 'NA' && g !== 'NONE').join(', ') : '';
+      return `<option value="${p.id}" data-name="${this.escapeHtml(p.name)}" data-type="${normType}" data-unit="${this.escapeHtml(p.unit || '')}" data-grades="${this.escapeHtml(gradesStr)}" ${isSel}>${this.escapeHtml(p.name)} (${displayType})</option>`;
+    };
+
     if (rowType === 'ALL') {
-      const fgList = prods.filter(p => p.type === 'FINISHED');
-      const semiList = prods.filter(p => p.type === 'SEMI');
-      const rawList = prods.filter(p => p.type === 'RAW');
-      const packList = prods.filter(p => p.type === 'PACKAGING');
+      const fgList = prods.filter(p => {
+        const t = (p.type || '').toUpperCase();
+        return t === 'FINISHED' || t === 'FG';
+      });
+      const semiList = prods.filter(p => (p.type || '').toUpperCase() === 'SEMI');
+      const rawList = prods.filter(p => (p.type || '').toUpperCase() === 'RAW');
+      const packList = prods.filter(p => {
+        const t = (p.type || '').toUpperCase();
+        return t === 'PACKAGING' || t === 'PKG';
+      });
+      const otherList = prods.filter(p => {
+        const t = (p.type || '').toUpperCase();
+        return !['FINISHED', 'FG', 'SEMI', 'RAW', 'PACKAGING', 'PKG'].includes(t);
+      });
 
       const addGroup = (list, label) => {
         if (!list || list.length === 0) return;
         html += `<optgroup label="${label}">`;
         list.forEach(p => {
-          const isSel = (p.id == selectedProdId) ? 'selected' : '';
-          const displayType = p.type === 'FINISHED' ? 'FG' : (p.type ? p.type.toLowerCase() : '');
-          const gradesStr = Array.isArray(p.grades) ? p.grades.filter(g => g && g !== 'NA' && g !== 'NONE').join(', ') : '';
-          html += `<option value="${p.id}" data-name="${this.escapeHtml(p.name)}" data-type="${p.type || ''}" data-unit="${this.escapeHtml(p.unit || '')}" data-grades="${this.escapeHtml(gradesStr)}" ${isSel}>${p.name} (${displayType})</option>`;
+          html += formatOption(p);
         });
         html += `</optgroup>`;
       };
@@ -1143,13 +1162,18 @@ const app = {
       addGroup(semiList, '⚙️ SEMI-FINISHED');
       addGroup(rawList, '🌿 RAW MATERIALS');
       addGroup(packList, '📦 PACKAGING MATERIALS');
+      if (otherList.length > 0) {
+        addGroup(otherList, '📁 OTHER PRODUCTS');
+      }
     } else {
-      const filtered = prods.filter(p => p.type === rowType);
+      const filtered = prods.filter(p => {
+        const t = (p.type || '').toUpperCase();
+        if (rowType === 'FINISHED') return t === 'FINISHED' || t === 'FG';
+        if (rowType === 'PACKAGING') return t === 'PACKAGING' || t === 'PKG';
+        return t === rowType.toUpperCase();
+      });
       filtered.forEach(p => {
-        const displayType = p.type === 'FINISHED' ? 'FG' : (p.type ? p.type.toLowerCase() : '');
-        const isSel = (p.id == selectedProdId) ? 'selected' : '';
-        const gradesStr = Array.isArray(p.grades) ? p.grades.filter(g => g && g !== 'NA' && g !== 'NONE').join(', ') : '';
-        html += `<option value="${p.id}" data-name="${this.escapeHtml(p.name)}" data-type="${p.type || ''}" data-unit="${this.escapeHtml(p.unit || '')}" data-grades="${this.escapeHtml(gradesStr)}" ${isSel}>${p.name} (${displayType})</option>`;
+        html += formatOption(p);
       });
     }
 
@@ -1169,46 +1193,75 @@ const app = {
       } catch (e) {}
     }
 
+    const self = this;
+
+    function matchProduct(params, data) {
+      if (!params.term || jQuery.trim(params.term) === '') {
+        return data;
+      }
+
+      // If data is an optgroup (has children array), recursively filter its children
+      if (data.children && data.children.length > 0) {
+        const match = jQuery.extend(true, {}, data);
+
+        for (let c = data.children.length - 1; c >= 0; c--) {
+          const child = data.children[c];
+          const matches = matchProduct(params, child);
+          if (matches == null) {
+            match.children.splice(c, 1);
+          }
+        }
+
+        if (match.children.length > 0) {
+          return match;
+        }
+
+        return null;
+      }
+
+      // If option has no id or is empty placeholder
+      if (!data.id) {
+        return null;
+      }
+
+      const term = params.term.toLowerCase().trim();
+      const tokens = term.split(/\s+/).filter(Boolean);
+
+      const el = data.element;
+      const name = (el ? el.getAttribute('data-name') : '') || data.text || '';
+      const type = ((el ? el.getAttribute('data-type') : '') || '').toUpperCase();
+      const unit = (el ? el.getAttribute('data-unit') : '') || '';
+      const grades = (el ? el.getAttribute('data-grades') : '') || '';
+
+      let typeAliases = '';
+      if (type === 'FINISHED' || type === 'FG') typeAliases = 'fg finished goods';
+      else if (type === 'RAW') typeAliases = 'raw materials material';
+      else if (type === 'SEMI') typeAliases = 'semi finish finished';
+      else if (type === 'PACKAGING' || type === 'PKG') typeAliases = 'packaging package packing pkg';
+
+      const searchableText = `${data.text} ${name} ${type} ${typeAliases} ${unit} ${grades}`.toLowerCase();
+
+      for (let i = 0; i < tokens.length; i++) {
+        if (searchableText.indexOf(tokens[i]) === -1) {
+          return null;
+        }
+      }
+      return data;
+    }
+
     $select.select2({
       placeholder: '-- SELECT PRODUCT --',
       allowClear: false,
       width: '100%',
       dropdownAutoWidth: false,
       dropdownCssClass: 'order-prod-select2-dropdown',
-      matcher: function(params, data) {
-        if (!params.term || jQuery.trim(params.term) === '') {
-          return data;
-        }
-        if (!data.text) {
-          return null;
-        }
-        const term = params.term.toLowerCase().trim();
-        const tokens = term.split(/\s+/).filter(Boolean);
-
-        const el = data.element;
-        const name = (el ? el.getAttribute('data-name') : '') || data.text || '';
-        const type = (el ? el.getAttribute('data-type') : '') || '';
-        const unit = (el ? el.getAttribute('data-unit') : '') || '';
-        const grades = (el ? el.getAttribute('data-grades') : '') || '';
-
-        let typeAliases = '';
-        if (type === 'FINISHED' || type === 'FG') typeAliases = 'fg finished goods';
-        else if (type === 'RAW') typeAliases = 'raw materials material';
-        else if (type === 'SEMI') typeAliases = 'semi finish finished';
-        else if (type === 'PACKAGING') typeAliases = 'packaging package packing';
-
-        const searchableText = `${data.text} ${name} ${type} ${typeAliases} ${unit} ${grades}`.toLowerCase();
-
-        for (let i = 0; i < tokens.length; i++) {
-          if (searchableText.indexOf(tokens[i]) === -1) {
-            return null;
-          }
-        }
-        return data;
-      },
+      matcher: matchProduct,
       templateResult: function(data) {
+        if (data.children) {
+          return data.text;
+        }
         if (!data.id) {
-          return jQuery(`<span style="color:var(--text-muted, #94a3b8); font-weight:500;">${app.escapeHtml(data.text)}</span>`);
+          return jQuery(`<span style="color:var(--text-muted, #94a3b8); font-weight:500;">${self.escapeHtml(data.text)}</span>`);
         }
         const el = data.element;
         const name = (el ? el.getAttribute('data-name') : '') || data.text;
@@ -1231,25 +1284,30 @@ const app = {
           badgeColor = '#1e40af';
           badgeBorder = '#bfdbfe';
           typeLabel = 'SEMI';
-        } else if (type === 'PACKAGING') {
+        } else if (type === 'PACKAGING' || type === 'PKG') {
           badgeBg = '#e0f2fe';
           badgeColor = '#0369a1';
           badgeBorder = '#bae6fd';
           typeLabel = 'PKG';
+        } else if (type !== 'FINISHED' && type !== 'FG') {
+          badgeBg = '#f1f5f9';
+          badgeColor = '#475569';
+          badgeBorder = '#cbd5e1';
+          typeLabel = type || 'PROD';
         }
 
         let extraDetails = '';
         if (unit) {
-          extraDetails += `<span class="prod-unit-badge" style="font-size:0.7rem; font-weight:600; padding:1px 5px; border-radius:4px; background:rgba(0,0,0,0.06); color:inherit; margin-left:4px;">${app.escapeHtml(unit)}</span>`;
+          extraDetails += `<span class="prod-unit-badge" style="font-size:0.7rem; font-weight:600; padding:1px 5px; border-radius:4px; background:rgba(0,0,0,0.06); color:inherit; margin-left:4px;">${self.escapeHtml(unit)}</span>`;
         }
         if (grades && grades !== 'NA' && grades !== 'NONE') {
-          extraDetails += `<span class="prod-grades-text" style="font-size:0.68rem; font-weight:500; opacity:0.8; margin-left:6px;">Grades: ${app.escapeHtml(grades)}</span>`;
+          extraDetails += `<span class="prod-grades-text" style="font-size:0.68rem; font-weight:500; opacity:0.8; margin-left:6px;">Grades: ${self.escapeHtml(grades)}</span>`;
         }
 
         return jQuery(`
           <div class="prod-option-row" style="display:flex; justify-content:space-between; align-items:center; width:100%; padding:2px 0;">
             <div style="display:flex; align-items:center; gap:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-              <span class="prod-name" style="font-weight:600; color:inherit;">${app.escapeHtml(name)}</span>
+              <span class="prod-name" style="font-weight:600; color:inherit;">${self.escapeHtml(name)}</span>
               <span class="prod-stage-badge" style="font-size:0.68rem; font-weight:700; padding:1px 6px; border-radius:4px; background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder};">${typeLabel}</span>
             </div>
             <div style="font-size:0.75rem; white-space:nowrap; margin-left:8px; display:flex; align-items:center;">
@@ -1267,7 +1325,8 @@ const app = {
         if (type === 'FINISHED' || type === 'FG') typeSuffix = ' (FG)';
         else if (type === 'RAW') typeSuffix = ' (RAW)';
         else if (type === 'SEMI') typeSuffix = ' (SEMI)';
-        else if (type === 'PACKAGING') typeSuffix = ' (PKG)';
+        else if (type === 'PACKAGING' || type === 'PKG') typeSuffix = ' (PKG)';
+        else if (type) typeSuffix = ` (${type})`;
         return name + typeSuffix;
       }
     });
@@ -1280,7 +1339,7 @@ const app = {
     });
 
     $select.off('change.orderProdChange').on('change.orderProdChange', function() {
-      app.onOrderProductChange(this);
+      self.onOrderProductChange(this);
     });
   },
 
@@ -1345,7 +1404,10 @@ const app = {
       const allProds = (window.serverPageData && window.serverPageData.products) || [];
       const matchedProd = allProds.find(p => p.id == selectedProdId);
       if (matchedProd && matchedProd.type) {
-        rowType = matchedProd.type;
+        const mt = matchedProd.type.toUpperCase();
+        if (mt === 'FG') rowType = 'FINISHED';
+        else if (mt === 'PKG') rowType = 'PACKAGING';
+        else rowType = mt;
       }
     }
 
@@ -1356,9 +1418,9 @@ const app = {
           <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">ORDER TYPE</label>
           <select class="o-prod-type" onchange="app.onRowTypeChange(this)" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.85rem; font-weight:600;">
             <option value="ALL" ${rowType === 'ALL' ? 'selected' : ''}>ALL PRODUCTS</option>
-            <option value="RAW" ${rowType === 'RAW' ? 'selected' : ''}>RAW MATIRALS</option>
-            <option value="SEMI" ${rowType === 'SEMI' ? 'selected' : ''}>SEMI-FINISH SALES</option>
             <option value="FINISHED" ${rowType === 'FINISHED' ? 'selected' : ''}>FG SALES</option>
+            <option value="SEMI" ${rowType === 'SEMI' ? 'selected' : ''}>SEMI-FINISHED SALES</option>
+            <option value="RAW" ${rowType === 'RAW' ? 'selected' : ''}>RAW MATERIALS</option>
             <option value="PACKAGING" ${rowType === 'PACKAGING' ? 'selected' : ''}>PACKAGING</option>
           </select>
         </div>
@@ -1769,6 +1831,8 @@ const app = {
   },
 
   submitDispatch() {
+    if (this._isDispatchSubmitting) return;
+
     const orderId = document.getElementById('dispatch-order').value;
     if (!orderId) return this.toast('Select an order', 'error');
 
@@ -1857,6 +1921,27 @@ const app = {
       return this.toast('You have View-Only permission. Dispatching items is disabled.', 'error');
     }
 
+    // Double-click & rapid-submit prevention
+    this._isDispatchSubmitting = true;
+    const dispatchBtn = document.querySelector('button[onclick*="submitDispatch"]');
+    const originalBtnHtml = dispatchBtn ? dispatchBtn.innerHTML : 'Dispatch Items';
+    if (dispatchBtn) {
+      dispatchBtn.disabled = true;
+      dispatchBtn.style.opacity = '0.65';
+      dispatchBtn.style.cursor = 'not-allowed';
+      dispatchBtn.innerHTML = '⏳ Dispatching Items...';
+    }
+
+    const resetDispatchBtn = () => {
+      this._isDispatchSubmitting = false;
+      if (dispatchBtn) {
+        dispatchBtn.disabled = false;
+        dispatchBtn.style.opacity = '1';
+        dispatchBtn.style.cursor = 'pointer';
+        dispatchBtn.innerHTML = originalBtnHtml;
+      }
+    };
+
     const postUrl = window.location.pathname;
     const historyRedirectUrl = window.location.pathname.replace('/action', '/history');
 
@@ -1875,10 +1960,32 @@ const app = {
         this.toast(res.message || 'Dispatch recorded successfully!');
         setTimeout(() => { window.location.href = historyRedirectUrl; }, 700);
       } else {
+        resetDispatchBtn();
         this.toast(res.message || 'Error recording dispatch', 'error');
+
+        // Dynamically update UI if server returned updated remaining quantity
+        if (res.item_id && res.remaining_qty !== undefined) {
+          const splitContainer = document.getElementById(`loc-splits-${res.item_id}`);
+          if (splitContainer) splitContainer.dataset.max = res.remaining_qty;
+          const directInp = document.querySelector(`.dispatch-item-qty[data-item-id="${res.item_id}"]`);
+          if (directInp) {
+            directInp.dataset.max = res.remaining_qty;
+            directInp.max = res.remaining_qty;
+            if (Number(directInp.value) > res.remaining_qty) {
+              directInp.value = res.remaining_qty > 0 ? res.remaining_qty : '';
+            }
+          }
+          const pendingBadge = document.getElementById(`pending-badge-${res.item_id}`);
+          if (pendingBadge) {
+            pendingBadge.innerHTML = `Pending Order: <span style="color:#fff;">${res.remaining_qty} kg</span>`;
+          }
+        }
       }
     })
-    .catch(() => this.toast('Network error while recording dispatch.', 'error'));
+    .catch(() => {
+      resetDispatchBtn();
+      this.toast('Network error while recording dispatch.', 'error');
+    });
   },
 
   toggleDispatchLocationDropdown(btn) {
@@ -1995,7 +2102,7 @@ const app = {
               <span style="background:rgba(216,138,0,0.2); border:1px solid rgba(216,138,0,0.5); color:#F4B400; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.8rem;">
                 Total Order Qty: <span style="color:#fff;">${i.quantity} kg</span>
               </span>
-              <span style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.5); color:#f87171; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.8rem;">
+              <span id="pending-badge-${i.id}" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.5); color:#f87171; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.8rem;">
                 Pending Order: <span style="color:#fff;">${remaining} kg</span>
               </span>
             </div>
@@ -2065,6 +2172,37 @@ const app = {
           </div>
         </div>
       `;
+
+      // Live background sync to guarantee real-time pending quantities from server
+      fetch(`/api/dispatch/order-details/${id}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data && data.success && data.order && data.order.items) {
+            data.order.items.forEach(freshItem => {
+              const freshRem = freshItem.remainingQty;
+              const badge = document.getElementById(`pending-badge-${freshItem.id}`);
+              if (badge) {
+                badge.innerHTML = `Pending Order: <span style="color:#fff;">${freshRem} kg</span>`;
+              }
+              const splitC = document.getElementById(`loc-splits-${freshItem.id}`);
+              if (splitC) splitC.dataset.max = freshRem;
+              const directInp = document.querySelector(`.dispatch-item-qty[data-item-id="${freshItem.id}"]`);
+              if (directInp) {
+                directInp.dataset.max = freshRem;
+                directInp.max = freshRem;
+                if (Number(directInp.value) > freshRem) {
+                  directInp.value = freshRem > 0 ? freshRem : '';
+                }
+              }
+              const cachedItem = (o.items || []).find(ci => ci.id == freshItem.id);
+              if (cachedItem) {
+                cachedItem.remainingQty = freshRem;
+                cachedItem.dispatchedQty = freshItem.dispatchedQty;
+              }
+            });
+          }
+        })
+        .catch(() => {});
 
       // Fetch location stocks splits dynamically
       o.items.forEach(i => {

@@ -130,7 +130,7 @@
     <!-- Branding Header -->
     <table class="header-table" style="width: 100%; border-collapse: collapse; margin-bottom: 8px; border-bottom: 2px solid #f8c300; padding-bottom: 6px;">
         <tr>
-            <td class="header-logo-cell" style="width: 65%; vertical-align: middle;">
+            <td class="header-logo-cell" style="width: 100%; vertical-align: middle;">
                 <table style="border-collapse: collapse;">
                     <tr>
                         @if($logoBase64)
@@ -145,12 +145,6 @@
                         </td>
                     </tr>
                 </table>
-            </td>
-            <td class="header-contact-cell" style="width: 35%; text-align: right; vertical-align: middle; font-size: 8.5px; color: #475467; line-height: 1.45;">
-                <div style="font-weight: bold; color: #101828; font-size: 9.5px; margin-bottom: 2px;">PENTAPURE HEADQUARTERS</div>
-                <div style="margin-bottom: 1px;">Email: info@pentapure.com</div>
-                <div style="margin-bottom: 1px;">Phone: +91 98765 43210</div>
-                <div>Web: www.pentapure.com</div>
             </td>
         </tr>
     </table>
@@ -252,12 +246,12 @@
                         @if($isFirst)
                             <div style="font-weight: 700; color: #101828; font-size: 7.5px;">{{ $logRow['order_date'] }}</div>
                             @if(!empty($logRow['due_date']))
-                                <div style="margin-top: 3px; font-size: 6.8px; color: #b45309; font-weight: 800; background: #fff8eb; padding: 2px 3px; border-radius: 3px; border: 1px solid #fef08a;">
-                                    DUE: {{ $logRow['due_date'] }}
+                                <div style="margin-top: 3px; font-size: 6.8px; color: #dc2626; font-weight: 800; background: #fef2f2; padding: 2px 3px; border-radius: 3px; border: 1px solid #fecaca;">
+                                    DUE DATE: {{ $logRow['due_date'] }}
                                 </div>
                             @else
                                 <div style="margin-top: 2px; font-size: 6.5px; color: #98a2b3;">
-                                    DUE: —
+                                    DUE DATE: —
                                 </div>
                             @endif
                         @endif

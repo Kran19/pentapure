@@ -111,6 +111,26 @@
       width: 100% !important;
     }
   }
+
+  .highlight-expected-delivery {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 800;
+    font-size: 0.86rem;
+    color: #0284c7 !important;
+    background: rgba(2, 132, 199, 0.12);
+    border: 1px solid rgba(2, 132, 199, 0.35);
+    padding: 3px 10px;
+    border-radius: 6px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+  html.dark-mode .highlight-expected-delivery {
+    color: #38bdf8 !important;
+    background: rgba(14, 165, 233, 0.18);
+    border-color: rgba(56, 189, 248, 0.45);
+  }
 </style>
 
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
@@ -214,10 +234,12 @@
                 </div>
                 
                 <!-- Expected Delivery Date & Sales Person Highlights -->
-                <div style="font-size:0.83rem; color:var(--text-muted); margin-top:4px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-                  <span><strong>Sales By:</strong> <span style="color:var(--primary-light, #F4B400); font-weight:600;">{{ $o['salesPerson'] ?? 'N/A' }}</span></span>
+                <div style="font-size:0.83rem; color:var(--text-muted); margin-top:6px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                  <span class="highlight-expected-delivery">
+                    EXPECTED DELIVERY DATE: {{ !empty($o['dueDate']) && $o['dueDate'] !== 'Not Specified' ? strtoupper($o['dueDate']) : 'NOT SPECIFIED' }}
+                  </span>
                   <span>•</span>
-                  <span><strong>Expected Delivery Date:</strong> <strong style="color:var(--text-main, #ffffff); font-size:0.88rem;">{{ $o['dueDate'] ?? 'Not Specified' }}</strong></span>
+                  <span><strong>Sales By:</strong> <span style="color:var(--primary-light, #F4B400); font-weight:600;">{{ $o['salesPerson'] ?? 'N/A' }}</span></span>
                 </div>
               </div>
               <div style="display:flex; align-items:center; gap:10px;">
@@ -257,9 +279,9 @@
           <div id="home-acc-{{ $o['id'] }}" class="home-accordion-content" style="display:none; padding:1.2rem; border-top:1px solid var(--glass-border, rgba(255,255,255,0.06)); background:rgba(0,0,0,0.02);">
             <!-- Key Details Bar -->
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:12px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
-              <div>
-                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Expected Delivery Date</div>
-                <div style="font-size:0.95rem; font-weight:700; color:var(--text-main, #fff);">{{ $o['dueDate'] ?? 'Not Specified' }}</div>
+              <div style="background:rgba(2, 132, 199, 0.08); padding:8px 12px; border-radius:8px; border:1px solid rgba(2, 132, 199, 0.25);">
+                <div style="font-size:0.72rem; color:#0284c7; text-transform:uppercase; font-weight:800; letter-spacing:0.3px;">Expected Delivery Date</div>
+                <div style="font-size:1.05rem; font-weight:800; color:#0284c7; margin-top:2px;">{{ !empty($o['dueDate']) && $o['dueDate'] !== 'Not Specified' ? strtoupper($o['dueDate']) : 'NOT SPECIFIED' }}</div>
               </div>
               <div>
                 <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Sales By</div>
@@ -347,10 +369,12 @@
                   <span class="badge badge-done" style="font-size:0.7rem; padding:4px 8px; background:#16a34a; color:#fff; font-weight:700;">COMPLETED</span>
                 </div>
                 <!-- Expected Delivery Date & Sales Person Highlights -->
-                <div style="font-size:0.83rem; color:var(--text-muted); margin-top:4px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-                  <span><strong>Sales By:</strong> <span style="color:var(--primary-light, #F4B400); font-weight:600;">{{ $o['salesPerson'] ?? 'N/A' }}</span></span>
+                <div style="font-size:0.83rem; color:var(--text-muted); margin-top:6px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                  <span class="highlight-expected-delivery">
+                    EXPECTED DELIVERY DATE: {{ !empty($o['dueDate']) && $o['dueDate'] !== 'Not Specified' ? strtoupper($o['dueDate']) : 'NOT SPECIFIED' }}
+                  </span>
                   <span>•</span>
-                  <span><strong>Expected Delivery Date:</strong> <strong style="color:var(--text-main, #ffffff); font-size:0.88rem;">{{ $o['dueDate'] ?? 'Not Specified' }}</strong></span>
+                  <span><strong>Sales By:</strong> <span style="color:var(--primary-light, #F4B400); font-weight:600;">{{ $o['salesPerson'] ?? 'N/A' }}</span></span>
                 </div>
               </div>
               <div style="display:flex; align-items:center; gap:10px;">
@@ -373,9 +397,9 @@
 
           <div id="home-acc-comp-{{ $o['id'] }}" class="home-accordion-content" style="display:none; padding:1.2rem; border-top:1px solid var(--glass-border, rgba(255,255,255,0.06)); background:rgba(0,0,0,0.02);">
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:12px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
-              <div>
-                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Expected Delivery Date</div>
-                <div style="font-size:0.95rem; font-weight:700; color:var(--text-main, #fff);">{{ $o['dueDate'] ?? 'Not Specified' }}</div>
+              <div style="background:rgba(2, 132, 199, 0.08); padding:8px 12px; border-radius:8px; border:1px solid rgba(2, 132, 199, 0.25);">
+                <div style="font-size:0.72rem; color:#0284c7; text-transform:uppercase; font-weight:800; letter-spacing:0.3px;">Expected Delivery Date</div>
+                <div style="font-size:1.05rem; font-weight:800; color:#0284c7; margin-top:2px;">{{ !empty($o['dueDate']) && $o['dueDate'] !== 'Not Specified' ? strtoupper($o['dueDate']) : 'NOT SPECIFIED' }}</div>
               </div>
               <div>
                 <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Sales By</div>

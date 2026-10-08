@@ -106,6 +106,30 @@
     width: 100%;
   }
 }
+
+.highlight-due-date {
+  color: #dc2626 !important;
+  font-weight: 800 !important;
+  background: #fef2f2;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid #fecaca;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.3px;
+}
+.highlight-due-date * {
+  color: #dc2626 !important;
+}
+.dark-mode .highlight-due-date {
+  color: #f87171 !important;
+  background: rgba(220, 38, 38, 0.18);
+  border-color: rgba(248, 113, 113, 0.45);
+}
+.dark-mode .highlight-due-date * {
+  color: #f87171 !important;
+}
 </style>
 
 <div style="padding:1.5rem;">
@@ -260,7 +284,7 @@
                 <span>•</span>
                 <span>ORDERED: {{ $orderDate ? $orderDate->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') : 'N/A' }}</span>
                 <span>•</span>
-                <span>DUE DATE: <strong style="color:var(--text-main, #111827); font-weight:700;">{{ $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : 'N/A' }}</strong>{!! $overdueBadge !!}</span>
+                <span class="highlight-due-date">DUE DATE: <strong>{{ $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : 'N/A' }}</strong>{!! $overdueBadge !!}</span>
               </div>
             </div>
             <div style="display:flex; align-items:center; gap:12px; text-align:right; flex-wrap:nowrap;">
@@ -292,9 +316,9 @@
                 <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Date & Time</div>
                 <div style="font-size:0.85rem; font-weight:500;">{{ $orderDate ? $orderDate->timezone('Asia/Kolkata')->format('d-m-Y, h:i:s A') : 'N/A' }}</div>
               </div>
-              <div>
-                <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Due Date</div>
-                <div style="font-size:0.85rem; font-weight:700; color:var(--text-main, #111827);">{{ $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : '—' }} {!! $overdueBadge !!}</div>
+              <div style="background:rgba(220, 38, 38, 0.08); padding:8px 12px; border-radius:8px; border:1px solid rgba(220, 38, 38, 0.25);">
+                <div style="color:#dc2626 !important; font-size:0.72rem; text-transform:uppercase; font-weight:800; letter-spacing:0.3px;">Due Date</div>
+                <div style="font-size:1.05rem; font-weight:800; color:#dc2626 !important; margin-top:2px;">{{ $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : '—' }} {!! $overdueBadge !!}</div>
               </div>
               <div>
                 <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Company</div>

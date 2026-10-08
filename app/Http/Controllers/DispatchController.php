@@ -185,6 +185,12 @@ class DispatchController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
+        foreach ($pendingOrders as $po) {
+            foreach ($po->items as $pi) {
+                $pi->syncDispatchedQty();
+            }
+        }
+
         $pageData = [
             'pendingOrders' => $pendingOrders->map(fn($o)=>[
                 'id'          => $o->id,
@@ -216,7 +222,59 @@ class DispatchController extends Controller
                 ])
             ])
         ];
-        return view('dispatch.action', compact('pageData'));
+
+        return response()
+            ->view('dispatch.action', compact('pageData'))
+            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
+    }
+
+    public function getOrderDetails($id)
+    {
+        $order = Order::with(['company', 'transporter', 'items.product', 'creator'])->find($id);
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Order not found'], 404);
+        }
+
+        foreach ($order->items as $item) {
+            $item->syncDispatchedQty();
+        }
+
+        $items = $order->items->map(fn($i) => [
+            'id'            => $i->id,
+            'rawProductName'=> $i->product?->name ?? 'Unknown',
+            'productName'   => $i->product?->name ?? 'Unknown',
+            'formattedName' => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
+            'productId'     => $i->product_id,
+            'productType'   => $i->product?->type,
+            'quantity'      => (float) $i->quantity,
+            'dispatchedQty' => (float) $i->dispatched_qty,
+            'remainingQty'  => $i->remainingQty(),
+            'grade'         => $i->grade,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'order'   => [
+                'id'          => $order->id,
+                'notes'       => $order->notes,
+                'salesPerson' => $order->creator?->name ?? 'N/A',
+                'company'     => [
+                    'name'    => $order->company?->name,
+                    'gst'     => $order->company?->gst,
+                    'contact' => $order->company?->contact,
+                    'address' => $order->company?->address,
+                ],
+                'transporter' => [
+                    'name'     => $order->transporter?->name,
+                    'gst'      => $order->transporter?->gst,
+                    'contact'  => $order->transporter?->contact,
+                    'vehicles' => $order->transporter?->vehicles,
+                ],
+                'items'       => $items,
+            ]
+        ]);
     }
 
     public function storeDispatch(Request $request)
@@ -236,11 +294,21 @@ class DispatchController extends Controller
             'transporter_id'              => 'nullable|exists:transporters,id',
         ]);
 
+        // Rapid concurrent submission prevention (atomic lock per order)
+        $lock = \Illuminate\Support\Facades\Cache::lock("dispatch_lock_order_{$request->order_id}", 5);
+        if (!$lock->get()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Another dispatch request is currently in progress. Please wait a moment.'
+            ], 429);
+        }
+
         $user = $this->authUser();
         $response = null;
         $message = '';
 
-        DB::transaction(function () use ($request, $user, &$response, &$message) {
+        try {
+            DB::transaction(function () use ($request, $user, &$response, &$message) {
             // Lock order row for update to prevent concurrent duplicate dispatches
             /** @var Order $order */
             $order = Order::with('items.product')->where('id', $request->order_id)->lockForUpdate()->first();
@@ -258,15 +326,23 @@ class DispatchController extends Controller
                     return;
                 }
 
-                $dispatchQty = (float) $dispatchItem['quantity'];
-                $remaining   = $orderItem->remainingQty();
-                $itemGrade   = (!empty($orderItem->grade) && $orderItem->grade !== 'NONE') ? $orderItem->grade : 'NONE';
-                $itemStage   = !empty($orderItem->product?->type) ? $orderItem->product->type : 'RAW';
+                // Sync dispatched_qty with actual recorded dispatch log items
+                $orderItem->syncDispatchedQty();
+
+                $dispatchQty   = (float) $dispatchItem['quantity'];
+                $remaining     = $orderItem->remainingQty();
+                $itemGrade     = (!empty($orderItem->grade) && $orderItem->grade !== 'NONE') ? $orderItem->grade : 'NONE';
+                $itemStage     = !empty($orderItem->product?->type) ? $orderItem->product->type : 'RAW';
+                $formattedName = $orderItem->product ? $orderItem->product->formatName($orderItem->grade) : ($orderItem->product?->name ?? 'Product');
+                $unit          = $orderItem->product?->unit ?? 'kg';
 
                 if ($dispatchQty > $remaining) {
                     $response = response()->json([
                         'success' => false,
-                        'message' => "Cannot dispatch {$dispatchQty} kg of {$orderItem->product?->name}. Remaining: {$remaining} kg"
+                        'message' => "Cannot dispatch {$dispatchQty} {$unit} of {$formattedName}. Remaining pending order: {$remaining} {$unit} (Total: {$orderItem->quantity} {$unit}, Dispatched: {$orderItem->dispatched_qty} {$unit}).",
+                        'order_id' => $order->id,
+                        'item_id' => $orderItem->id,
+                        'remaining_qty' => $remaining,
                     ], 422);
                     return;
                 }
@@ -439,13 +515,15 @@ class DispatchController extends Controller
                 $order->update(['dispatch_status' => 'PARTIAL PENDING']);
                 $message = 'Partial dispatch recorded. Remaining items are saved under Partial Pending.';
             }
-        });
+            });
+            if ($response) {
+                return $response;
+            }
 
-        if ($response) {
-            return $response;
+            return response()->json(['success' => true, 'message' => $message]);
+        } finally {
+            $lock->release();
         }
-
-        return response()->json(['success' => true, 'message' => $message]);
     }
 
     public function updateDispatch(Request $request, $id)

@@ -236,6 +236,30 @@
     justify-content: center;
   }
 }
+
+.highlight-due-date {
+  color: #dc2626 !important;
+  font-weight: 800 !important;
+  background: #fef2f2;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid #fecaca;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.3px;
+}
+.highlight-due-date * {
+  color: #dc2626 !important;
+}
+.dark-mode .highlight-due-date {
+  color: #f87171 !important;
+  background: rgba(220, 38, 38, 0.18);
+  border-color: rgba(248, 113, 113, 0.45);
+}
+.dark-mode .highlight-due-date * {
+  color: #f87171 !important;
+}
 </style>
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
   <h2 style="margin:0;">📋 Dispatch Orders Report</h2>
@@ -344,7 +368,7 @@
             <span>•</span>
             <span>Ordered: {{ \Carbon\Carbon::parse($d['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }}</span>
             <span>•</span>
-            <span>Due Date: <strong style="color:var(--text-main, #111827); font-weight:700;">{{ $d['dueDate'] ?? 'N/A' }}</strong></span>
+            <span class="highlight-due-date">DUE DATE: <strong>{{ !empty($d['dueDate']) && $d['dueDate'] !== 'N/A' ? strtoupper($d['dueDate']) : 'N/A' }}</strong></span>
           </div>
         </div>
         <div style="display:flex; align-items:center; gap:10px; text-align:right; flex-wrap:nowrap;">
@@ -373,9 +397,9 @@
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Date & Time</div>
             <div style="font-size:0.85rem; font-weight:500;">{{ \Carbon\Carbon::parse($d['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i:s A') }}</div>
           </div>
-          <div>
-            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Due Date</div>
-            <div style="font-size:0.85rem; font-weight:700; color:var(--text-main, #111827);">{{ $d['dueDate'] ?? '—' }}</div>
+          <div style="background:rgba(220, 38, 38, 0.08); padding:8px 12px; border-radius:8px; border:1px solid rgba(220, 38, 38, 0.25);">
+            <div style="color:#dc2626 !important; font-size:0.72rem; text-transform:uppercase; font-weight:800; letter-spacing:0.3px;">Due Date</div>
+            <div style="font-size:1.05rem; font-weight:800; color:#dc2626 !important; margin-top:2px;">{{ !empty($d['dueDate']) && $d['dueDate'] !== '—' && $d['dueDate'] !== 'N/A' ? strtoupper($d['dueDate']) : '—' }}</div>
           </div>
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Company</div>

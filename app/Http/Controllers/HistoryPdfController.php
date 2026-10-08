@@ -139,14 +139,17 @@ class HistoryPdfController extends Controller
 
     private function dateRange(Request $request): array
     {
-        $fromInput = $request->from ?: $request->start;
-        $toInput = $request->to ?: $request->end;
+        $fromInput = $request->from ?: ($request->start ?: $request->date_from);
+        $toInput = $request->to ?: ($request->end ?: $request->date_to);
 
         if ($request->range && $request->range !== 'all' && !$fromInput && !$toInput) {
             $range = $request->range;
             if ($range === 'today') {
                 $from = now()->startOfDay();
                 $to = now()->endOfDay();
+            } elseif ($range === 'yesterday') {
+                $from = now()->subDay()->startOfDay();
+                $to = now()->subDay()->endOfDay();
             } elseif ($range === 'this_week') {
                 $from = now()->startOfWeek();
                 $to = now()->endOfDay();
@@ -158,7 +161,7 @@ class HistoryPdfController extends Controller
                 $to = now()->endOfDay();
             } elseif ($range === 'last_month') {
                 $from = now()->subMonth()->startOfMonth();
-                $to = now()->subMonth()->endOfWeek();
+                $to = now()->subMonth()->endOfMonth();
             }
         }
 
@@ -526,13 +529,19 @@ class HistoryPdfController extends Controller
         $user = $this->authUser();
         [$from, $to] = $this->dateRange($request);
         
+        $isAllRange = ($request->range === 'all' || !$request->range) && !$request->from && !$request->start && !$request->date_from;
+        
         $query = Order::with([
             'company',
             'transporter',
             'creator',
             'items.product',
             'dispatchLogs.dispatchItems.locationAllocations.location'
-        ])->where('status', '!=', 'CANCELLED')->whereBetween('created_at', [$from, $to]);
+        ])->where('status', '!=', 'CANCELLED');
+
+        if (!$isAllRange) {
+            $query->whereBetween(\Illuminate\Support\Facades\DB::raw('COALESCE(orders.date, orders.created_at)'), [$from, $to]);
+        }
 
         $q = $request->q;
         if ($q) {
@@ -571,7 +580,30 @@ class HistoryPdfController extends Controller
             });
         }
 
-        $orders = $query->orderBy('created_at', 'asc')->get();
+        $statusPriority = "CASE 
+            WHEN TRIM(COALESCE(orders.dispatch_status, '')) IN ('', 'PENDING', 'OPEN', 'UNASSIGNED') THEN 1
+            WHEN orders.dispatch_status IN ('PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED') THEN 2
+            WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN 3
+            ELSE 4
+        END";
+
+        $dueCol = \Illuminate\Support\Facades\Schema::hasColumn('orders', 'due_date') ? 'orders.due_date' : 'orders.date';
+
+        $pendingDueSort = "CASE 
+            WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN '9999-12-31'
+            ELSE COALESCE({$dueCol}, orders.date, orders.created_at)
+        END";
+
+        $completedDateSort = "CASE 
+            WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN COALESCE(orders.date, orders.created_at)
+            ELSE '1970-01-01'
+        END";
+
+        $orders = $query->orderByRaw("{$statusPriority} ASC")
+            ->orderByRaw("{$pendingDueSort} ASC")
+            ->orderByRaw("{$completedDateSort} DESC")
+            ->orderByDesc('orders.id')
+            ->get();
         
         $rows = [];
         $totalQuantity = 0;
@@ -719,7 +751,7 @@ class HistoryPdfController extends Controller
             }
         }
 
-        $isAllRange = ($request->range === 'all' || !$request->range) && !$request->from && !$request->start;
+        $isAllRange = ($request->range === 'all' || !$request->range) && !$request->from && !$request->start && !$request->date_from;
 
         return [
             'reportId' => 'RPT-DISP-' . now()->format('Ymd') . '-' . rand(100, 999),

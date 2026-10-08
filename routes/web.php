@@ -85,6 +85,8 @@ Route::middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CA
     Route::post('/api/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);
     Route::get('/api/locations', [\App\Http\Controllers\AdminController::class, 'getLocationsApi']);
     Route::get('/api/stock/locations', [\App\Http\Controllers\AdminController::class, 'stockLocationsBreakdownApi']);
+    Route::post('/api/stock/locations/transfer', [\App\Http\Controllers\AdminController::class, 'transferStockLocationsApi']);
+    Route::get('/api/dispatch/order-details/{id}', [\App\Http\Controllers\DispatchController::class, 'getOrderDetails']);
     Route::post('/admin/logs/clear', [\App\Http\Controllers\AdminController::class, 'clearLogs']);
     Route::post('/admin/attendance/clear', [\App\Http\Controllers\AttendanceController::class, 'clearAllAttendanceData']);
     Route::post('/attendance/clear', [\App\Http\Controllers\AttendanceController::class, 'clearAllAttendanceData']);
@@ -102,6 +104,7 @@ Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FIN
     Route::get('/api/locations', [\App\Http\Controllers\AdminController::class, 'getLocationsApi']);
     Route::get('/api/stock/locations', [\App\Http\Controllers\AdminController::class, 'stockLocationsBreakdownApi']);
     Route::post('/api/stock/locations/transfer', [\App\Http\Controllers\AdminController::class, 'transferStockLocationsApi']);
+    Route::get('/api/dispatch/order-details/{id}', [\App\Http\Controllers\DispatchController::class, 'getOrderDetails']);
 
     Route::get('/product/{productId}/{stage}/history', [\App\Http\Controllers\AdminController::class, 'productStockHistory'])
         ->name('product.stock.history');
@@ -251,6 +254,8 @@ foreach ($roleSlugs['DISPATCH'] ?? [] as $slug) {
     Route::get('/home',     'home')->name($slug.'.home');
     Route::get('/action',   'action')->name($slug.'.action');
     Route::post('/action',  'storeDispatch');
+    Route::get('/order-details/{id}', 'getOrderDetails');
+    Route::get('/dispatch/order-details/{id}', 'getOrderDetails');
     Route::post('/update-lr', 'updateLR');
     Route::post('/revert/{id}', 'revertDispatch');
     Route::get('/history',  'history')->name($slug.'.history');
@@ -487,6 +492,7 @@ foreach ($adminSlugs as $slug) {
     Route::get('/dispatch/home',         [DispatchController::class, 'home'])->name($slug.'.dispatch.home');
     Route::get('/dispatch/action',       [DispatchController::class, 'action'])->name($slug.'.dispatch.action');
     Route::post('/dispatch/action',      [DispatchController::class, 'storeDispatch']);
+    Route::get('/dispatch/order-details/{id}', [DispatchController::class, 'getOrderDetails']);
     Route::get('/dispatch/history',      [DispatchController::class, 'history'])->name($slug.'.dispatch.history');
     Route::get('/dispatch/report',       [DispatchController::class, 'report'])->name($slug.'.dispatch.report');
     Route::get('/dispatch/order/pdf/{id}', [HistoryPdfController::class, 'salesOrderPdf']);

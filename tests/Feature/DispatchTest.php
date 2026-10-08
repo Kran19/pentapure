@@ -365,4 +365,107 @@ class DispatchTest extends TestCase
         $this->assertStringContainsString('PENDING:', $reportContent);
         $this->assertStringContainsString('dispatch-item-badges', $reportContent);
     }
+
+    public function test_order_item_sync_dispatched_qty_corrects_drift(): void
+    {
+        // Simulate corrupted dispatched_qty (e.g. 250 instead of 0)
+        $this->orderItem->update(['dispatched_qty' => 250]);
+        $this->assertEquals(250, (float) $this->orderItem->dispatched_qty);
+        $this->assertEquals(50, $this->orderItem->remainingQty());
+
+        // Calling syncDispatchedQty should reset dispatched_qty to actual sum of logs (0)
+        $actual = $this->orderItem->syncDispatchedQty();
+        $this->assertEquals(0, $actual);
+        $this->orderItem->refresh();
+        $this->assertEquals(0, (float) $this->orderItem->dispatched_qty);
+        $this->assertEquals(300, $this->orderItem->remainingQty());
+    }
+
+    public function test_dispatch_error_message_contains_grade_and_accurate_remaining_qty(): void
+    {
+        $session = ['auth_user' => [
+            'id'   => $this->dispatchUser->id,
+            'name' => $this->dispatchUser->name,
+            'role' => 'DISPATCH',
+        ]];
+
+        // Attempting to dispatch 350 kg when order item quantity is 300 kg
+        $response = $this->withSession($session)->postJson('/dispatch/action', [
+            'order_id' => $this->order->id,
+            'items'    => [
+                [
+                    'order_item_id' => $this->orderItem->id,
+                    'quantity'      => 350,
+                    'location_splits' => [
+                        ['location_key' => $this->location->name, 'dispatch_location_qty' => 350]
+                    ]
+                ]
+            ]
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJson(['success' => false]);
+        $content = $response->json();
+        $this->assertStringContainsString('Cannot dispatch 350', $content['message']);
+        $this->assertStringContainsString('Remaining pending order: 300', $content['message']);
+        $this->assertStringContainsString('Total: 300', $content['message']);
+        $this->assertEquals($this->orderItem->id, $content['item_id']);
+        $this->assertEquals(300, $content['remaining_qty']);
+    }
+
+    public function test_dispatch_duplicate_submission_is_prevented(): void
+    {
+        $session = ['auth_user' => [
+            'id'   => $this->dispatchUser->id,
+            'name' => $this->dispatchUser->name,
+            'role' => 'DISPATCH',
+        ]];
+
+        $payload = [
+            'order_id' => $this->order->id,
+            'items'    => [
+                [
+                    'order_item_id' => $this->orderItem->id,
+                    'quantity'      => 50,
+                    'location_splits' => [
+                        ['location_key' => $this->location->name, 'dispatch_location_qty' => 50]
+                    ]
+                ]
+            ]
+        ];
+
+        // Acquire lock to simulate concurrent in-flight request
+        $lock = \Illuminate\Support\Facades\Cache::lock("dispatch_lock_order_{$this->order->id}", 5);
+        $lock->get();
+
+        // Concurrent request gets 429
+        $resp = $this->withSession($session)->postJson('/dispatch/action', $payload);
+        $resp->assertStatus(429);
+        $resp->assertJson(['success' => false]);
+        $this->assertStringContainsString('currently in progress', $resp->json('message'));
+
+        $lock->release();
+
+        // Once lock is released, dispatch request proceeds
+        $resp2 = $this->withSession($session)->postJson('/dispatch/action', $payload);
+        $resp2->assertStatus(200);
+        $resp2->assertJson(['success' => true]);
+    }
+
+    public function test_get_order_details_api_returns_synced_quantities(): void
+    {
+        $session = ['auth_user' => [
+            'id'   => $this->dispatchUser->id,
+            'name' => $this->dispatchUser->name,
+            'role' => 'DISPATCH',
+        ]];
+
+        $response = $this->withSession($session)->getJson("/api/dispatch/order-details/{$this->order->id}");
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true]);
+        $orderData = $response->json('order');
+        $this->assertEquals($this->order->id, $orderData['id']);
+        $this->assertCount(1, $orderData['items']);
+        $this->assertEquals(300, $orderData['items'][0]['remainingQty']);
+    }
 }
