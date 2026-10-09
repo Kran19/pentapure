@@ -97,6 +97,7 @@ Route::middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CA
     Route::post('/dispatch/revert/{id}', [\App\Http\Controllers\DispatchController::class, 'revertDispatch']);
     Route::post('/revert/{id}', [\App\Http\Controllers\DispatchController::class, 'revertDispatch']);
     Route::post('/dispatch/update-lr', [\App\Http\Controllers\DispatchController::class, 'updateLR']);
+    Route::post('/update-lr', [\App\Http\Controllers\DispatchController::class, 'updateLR']);
     Route::post('/admin/logs/clear', [\App\Http\Controllers\AdminController::class, 'clearLogs']);
     Route::post('/admin/attendance/clear', [\App\Http\Controllers\AttendanceController::class, 'clearAllAttendanceData']);
     Route::post('/attendance/clear', [\App\Http\Controllers\AttendanceController::class, 'clearAllAttendanceData']);
@@ -118,6 +119,8 @@ Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FIN
     Route::get('/order-details/{id}', [\App\Http\Controllers\DispatchController::class, 'getOrderDetails']);
     Route::get('/dispatch/order-details/{id}', [\App\Http\Controllers\DispatchController::class, 'getOrderDetails']);
     Route::get('/dispatch/api/dispatch/order-details/{id}', [\App\Http\Controllers\DispatchController::class, 'getOrderDetails']);
+    Route::post('/dispatch/update-lr', [\App\Http\Controllers\DispatchController::class, 'updateLR']);
+    Route::post('/update-lr', [\App\Http\Controllers\DispatchController::class, 'updateLR']);
 
     Route::get('/product/{productId}/{stage}/history', [\App\Http\Controllers\AdminController::class, 'productStockHistory'])
         ->name('product.stock.history');
@@ -280,6 +283,7 @@ foreach ($roleSlugs['DISPATCH'] ?? [] as $slug) {
     Route::get('/dispatch/order-details/{id}', 'getOrderDetails');
     Route::get('/api/dispatch/order-details/{id}', 'getOrderDetails');
     Route::post('/update-lr', 'updateLR');
+    Route::post('/dispatch/update-lr', 'updateLR');
     Route::post('/revert/{id}', 'revertDispatch');
     Route::post('/dispatch/revert/{id}', 'revertDispatch');
     Route::post('/update/{id}', 'updateDispatch');
@@ -469,6 +473,8 @@ foreach ($adminSlugs as $slug) {
     // Dispatch Activity
     Route::get('/dispatch-activity', 'dispatchActivity')->name($slug.'.dispatch.activity');
     Route::match(['get', 'post'], '/dispatch-activity/pdf', 'dispatchActivityPdf')->name($slug.'.dispatch.pdf');
+    Route::post('/dispatch/update-lr', [DispatchController::class, 'updateLR']);
+    Route::post('/update-lr',          [DispatchController::class, 'updateLR']);
 
     // ── CASHIER OVERVIEW ───────────────────────────────────────────────────
     Route::get('/cashier-overview',   'cashierOverview')->name($slug.'.cashier_overview');
@@ -542,6 +548,7 @@ foreach ($adminSlugs as $slug) {
     Route::post('/dispatch/update/{id}', [DispatchController::class, 'updateDispatch']);
     Route::post('/dispatch/revert/{id}', [DispatchController::class, 'revertDispatch']);
     Route::post('/dispatch/update-lr',   [DispatchController::class, 'updateLR']);
+    Route::post('/update-lr',            [DispatchController::class, 'updateLR']);
     Route::get('/dispatch/download-lr/{id}', [DispatchController::class, 'downloadLR'])->name($slug.'.dispatch.download_lr');
     Route::get('/download-lr/{id}',          [DispatchController::class, 'downloadLR']);
     Route::get('/dispatch/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR'])->name($slug.'.dispatch.download_multiple_lr');
@@ -554,6 +561,7 @@ foreach ($adminSlugs as $slug) {
     Route::get('/history/dispatch/pdf',  fn(\Illuminate\Http\Request $r) => app(\App\Http\Controllers\HistoryPdfController::class)->download($r, 'DISPATCH'));
     Route::get('/dispatch/order/pdf/{id}', [HistoryPdfController::class, 'salesOrderPdf']);
     Route::get('/dispatch/pdf/{id}',     [HistoryPdfController::class, 'dispatchNotePdf']);
+    Route::get('/pdf/{id}',              [HistoryPdfController::class, 'dispatchNotePdf'])->name($slug.'.pdf');
 
     // Stock Manager routes for Admin & Sub-Admin (direct and sub-panel aliases)
     Route::get('/action',                [\App\Http\Controllers\StockManagerController::class, 'action'])->name($slug.'.action');
@@ -691,4 +699,8 @@ Route::middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTE
     Route::post('/{user_slug}/sales/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
     Route::get('/{user_slug}/dispatch/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
     Route::post('/{user_slug}/dispatch/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
+    Route::get('/{user_slug}/pdf/{id}', [HistoryPdfController::class, 'dispatchNotePdf']);
+    Route::get('/{user_slug}/dispatch/pdf/{id}', [HistoryPdfController::class, 'dispatchNotePdf']);
+    Route::get('/pdf/{id}', [HistoryPdfController::class, 'dispatchNotePdf']);
+    Route::get('/dispatch/pdf/{id}', [HistoryPdfController::class, 'dispatchNotePdf']);
 });

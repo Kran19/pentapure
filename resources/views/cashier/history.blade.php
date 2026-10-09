@@ -3,7 +3,7 @@
 @section('content')
 @php
   $q = request('q', '');
-  $dateRange = request('range', 'this_month');
+  $dateRange = request('range', 'all');
   $startDate = request('start', '');
   $endDate = request('end', '');
 
@@ -15,6 +15,8 @@
       return str_contains(strtolower($t['note'] ?? ''), $query) ||
              str_contains(strtolower($t['category'] ?? ''), $query) ||
              str_contains(strtolower($t['description'] ?? ''), $query) ||
+             str_contains(strtolower($t['cashier_name'] ?? ''), $query) ||
+             str_contains(strtolower($t['site'] ?? ''), $query) ||
              str_contains(strtolower((string)$t['amount']), $query);
     });
   }
@@ -49,10 +51,12 @@
     }
   }
 
-  $filtered = $filtered->sortByDesc('date');
+  $filtered = $filtered->sortByDesc(function($item) {
+    return strtotime($item['date'] ?? now());
+  });
 
   $page = request('page', 1);
-  $perPage = 15;
+  $perPage = 50;
   $total = $filtered->count();
   $totalPages = ceil($total / $perPage);
   $paginated = $filtered->slice(($page - 1) * $perPage, $perPage);
@@ -60,19 +64,24 @@
 @endphp
 
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
-  <h2 style="margin:0;">💰 Transactions History</h2>
+  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+    <h2 style="margin:0;">💰 Transactions History</h2>
+    <span class="badge" style="background:rgba(37,99,235,0.12); color:#2563eb; font-weight:700; padding:3px 10px; border-radius:12px; font-size:0.8rem;">
+      {{ $total }} {{ Str::plural('Entry', $total) }}
+    </span>
+  </div>
 </div>
 
 <form method="GET" action="" style="margin-bottom:1rem; display:flex; flex-direction:column; gap:10px;">
   <div class="filter-bar" style="flex-wrap:wrap; gap:8px; padding: 0.5rem; background:rgba(0,0,0,0.2); border-radius:8px; display:flex;">
     <select name="range" onchange="this.form.submit()" style="width:auto; flex:1; padding:0.4rem; border-radius:4px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+      <option value="all" {{ $dateRange==='all'?'selected':'' }}>All Time (All Entries)</option>
       <option value="today" {{ $dateRange==='today'?'selected':'' }}>Today</option>
       <option value="this_week" {{ $dateRange==='this_week'?'selected':'' }}>This Week</option>
       <option value="last_week" {{ $dateRange==='last_week'?'selected':'' }}>Last Week</option>
       <option value="this_month" {{ $dateRange==='this_month'?'selected':'' }}>This Month</option>
       <option value="last_month" {{ $dateRange==='last_month'?'selected':'' }}>Last Month</option>
       <option value="custom" {{ $dateRange==='custom'?'selected':'' }}>Custom Range</option>
-      <option value="all" {{ $dateRange==='all'?'selected':'' }}>All Time</option>
     </select>
     @if($dateRange === 'custom')
       <input type="date" name="start" value="{{ $startDate }}" onchange="this.form.submit()" style="width:auto; padding:0.4rem; border-radius:4px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
@@ -81,7 +90,7 @@
   </div>
 
   <div class="form-group">
-    <input type="text" name="q" placeholder="Search note, category or amount..." value="{{ $q }}" onchange="this.form.submit()" style="padding:0.6rem 0.8rem; font-size:0.85rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+    <input type="text" name="q" placeholder="Search note, category, cashier or amount..." value="{{ $q }}" onchange="this.form.submit()" style="padding:0.6rem 0.8rem; font-size:0.85rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
   </div>
 </form>
 
@@ -97,6 +106,14 @@
           <div style="margin-top:6px; font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
             @if($t['category'])
               <span style="text-transform:uppercase; font-weight:600; background:rgba(0,0,0,0.06); padding:2px 8px; border-radius:6px;">{{ str_replace('_', ' ', $t['category']) }}</span>
+              <span>•</span>
+            @endif
+            @if(!empty($t['cashier_name']) && $t['cashier_name'] !== 'UNKNOWN')
+              <span style="font-weight:600; color:var(--text-main);"><span style="color:#2563eb;">👤</span> {{ $t['cashier_name'] }}</span>
+              <span>•</span>
+            @endif
+            @if(!empty($t['site']))
+              <span style="background:rgba(59,130,246,0.08); color:#2563eb; padding:2px 6px; border-radius:4px; font-size:0.75rem; font-weight:600;">🏢 {{ $t['site'] }}</span>
               <span>•</span>
             @endif
             <span>{{ \Carbon\Carbon::parse($t['date'])->format('d-m-Y, h:i A') }}</span>

@@ -22,7 +22,7 @@
           <label>Status</label>
           <select id="dept-status" style="width:100%; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid #d1d5db; background:#f9fafb;">
             <option value="1">Active</option>
-            <option value="0">Inactive (Disabled)</option>
+            <option value="0">Inactive</option>
           </select>
         </div>
       </div>
@@ -55,8 +55,8 @@
               <span class="badge {{ $d->is_active ? 'badge-done' : 'badge-danger' }}"
                 style="cursor:pointer;"
                 onclick="toggleDeptStatus({{ $d->id }}, '{{ addslashes($d->name) }}', {{ $d->is_active ? 'false' : 'true' }})"
-                title="Click to {{ $d->is_active ? 'Disable' : 'Enable' }} Department">
-                {{ $d->is_active ? 'Active' : 'Inactive (Disabled)' }}
+                title="Click to toggle status">
+                {{ $d->is_active ? 'Active' : 'Inactive' }}
               </span>
             </td>
             <td>
@@ -68,32 +68,9 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                   </button>
 
-                  @if($d->is_active)
-                    <button type="button" class="btn-icon" onclick="toggleDeptStatus({{ $d->id }}, '{{ addslashes($d->name) }}', false)"
-                      style="background:rgba(239, 68, 68, 0.12); color:#dc2626; border:1px solid rgba(239, 68, 68, 0.3); border-radius:6px; padding:4px 8px; font-size:0.75rem; font-weight:700; cursor:pointer;"
-                      title="Disable Department">
-                      Disable
-                    </button>
-                  @else
-                    <button type="button" class="btn-icon" onclick="toggleDeptStatus({{ $d->id }}, '{{ addslashes($d->name) }}', true)"
-                      style="background:rgba(22, 163, 74, 0.12); color:#16a34a; border:1px solid rgba(22, 163, 74, 0.3); border-radius:6px; padding:4px 8px; font-size:0.75rem; font-weight:700; cursor:pointer;"
-                      title="Enable Department">
-                      Enable
-                    </button>
-                  @endif
-
-                  @if(!empty($d->is_used))
-                    <button type="button" class="btn-icon delete" disabled
-                      onclick="inUseDeptAlert('{{ addslashes($d->name) }}', {{ $d->id }}, {{ $d->is_active ? 'true' : 'false' }})"
-                      style="opacity:0.35; cursor:not-allowed; background:#f3f4f6; color:#9ca3af; border:1px solid #d1d5db;"
-                      title="Department in use (workers/attendance exist) - Cannot delete, Disable instead">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="14" x2="14" y2="17"></line></svg>
-                    </button>
-                  @else
-                    <button type="button" class="btn-icon delete" onclick="deleteDept({{ $d->id }})" title="Delete Department (No workers or records in use)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="14" x2="14" y2="17"></line></svg>
-                    </button>
-                  @endif
+                  <button type="button" class="btn-icon delete" onclick="deleteDept({{ $d->id }})" title="Delete">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="14" x2="14" y2="17"></line></svg>
+                  </button>
                 @else
                   <span style="font-size:0.8rem; color:var(--text-muted);">View Only</span>
                 @endif
@@ -132,7 +109,7 @@ function editDept(d) {
           <label style="font-weight:600; color:#4b5563; font-size:0.85rem; margin-bottom:4px; display:block;">Status</label>
           <select id="edit-dept-status" class="swal2-input" style="margin:0; width:100%; height:45px; box-sizing:border-box;">
             <option value="1" ${d.is_active ? 'selected' : ''}>Active</option>
-            <option value="0" ${!d.is_active ? 'selected' : ''}>Inactive (Disabled)</option>
+            <option value="0" ${!d.is_active ? 'selected' : ''}>Inactive</option>
           </select>
         </div>
       </div>

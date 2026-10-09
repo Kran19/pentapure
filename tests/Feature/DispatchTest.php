@@ -776,13 +776,14 @@ class DispatchTest extends TestCase
         ]);
         $resp2->assertJson(['success' => true]);
 
-        // Test PENDING filter on sub_admin dispatch history
-        $pendingResp = $this->withSession($session)->get('/sub_admin/dispatch/history?range=all&company_id=&status=PENDING&q=');
-        $pendingResp->assertStatus(200);
-        $pendingContent = $pendingResp->getContent();
-        $this->assertStringContainsString("Order #{$this->order->id}", $pendingContent);
-        $this->assertStringNotContainsString("Order #{$partialOrder->id}", $pendingContent);
-        $this->assertStringNotContainsString("Order #{$doneOrder->id}", $pendingContent);
+        // Undispatched orders (like $this->order) do NOT appear in Dispatch History
+        // Only orders with actual dispatches (partial or fully dispatched) appear
+        $allHistoryResp = $this->withSession($session)->get('/sub_admin/dispatch/history');
+        $allHistoryResp->assertStatus(200);
+        $allContent = $allHistoryResp->getContent();
+        $this->assertStringNotContainsString("Order #{$this->order->id}", $allContent);
+        $this->assertStringContainsString("Order #{$partialOrder->id}", $allContent);
+        $this->assertStringContainsString("Order #{$doneOrder->id}", $allContent);
 
         // Test PARTIAL filter
         $partialResp = $this->withSession($session)->get('/sub_admin/dispatch/history?range=all&company_id=&status=PARTIAL&q=');
@@ -799,5 +800,137 @@ class DispatchTest extends TestCase
         $this->assertStringContainsString("Order #{$doneOrder->id}", $doneContent);
         $this->assertStringNotContainsString("Order #{$this->order->id}", $doneContent);
         $this->assertStringNotContainsString("Order #{$partialOrder->id}", $doneContent);
+
+        // Test downloading PDF for both partial and done dispatches
+        $partialLog = DispatchLog::where('order_id', $partialOrder->id)->first();
+        $doneLog = DispatchLog::where('order_id', $doneOrder->id)->first();
+        $this->assertNotNull($partialLog);
+        $this->assertNotNull($doneLog);
+
+        $pdfPartialResp = $this->withSession($session)->get('/sub_admin/pdf/' . $partialLog->id);
+        $pdfPartialResp->assertStatus(200);
+        $this->assertEquals('application/pdf', $pdfPartialResp->headers->get('content-type'));
+
+        $pdfDoneResp = $this->withSession($session)->get('/sub_admin/pdf/' . $doneLog->id);
+        $pdfDoneResp->assertStatus(200);
+        $this->assertEquals('application/pdf', $pdfDoneResp->headers->get('content-type'));
+
+        $pdfDispatchResp = $this->withSession($dispatchSession)->get('/dispatch/pdf/' . $doneLog->id);
+        $pdfDispatchResp->assertStatus(200);
+        $this->assertEquals('application/pdf', $pdfDispatchResp->headers->get('content-type'));
+    }
+
+    public function test_each_order_displays_its_own_particular_uploaded_lr_image_and_can_update_lr_via_sub_admin()
+    {
+        $subAdmin = User::create([
+            'name'     => 'Sub Admin User',
+            'email'    => 'subadmin_lr@test.com',
+            'password' => bcrypt('password'),
+            'role'        => 'SUB_ADMIN',
+            'status'      => 'ACTIVE',
+            'permissions' => ['dispatch_history', 'dispatch_action', 'edit_dispatch_action', 'edit_dispatch_history'],
+        ]);
+        $session = ['auth_user' => $subAdmin->toArray()];
+
+        $company = Company::create(['name' => 'Alpha Industrial', 'contact' => '9876543210', 'address' => 'Surat', 'gst' => '24ABCDE1234F1Z5']);
+        $product = Product::create(['name' => 'PVC Pipe 50mm', 'type' => 'FINISHED', 'unit' => 'KG']);
+
+        // Order 1
+        $order1 = Order::create([
+            'company_id'      => $company->id,
+            'created_by'      => $subAdmin->id,
+            'total'           => 12000,
+            'status'          => 'OPEN',
+            'dispatch_status' => 'PENDING',
+        ]);
+        $item1 = OrderItem::create([
+            'order_id'       => $order1->id,
+            'product_id'     => $product->id,
+            'quantity'       => 100,
+            'dispatched_qty' => 0,
+            'price'          => 120,
+        ]);
+
+        // Order 2
+        $order2 = Order::create([
+            'company_id'      => $company->id,
+            'created_by'      => $subAdmin->id,
+            'total'           => 8000,
+            'status'          => 'OPEN',
+            'dispatch_status' => 'PENDING',
+        ]);
+        $item2 = OrderItem::create([
+            'order_id'       => $order2->id,
+            'product_id'     => $product->id,
+            'quantity'       => 50,
+            'dispatched_qty' => 0,
+            'price'          => 160,
+        ]);
+
+        // Dispatch Order 1 with LR Image A
+        $fakeImgA = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+        $log1 = DispatchLog::create([
+            'order_id'       => $order1->id,
+            'user_id'        => $subAdmin->id,
+            'lr_image_path'  => 'lr_images/test_order1_lr.jpg',
+        ]);
+        \App\Models\DispatchLogItem::create([
+            'dispatch_log_id' => $log1->id,
+            'order_item_id'   => $item1->id,
+            'quantity'        => 100,
+        ]);
+
+        // Dispatch Order 2 with LR Image B
+        $log2 = DispatchLog::create([
+            'order_id'       => $order2->id,
+            'user_id'        => $subAdmin->id,
+            'lr_image_path'  => 'lr_images/test_order2_lr.jpg',
+        ]);
+        \App\Models\DispatchLogItem::create([
+            'dispatch_log_id' => $log2->id,
+            'order_item_id'   => $item2->id,
+            'quantity'        => 50,
+        ]);
+
+        // Test GET /sub_admin/dispatch/history displays the particular LR image for each order
+        $historyResp = $this->withSession($session)->get('/sub_admin/dispatch/history');
+        $historyResp->assertStatus(200);
+        $content = $historyResp->getContent();
+
+        $this->assertStringContainsString('test_order1_lr.jpg', $content);
+        $this->assertStringContainsString('test_order2_lr.jpg', $content);
+
+        // Test updating LR via /sub_admin/dispatch/update-lr
+        $updateResp1 = $this->withSession($session)->postJson('/sub_admin/dispatch/update-lr', [
+            'log_id'   => $log1->id,
+            'lr_image' => $fakeImgA,
+        ]);
+        $updateResp1->assertStatus(200);
+        $updateResp1->assertJson(['success' => true]);
+
+        // Test updating LR via /sub_admin/update-lr
+        $updateResp2 = $this->withSession($session)->postJson('/sub_admin/update-lr', [
+            'log_id'   => $log2->id,
+            'lr_image' => $fakeImgA,
+        ]);
+        $updateResp2->assertStatus(200);
+        // Test downloading PDF via /sub_admin/pdf/{id} and /sub_admin/dispatch/pdf/{id}
+        $pdfResp1 = $this->withSession($session)->get('/sub_admin/pdf/' . $log1->id);
+        $pdfResp1->assertStatus(200);
+        $this->assertEquals('application/pdf', $pdfResp1->headers->get('content-type'));
+
+        $pdfResp2 = $this->withSession($session)->get('/sub_admin/dispatch/pdf/' . $log1->id);
+        $pdfResp2->assertStatus(200);
+        $this->assertEquals('application/pdf', $pdfResp2->headers->get('content-type'));
+
+        // Clean up any test files
+        $log1->refresh();
+        $log2->refresh();
+        if ($log1->lr_image_path && file_exists(public_path($log1->lr_image_path))) {
+            @unlink(public_path($log1->lr_image_path));
+        }
+        if ($log2->lr_image_path && file_exists(public_path($log2->lr_image_path))) {
+            @unlink(public_path($log2->lr_image_path));
+        }
     }
 }

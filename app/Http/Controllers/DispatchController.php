@@ -749,15 +749,37 @@ class DispatchController extends Controller
     public function updateLR(Request $request)
     {
         $request->validate([
-            'log_id'   => 'required|exists:dispatch_logs,id',
+            'log_id'   => 'nullable',
+            'order_id' => 'nullable',
             'lr_image' => 'required|string',
         ]);
 
-        $log = DispatchLog::findOrFail($request->log_id);
+        $log = null;
+        if ($request->filled('log_id') && is_numeric($request->log_id)) {
+            $log = DispatchLog::find($request->log_id);
+        }
+        if (!$log && $request->filled('order_id') && is_numeric($request->order_id)) {
+            $log = DispatchLog::where('order_id', $request->order_id)->latest('id')->first();
+        }
+        // If log_id was actually passed as an order_id fallback:
+        if (!$log && $request->filled('log_id') && is_numeric($request->log_id)) {
+            $log = DispatchLog::where('order_id', $request->log_id)->latest('id')->first();
+        }
+
+        if (!$log) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dispatch log record not found for updating LR.',
+            ], 404);
+        }
 
         // Handle LR image - save base64 as file
         $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->lr_image));
-        $lrPath    = 'lr_images/' . uniqid('LR_') . '.jpg';
+        $dir = public_path('lr_images');
+        if (!file_exists($dir)) {
+            @mkdir($dir, 0777, true);
+        }
+        $lrPath = 'lr_images/' . uniqid('LR_') . '.jpg';
         file_put_contents(public_path($lrPath), $imageData);
 
         // Delete old image if exists
@@ -771,8 +793,10 @@ class DispatchController extends Controller
 
         return response()->json([
             'success' => true, 
-            'message' => 'LR Copy updated successfully!',
-            'lr_url'  => asset($lrPath)
+            'message' => 'LR Copy updated successfully for Order #' . $log->order_id . '!',
+            'lr_url'  => asset($lrPath),
+            'order_id'=> $log->order_id,
+            'log_id'  => $log->id,
         ]);
     }
 
@@ -843,6 +867,14 @@ class DispatchController extends Controller
     {
         $log = DispatchLog::findOrFail($id);
         $rawPaths = self::getLrImagePaths($log);
+
+        if (empty($rawPaths) && $log->order && $log->order->dispatchLogs) {
+            $otherLog = $log->order->dispatchLogs->first(fn($ol) => !empty($ol->lr_image_path));
+            if ($otherLog) {
+                $rawPaths = self::getLrImagePaths($otherLog);
+                $log = $otherLog;
+            }
+        }
 
         if (empty($rawPaths)) {
             return back()->with('error', 'No LR image attached to this dispatch record.');
@@ -990,6 +1022,9 @@ class DispatchController extends Controller
             'user',
             'dispatchItems.orderItem.product'
         ])
+            ->whereHas('order', function($q) {
+                $q->where('status', '!=', 'CANCELLED');
+            })
             ->orderByDesc('created_at')
             ->get();
 
@@ -1005,6 +1040,7 @@ class DispatchController extends Controller
         $logsData = $logs->map(function($d) {
             $rawPaths = self::getLrImagePaths($d);
             $lrImages = array_map(fn($p) => ['path' => $p, 'url' => asset($p)], $rawPaths);
+            $ownLr = !empty($lrImages) ? $lrImages[0]['url'] : null;
 
             // Collect all LR copies for this entire order (across all dispatch rounds, e.g. 2 or 3 rounds)
             $orderLrCopies = [];
@@ -1027,6 +1063,13 @@ class DispatchController extends Controller
                 }
             }
 
+            // Fallback: if this specific round has no LR image, but the order has an LR uploaded on another round, use that order's LR
+            $orderLatestLr = null;
+            if (!$ownLr && !empty($orderLrCopies)) {
+                $orderLatestLr = $orderLrCopies[0]['url'] ?? null;
+            }
+            $effectiveLr = $ownLr ?: $orderLatestLr;
+
             $orderTotalQty = (float) ($d->order?->items?->sum('quantity') ?? 0);
             $orderRemainingQty = (float) ($d->order?->items?->sum(fn($i) => $i->remainingQty()) ?? 0);
             $rawDispStatus = strtoupper(trim((string)($d->order?->dispatch_status ?? '')));
@@ -1043,7 +1086,9 @@ class DispatchController extends Controller
                 'salesPerson'   => $d->order?->creator?->name ?? 'N/A',
                 'salesBy'       => $d->order?->creator?->name ?? 'N/A',
                 'dispatchedBy'  => $d->user?->name,
-                'lrImage'       => $d->lr_image_path ? asset($d->lr_image_path) : null,
+                'lrImage'       => $effectiveLr,
+                'ownLrImage'    => $ownLr,
+                'isOrderLrCopy' => empty($ownLr) && !empty($effectiveLr),
                 'lrImages'      => $lrImages,
                 'orderLrCopies' => $orderLrCopies,
                 'orderTotal'    => $d->order?->total,
@@ -1069,63 +1114,7 @@ class DispatchController extends Controller
             ];
         });
 
-        // Also load pending orders that have no dispatch logs yet, so they appear under PENDING in Dispatch History
-        $pendingOrders = Order::with([
-            'company',
-            'transporter',
-            'creator',
-            'items.product',
-        ])
-            ->where('status', '!=', 'CANCELLED')
-            ->where(function($q) {
-                $q->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED', 'PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED'])
-                  ->orWhereNull('dispatch_status');
-            })
-            ->whereDoesntHave('dispatchLogs')
-            ->orderByDesc('created_at')
-            ->get();
-
-        $pendingData = $pendingOrders->map(function($o) {
-            $rawStatus = strtoupper(trim(str_replace('_', ' ', (string)($o->dispatch_status ?? 'PENDING'))));
-            $dispStatus = in_array($rawStatus, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED']) ? 'PARTIAL' : 'PENDING';
-
-            return [
-                'id'            => 'ord_' . $o->id,
-                'isOrderOnly'   => true,
-                'orderId'       => $o->id,
-                'companyId'     => $o->company_id,
-                'companyName'   => $o->company?->name,
-                'transportName' => $o->transporter?->name,
-                'salesPerson'   => $o->creator?->name ?? 'N/A',
-                'salesBy'       => $o->creator?->name ?? 'N/A',
-                'dispatchedBy'  => 'Not Dispatched',
-                'lrImage'       => null,
-                'lrImages'      => [],
-                'orderLrCopies' => [],
-                'orderTotal'    => $o->total,
-                'status'        => $o->status,
-                'dispatchStatus'=> $dispStatus,
-                'date'          => $o->created_at ? $o->created_at->toISOString() : ($o->date ? \Carbon\Carbon::parse($o->date)->toISOString() : now()->toISOString()),
-                'notes'         => $o->notes,
-                'dispatchNotes' => null,
-                'orderNotes'    => $o->notes,
-                'items'         => $o->items->map(fn($oi) => [
-                    'id'            => $oi->id,
-                    'dispatchItemId'=> null,
-                    'orderItemId'   => $oi->id,
-                    'productName'   => $oi->product?->name ?? 'Unknown',
-                    'rawProductName'=> $oi->product?->name ?? 'Unknown',
-                    'formattedName' => $oi->product ? $oi->product->formatName($oi->grade) : 'Unknown',
-                    'grade'         => $oi->grade,
-                    'productType'   => $oi->product?->type,
-                    'totalQty'      => (float) ($oi->quantity ?? 0),
-                    'dispatchedQty' => 0,
-                    'remainingQty'  => (float) ($oi->quantity ?? 0),
-                ])->values(),
-            ];
-        });
-
-        $allData = $logsData->concat($pendingData);
+        $allData = $logsData;
 
         $companies = Company::orderBy('name')->get()->map(fn($c) => [
             'id' => $c->id,

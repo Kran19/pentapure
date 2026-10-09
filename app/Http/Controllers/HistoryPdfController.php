@@ -311,31 +311,45 @@ class HistoryPdfController extends Controller
             });
         }
 
-        return $query->latest()->get()
-            ->map(function ($o) {
-                $oStatus = strtoupper($o->status ?? '');
-                $dStatus = strtoupper(str_replace('_', ' ', $o->dispatch_status ?? 'PENDING'));
+        $orders = $query->latest()->get();
+        foreach ($orders as $o) {
+            foreach ($o->items as $i) {
+                $i->syncDispatchedQty();
+            }
+        }
 
-                if ($oStatus === 'CANCELLED' || $dStatus === 'PENDING' || $dStatus === 'UNASSIGNED' || empty($dStatus)) {
-                    $dispStatusFormatted = 'PENDING';
-                } elseif (in_array($dStatus, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL PENDING', 'PARTIAL_PENDING', 'PARTIAL_DISPATCH'])) {
-                    $dispStatusFormatted = 'PARTIAL';
-                } else {
-                    $dispStatusFormatted = 'FULLY DISPATCHED';
-                }
+        return $orders->map(function ($o) {
+            $totalQty = (float) collect($o->items)->sum('quantity');
+            $dispQty = (float) collect($o->items)->sum('dispatched_qty');
+            $remQty = (float) collect($o->items)->sum(fn($i) => max(0, (float)$i->quantity - (float)$i->dispatched_qty));
 
-                return [
-                    'id' => 'ORD-' . str_pad($o->id, 4, '0', STR_PAD_LEFT),
-                    'type' => 'Order',
-                    'date' => $o->created_at->format('d-m-Y'),
-                    'status' => $o->status,
-                    'dispatch_status' => $dispStatusFormatted,
-                    'amount' => (float) $o->total,
-                    'company_name' => $o->company?->name ?? '-',
-                    'total_items' => count($o->items),
-                    'total_qty' => collect($o->items)->sum('quantity'),
-                ];
-            })->toArray();
+            $oStatus = strtoupper($o->status ?? '');
+            $dStatus = strtoupper(str_replace('_', ' ', $o->dispatch_status ?? 'PENDING'));
+
+            if ($oStatus === 'CANCELLED') {
+                $dispStatusFormatted = 'CANCELLED';
+            } elseif (($totalQty > 0 && $remQty <= 0) || in_array($dStatus, ['DONE', 'COMPLETED', 'FULLY DISPATCHED'])) {
+                $dispStatusFormatted = 'FULLY DISPATCHED';
+            } elseif ($dispQty > 0 || in_array($dStatus, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL PENDING', 'PARTIAL_PENDING', 'PARTIAL_DISPATCH'])) {
+                $dispStatusFormatted = 'PARTIAL';
+            } else {
+                $dispStatusFormatted = 'PENDING';
+            }
+
+            return [
+                'id' => 'ORD-' . str_pad($o->id, 4, '0', STR_PAD_LEFT),
+                'type' => 'Order',
+                'date' => $o->created_at->format('d-m-Y'),
+                'status' => $o->status,
+                'dispatch_status' => $dispStatusFormatted,
+                'amount' => (float) $o->total,
+                'company_name' => $o->company?->name ?? '-',
+                'total_items' => count($o->items),
+                'total_qty' => $totalQty,
+                'dispatched_qty' => $dispQty,
+                'pending_qty' => $remQty,
+            ];
+        })->toArray();
     }
 
     private function dispatchRows(Carbon $from, Carbon $to): array
@@ -429,8 +443,9 @@ class HistoryPdfController extends Controller
             })->toArray();
     }
 
-    public function salesOrderPdf(Request $request, $id)
+    public function salesOrderPdf(Request $request, ...$args)
     {
+        $id = $request->route('id') ?? (count($args) > 0 ? end($args) : null);
         $order = Order::with([
             'company',
             'transporter',
@@ -488,8 +503,9 @@ class HistoryPdfController extends Controller
         return $pdf->download($pdfFilename);
     }
 
-    public function dispatchNotePdf(Request $request, $id)
+    public function dispatchNotePdf(Request $request, ...$args)
     {
+        $id = $request->route('id') ?? (count($args) > 0 ? end($args) : null);
         $log = DispatchLog::with([
             'order.company',
             'order.transporter',
@@ -497,7 +513,26 @@ class HistoryPdfController extends Controller
             'user',
             'transporter',
             'dispatchItems.orderItem.product'
-        ])->findOrFail($id);
+        ])->find($id);
+
+        if (!$log) {
+            $log = DispatchLog::with([
+                'order.company',
+                'order.transporter',
+                'order.creator',
+                'user',
+                'transporter',
+                'dispatchItems.orderItem.product'
+            ])->where('order_id', $id)->latest()->first();
+        }
+
+        if (!$log) {
+            $order = Order::find($id);
+            if ($order) {
+                return $this->salesOrderPdf($request, ...$args);
+            }
+            abort(404, 'Dispatch record not found.');
+        }
 
         $order = $log->order;
         

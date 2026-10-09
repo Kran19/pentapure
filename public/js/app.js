@@ -1964,6 +1964,7 @@ const app = {
     })
     .then(res => {
       if (res && res.success) {
+        this.removeDispatchLR(true);
         this.toast(res.message || 'Dispatch recorded successfully!');
         setTimeout(() => { window.location.href = historyRedirectUrl; }, 700);
       } else {
@@ -2068,6 +2069,15 @@ const app = {
   },
 
   onDispatchOrderSelect(id) {
+    // Clear previous order's LR preview, files, vehicle, and driver contact
+    this.removeDispatchLR(true);
+    const vehicleInp = document.getElementById('dispatch-vehicle-no') || document.getElementById('dispatch-vehicle');
+    if (vehicleInp) vehicleInp.value = '';
+    const contactInp = document.getElementById('dispatch-contact');
+    if (contactInp) contactInp.value = '';
+    const lrNoInp = document.getElementById('dispatch-lr-no');
+    if (lrNoInp) lrNoInp.value = '';
+
     const orders = window.currentPendingOrders || [];
     const o = orders.find(x => x.id == id);
     const div = document.getElementById('order-preview');
@@ -2417,7 +2427,9 @@ const app = {
     if (!imageData) return this.toast('No image data found', 'error');
     
     const currentSlug = this.getCurrentSlug('dispatch');
-    const endpoint = `${this.getBaseUrl()}/${currentSlug}/update-lr`;
+    const endpoint = (currentSlug === 'admin' || currentSlug.startsWith('sub_admin'))
+      ? `${this.getBaseUrl()}/${currentSlug}/dispatch/update-lr`
+      : `${this.getBaseUrl()}/${currentSlug}/update-lr`;
 
     this.toast('Uploading LR...', 'info');
     fetch(endpoint, {
@@ -2425,16 +2437,29 @@ const app = {
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': window.csrfToken || csrfToken },
       body: JSON.stringify({ log_id: logId, lr_image: imageData })
     })
-    .then(r => r.json())
+    .then(async r => {
+      let d = null;
+      try { d = await r.json(); } catch(e) {}
+      if (!d && !r.ok) {
+        const altEndpoint = endpoint.includes('/dispatch/update-lr')
+          ? endpoint.replace('/dispatch/update-lr', '/update-lr')
+          : endpoint.replace('/update-lr', '/dispatch/update-lr');
+        const r2 = await fetch(altEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': window.csrfToken || csrfToken },
+          body: JSON.stringify({ log_id: logId, lr_image: imageData })
+        });
+        d = await r2.json();
+      }
+      return d;
+    })
     .then(d => {
-      if (d.success) {
-        this.toast(d.message);
+      if (d && d.success) {
+        this.toast(d.message || 'LR Copy updated successfully!');
         window.tempLRData = null;
-        const log = window._historyLogs[idx];
-        if (log) log.lrImage = d.lr_url;
-        this.openDispatchDrawer(idx);
+        setTimeout(() => location.reload(), 600);
       } else {
-        this.toast(d.message, 'error');
+        this.toast((d && d.message) ? d.message : 'Failed to update LR copy', 'error');
       }
     })
     .catch(() => this.toast('Network error.', 'error'));
@@ -2451,9 +2476,11 @@ const app = {
 
     const doUpload = (dataUrl) => {
       const currentSlug = this.getCurrentSlug('dispatch');
-      const endpoint = `${this.getBaseUrl()}/${currentSlug}/update-lr`;
+      const endpoint = (currentSlug === 'admin' || currentSlug.startsWith('sub_admin'))
+        ? `${this.getBaseUrl()}/${currentSlug}/dispatch/update-lr`
+        : `${this.getBaseUrl()}/${currentSlug}/update-lr`;
 
-      this.toast('Uploading cropped LR Copy...', 'info');
+      this.toast('Uploading cropped LR Copy for this order...', 'info');
       fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -2466,13 +2493,32 @@ const app = {
           lr_image: dataUrl
         })
       })
-      .then(r => r.json())
+      .then(async r => {
+        let res = null;
+        try { res = await r.json(); } catch(e) {}
+        if (!res && !r.ok) {
+          const altEndpoint = endpoint.includes('/dispatch/update-lr')
+            ? endpoint.replace('/dispatch/update-lr', '/update-lr')
+            : endpoint.replace('/update-lr', '/dispatch/update-lr');
+          const r2 = await fetch(altEndpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'X-CSRF-TOKEN': window.csrfToken || ''
+            },
+            body: JSON.stringify({ log_id: logId, lr_image: dataUrl })
+          });
+          res = await r2.json();
+        }
+        return res;
+      })
       .then(res => {
-        if (res.success) {
+        if (res && res.success) {
           this.toast(res.message || 'LR Copy updated successfully!');
           setTimeout(() => location.reload(), 600);
         } else {
-          this.toast(res.message || 'Failed to update LR copy', 'error');
+          this.toast((res && res.message) ? res.message : 'Failed to update LR copy', 'error');
         }
       })
       .catch(() => this.toast('Network error uploading LR copy.', 'error'));
@@ -2562,19 +2608,21 @@ const app = {
     }
   },
 
-  removeDispatchLR() {
+  removeDispatchLR(silent = false) {
     window._originalDispatchLRFile = null;
     window._currentDispatchLRDataUrl = null;
     const img = document.getElementById('lr-preview');
     const wrap = document.getElementById('dispatch-lr-preview-container');
+    const nameEl = document.getElementById('dispatch-lr-filename');
     const camInp = document.getElementById('dispatch-lr-cam');
     const fileInp = document.getElementById('dispatch-lr-file');
 
     if (img) img.src = '';
     if (wrap) wrap.style.display = 'none';
+    if (nameEl) nameEl.textContent = '';
     if (camInp) camInp.value = '';
     if (fileInp) fileInp.value = '';
-    this.toast('LR Copy removed.');
+    if (!silent) this.toast('LR Copy removed.');
   },
 
   addNewExpenseCategory() {

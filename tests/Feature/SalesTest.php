@@ -454,5 +454,77 @@ namespace Tests\Feature;
             // Cleanup
             @unlink($testFile);
         }
+
+        public function test_sales_history_updates_dispatched_and_pending_quantities_accurately(): void
+        {
+            $order = Order::create([
+                'created_by'      => $this->salesUser->id,
+                'company_id'      => $this->company->id,
+                'transporter_id'  => $this->transporter->id,
+                'total'           => 10000,
+                'status'          => 'OPEN',
+                'dispatch_status' => 'PENDING',
+            ]);
+
+            $orderItem = OrderItem::create([
+                'order_id'       => $order->id,
+                'product_id'     => $this->product->id,
+                'grade'          => 'A',
+                'quantity'       => 100,
+                'price'          => 100,
+                'dispatched_qty' => 0,
+            ]);
+
+            $session = ['auth_user' => [
+                'id'   => $this->salesUser->id,
+                'name' => $this->salesUser->name,
+                'role' => 'SALES',
+            ]];
+
+            // 1. Initial State: 100 kg ordered, 0 kg dispatched, 100 kg pending
+            $resp1 = $this->withSession($session)->get('/sales/history');
+            $resp1->assertStatus(200);
+            $content1 = $resp1->getContent();
+            $this->assertStringContainsString('ORDER: <strong style="color:var(--primary, #D88A00);">100 kg</strong>', $content1);
+            $this->assertStringContainsString('DISPATCHED: <strong>0 kg</strong>', $content1);
+            $this->assertStringContainsString('PENDING: <strong>100 kg</strong>', $content1);
+
+            // 2. Partial Dispatch: dispatch 40 kg
+            $dispatchLog = DispatchLog::create([
+                'order_id'       => $order->id,
+                'user_id'        => $this->salesUser->id,
+                'transporter_id' => $this->transporter->id,
+            ]);
+            \App\Models\DispatchLogItem::create([
+                'dispatch_log_id' => $dispatchLog->id,
+                'order_item_id'   => $orderItem->id,
+                'quantity'        => 40,
+            ]);
+
+            $resp2 = $this->withSession($session)->get('/sales/history');
+            $resp2->assertStatus(200);
+            $content2 = $resp2->getContent();
+            $this->assertStringContainsString('DISPATCHED: <strong>40 kg</strong>', $content2);
+            $this->assertStringContainsString('PENDING: <strong>60 kg</strong>', $content2);
+            $this->assertStringContainsString('PARTIAL', $content2);
+
+            // 3. Full Dispatch: dispatch remaining 60 kg
+            $dispatchLog2 = DispatchLog::create([
+                'order_id'       => $order->id,
+                'user_id'        => $this->salesUser->id,
+                'transporter_id' => $this->transporter->id,
+            ]);
+            \App\Models\DispatchLogItem::create([
+                'dispatch_log_id' => $dispatchLog2->id,
+                'order_item_id'   => $orderItem->id,
+                'quantity'        => 60,
+            ]);
+
+            $resp3 = $this->withSession($session)->get('/sales/history');
+            $resp3->assertStatus(200);
+            $content3 = $resp3->getContent();
+            $this->assertStringContainsString('DISPATCHED: <strong>100 kg</strong>', $content3);
+            $this->assertStringContainsString('FULLY DISPATCHED', $content3);
+        }
     }
 

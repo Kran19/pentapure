@@ -267,7 +267,7 @@
 }
 </style>
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
-  <h2 style="margin:0;">📋 Dispatch Orders Report</h2>
+  <h2 style="margin:0;">📋 Order Report</h2>
   <button id="export-pdf-btn" class="btn btn-sm btn-secondary" style="width:auto; padding:0.5rem 1rem;"
     onclick="app.exportHistoryPdf(this, '{{ $pdfUrl }}')">📄 Export PDF</button>
 </div>

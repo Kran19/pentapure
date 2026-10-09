@@ -567,5 +567,56 @@ class CashierTest extends TestCase
         $response->assertSee('GPay Vendor Payment');
         $response->assertDontSee('PFSPL GPAY EXPENSES');
     }
+
+    public function test_cashier_history_shows_old_entries_by_default(): void
+    {
+        $oldTx1 = Transaction::create([
+            'user_id' => $this->cashierA->id,
+            'type' => 'OUT',
+            'amount' => 1250.00,
+            'category' => 'general',
+            'note' => 'Old Entry Six Months Ago',
+            'date' => \Carbon\Carbon::now()->subMonths(6),
+            'site' => 'Main Branch',
+        ]);
+
+        $oldTx2 = Transaction::create([
+            'user_id' => $this->cashierA->id,
+            'type' => 'IN',
+            'amount' => 9500.00,
+            'category' => 'general',
+            'note' => 'Old Entry Last Year',
+            'date' => \Carbon\Carbon::now()->subYear(),
+            'site' => 'Old Disused Branch',
+        ]);
+
+        $recentTx = Transaction::create([
+            'user_id' => $this->cashierA->id,
+            'type' => 'OUT',
+            'amount' => 350.00,
+            'category' => 'supplies',
+            'note' => 'Recent Today Entry',
+            'date' => \Carbon\Carbon::now(),
+            'site' => 'Main Branch',
+        ]);
+
+        $session = ['auth_user' => [
+            'id' => $this->cashierA->id,
+            'name' => $this->cashierA->name,
+            'role' => 'CASHIER',
+            'branch' => 'Main Branch',
+        ]];
+
+        $response = $this->withSession($session)->get('/cashier/history');
+
+        $response->assertStatus(200);
+
+        // Verify all 3 entries appear in HTML by default without date filter hiding old entries
+        $response->assertSee('Recent Today Entry');
+        $response->assertSee('Old Entry Six Months Ago');
+        $response->assertSee('Old Entry Last Year');
+        $response->assertSee('All Time (All Entries)');
+    }
 }
+
 

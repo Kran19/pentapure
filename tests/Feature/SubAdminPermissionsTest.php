@@ -309,7 +309,7 @@ class SubAdminPermissionsTest extends TestCase
         $response->assertSee('Dispatch Dashboard');
         $response->assertSee('Dispatch Action / Entry');
         $response->assertSee('Dispatch History');
-        $response->assertSee('Dispatch Report');
+        $response->assertSee('Order Report');
 
         // Stock Manager and Cashier panels should not show
         $response->assertDontSee('Stock Manager Panel');
@@ -392,7 +392,7 @@ class SubAdminPermissionsTest extends TestCase
             ->get('/sub_admin/dispatch/report');
 
         $response->assertStatus(200);
-        $response->assertSee('Dispatch Orders Report');
+        $response->assertSee('Order Report');
 
         $pdfResp = $this->withSession(['auth_user' => $subAdmin->toArray()])
             ->get('/sub_admin/history/dispatch/pdf?range=all&status=PENDING');

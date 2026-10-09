@@ -96,6 +96,14 @@ class SalesController extends Controller
         })->values();
         $dueTodayOrdersCount = $dueTodayList->count();
 
+        foreach ($orders as $o) {
+            if ($o->items) {
+                foreach ($o->items as $i) {
+                    $i->syncDispatchedQty();
+                }
+            }
+        }
+
         $pageData = [
             'orders'         => $orders->map(fn($o) => [
                 'id'              => $o->id,
@@ -103,19 +111,24 @@ class SalesController extends Controller
                 'companyName'     => strtoupper($o->company?->name ?? ''),
                 'transportId'     => $o->transporter_id,
                 'transportName'   => strtoupper($o->transporter?->name ?? ''),
-                'total'           => $o->total,
+                'total'           => (float) $o->total,
                 'status'          => $o->status,
                 'dispatchStatus'  => $o->dispatch_status,
                 'notes'           => $o->notes,
                 'date'            => $o->created_at->toISOString(),
                 'dueDate'         => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
+                'totalQty'        => (float) $o->items->sum('quantity'),
+                'dispatchedQty'   => (float) $o->items->sum('dispatched_qty'),
+                'remainingQty'    => (float) $o->items->sum(fn($i) => $i->remainingQty()),
                 'products'        => $o->items->map(fn($i) => [
-                    'id'          => $i->id,
-                    'productId'   => $i->product_id,
-                    'productName' => strtoupper($i->product ? $i->product->formatName($i->grade) : ''),
-                    'grade'       => strtoupper($i->grade ?? ''),
-                    'quantity'    => $i->quantity,
-                    'price'       => $i->price,
+                    'id'            => $i->id,
+                    'productId'     => $i->product_id,
+                    'productName'   => strtoupper($i->product ? $i->product->formatName($i->grade) : ''),
+                    'grade'         => strtoupper($i->grade ?? ''),
+                    'quantity'      => (float) $i->quantity,
+                    'dispatchedQty' => (float) $i->dispatched_qty,
+                    'remainingQty'  => (float) $i->remainingQty(),
+                    'price'         => (float) $i->price,
                 ]),
             ]),
             'dueTodayOrders' => $dueTodayList->map(fn($o) => [
@@ -124,19 +137,24 @@ class SalesController extends Controller
                 'companyName'     => strtoupper($o->company?->name ?? ''),
                 'transportId'     => $o->transporter_id,
                 'transportName'   => strtoupper($o->transporter?->name ?? ''),
-                'total'           => $o->total,
+                'total'           => (float) $o->total,
                 'status'          => $o->status,
                 'dispatchStatus'  => $o->dispatch_status,
                 'notes'           => $o->notes,
                 'date'            => $o->created_at->toISOString(),
                 'dueDate'         => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
+                'totalQty'        => (float) $o->items->sum('quantity'),
+                'dispatchedQty'   => (float) $o->items->sum('dispatched_qty'),
+                'remainingQty'    => (float) $o->items->sum(fn($i) => $i->remainingQty()),
                 'products'        => $o->items->map(fn($i) => [
-                    'id'          => $i->id,
-                    'productId'   => $i->product_id,
-                    'productName' => strtoupper($i->product ? $i->product->formatName($i->grade) : ''),
-                    'grade'       => strtoupper($i->grade ?? ''),
-                    'quantity'    => $i->quantity,
-                    'price'       => $i->price,
+                    'id'            => $i->id,
+                    'productId'     => $i->product_id,
+                    'productName'   => strtoupper($i->product ? $i->product->formatName($i->grade) : ''),
+                    'grade'         => strtoupper($i->grade ?? ''),
+                    'quantity'      => (float) $i->quantity,
+                    'dispatchedQty' => (float) $i->dispatched_qty,
+                    'remainingQty'  => (float) $i->remainingQty(),
+                    'price'         => (float) $i->price,
                 ]),
             ]),
             'companies'          => Company::orderByDesc('id')->get()->map(fn($c)=>[
@@ -518,45 +536,82 @@ class SalesController extends Controller
         $companies = Company::orderBy('name')->get();
         $transporters = Transporter::orderBy('name')->get();
 
+        // Sync order items dispatched quantities for data consistency
+        foreach ($orders as $o) {
+            if ($o->items) {
+                foreach ($o->items as $i) {
+                    $i->syncDispatchedQty();
+                }
+            }
+        }
+
         $pageData = [
-            'orders'             => $orders->map(fn($o)=>[
-                'id'             => $o->id,
-                'createdBy'      => $o->creator?->name ?? 'System',
-                'companyId'      => $o->company_id,
-                'companyName'    => strtoupper($o->company?->name ?? ''),
-                'transportId'    => $o->transporter_id,
-                'transportName'  => strtoupper($o->transporter?->name ?? ''),
-                'transporter'    => $o->transporter ? ['id' => $o->transporter->id, 'name' => strtoupper($o->transporter->name)] : null,
-                'total'          => $o->total,
-                'status'         => $o->status,
-                'dispatchStatus' => $o->dispatch_status,
-                'date'           => $o->created_at->toISOString(),
-                'dueDate'        => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
-                'notes'          => $o->notes,
-                'lrCopies'       => $o->dispatchLogs ? $o->dispatchLogs->filter(fn($l) => !empty($l->lr_image_path))->flatMap(function($l) {
-                    $rawPaths = \App\Http\Controllers\DispatchController::getLrImagePaths($l);
-                    if (empty($rawPaths)) return [];
-                    return collect($rawPaths)->map(function($path, $idx) use ($l, $rawPaths) {
-                        $suffix = count($rawPaths) > 1 ? ' (' . ($idx + 1) . ')' : '';
-                        return [
-                            'id'         => $l->id,
-                            'dispatchId' => 'DSP-' . str_pad($l->id, 4, '0', STR_PAD_LEFT) . $suffix,
-                            'url'        => asset($path),
-                            'date'       => $l->created_at ? $l->created_at->timezone('Asia/Kolkata')->format('d M Y, h:i A') : '',
-                            'driverNo'   => $l->driver_no,
-                            'lrNo'       => $l->lr_no,
-                        ];
-                    });
-                })->values()->toArray() : [],
-                'items'          => $o->items->map(fn($i)=>[
-                    'id'          => $i->id,
-                    'productId'   => $i->product_id,
-                    'productName' => strtoupper($i->product ? $i->product->formatName($i->grade) : ''),
-                    'grade'       => strtoupper($i->grade ?? ''),
-                    'quantity'    => $i->quantity,
-                    'price'       => $i->price,
-                ]),
-            ]),
+            'orders'             => $orders->map(function($o) {
+                $totalQty = (float) $o->items->sum('quantity');
+                $dispatchedQty = (float) $o->items->sum('dispatched_qty');
+                $remainingQty = (float) $o->items->sum(fn($i) => $i->remainingQty());
+
+                $rawSt = strtoupper(trim(str_replace('_', ' ', (string)($o->dispatch_status ?? 'PENDING'))));
+                if ($o->status === 'CANCELLED') {
+                    $computedStatus = 'CANCELLED';
+                } elseif (($totalQty > 0 && $remainingQty <= 0) || in_array($rawSt, ['DONE', 'COMPLETED', 'FULLY DISPATCHED'])) {
+                    $computedStatus = 'DONE';
+                } elseif ($dispatchedQty > 0) {
+                    $computedStatus = 'PARTIAL';
+                } else {
+                    $computedStatus = 'PENDING';
+                }
+
+                // Keep order dispatch_status up-to-date in DB if drifted
+                if ($o->status !== 'CANCELLED' && $o->dispatch_status !== $computedStatus) {
+                    $o->update(['dispatch_status' => $computedStatus]);
+                }
+
+                return [
+                    'id'             => $o->id,
+                    'createdBy'      => $o->creator?->name ?? 'System',
+                    'companyId'      => $o->company_id,
+                    'companyName'    => strtoupper($o->company?->name ?? ''),
+                    'transportId'    => $o->transporter_id,
+                    'transportName'  => strtoupper($o->transporter?->name ?? ''),
+                    'transporter'    => $o->transporter ? ['id' => $o->transporter->id, 'name' => strtoupper($o->transporter->name)] : null,
+                    'total'          => (float) $o->total,
+                    'totalQty'       => $totalQty,
+                    'dispatchedQty'  => $dispatchedQty,
+                    'remainingQty'   => $remainingQty,
+                    'status'         => $o->status,
+                    'dispatchStatus' => $computedStatus,
+                    'date'           => $o->created_at->toISOString(),
+                    'dueDate'        => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
+                    'notes'          => $o->notes,
+                    'lrCopies'       => $o->dispatchLogs ? $o->dispatchLogs->filter(fn($l) => !empty($l->lr_image_path))->flatMap(function($l) {
+                        $rawPaths = \App\Http\Controllers\DispatchController::getLrImagePaths($l);
+                        if (empty($rawPaths)) return [];
+                        return collect($rawPaths)->map(function($path, $idx) use ($l, $rawPaths) {
+                            $suffix = count($rawPaths) > 1 ? ' (' . ($idx + 1) . ')' : '';
+                            return [
+                                'id'         => $l->id,
+                                'dispatchId' => 'DSP-' . str_pad($l->id, 4, '0', STR_PAD_LEFT) . $suffix,
+                                'url'        => asset($path),
+                                'date'       => $l->created_at ? $l->created_at->timezone('Asia/Kolkata')->format('d M Y, h:i A') : '',
+                                'driverNo'   => $l->driver_no,
+                                'lrNo'       => $l->lr_no,
+                            ];
+                        });
+                    })->values()->toArray() : [],
+                    'items'          => $o->items->map(fn($i)=>[
+                        'id'            => $i->id,
+                        'productId'     => $i->product_id,
+                        'productName'   => strtoupper($i->product ? $i->product->formatName($i->grade) : ''),
+                        'rawProductName'=> strtoupper($i->product?->name ?? ''),
+                        'grade'         => strtoupper($i->grade ?? ''),
+                        'quantity'      => (float) $i->quantity,
+                        'dispatchedQty' => (float) $i->dispatched_qty,
+                        'remainingQty'  => (float) $i->remainingQty(),
+                        'price'         => (float) $i->price,
+                    ]),
+                ];
+            }),
             'companies'          => $companies->map(fn($c)=>[
                 'id'=>$c->id,'name'=>strtoupper($c->name ?? ''),'gst'=>$c->gst,'contact'=>$c->contact,'address'=>$c->address,'date'=>$c->created_at->toISOString()
             ]),

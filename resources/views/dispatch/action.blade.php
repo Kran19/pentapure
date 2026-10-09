@@ -139,6 +139,9 @@ input[type=number].no-spinners {
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     window.currentPendingOrders = @json($pageData['pendingOrders']);
+    if (window.app && typeof window.app.removeDispatchLR === 'function') {
+      window.app.removeDispatchLR(true);
+    }
     
     // Check for auto-select from localStorage (redirected from home page click)
     const autoId = localStorage.getItem('auto_dispatch_id');

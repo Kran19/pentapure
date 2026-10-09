@@ -227,6 +227,24 @@
               <span>•</span>
               <span>DUE: <strong style="color:var(--text-main, #111827); font-weight:700;">{{ $item['dueDate'] }}</strong></span>
             @endif
+            @php
+              $totOrderQty = (float)($item['totalQty'] ?? collect($item['items'] ?? [])->sum('quantity'));
+              $dispOrderQty = (float)($item['dispatchedQty'] ?? collect($item['items'] ?? [])->sum(fn($p) => $p['dispatchedQty'] ?? $p['dispatched_qty'] ?? 0));
+              $remOrderQty = (float)($item['remainingQty'] ?? max(0, $totOrderQty - $dispOrderQty));
+              $fmtBadge = fn($v) => (floor($v) == $v ? number_format($v, 0) : number_format($v, 2)) . ' kg';
+            @endphp
+            <span>•</span>
+            <span style="background:rgba(0,0,0,0.04); color:var(--text-main, #111827); padding:2px 6px; border-radius:4px; font-size:0.72rem; font-weight:600; border:1px solid rgba(0,0,0,0.08);">
+              ORDER: <strong style="color:var(--primary, #D88A00);">{{ $fmtBadge($totOrderQty) }}</strong>
+            </span>
+            <span style="background:rgba(22, 163, 74, 0.12); color:#15803d; border:1px solid rgba(22, 163, 74, 0.25); padding:2px 6px; border-radius:4px; font-size:0.72rem; font-weight:700;">
+              DISPATCHED: <strong>{{ $fmtBadge($dispOrderQty) }}</strong>
+            </span>
+            @if($remOrderQty > 0)
+              <span style="background:rgba(239, 68, 68, 0.12); color:#dc2626; border:1px solid rgba(239, 68, 68, 0.25); padding:2px 6px; border-radius:4px; font-size:0.72rem; font-weight:700;">
+                PENDING: <strong>{{ $fmtBadge($remOrderQty) }}</strong>
+              </span>
+            @endif
             @if(!empty($item['lrCopies']) && count($item['lrCopies']) > 0)
               <span>•</span>
               <span class="badge badge-done" style="font-size:0.65rem; background:#16a34a; color:#ffffff !important; padding:2px 6px; border-radius:4px; font-weight:700;">LR UPLOADED</span>
@@ -309,21 +327,36 @@
             <tbody>
               @forelse($item['items'] ?? [] as $prod)
                 @php
-                  $totQ = $prod['quantity'] ?? 0;
-                  $dispQ = $prod['dispatchedQty'] ?? $prod['dispatched_qty'] ?? 0;
-                  $pendQ = max(0, $totQ - $dispQ);
+                  $totQ = (float)($prod['quantity'] ?? 0);
+                  $dispQ = (float)($prod['dispatchedQty'] ?? $prod['dispatched_qty'] ?? 0);
+                  $pendQ = (float)($prod['remainingQty'] ?? max(0, $totQ - $dispQ));
+                  $fmt = fn($v) => (floor($v) == $v ? number_format($v, 0) : number_format($v, 2)) . ' kg';
                 @endphp
                 <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
-                  <td style="padding:6px; font-weight:600;">{{ $prod['productName'] ?? 'Unknown' }}</td>
-                  <td style="padding:6px;">{{ $prod['grade'] ?: '—' }}</td>
-                  <td style="padding:6px; font-weight:600;">{{ $totQ }} kg</td>
-                  <td style="padding:6px; color:#16a34a; font-weight:700;">{{ $dispQ }} kg</td>
-                  <td style="padding:6px; color:#ef4444; font-weight:700;">{{ $pendQ }} kg</td>
-                  <td style="padding:6px; text-align:right; font-weight:600;">₹{{ number_format($prod['price'] ?? 0, 2) }}</td>
+                  <td style="padding:8px 6px; font-weight:600;">{{ $prod['productName'] ?? 'Unknown' }}</td>
+                  <td style="padding:8px 6px;">{{ $prod['grade'] ?: '—' }}</td>
+                  <td style="padding:8px 6px; font-weight:600;">{{ $fmt($totQ) }}</td>
+                  <td style="padding:8px 6px; color:#16a34a; font-weight:700;">{{ $fmt($dispQ) }}</td>
+                  <td style="padding:8px 6px; color:#ef4444; font-weight:700;">{{ $fmt($pendQ) }}</td>
+                  <td style="padding:8px 6px; text-align:right; font-weight:600;">₹{{ number_format($prod['price'] ?? 0, 2) }}</td>
                 </tr>
               @empty
                 <tr><td colspan="6" style="text-align:center; padding:8px; color:var(--text-muted);">No products</td></tr>
               @endforelse
+              @if(!empty($item['items']) && count($item['items']) > 1)
+                @php
+                  $sumTot = (float) collect($item['items'])->sum('quantity');
+                  $sumDisp = (float) collect($item['items'])->sum(fn($i) => $i['dispatchedQty'] ?? $i['dispatched_qty'] ?? 0);
+                  $sumPend = (float) collect($item['items'])->sum(fn($i) => $i['remainingQty'] ?? max(0, ($i['quantity'] ?? 0) - ($i['dispatchedQty'] ?? 0)));
+                @endphp
+                <tr style="border-top:2px solid rgba(0,0,0,0.08); font-weight:bold; background:rgba(0,0,0,0.02);">
+                  <td colspan="2" style="padding:8px 6px; text-transform:uppercase; font-size:0.8rem; color:var(--text-muted);">Total</td>
+                  <td style="padding:8px 6px;">{{ $fmt($sumTot) }}</td>
+                  <td style="padding:8px 6px; color:#16a34a;">{{ $fmt($sumDisp) }}</td>
+                  <td style="padding:8px 6px; color:#ef4444;">{{ $fmt($sumPend) }}</td>
+                  <td style="padding:8px 6px; text-align:right; color:var(--primary, #D88A00);">₹{{ number_format($item['total'] ?? 0, 2) }}</td>
+                </tr>
+              @endif
             </tbody>
           </table>
         </div>

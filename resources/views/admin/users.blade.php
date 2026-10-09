@@ -185,7 +185,7 @@
             ['key' => 'dispatch_home', 'name' => 'Dispatch Dashboard', 'url' => '/dispatch/home'],
             ['key' => 'dispatch_action', 'name' => 'Dispatch Action / Entry', 'url' => '/dispatch/action'],
             ['key' => 'dispatch_history', 'name' => 'Dispatch History', 'url' => '/dispatch/history'],
-            ['key' => 'dispatch_report', 'name' => 'Dispatch Report', 'url' => '/dispatch/report'],
+            ['key' => 'dispatch_report', 'name' => 'Order Report', 'url' => '/dispatch/report'],
         ],
         'Stock Manager Panel' => [
             ['key' => 'stock_manager_home', 'name' => 'Stock Manager Home', 'url' => '/stock_manager/home'],

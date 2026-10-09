@@ -21,25 +21,17 @@ class CashierController extends Controller
         $userModel = User::find($user['id']);
         $userBranch = $userModel ? ($userModel->branch ?? '') : ($user['branch'] ?? '');
 
-        $txQuery = Transaction::with('bills');
+        $txQuery = Transaction::with(['bills', 'user']);
         if (!empty($userBranch)) {
             $txQuery->where(function($q) use ($user, $userBranch) {
                 $q->where('site', $userBranch)
                   ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))])
-                  ->orWhere(function($sub) use ($user, $userBranch) {
-                      $sub->where('user_id', $user['id'])
-                          ->where(function($s) use ($userBranch) {
-                              $s->whereNull('site')
-                                ->orWhere('site', '')
-                                ->orWhere('site', $userBranch)
-                                ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
-                          });
-                  });
+                  ->orWhere('user_id', $user['id']);
             });
         } else {
             $txQuery->where('user_id', $user['id']);
         }
-        $txs = $txQuery->orderByDesc('created_at')->get();
+        $txs = $txQuery->orderByRaw('COALESCE(date, created_at) DESC')->orderByDesc('id')->get();
         $balance = $txs->sum(fn($t) => $t->type === 'IN' ? $t->amount : -$t->amount);
 
         $pageData = [
@@ -390,25 +382,23 @@ class CashierController extends Controller
         $userModel = User::find($user['id']);
         $userBranch = $userModel ? ($userModel->branch ?? '') : ($user['branch'] ?? '');
 
-        $txQuery = Transaction::with('bills');
-        if (!empty($userBranch)) {
+        $txQuery = Transaction::with(['bills', 'user']);
+        $requestedUserId = request('user_id') ?: request('cashier_id');
+        if ($requestedUserId) {
+            $txQuery->where('user_id', $requestedUserId);
+        } elseif (!empty($userBranch)) {
             $txQuery->where(function($q) use ($user, $userBranch) {
                 $q->where('site', $userBranch)
                   ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))])
-                  ->orWhere(function($sub) use ($user, $userBranch) {
-                      $sub->where('user_id', $user['id'])
-                          ->where(function($s) use ($userBranch) {
-                              $s->whereNull('site')
-                                ->orWhere('site', '')
-                                ->orWhere('site', $userBranch)
-                                ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
-                          });
-                  });
+                  ->orWhere('user_id', $user['id']);
             });
+        } elseif (in_array($user['role'] ?? '', ['ADMIN', 'SUB_ADMIN'])) {
+            // Admin or Sub-Admin can view all cashier transactions
         } else {
             $txQuery->where('user_id', $user['id']);
         }
-        $txs = $txQuery->orderByDesc('created_at')
+        $txs = $txQuery->orderByRaw('COALESCE(date, created_at) DESC')
+            ->orderByDesc('id')
             ->get()
             ->map(fn($t) => $this->txToArray($t));
 
@@ -428,20 +418,12 @@ class CashierController extends Controller
             $txQuery->where(function($q) use ($user, $userBranch) {
                 $q->where('site', $userBranch)
                   ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))])
-                  ->orWhere(function($sub) use ($user, $userBranch) {
-                      $sub->where('user_id', $user['id'])
-                          ->where(function($s) use ($userBranch) {
-                              $s->whereNull('site')
-                                ->orWhere('site', '')
-                                ->orWhere('site', $userBranch)
-                                ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
-                          });
-                  });
+                  ->orWhere('user_id', $user['id']);
             });
         } else {
             $txQuery->where('user_id', $user['id']);
         }
-        $txs = $txQuery->orderByDesc('created_at')->get();
+        $txs = $txQuery->orderByRaw('COALESCE(date, created_at) DESC')->orderByDesc('id')->get();
 
         $summary = [
             'totalIn'  => $txs->where('type', 'IN')->sum('amount'),

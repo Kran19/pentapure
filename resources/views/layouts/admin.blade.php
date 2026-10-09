@@ -511,7 +511,7 @@
 
               @if($can('dispatch_report'))
               <a href="{{ url(request()->segment(1) . '/dispatch/report') }}" class="nav-item {{ $subSeg2=='dispatch' && $subSeg3=='report' ? 'active' : '' }}">
-                Dispatch Report
+                Order Report
               </a>
               @endif
             </div>
