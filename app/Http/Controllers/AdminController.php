@@ -1562,7 +1562,10 @@ class AdminController extends Controller
 
     public function clearLogs(Request $request)
     {
-        \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
+        try {
+            \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
+            \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        } catch (\Throwable $e) {}
 
         $tables = [
             'production_log_inputs',
@@ -1576,11 +1579,18 @@ class AdminController extends Controller
 
         foreach ($tables as $table) {
             if (\Illuminate\Support\Facades\Schema::hasTable($table)) {
-                \Illuminate\Support\Facades\DB::table($table)->truncate();
+                try {
+                    \Illuminate\Support\Facades\DB::table($table)->truncate();
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\DB::table($table)->delete();
+                }
             }
         }
 
-        \Illuminate\Support\Facades\Schema::enableForeignKeyConstraints();
+        try {
+            \Illuminate\Support\Facades\Schema::enableForeignKeyConstraints();
+            \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        } catch (\Throwable $e) {}
 
         self::setLogsClearedAt();
 
