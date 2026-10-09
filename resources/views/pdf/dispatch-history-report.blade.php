@@ -329,12 +329,12 @@
                         @if($isFirst)
                             <div style="font-weight: 700; color: #101828; font-size: 7.5px;">{{ $logRow['order_date'] }}</div>
                             @if(!empty($logRow['due_date']))
-                                <div style="margin-top: 3px; font-size: 6.8px; color: #dc2626; font-weight: 800; background: #fef2f2; padding: 2px 3px; border-radius: 3px; border: 1px solid #fecaca;">
-                                    DUE DATE: {{ $logRow['due_date'] }}
+                                <div style="margin-top: 3px; font-size: 6.8px; color: #0284c7; font-weight: 800; background: #e0f2fe; padding: 2px 3px; border-radius: 3px; border: 1px solid #bae6fd;">
+                                    EXPECTED DELIVERY DATE: {{ $logRow['due_date'] }}
                                 </div>
                             @else
                                 <div style="margin-top: 2px; font-size: 6.5px; color: #98a2b3;">
-                                    DUE DATE: —
+                                    EXPECTED DELIVERY DATE: —
                                 </div>
                             @endif
                         @endif

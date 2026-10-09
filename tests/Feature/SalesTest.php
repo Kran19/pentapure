@@ -481,13 +481,15 @@ namespace Tests\Feature;
                 'role' => 'SALES',
             ]];
 
-            // 1. Initial State: 100 kg ordered, 0 kg dispatched, 100 kg pending
+            // 1. Initial State: 100 kg ordered, 0 kg dispatched, 100 kg pending in accordion details
             $resp1 = $this->withSession($session)->get('/sales/history');
             $resp1->assertStatus(200);
             $content1 = $resp1->getContent();
-            $this->assertStringContainsString('ORDER: <strong style="color:var(--primary, #D88A00);">100 kg</strong>', $content1);
-            $this->assertStringContainsString('DISPATCHED: <strong>0 kg</strong>', $content1);
-            $this->assertStringContainsString('PENDING: <strong>100 kg</strong>', $content1);
+            // Quantity badges removed from card header
+            $this->assertStringNotContainsString('ORDER: <strong', $content1);
+            $this->assertStringContainsString('>100 kg<', $content1);
+            $this->assertStringContainsString('>0 kg<', $content1);
+            $this->assertStringContainsString('PENDING', $content1);
 
             // 2. Partial Dispatch: dispatch 40 kg
             $dispatchLog = DispatchLog::create([
@@ -504,8 +506,8 @@ namespace Tests\Feature;
             $resp2 = $this->withSession($session)->get('/sales/history');
             $resp2->assertStatus(200);
             $content2 = $resp2->getContent();
-            $this->assertStringContainsString('DISPATCHED: <strong>40 kg</strong>', $content2);
-            $this->assertStringContainsString('PENDING: <strong>60 kg</strong>', $content2);
+            $this->assertStringContainsString('>40 kg<', $content2);
+            $this->assertStringContainsString('>60 kg<', $content2);
             $this->assertStringContainsString('PARTIAL', $content2);
 
             // 3. Full Dispatch: dispatch remaining 60 kg
@@ -523,8 +525,93 @@ namespace Tests\Feature;
             $resp3 = $this->withSession($session)->get('/sales/history');
             $resp3->assertStatus(200);
             $content3 = $resp3->getContent();
-            $this->assertStringContainsString('DISPATCHED: <strong>100 kg</strong>', $content3);
+            $this->assertStringContainsString('>100 kg<', $content3);
             $this->assertStringContainsString('FULLY DISPATCHED', $content3);
         }
+
+        public function test_sales_home_displays_pending_and_partial_orders_and_stats(): void
+        {
+            $session = ['auth_user' => [
+                'id'   => $this->salesUser->id,
+                'name' => $this->salesUser->name,
+                'role' => 'SALES',
+            ]];
+
+            // 1. Create a Pending Order
+            $pendingOrder = Order::create([
+                'created_by'      => $this->salesUser->id,
+                'company_id'      => $this->company->id,
+                'transporter_id'  => $this->transporter->id,
+                'total'           => 5000,
+                'status'          => 'OPEN',
+                'dispatch_status' => 'PENDING',
+                'due_date'        => now()->addDays(5)->toDateString(),
+            ]);
+            OrderItem::create([
+                'order_id'       => $pendingOrder->id,
+                'product_id'     => $this->product->id,
+                'grade'          => 'A',
+                'quantity'       => 50,
+                'dispatched_qty' => 0,
+                'rate'           => 100,
+                'price'          => 100,
+                'amount'         => 5000,
+            ]);
+
+            // 2. Create a Partial Order
+            $partialOrder = Order::create([
+                'created_by'      => $this->salesUser->id,
+                'company_id'      => $this->company->id,
+                'transporter_id'  => $this->transporter->id,
+                'total'           => 8000,
+                'status'          => 'OPEN',
+                'dispatch_status' => 'PARTIAL',
+                'due_date'        => now()->toDateString(), // Due today
+            ]);
+            $partialItem = OrderItem::create([
+                'order_id'       => $partialOrder->id,
+                'product_id'     => $this->product->id,
+                'grade'          => 'A',
+                'quantity'       => 80,
+                'dispatched_qty' => 30,
+                'rate'           => 100,
+                'price'          => 100,
+                'amount'         => 8000,
+            ]);
+
+            $dispatchLog = DispatchLog::create([
+                'order_id'       => $partialOrder->id,
+                'user_id'        => $this->salesUser->id,
+                'transporter_id' => $this->transporter->id,
+            ]);
+            \App\Models\DispatchLogItem::create([
+                'dispatch_log_id' => $dispatchLog->id,
+                'order_item_id'   => $partialItem->id,
+                'quantity'        => 30,
+            ]);
+
+            $res = $this->withSession($session)->get('/sales/home');
+            $res->assertStatus(200);
+
+            // Verify KPI Stat Cards
+            $res->assertSee('Pending Orders');
+            $res->assertSee('Partial Orders');
+            $res->assertSee('Dispatched Orders');
+            $res->assertSee('Due Today Orders');
+
+            // Verify Tabs
+            $res->assertSee('📋 All Open');
+            $res->assertSee('⏳ Pending');
+            $res->assertSee('📦 Partial');
+            $res->assertSee('📅 Due Today');
+
+            // Verify both pending and partial order contents are present
+            $content = $res->getContent();
+            $this->assertStringContainsString('#' . $pendingOrder->id, $content);
+            $this->assertStringContainsString('#' . $partialOrder->id, $content);
+            $this->assertStringContainsString('Disp: 30 kg', $content);
+            $this->assertStringContainsString('Rem: 50 kg', $content);
+        }
     }
+
 

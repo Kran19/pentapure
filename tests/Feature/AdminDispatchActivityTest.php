@@ -186,7 +186,7 @@ class AdminDispatchActivityTest extends TestCase
 
         $res = $this->withSession($session)->get('/admin/dispatch-activity');
         $res->assertStatus(200);
-        $res->assertSee('DUE DATE:');
+        $res->assertSee('EXPECTED DELIVERY DATE:');
         $res->assertSee('15-10-2026');
     }
 }

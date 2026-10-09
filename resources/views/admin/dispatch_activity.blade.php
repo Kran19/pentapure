@@ -130,6 +130,59 @@
 .dark-mode .highlight-due-date * {
   color: #f87171 !important;
 }
+
+.highlight-expected-delivery {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: 0.84rem;
+  color: #0284c7 !important;
+  background: rgba(2, 132, 199, 0.12);
+  border: 1px solid rgba(2, 132, 199, 0.35);
+  padding: 3px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  flex-wrap: wrap;
+}
+html.dark-mode .highlight-expected-delivery,
+.dark-mode .highlight-expected-delivery {
+  color: #38bdf8 !important;
+  background: rgba(14, 165, 233, 0.18);
+  border-color: rgba(56, 189, 248, 0.45);
+}
+
+.due-days-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 700;
+  margin-left: 6px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.due-days-badge.overdue {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626 !important;
+}
+.due-days-badge.today {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #b45309 !important;
+}
+.due-days-badge.upcoming {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #047857 !important;
+}
+.due-days-badge.done {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #16a34a !important;
+}
 </style>
 
 <div style="padding:1.5rem;">
@@ -258,14 +311,23 @@
           $transportName = strtoupper($order->transporter?->name ?? 'N/A');
 
           $diffDays = null;
-          $overdueBadge = '';
-          if ($order->due_date && !in_array($rawSt, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED', 'FULLY_DISPATCHED'])) {
-              $diffDays = (int) now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($order->due_date)->startOfDay(), false);
-              if ($diffDays < 0) {
-                  $days = abs($diffDays);
-                  $overdueBadge = '<span style="display:inline-block; font-size:0.72rem; padding:2px 6px; border-radius:4px; background:#fef2f2; border:1px solid #fecaca; color:#dc2626; font-weight:700; margin-left:4px;">' . $days . ' ' . ($days === 1 ? 'day' : 'days') . ' overdue</span>';
-              } elseif ($diffDays === 0) {
-                  $overdueBadge = '<span style="display:inline-block; font-size:0.72rem; padding:2px 6px; border-radius:4px; background:#fffbeb; border:1px solid #fde68a; color:#b45309; font-weight:700; margin-left:4px;">Due today</span>';
+          $dueDaysBadge = '';
+          $dueDateFormatted = $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : null;
+          $isOrderDone = in_array($rawSt, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED', 'FULLY_DISPATCHED']) || ($totalOrderQty > 0 && $totalRemainingQty <= 0);
+
+          if ($order->due_date) {
+              if (!$isOrderDone) {
+                  $diffDays = (int) now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($order->due_date)->startOfDay(), false);
+                  if ($diffDays < 0) {
+                      $days = abs($diffDays);
+                      $dueDaysBadge = '<span class="due-days-badge overdue">' . $days . ' ' . ($days === 1 ? 'day' : 'days') . ' overdue</span>';
+                  } elseif ($diffDays === 0) {
+                      $dueDaysBadge = '<span class="due-days-badge today">Due today</span>';
+                  } else {
+                      $dueDaysBadge = '<span class="due-days-badge upcoming">' . $diffDays . ' ' . ($diffDays === 1 ? 'day' : 'days') . ' left</span>';
+                  }
+              } else {
+                  $dueDaysBadge = '<span class="due-days-badge done">Dispatched</span>';
               }
           }
         @endphp
@@ -284,7 +346,7 @@
                 <span>•</span>
                 <span>ORDERED: {{ $orderDate ? $orderDate->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') : 'N/A' }}</span>
                 <span>•</span>
-                <span class="highlight-due-date">DUE DATE: <strong>{{ $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : 'N/A' }}</strong>{!! $overdueBadge !!}</span>
+                <span class="highlight-expected-delivery">EXPECTED DELIVERY DATE: {{ $dueDateFormatted ? strtoupper($dueDateFormatted) : 'NOT SPECIFIED' }}{!! $dueDaysBadge !!}</span>
               </div>
             </div>
             <div style="display:flex; align-items:center; gap:12px; text-align:right; flex-wrap:nowrap;">
@@ -316,9 +378,12 @@
                 <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Date & Time</div>
                 <div style="font-size:0.85rem; font-weight:500;">{{ $orderDate ? $orderDate->timezone('Asia/Kolkata')->format('d-m-Y, h:i:s A') : 'N/A' }}</div>
               </div>
-              <div style="background:rgba(220, 38, 38, 0.08); padding:8px 12px; border-radius:8px; border:1px solid rgba(220, 38, 38, 0.25);">
-                <div style="color:#dc2626 !important; font-size:0.72rem; text-transform:uppercase; font-weight:800; letter-spacing:0.3px;">Due Date</div>
-                <div style="font-size:1.05rem; font-weight:800; color:#dc2626 !important; margin-top:2px;">{{ $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : '—' }} {!! $overdueBadge !!}</div>
+              <div style="background:rgba(2, 132, 199, 0.08); padding:8px 12px; border-radius:8px; border:1px solid rgba(2, 132, 199, 0.25);">
+                <div style="color:#0284c7 !important; font-size:0.72rem; text-transform:uppercase; font-weight:800; letter-spacing:0.3px;">Expected Delivery Date</div>
+                <div style="font-size:1.05rem; font-weight:800; color:#0284c7 !important; margin-top:2px;">{{ $dueDateFormatted ? strtoupper($dueDateFormatted) : 'NOT SPECIFIED' }}</div>
+                @if($dueDaysBadge)
+                  <div style="margin-top:4px;">{!! $dueDaysBadge !!}</div>
+                @endif
               </div>
               <div>
                 <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Company</div>

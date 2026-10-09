@@ -265,6 +265,59 @@
 .dark-mode .highlight-due-date * {
   color: #f87171 !important;
 }
+
+.highlight-expected-delivery {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: 0.84rem;
+  color: #0284c7 !important;
+  background: rgba(2, 132, 199, 0.12);
+  border: 1px solid rgba(2, 132, 199, 0.35);
+  padding: 3px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  flex-wrap: wrap;
+}
+html.dark-mode .highlight-expected-delivery,
+.dark-mode .highlight-expected-delivery {
+  color: #38bdf8 !important;
+  background: rgba(14, 165, 233, 0.18);
+  border-color: rgba(56, 189, 248, 0.45);
+}
+
+.due-days-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 700;
+  margin-left: 6px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.due-days-badge.overdue {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626 !important;
+}
+.due-days-badge.today {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #b45309 !important;
+}
+.due-days-badge.upcoming {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #047857 !important;
+}
+.due-days-badge.done {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #16a34a !important;
+}
 </style>
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
   <h2 style="margin:0;">📋 Order Report</h2>
@@ -356,6 +409,27 @@
       } else {
         $statusBadge = '<span class="badge badge-pending" style="font-size:0.65rem; background:#ef4444; color:#ffffff !important; padding:2px 6px; border-radius:4px; font-weight:700;">PENDING</span>';
       }
+
+      $dueDate = !empty($d['dueDate']) && $d['dueDate'] !== 'N/A' && $d['dueDate'] !== '—' && $d['dueDate'] !== 'Not Specified' ? $d['dueDate'] : null;
+      $rawDueDate = $d['rawDueDate'] ?? ($dueDate ? \Carbon\Carbon::parse($dueDate)->format('Y-m-d') : null);
+      $diffDays = null;
+      $dueDaysBadge = '';
+      if ($rawDueDate) {
+          $isDone = in_array($rawSt, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED', 'FULLY_DISPATCHED']);
+          if (!$isDone) {
+              $diffDays = (int) now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($rawDueDate)->startOfDay(), false);
+              if ($diffDays < 0) {
+                  $days = abs($diffDays);
+                  $dueDaysBadge = '<span class="due-days-badge overdue">' . $days . ' ' . ($days === 1 ? 'day' : 'days') . ' overdue</span>';
+              } elseif ($diffDays === 0) {
+                  $dueDaysBadge = '<span class="due-days-badge today">Due today</span>';
+              } else {
+                  $dueDaysBadge = '<span class="due-days-badge upcoming">' . $diffDays . ' ' . ($diffDays === 1 ? 'day' : 'days') . ' left</span>';
+              }
+          } else {
+              $dueDaysBadge = '<span class="due-days-badge done">Dispatched</span>';
+          }
+      }
     @endphp
     <div class="card dispatch-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--border-soft, #e5e7eb); background:var(--bg-card, #ffffff); box-shadow:0 1px 3px rgba(0,0,0,0.04); transition:all 0.2s ease;">
       <!-- Clickable Header Row -->
@@ -373,7 +447,7 @@
             <span>•</span>
             <span>Ordered: {{ \Carbon\Carbon::parse($d['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }}</span>
             <span>•</span>
-            <span class="highlight-due-date">DUE DATE: <strong>{{ !empty($d['dueDate']) && $d['dueDate'] !== 'N/A' ? strtoupper($d['dueDate']) : 'N/A' }}</strong></span>
+            <span class="highlight-expected-delivery">EXPECTED DELIVERY DATE: {{ $dueDate ? strtoupper($dueDate) : 'NOT SPECIFIED' }}{!! $dueDaysBadge !!}</span>
           </div>
         </div>
         <div style="display:flex; align-items:center; gap:10px; text-align:right; flex-wrap:nowrap;">
@@ -402,9 +476,12 @@
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Date & Time</div>
             <div style="font-size:0.85rem; font-weight:500;">{{ \Carbon\Carbon::parse($d['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i:s A') }}</div>
           </div>
-          <div style="background:rgba(220, 38, 38, 0.08); padding:8px 12px; border-radius:8px; border:1px solid rgba(220, 38, 38, 0.25);">
-            <div style="color:#dc2626 !important; font-size:0.72rem; text-transform:uppercase; font-weight:800; letter-spacing:0.3px;">Due Date</div>
-            <div style="font-size:1.05rem; font-weight:800; color:#dc2626 !important; margin-top:2px;">{{ !empty($d['dueDate']) && $d['dueDate'] !== '—' && $d['dueDate'] !== 'N/A' ? strtoupper($d['dueDate']) : '—' }}</div>
+          <div style="background:rgba(2, 132, 199, 0.08); padding:8px 12px; border-radius:8px; border:1px solid rgba(2, 132, 199, 0.25);">
+            <div style="color:#0284c7 !important; font-size:0.72rem; text-transform:uppercase; font-weight:800; letter-spacing:0.3px;">Expected Delivery Date</div>
+            <div style="font-size:1.05rem; font-weight:800; color:#0284c7 !important; margin-top:2px;">{{ !empty($d['dueDate']) && $d['dueDate'] !== '—' && $d['dueDate'] !== 'N/A' ? strtoupper($d['dueDate']) : 'NOT SPECIFIED' }}</div>
+            @if($dueDaysBadge)
+              <div style="margin-top:4px;">{!! $dueDaysBadge !!}</div>
+            @endif
           </div>
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Company</div>

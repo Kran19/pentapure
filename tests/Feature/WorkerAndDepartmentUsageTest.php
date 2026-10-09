@@ -338,4 +338,116 @@ class WorkerAndDepartmentUsageTest extends TestCase
             'status' => 'ACTIVE',
         ]);
     }
+
+    public function test_departments_page_shows_disabled_delete_button_for_used_department_and_enabled_for_unused(): void
+    {
+        // 1. Used department (with worker)
+        $usedDept = Department::create([
+            'name'      => 'Used Section',
+            'is_active' => true,
+        ]);
+        Worker::create([
+            'name'          => 'Worker in Used Dept',
+            'department_id' => $usedDept->id,
+            'shift_type'    => 'DAY',
+            'salary_type'   => 'DAILY',
+            'salary_amount' => 500,
+            'status'        => 'ACTIVE',
+        ]);
+
+        // 2. Unused department
+        $unusedDept = Department::create([
+            'name'      => 'Unused Section',
+            'is_active' => true,
+        ]);
+
+        // Test as Admin
+        $responseAdmin = $this->withSession(['auth_user' => $this->adminUser->toArray()])
+            ->get('/admin/attendance/departments');
+
+        $responseAdmin->assertStatus(200);
+        // Verify disabled button for used department
+        $responseAdmin->assertSee('Cannot delete: department is in use');
+        // Verify active delete button for unused department
+        $responseAdmin->assertSee("deleteDept({$unusedDept->id})");
+
+        // Test as Sub-Admin
+        $subAdmin = User::create([
+            'name'        => 'Sub Admin User',
+            'username'    => 'subadmin_att',
+            'phone'       => '+91 9999990001',
+            'password'    => Hash::make('password123'),
+            'role'        => 'SUB_ADMIN',
+            'status'      => 'ACTIVE',
+            'permissions' => ['attendance_departments', 'edit_attendance_departments', 'attendance_workers', 'edit_attendance_workers']
+        ]);
+
+        $responseSubAdmin = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->get('/sub_admin/attendance/departments');
+
+        $responseSubAdmin->assertStatus(200);
+        $responseSubAdmin->assertSee('Cannot delete: department is in use');
+        $responseSubAdmin->assertSee("deleteDept({$unusedDept->id})");
+    }
+
+    public function test_workers_page_shows_disabled_delete_button_for_used_worker_and_enabled_for_unused(): void
+    {
+        $dept = Department::create([
+            'name'      => 'General Dept',
+            'is_active' => true,
+        ]);
+
+        // 1. Used worker (has attendance)
+        $usedWorker = Worker::create([
+            'name'          => 'Used Worker Attendance',
+            'department_id' => $dept->id,
+            'shift_type'    => 'DAY',
+            'salary_type'   => 'DAILY',
+            'salary_amount' => 500,
+            'status'        => 'ACTIVE',
+        ]);
+        Attendance::create([
+            'worker_id' => $usedWorker->id,
+            'date'      => now()->toDateString(),
+            'status'    => 'PRESENT',
+            'in_time'   => '09:00',
+            'out_time'  => '18:00',
+        ]);
+
+        // 2. Unused worker
+        $unusedWorker = Worker::create([
+            'name'          => 'Unused Fresh Worker',
+            'department_id' => $dept->id,
+            'shift_type'    => 'DAY',
+            'salary_type'   => 'DAILY',
+            'salary_amount' => 450,
+            'status'        => 'ACTIVE',
+        ]);
+
+        // Test as Admin
+        $responseAdmin = $this->withSession(['auth_user' => $this->adminUser->toArray()])
+            ->get('/admin/attendance/workers');
+
+        $responseAdmin->assertStatus(200);
+        $responseAdmin->assertSee('Cannot delete: worker has attendance or salary records in use');
+        $responseAdmin->assertSee("deleteWorker({$unusedWorker->id})");
+
+        // Test as Sub-Admin
+        $subAdmin = User::create([
+            'name'        => 'Sub Admin User 2',
+            'username'    => 'subadmin_att_2',
+            'phone'       => '+91 9999990002',
+            'password'    => Hash::make('password123'),
+            'role'        => 'SUB_ADMIN',
+            'status'      => 'ACTIVE',
+            'permissions' => ['attendance_departments', 'edit_attendance_departments', 'attendance_workers', 'edit_attendance_workers']
+        ]);
+
+        $responseSubAdmin = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->get('/sub_admin/attendance/workers');
+
+        $responseSubAdmin->assertStatus(200);
+        $responseSubAdmin->assertSee('Cannot delete: worker has attendance or salary records in use');
+        $responseSubAdmin->assertSee("deleteWorker({$unusedWorker->id})");
+    }
 }

@@ -263,10 +263,9 @@
             <thead>
                 <tr>
                     <th class="center" style="width:6%;">#</th>
-                    <th style="width:14%;">TXN ID</th>
-                    <th style="width:14%;">Date</th>
-                    <th style="width:16%;">Category</th>
-                    <th style="width:20%;">Note / Reference</th>
+                    <th style="width:16%;">TXN ID</th>
+                    <th style="width:18%;">Date</th>
+                    <th style="width:30%;">Note / Reference</th>
                     <th style="width:15%; text-align: right;">Income (+)</th>
                     <th style="width:15%; text-align: right;">Expense (-)</th>
                 </tr>
@@ -277,7 +276,6 @@
                         <td class="center">{{ $index + 1 }}</td>
                         <td>{{ $row['id'] }}</td>
                         <td>{{ $row['date'] }}</td>
-                        <td>{{ strtoupper(str_replace('_', ' ', $row['category'] ?? '-')) }}</td>
                         <td style="font-size: 11px;">
                             <strong>{{ $row['note'] ?? '-' }}</strong>
                             @if(!empty($row['reference']))

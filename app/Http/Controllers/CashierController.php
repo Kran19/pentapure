@@ -637,7 +637,7 @@ class CashierController extends Controller
         }
 
         if ($teamUserIds !== null && is_array($teamUserIds)) {
-            $query = Transaction::with('bills')->whereIn('user_id', $teamUserIds)->orderBy('created_at');
+            $query = Transaction::with('bills')->whereIn('user_id', $teamUserIds)->orderByRaw('COALESCE(date, created_at) ASC')->orderBy('id', 'asc');
         } else {
             $query = Transaction::with('bills')->where(function($q) use ($userId, $userBranch) {
                 if (!empty($userBranch)) {
@@ -655,11 +655,11 @@ class CashierController extends Controller
                 } else {
                     $q->where('user_id', $userId);
                 }
-            })->orderBy('created_at');
+            })->orderByRaw('COALESCE(date, created_at) ASC')->orderBy('id', 'asc');
         }
 
-        if ($from) $query->where('created_at', '>=', $from);
-        if ($to)   $query->where('created_at', '<=', $to);
+        if ($from) $query->where(\DB::raw("COALESCE(date, created_at)"), '>=', $from);
+        if ($to)   $query->where(\DB::raw("COALESCE(date, created_at)"), '<=', $to);
         if ($request->category && $request->category !== 'all') {
             $query->where('category', $request->category);
         }
@@ -668,8 +668,14 @@ class CashierController extends Controller
                 $query->where(function($q) use ($selectedSite, $userId) {
                     $q->where('site', $selectedSite)
                       ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($selectedSite))])
-                      ->orWhere(function($sub) use ($userId) {
-                          $sub->where('user_id', $userId)->whereNull('site');
+                      ->orWhere(function($sub) use ($userId, $selectedSite) {
+                          $sub->where('user_id', $userId)
+                              ->where(function($s) use ($selectedSite) {
+                                  $s->whereNull('site')
+                                    ->orWhere('site', '')
+                                    ->orWhere('site', $selectedSite)
+                                    ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($selectedSite))]);
+                              });
                       });
                 });
             } else {
@@ -712,8 +718,14 @@ class CashierController extends Controller
                     $prevQuery->where(function($q) use ($selectedSite, $userId) {
                         $q->where('site', $selectedSite)
                           ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($selectedSite))])
-                          ->orWhere(function($sub) use ($userId) {
-                              $sub->where('user_id', $userId)->whereNull('site');
+                          ->orWhere(function($sub) use ($userId, $selectedSite) {
+                              $sub->where('user_id', $userId)
+                                  ->where(function($s) use ($selectedSite) {
+                                      $s->whereNull('site')
+                                        ->orWhere('site', '')
+                                        ->orWhere('site', $selectedSite)
+                                        ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($selectedSite))]);
+                                  });
                           });
                     });
                 } else {
@@ -723,7 +735,7 @@ class CashierController extends Controller
                     });
                 }
             }
-            $prevTxs = $prevQuery->where('created_at', '<', $from)->get();
+            $prevTxs = $prevQuery->where(\DB::raw("COALESCE(date, created_at)"), '<', $from)->get();
             $openingBalance = (float) $prevTxs->sum(fn($t) => $t->type === 'IN' ? $t->amount : -$t->amount);
         }
 
@@ -768,11 +780,16 @@ class CashierController extends Controller
 
         $effectiveSite = ($selectedSite && $selectedSite !== 'all') ? $selectedSite : ($userBranch ?: 'ALL');
 
+        $formattedFromDate = $from ? $from->format('d-m-Y') : ($txs->first()?->date ? Carbon::parse($txs->first()->date)->format('d-m-Y') : ($txs->first()?->created_at?->format('d-m-Y') ?? ($to ? $to->format('d-m-Y') : now()->format('d-m-Y'))));
+        $formattedToDate   = $to   ? $to->format('d-m-Y')   : ($txs->last()?->date ? Carbon::parse($txs->last()->date)->format('d-m-Y') : ($txs->last()?->created_at?->format('d-m-Y') ?? now()->format('d-m-Y')));
+
         $data = [
             'reportId'       => $userId * 100 + rand(1, 99),
             'generatedOn'    => strtoupper(now()->format('d-M-Y H:i:s')),
-            'fromDate'       => $from ? $from->format('Y-m-d') : ($txs->first()?->created_at?->format('Y-m-d') ?? ($to ? $to->format('Y-m-d') : now()->format('Y-m-d'))),
-            'toDate'         => $to   ? $to->format('Y-m-d')   : now()->format('Y-m-d'),
+            'from'           => $from,
+            'to'             => $to,
+            'fromDate'       => $from ? $from->format('Y-m-d') : ($txs->first()?->date ? Carbon::parse($txs->first()->date)->format('Y-m-d') : ($txs->first()?->created_at?->format('Y-m-d') ?? ($to ? $to->format('Y-m-d') : now()->format('Y-m-d')))),
+            'toDate'         => $to   ? $to->format('Y-m-d')   : ($txs->last()?->date ? Carbon::parse($txs->last()->date)->format('Y-m-d') : ($txs->last()?->created_at?->format('Y-m-d') ?? now()->format('Y-m-d'))),
             'cashierName'    => strtoupper((string)$cashierName),
             'cashierId'      => $userId,
             'accountName'    => 'FOODS AND SPICES',
@@ -793,10 +810,9 @@ class CashierController extends Controller
             ? strtoupper(preg_replace('/[^A-Za-z0-9_]/', '_', $effectiveSite))
             : ($userBranch ? strtoupper(str_replace(' ', '_', $userBranch)) : 'ALL_BRANCHES');
 
-        $formattedFromDate = $from ? $from->format('d-m-Y') : ($txs->first()?->created_at?->format('d-m-Y') ?? ($to ? $to->format('d-m-Y') : now()->format('d-m-Y')));
-        $formattedToDate   = $to   ? $to->format('d-m-Y')   : now()->format('d-m-Y');
-        
-        if ($from && $to && $from->format('Y-m-d') !== $to->format('Y-m-d')) {
+        if (empty($from) && empty($to)) {
+            $dateRangeStr = 'ALL_RECORDS';
+        } elseif ($from && $to && $from->format('Y-m-d') !== $to->format('Y-m-d')) {
             $dateRangeStr = $formattedFromDate . 'TO' . $formattedToDate;
         } else {
             $dateRangeStr = $formattedFromDate;

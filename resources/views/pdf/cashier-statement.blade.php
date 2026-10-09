@@ -154,7 +154,11 @@ table, th, td, div, span, p, a, strong, small {
     <tr>
         <td colspan="2" style="border-bottom: 1px solid #cbd5e1; background: #f1f5f9; padding: 8px 10px;">
             <span class="meta-title">
-                DURATION: {{ \Carbon\Carbon::parse($fromDate)->format('d-m-Y') }} - {{ \Carbon\Carbon::parse($toDate)->format('d-m-Y') }}
+                @if(empty($from) && empty($to) && empty(request('from')) && empty(request('to')))
+                    DURATION: ALL TIME (ALL RECORDS)
+                @else
+                    DURATION: {{ \Carbon\Carbon::parse($fromDate)->format('d-m-Y') }} - {{ \Carbon\Carbon::parse($toDate)->format('d-m-Y') }}
+                @endif
             </span>
         </td>
     </tr>
@@ -235,7 +239,7 @@ table, th, td, div, span, p, a, strong, small {
                 <div class="footer-note">
                     THIS IS A SYSTEM-GENERATED STATEMENT. NO SIGNATURE REQUIRED.<br>
                     FOR QUERIES, CONTACT THE PENTAPURE ADMINISTRATOR.<br>
-                    REPORT PERIOD: {{ \Carbon\Carbon::parse($fromDate)->format('d-m-Y') }} TO {{ \Carbon\Carbon::parse($toDate)->format('d-m-Y') }}
+                    REPORT PERIOD: {{ (empty($from) && empty($to) && empty(request('from')) && empty(request('to'))) ? 'ALL TIME (ALL RECORDS)' : (\Carbon\Carbon::parse($fromDate)->format('d-m-Y') . ' TO ' . \Carbon\Carbon::parse($toDate)->format('d-m-Y')) }}
                     @if($includeBills && collect($rows)->flatMap(fn($r)=>$r['bills'])->isNotEmpty())
                         &nbsp;| BILL ATTACHMENTS FOLLOW ON NEXT PAGES.
                     @endif

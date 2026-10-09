@@ -1166,6 +1166,7 @@ class DispatchController extends Controller
                 'dispatchStatus' => $dispatchStatus,
                 'date'           => $o->created_at ? $o->created_at->toISOString() : ($o->date ? \Carbon\Carbon::parse($o->date)->toISOString() : now()->toISOString()),
                 'dueDate'        => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
+                'rawDueDate'     => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('Y-m-d') : null,
                 'notes'          => $o->notes,
                 'totalQty'       => $totalQty,
                 'dispatchedQty'  => $dispatchedQty,

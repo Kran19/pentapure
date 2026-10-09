@@ -2718,7 +2718,8 @@ const app = {
   submitTransaction() {
     const amount   = Number(document.getElementById('tx-amount').value);
     const note     = document.getElementById('tx-note').value;
-    const category = document.getElementById('tx-category').value;
+    const catEl    = document.getElementById('tx-category');
+    const category = catEl ? catEl.value : 'general';
     const ref      = document.getElementById('tx-ref').value;
     const billFile = document.getElementById('tx-bill')?.files[0];
     
@@ -2796,6 +2797,22 @@ const app = {
     }
     const defaultFromDate = earliestDate || new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
 
+    const pageRange = document.getElementById('ledger-range-select')?.value || 'all';
+    const pageSpecificDate = document.getElementById('ledger-specific-date')?.value || '';
+    const pageStart = document.getElementById('ledger-start-date')?.value || '';
+    const pageEnd = document.getElementById('ledger-end-date')?.value || '';
+
+    let defaultDateType = 'all';
+    let defaultAsOn = today;
+    if (pageSpecificDate) {
+      defaultDateType = 'single_day';
+      defaultAsOn = pageSpecificDate;
+    } else if (pageRange === 'custom' && pageStart && pageEnd) {
+      defaultDateType = 'custom';
+    } else {
+      defaultDateType = 'all';
+    }
+
     Swal.fire({
       title: '📄 Generate Account Statement',
       html: `
@@ -2814,12 +2831,12 @@ const app = {
                   if (tm && tm.branch) b = tm.branch;
                 }
                 if (b) {
-                  siteEl.innerHTML = '<option value=\x22' + b + '\x22 selected>' + b + '</option>';
+                  siteEl.innerHTML = '<option value=\x22all\x22>ALL SITES / ALL BRANCHES</option><option value=\x22' + b + '\x22 selected>' + b + '</option>';
                   siteEl.value = b;
                   siteEl.style.borderColor = '#30363d';
                 } else {
                   const allSites = window.serverPageData?.sites || [];
-                  siteEl.innerHTML = allSites.map(s => '<option value=\x22' + s + '\x22>' + s + '</option>').join('');
+                  siteEl.innerHTML = '<option value=\x22all\x22 selected>ALL SITES / ALL BRANCHES</option>' + allSites.map(s => '<option value=\x22' + s + '\x22>' + s + '</option>').join('');
                 }
               }
             " style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
@@ -2833,38 +2850,42 @@ const app = {
             <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Date Filter Mode</label>
             <select id="sp-date-type" onchange="
               const v = this.value;
+              const isAll = (v === 'all');
               const isRange = (v === 'custom');
               document.getElementById('sp-custom-date-grid').style.display = isRange ? 'grid' : 'none';
-              document.getElementById('sp-as-on-date-container').style.display = isRange ? 'none' : 'block';
-              document.getElementById('sp-date-label').innerText = (v === 'as_on_date') ? 'Statement As On Date' : 'Date';
+              document.getElementById('sp-as-on-date-container').style.display = (isRange || isAll) ? 'none' : 'block';
+              if (!isRange && !isAll) {
+                document.getElementById('sp-date-label').innerText = (v === 'as_on_date') ? 'Statement As On Date' : 'Date';
+              }
             " style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
-              <option value="as_on_date" selected>As on date (All records up to date)</option>
-              <option value="single_day">Specific Date (Single day)</option>
-              <option value="custom">Custom Date Range</option>
+              <option value="all" ${defaultDateType === 'all' ? 'selected' : ''}>All Records (All Time)</option>
+              <option value="as_on_date" ${defaultDateType === 'as_on_date' ? 'selected' : ''}>As on date (All records up to date)</option>
+              <option value="single_day" ${defaultDateType === 'single_day' ? 'selected' : ''}>Specific Date (Single day)</option>
+              <option value="custom" ${defaultDateType === 'custom' ? 'selected' : ''}>Custom Date Range</option>
             </select>
           </div>
 
-          <div id="sp-as-on-date-container" style="display:block; margin-bottom:0.8rem;">
-            <label id="sp-date-label" style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Statement As On Date</label>
-            <input id="sp-as-on" type="date" value="${today}" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+          <div id="sp-as-on-date-container" style="display:${(defaultDateType === 'as_on_date' || defaultDateType === 'single_day') ? 'block' : 'none'}; margin-bottom:0.8rem;">
+            <label id="sp-date-label" style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">${defaultDateType === 'single_day' ? 'Date' : 'Statement As On Date'}</label>
+            <input id="sp-as-on" type="date" value="${defaultAsOn}" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
           </div>
 
-          <div id="sp-custom-date-grid" style="display:none; grid-template-columns:1fr 1fr; gap:0.8rem; margin-bottom:0.8rem;">
+          <div id="sp-custom-date-grid" style="display:${defaultDateType === 'custom' ? 'grid' : 'none'}; grid-template-columns:1fr 1fr; gap:0.8rem; margin-bottom:0.8rem;">
             <div>
               <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">From Date</label>
-              <input id="sp-from" type="date" value="${defaultFromDate}" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+              <input id="sp-from" type="date" value="${pageStart || defaultFromDate}" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
             </div>
             <div>
               <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">To Date</label>
-              <input id="sp-to" type="date" value="${today}" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+              <input id="sp-to" type="date" value="${pageEnd || today}" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
             </div>
           </div>
 
           <div style="margin-bottom:0.8rem;">
-            <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Site / Branch <span style="color:#ef4444; font-weight:700;">* (Compulsory)</span></label>
+            <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Site / Branch</label>
             <select id="sp-site" onchange="this.style.borderColor='#30363d';" style="width:100%; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
-              ${!defaultBranch ? `<option value="" disabled selected>-- Select Site / Branch (Compulsory) --</option>` : ''}
-              ${sites.map(s => `<option value="${s}" ${s === defaultBranch ? 'selected' : ''}>${s}</option>`).join('')}
+              <option value="all" ${!defaultBranch ? 'selected' : ''}>ALL SITES / ALL BRANCHES</option>
+              ${sites.filter(s => s && s.toLowerCase() !== 'all').map(s => `<option value="${s}" ${s === defaultBranch ? 'selected' : ''}>${s}</option>`).join('')}
             </select>
           </div>
 
@@ -2891,23 +2912,15 @@ const app = {
       width: '500px',
       preConfirm: () => {
         const siteEl = document.getElementById('sp-site');
-        let siteVal = (siteEl?.value || '').trim();
-        if (!siteVal || siteVal === 'all') {
-          if (defaultBranch) {
-            siteVal = defaultBranch;
-          } else {
-            Swal.showValidationMessage('Please select a Site / Branch (Compulsory)');
-            if (siteEl) {
-              siteEl.focus();
-              siteEl.style.borderColor = '#ef4444';
-            }
-            return false;
-          }
-        }
+        let siteVal = (siteEl?.value || 'all').trim();
+        if (!siteVal) siteVal = 'all';
 
         const dateType = document.getElementById('sp-date-type').value;
         let from = '', to = '';
-        if (dateType === 'as_on_date') {
+        if (dateType === 'all') {
+          from = '';
+          to   = '';
+        } else if (dateType === 'as_on_date') {
           const asOn = document.getElementById('sp-as-on').value;
           if (!asOn) { Swal.showValidationMessage('Please select a date'); return false; }
           from = '';
@@ -2926,7 +2939,6 @@ const app = {
         const memberEl = document.getElementById('sp-member');
         return {
           from, to,
-          category: 'all',
           site: siteVal,
           include_bills: document.getElementById('sp-bills').checked ? 'yes' : 'no',
           opening_balance: document.getElementById('sp-opening').value || '',
@@ -2938,7 +2950,7 @@ const app = {
       if (!result.isConfirmed) return;
       const p = result.value;
       const currentSlug = this.getCurrentSlug('cashier');
-      let url = `${this.getBaseUrl()}/${currentSlug}/history/pdf?include_bills=${p.include_bills}&category=${encodeURIComponent(p.category)}&site=${encodeURIComponent(p.site)}`;
+      let url = `${this.getBaseUrl()}/${currentSlug}/history/pdf?include_bills=${p.include_bills}&site=${encodeURIComponent(p.site)}`;
       if (p.from) url += `&from=${encodeURIComponent(p.from)}`;
       if (p.to) url += `&to=${encodeURIComponent(p.to)}`;
       if (p.opening_balance) url += `&opening_balance=${encodeURIComponent(p.opening_balance)}`;
@@ -2959,14 +2971,6 @@ const app = {
     const t = allTxs.find(x => x.id == id) || teamTxs.find(x => x.id == id);
     if (!t) return this.toast('Transaction not found', 'error');
 
-    const allCats = (window.serverPageData && window.serverPageData.categories) ? window.serverPageData.categories : [];
-    const catOptions = allCats.map(c => {
-        const val = c.value;
-        const isSelected = String(t.category || '').toLowerCase() === String(val || '').toLowerCase();
-        return `<option value="${val}" ${isSelected ? 'selected' : ''}>${c.label}</option>`;
-    }).join('');
-
-    const isGeneralSelected = String(t.category || '').toLowerCase() === 'general';
     const currentType = (t.type || 'OUT').toUpperCase();
     const currentDate = t.date ? t.date.split('T')[0] : '';
 
@@ -2990,13 +2994,6 @@ const app = {
             <input type="number" step="0.01" id="edit-tx-amount" value="${t.amount}" class="swal2-input" style="width:100%; margin:0; box-sizing:border-box;">
           </div>
           <div class="form-group mb-1" style="margin-bottom:0.8rem;">
-            <label style="color:var(--text-muted); font-size:0.8rem; font-weight:600; display:block; margin-bottom:4px;">Category</label>
-            <select id="edit-tx-category" class="swal2-select" style="width:100%; margin:0; box-sizing:border-box;">
-              <option value="general" ${isGeneralSelected ? 'selected' : ''}>General</option>
-              ${catOptions}
-            </select>
-          </div>
-          <div class="form-group mb-1" style="margin-bottom:0.8rem;">
             <label style="color:var(--text-muted); font-size:0.8rem; font-weight:600; display:block; margin-bottom:4px;">Reference / Bill No. (optional)</label>
             <input type="text" id="edit-tx-reference" value="${t.reference || ''}" placeholder="e.g. INV-1002" class="swal2-input" style="width:100%; margin:0; box-sizing:border-box;">
           </div>
@@ -3017,10 +3014,14 @@ const app = {
   },
 
   saveTransactionEdit(id) {
+    const allTxs = window.serverPageData?.transactions || [];
+    const teamTxs = window.serverPageData?.teamTransactions || [];
+    const t = allTxs.find(x => x.id == id) || teamTxs.find(x => x.id == id);
     const date = document.getElementById('edit-tx-date') ? document.getElementById('edit-tx-date').value : null;
     const type = document.getElementById('edit-tx-type').value;
     const amount = Number(document.getElementById('edit-tx-amount').value);
-    const category = document.getElementById('edit-tx-category').value;
+    const catEl = document.getElementById('edit-tx-category');
+    const category = catEl ? catEl.value : (t?.category || 'general');
     const reference = document.getElementById('edit-tx-reference').value;
     const note = document.getElementById('edit-tx-note').value;
     
@@ -3464,19 +3465,12 @@ const app = {
     const color = t.type==='IN' ? '#16a34a' : '#ef4444';
     
     // Add edit form hidden by default
-    const allCats = (window.serverPageData && window.serverPageData.categories) ? window.serverPageData.categories : [];
-    const catOptions = allCats.map(c => {
-        const val = c.name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-        return `<option value="${val}" ${t.category === val ? 'selected' : ''}>${c.name}</option>`;
-    }).join('');
-
     this.openDrawer(`
       <h3 style="margin-bottom:1rem;">Transaction Details</h3>
       <div id="tx-view-${t.id}">
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem;">
           <div><div style="color:var(--text-muted); font-size:0.8rem;">Type</div><div style="font-weight:600;">${t.type}</div></div>
           <div><div style="color:var(--text-muted); font-size:0.8rem;">Amount</div><div style="font-weight:700; font-size:1.2rem; color:${color}">\u20b9${Number(t.amount).toLocaleString()}</div></div>
-          <div><div style="color:var(--text-muted); font-size:0.8rem;">Category</div><div>${(t.category||'general').replace(/_/g,' ').toUpperCase()}</div></div>
           <div><div style="color:var(--text-muted); font-size:0.8rem;">Date</div><div>${new Date(t.date || t.created_at).toLocaleString()}</div></div>
         </div>
         <div style="margin-top:1rem;"><div style="color:var(--text-muted); font-size:0.8rem;">Note</div><div>${t.note||'\u2014'}</div></div>
@@ -3492,13 +3486,6 @@ const app = {
             <input type="number" id="edit-tx-amount" value="${t.amount}" style="width:100%; padding:0.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;" min="0.01" step="0.01">
         </div>
         <div class="form-group mt-1">
-            <label>Category</label>
-            <select id="edit-tx-category" style="width:100%; padding:0.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
-                <option value="general" ${t.category === 'general' ? 'selected' : ''}>General</option>
-                ${catOptions}
-            </select>
-        </div>
-        <div class="form-group mt-1">
             <label>Note</label>
             <input type="text" id="edit-tx-note" value="${t.note || ''}" style="width:100%; padding:0.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
         </div>
@@ -3509,8 +3496,12 @@ const app = {
   },
 
   submitEditTransaction(id) {
+    const allTxs = window.serverPageData?.transactions || [];
+    const teamTxs = window.serverPageData?.teamTransactions || [];
+    const t = allTxs.find(x => x.id == id) || teamTxs.find(x => x.id == id);
     const amount = document.getElementById('edit-tx-amount').value;
-    const category = document.getElementById('edit-tx-category').value;
+    const catEl = document.getElementById('edit-tx-category');
+    const category = catEl ? catEl.value : (t?.category || 'general');
     const note = document.getElementById('edit-tx-note').value;
 
     const currentSlug = this.getCurrentSlug('cashier');

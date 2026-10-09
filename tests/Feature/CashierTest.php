@@ -617,6 +617,41 @@ class CashierTest extends TestCase
         $response->assertSee('Old Entry Last Year');
         $response->assertSee('All Time (All Entries)');
     }
+
+    public function test_cashier_can_download_all_records_pdf(): void
+    {
+        Transaction::create([
+            'user_id' => $this->cashierA->id,
+            'type' => 'IN',
+            'amount' => 12000.00,
+            'note' => 'Ancient Opening Balance Entry',
+            'date' => \Carbon\Carbon::now()->subMonths(8),
+            'site' => 'Main Branch',
+        ]);
+
+        Transaction::create([
+            'user_id' => $this->cashierA->id,
+            'type' => 'OUT',
+            'amount' => 450.00,
+            'note' => 'Current Day Expense',
+            'date' => \Carbon\Carbon::now(),
+            'site' => 'Main Branch',
+        ]);
+
+        $session = ['auth_user' => [
+            'id' => $this->cashierA->id,
+            'name' => $this->cashierA->name,
+            'role' => 'CASHIER',
+            'branch' => 'Main Branch',
+        ]];
+
+        // Download statement without date bounds (All Records)
+        $resp = $this->withSession($session)->get('/cashier/history/pdf?site=all');
+        $resp->assertStatus(200);
+        $this->assertStringContainsString('application/pdf', $resp->headers->get('content-type'));
+        $contentDisposition = $resp->headers->get('content-disposition');
+        $this->assertStringContainsString('ALL_RECORDS', $contentDisposition);
+    }
 }
 
 

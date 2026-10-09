@@ -71,6 +71,20 @@ class AuthMiddleware
 
             // Check module equivalents so admin and stock_manager permissions align
             $moduleEquivalents = [
+                'sales_order_pdf' => [
+                    'sales_order_pdf',
+                    'sales_history',
+                    'sales_action',
+                    'sales_home',
+                    'dispatch_report',
+                    'dispatch_history',
+                    'dispatch_home',
+                    'dispatch_action',
+                    'admin_dispatch_activity',
+                    'admin_dashboard',
+                    'stock_manager_home',
+                    'stock_manager_stock',
+                ],
                 'admin_stock' => ['admin_stock', 'stock_manager_stock'],
                 'stock_manager_stock' => ['stock_manager_stock', 'admin_stock'],
                 'admin_products' => ['admin_products', 'stock_manager_products'],
@@ -85,9 +99,9 @@ class AuthMiddleware
                 'cashier_categories' => ['cashier_categories', 'admin_categories'],
                 'stock_manager_home' => ['stock_manager_home', 'admin_dashboard'],
                 'admin_dashboard' => ['admin_dashboard', 'stock_manager_home'],
-                'sales_history' => ['sales_history', 'dispatch_history'],
+                'sales_history' => ['sales_history', 'dispatch_history', 'dispatch_report'],
                 'dispatch_history' => ['dispatch_history', 'sales_history', 'dispatch_report'],
-                'dispatch_report' => ['dispatch_report', 'dispatch_history'],
+                'dispatch_report' => ['dispatch_report', 'dispatch_history', 'sales_history'],
             ];
             $keysToCheck = $moduleEquivalents[$moduleKey] ?? [$moduleKey];
 
@@ -247,17 +261,19 @@ class AuthMiddleware
         if ($section === 'sales' || $prefix === 'sales') {
             $salesSub = ($section === 'sales') ? $action : $section;
             if (in_array($salesSub, ['home', 'dashboard', ''])) return 'sales_home';
+            if ($salesSub === 'order' && ($subaction === 'pdf' || in_array('pdf', $segments))) return 'sales_order_pdf';
             if (in_array($salesSub, ['action', 'order', 'company', 'transport'])) return 'sales_action';
             if (in_array($salesSub, ['history', 'download-lr', 'download-multiple-lr'])) return 'sales_history';
             return 'sales_action';
         }
         if (in_array($section, ['order', 'company', 'transport'])) {
-            return ($action === 'pdf' || $subaction === 'pdf') ? 'sales_history' : 'sales_action';
+            return ($action === 'pdf' || $subaction === 'pdf' || in_array('pdf', $segments)) ? 'sales_order_pdf' : 'sales_action';
         }
 
         // 4. Dispatch module
         if ($section === 'dispatch' || $prefix === 'dispatch') {
             $dispSub = ($section === 'dispatch') ? $action : $section;
+            if ($dispSub === 'order' && in_array('pdf', $segments)) return 'sales_order_pdf';
             if (in_array($dispSub, ['home', 'dashboard', ''])) return 'dispatch_home';
             if (in_array($dispSub, ['action', 'update-lr', 'revert'])) return 'dispatch_action';
             if (in_array($dispSub, ['history', 'pdf', 'download-lr', 'download-multiple-lr'])) return 'dispatch_history';

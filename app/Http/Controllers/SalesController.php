@@ -85,16 +85,7 @@ class SalesController extends Controller
         }
         $orders = $query->orderByDesc('created_at')->get();
         $totalOrders      = $orders->count();
-        $pendingOrders    = $orders->whereIn('status', ['OPEN', 'PENDING'])->where('dispatch_status', '!=', 'DONE')->count();
-        $dispatchedOrders = $orders->where('dispatch_status', 'DONE')->count();
         $totalValue       = $orders->sum('total');
-
-        $todayDate = now()->toDateString();
-        $dueTodayList = $orders->filter(function($o) use ($todayDate) {
-            if (!$o->due_date) return false;
-            return \Carbon\Carbon::parse($o->due_date)->toDateString() === $todayDate;
-        })->values();
-        $dueTodayOrdersCount = $dueTodayList->count();
 
         foreach ($orders as $o) {
             if ($o->items) {
@@ -104,59 +95,68 @@ class SalesController extends Controller
             }
         }
 
+        $pendingList = $orders->filter(function($o) {
+            if ($o->status === 'CANCELLED') return false;
+            $ds = strtoupper(str_replace('_', ' ', $o->dispatch_status ?? 'PENDING'));
+            return $ds === 'PENDING' || $ds === 'UNASSIGNED' || empty($o->dispatch_status) || $ds === 'OPEN';
+        })->values();
+
+        $partialList = $orders->filter(function($o) {
+            if ($o->status === 'CANCELLED') return false;
+            $ds = strtoupper(str_replace('_', ' ', $o->dispatch_status ?? ''));
+            return in_array($ds, ['PARTIAL', 'PARTIAL PENDING', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED']);
+        })->values();
+
+        $dispatchedList = $orders->filter(function($o) {
+            if ($o->status === 'CANCELLED') return false;
+            $ds = strtoupper(str_replace('_', ' ', $o->dispatch_status ?? ''));
+            return in_array($ds, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'DISPATCHED']);
+        })->values();
+
+        $pendingOrdersCount    = $pendingList->count();
+        $partialOrdersCount    = $partialList->count();
+        $dispatchedOrdersCount = $dispatchedList->count();
+
+        $todayDate = now()->toDateString();
+        $dueTodayList = $orders->filter(function($o) use ($todayDate) {
+            if (!$o->due_date || $o->status === 'CANCELLED') return false;
+            return \Carbon\Carbon::parse($o->due_date)->toDateString() === $todayDate;
+        })->values();
+        $dueTodayOrdersCount = $dueTodayList->count();
+
+        $mapOrderFn = fn($o) => [
+            'id'              => $o->id,
+            'companyId'       => $o->company_id,
+            'companyName'     => strtoupper($o->company?->name ?? ''),
+            'transportId'     => $o->transporter_id,
+            'transportName'   => strtoupper($o->transporter?->name ?? ''),
+            'total'           => (float) $o->total,
+            'status'          => $o->status,
+            'dispatchStatus'  => $o->dispatch_status,
+            'notes'           => $o->notes,
+            'date'            => $o->created_at->toISOString(),
+            'dueDate'         => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
+            'rawDueDate'      => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('Y-m-d') : null,
+            'totalQty'        => (float) $o->items->sum('quantity'),
+            'dispatchedQty'   => (float) $o->items->sum('dispatched_qty'),
+            'remainingQty'    => (float) $o->items->sum(fn($i) => $i->remainingQty()),
+            'products'        => $o->items->map(fn($i) => [
+                'id'            => $i->id,
+                'productId'     => $i->product_id,
+                'productName'   => strtoupper($i->product ? $i->product->formatName($i->grade) : ''),
+                'grade'         => strtoupper($i->grade ?? ''),
+                'quantity'      => (float) $i->quantity,
+                'dispatchedQty' => (float) $i->dispatched_qty,
+                'remainingQty'  => (float) $i->remainingQty(),
+                'price'         => (float) $i->price,
+            ]),
+        ];
+
         $pageData = [
-            'orders'         => $orders->map(fn($o) => [
-                'id'              => $o->id,
-                'companyId'       => $o->company_id,
-                'companyName'     => strtoupper($o->company?->name ?? ''),
-                'transportId'     => $o->transporter_id,
-                'transportName'   => strtoupper($o->transporter?->name ?? ''),
-                'total'           => (float) $o->total,
-                'status'          => $o->status,
-                'dispatchStatus'  => $o->dispatch_status,
-                'notes'           => $o->notes,
-                'date'            => $o->created_at->toISOString(),
-                'dueDate'         => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
-                'totalQty'        => (float) $o->items->sum('quantity'),
-                'dispatchedQty'   => (float) $o->items->sum('dispatched_qty'),
-                'remainingQty'    => (float) $o->items->sum(fn($i) => $i->remainingQty()),
-                'products'        => $o->items->map(fn($i) => [
-                    'id'            => $i->id,
-                    'productId'     => $i->product_id,
-                    'productName'   => strtoupper($i->product ? $i->product->formatName($i->grade) : ''),
-                    'grade'         => strtoupper($i->grade ?? ''),
-                    'quantity'      => (float) $i->quantity,
-                    'dispatchedQty' => (float) $i->dispatched_qty,
-                    'remainingQty'  => (float) $i->remainingQty(),
-                    'price'         => (float) $i->price,
-                ]),
-            ]),
-            'dueTodayOrders' => $dueTodayList->map(fn($o) => [
-                'id'              => $o->id,
-                'companyId'       => $o->company_id,
-                'companyName'     => strtoupper($o->company?->name ?? ''),
-                'transportId'     => $o->transporter_id,
-                'transportName'   => strtoupper($o->transporter?->name ?? ''),
-                'total'           => (float) $o->total,
-                'status'          => $o->status,
-                'dispatchStatus'  => $o->dispatch_status,
-                'notes'           => $o->notes,
-                'date'            => $o->created_at->toISOString(),
-                'dueDate'         => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
-                'totalQty'        => (float) $o->items->sum('quantity'),
-                'dispatchedQty'   => (float) $o->items->sum('dispatched_qty'),
-                'remainingQty'    => (float) $o->items->sum(fn($i) => $i->remainingQty()),
-                'products'        => $o->items->map(fn($i) => [
-                    'id'            => $i->id,
-                    'productId'     => $i->product_id,
-                    'productName'   => strtoupper($i->product ? $i->product->formatName($i->grade) : ''),
-                    'grade'         => strtoupper($i->grade ?? ''),
-                    'quantity'      => (float) $i->quantity,
-                    'dispatchedQty' => (float) $i->dispatched_qty,
-                    'remainingQty'  => (float) $i->remainingQty(),
-                    'price'         => (float) $i->price,
-                ]),
-            ]),
+            'orders'             => $orders->map($mapOrderFn),
+            'pendingOrdersList'  => $pendingList->map($mapOrderFn),
+            'partialOrdersList'  => $partialList->map($mapOrderFn),
+            'dueTodayOrders'     => $dueTodayList->map($mapOrderFn),
             'companies'          => Company::orderByDesc('id')->get()->map(fn($c)=>[
                 'id'=>$c->id,'name'=>strtoupper($c->name ?? ''),'gst'=>$c->gst,'address'=>$c->address,'pincode'=>$c->pincode,'contact'=>$c->contact,'date'=>$c->created_at->toISOString()
             ]),
@@ -166,7 +166,14 @@ class SalesController extends Controller
             'products'           => Product::target()->active()->visibleTo($this->authUser()['role'])->get(['id', 'name', 'unit', 'type'])->map(fn($p) => [
                 'id' => $p->id, 'name' => strtoupper($p->name ?? ''), 'unit' => $p->unit, 'type' => $p->type
             ]),
-            'stats'              => compact('totalOrders', 'pendingOrders', 'dispatchedOrders', 'totalValue', 'dueTodayOrdersCount'),
+            'stats'              => [
+                'totalOrders'         => $totalOrders,
+                'pendingOrders'       => $pendingOrdersCount,
+                'partialOrders'       => $partialOrdersCount,
+                'dispatchedOrders'    => $dispatchedOrdersCount,
+                'totalValue'          => $totalValue,
+                'dueTodayOrdersCount' => $dueTodayOrdersCount,
+            ],
         ];
         return view('sales.home', compact('pageData'));
     }

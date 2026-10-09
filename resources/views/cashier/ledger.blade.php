@@ -10,7 +10,6 @@
   $hasTeamMembers = count($visibleTeamMembers) > 0;
 
   $q = request('q', '');
-  $category = request('category', '');
   $specificDate = request('specific_date', '');
   $dateRange = request('range', 'all');
   $startDate = request('start', '');
@@ -31,14 +30,6 @@
     });
   }
 
-  if ($category) {
-    $filtered = $filtered->filter(function($t) use ($category) {
-      $tCat = preg_replace('/[^a-z0-9]/', '', strtolower($t['category'] ?? ''));
-      $filterCat = preg_replace('/[^a-z0-9]/', '', strtolower($category));
-      return $tCat === $filterCat;
-    });
-  }
-
   if ($specificDate) {
     $filtered = $filtered->filter(function($t) use ($specificDate) {
       $localDate = \Carbon\Carbon::parse($t['date'])->timezone(config('app.timezone', 'Asia/Kolkata'))->format('Y-m-d');
@@ -50,7 +41,7 @@
     $filtered = $filtered->filter(function($t) use ($q) {
       $query = strtolower($q);
       $dateStr = \Carbon\Carbon::parse($t['date'])->format('d-m-Y');
-      $details = ($t['note'] ?? '') . ' ' . ($t['description'] ?? '') . ' ' . ($t['reference'] ?? '') . ' ' . ($t['category'] ?? '') . ' ' . ($t['cashier_name'] ?? '') . ' ' . $dateStr;
+      $details = ($t['note'] ?? '') . ' ' . ($t['description'] ?? '') . ' ' . ($t['reference'] ?? '') . ' ' . ($t['cashier_name'] ?? '') . ' ' . $dateStr;
       return str_contains(strtolower($details), $query) || str_contains((string)$t['amount'], $query);
     });
   }
@@ -411,8 +402,6 @@
 
     const memberSelect = document.getElementById('team-member-select');
     const selectedMember = memberSelect ? memberSelect.value : 'all';
-    const catSelect = document.getElementById('ledger-category-select');
-    const catVal = (catSelect ? catSelect.value : '').toLowerCase();
     const specificDate = document.getElementById('ledger-specific-date').value;
     const rangeVal = document.getElementById('ledger-range-select').value;
     const startDate = document.getElementById('ledger-start-date').value;
@@ -462,15 +451,6 @@
       filtered = filtered.filter(t => {
         return String(t.user_id) === String(selectedMember) 
             || (t.cashier_name && t.cashier_name.toLowerCase() === selectedMember.toLowerCase());
-      });
-    }
-
-    // 2. Category filter
-    if (catVal) {
-      const targetCat = catVal.toLowerCase().replace(/[^a-z0-9]/g, '');
-      filtered = filtered.filter(t => {
-        const c = (t.category || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        return c === targetCat;
       });
     }
 
@@ -533,7 +513,7 @@
     if (q) {
       filtered = filtered.filter(t => {
         const dateStr = formatDate(t.date);
-        const combined = `${t.note || ''} ${t.description || ''} ${t.reference || ''} ${t.category || ''} ${t.cashier_name || ''} ${dateStr} ${t.amount || ''}`.toLowerCase();
+        const combined = `${t.note || ''} ${t.description || ''} ${t.reference || ''} ${t.cashier_name || ''} ${dateStr} ${t.amount || ''}`.toLowerCase();
         return combined.includes(q);
       });
     }
@@ -661,7 +641,6 @@
     const params = new URLSearchParams();
     if (tabVal && tabVal !== 'personal') params.set('tab', tabVal);
     if (tabVal === 'team' && selectedMember && selectedMember !== 'all') params.set('team_member', selectedMember);
-    if (catVal) params.set('category', catVal);
     if (specificDate) params.set('specific_date', specificDate);
     if (rangeVal && rangeVal !== 'all') params.set('range', rangeVal);
     if (rangeVal === 'custom') {
@@ -678,8 +657,6 @@
     document.getElementById('ledger-tab-select').value = 'personal';
     const memberSelect = document.getElementById('team-member-select');
     if (memberSelect) memberSelect.value = 'all';
-    const catSelect = document.getElementById('ledger-category-select');
-    if (catSelect) catSelect.value = '';
     document.getElementById('ledger-specific-date').value = '';
     document.getElementById('ledger-range-select').value = 'all';
     document.getElementById('ledger-start-date').value = '';

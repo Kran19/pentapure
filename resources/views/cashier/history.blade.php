@@ -13,7 +13,6 @@
     $filtered = $filtered->filter(function($t) use ($q) {
       $query = strtolower($q);
       return str_contains(strtolower($t['note'] ?? ''), $query) ||
-             str_contains(strtolower($t['category'] ?? ''), $query) ||
              str_contains(strtolower($t['description'] ?? ''), $query) ||
              str_contains(strtolower($t['cashier_name'] ?? ''), $query) ||
              str_contains(strtolower($t['site'] ?? ''), $query) ||
@@ -90,7 +89,7 @@
   </div>
 
   <div class="form-group">
-    <input type="text" name="q" placeholder="Search note, category, cashier or amount..." value="{{ $q }}" onchange="this.form.submit()" style="padding:0.6rem 0.8rem; font-size:0.85rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
+    <input type="text" name="q" placeholder="Search note, cashier or amount..." value="{{ $q }}" onchange="this.form.submit()" style="padding:0.6rem 0.8rem; font-size:0.85rem; width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#161b22; color:#fff;">
   </div>
 </form>
 
@@ -104,10 +103,6 @@
             {{ $t['note'] ?: 'Transaction' }}
           </div>
           <div style="margin-top:6px; font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-            @if($t['category'])
-              <span style="text-transform:uppercase; font-weight:600; background:rgba(0,0,0,0.06); padding:2px 8px; border-radius:6px;">{{ str_replace('_', ' ', $t['category']) }}</span>
-              <span>•</span>
-            @endif
             @if(!empty($t['cashier_name']) && $t['cashier_name'] !== 'UNKNOWN')
               <span style="font-weight:600; color:var(--text-main);"><span style="color:#2563eb;">👤</span> {{ $t['cashier_name'] }}</span>
               <span>•</span>
@@ -146,12 +141,6 @@
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Amount</div>
             <div style="font-weight:700; font-size:1.15rem; color:{{ $t['type']==='IN' ? '#16a34a' : '#ef4444' }};">
               {{ $t['type']==='IN' ? '+' : '-' }}₹{{ number_format($t['amount'], 2) }}
-            </div>
-          </div>
-          <div>
-            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Category</div>
-            <div style="font-weight:600; font-size:0.9rem; text-transform:uppercase;">
-              {{ str_replace('_', ' ', $t['category'] ?? 'GENERAL') }}
             </div>
           </div>
           <div>

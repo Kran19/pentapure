@@ -91,16 +91,20 @@
                             @php
                                 $rawSt = strtoupper(trim((string)($order->dispatch_status ?? 'PENDING')));
                                 $diffDays = (int) now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($order->due_date)->startOfDay(), false);
-                                $overdueText = '';
+                                $dueDaysText = '';
                                 if (!in_array($rawSt, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED', 'FULLY_DISPATCHED'])) {
                                     if ($diffDays < 0) {
-                                        $overdueText = ' (' . abs($diffDays) . 'd overdue)';
+                                        $dueDaysText = ' (' . abs($diffDays) . 'd overdue)';
                                     } elseif ($diffDays === 0) {
-                                        $overdueText = ' (Due today)';
+                                        $dueDaysText = ' (Due today)';
+                                    } else {
+                                        $dueDaysText = ' (' . $diffDays . 'd left)';
                                     }
                                 }
                             @endphp
-                            <div style="font-size:10px; color:#dc2626; font-weight:bold; margin-top:2px;">DUE DATE: {{ \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') }}{{ $overdueText }}</div>
+                            <div style="font-size:9px; color:#0284c7; font-weight:bold; margin-top:2px; background: rgba(2, 132, 199, 0.08); padding: 2px 4px; border-radius: 3px; display: inline-block;">
+                                EXPECTED DELIVERY DATE: {{ \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') }}{{ $dueDaysText }}
+                            </div>
                         @endif
                     </td>
                     <td>

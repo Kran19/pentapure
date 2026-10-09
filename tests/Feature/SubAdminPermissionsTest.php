@@ -398,6 +398,48 @@ class SubAdminPermissionsTest extends TestCase
             ->get('/sub_admin/history/dispatch/pdf?range=all&status=PENDING');
         $pdfResp->assertStatus(200);
         $pdfResp->assertHeader('Content-Type', 'application/pdf');
+
+        $orderPdfResp = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->get('/sub_admin/sales/order/pdf/' . $order->id);
+        $orderPdfResp->assertStatus(200);
+        $orderPdfResp->assertHeader('Content-Type', 'application/pdf');
+    }
+
+    public function test_sub_admin_without_sales_or_dispatch_permission_cannot_access_order_pdf()
+    {
+        $subAdmin = User::create([
+            'name' => 'Attendance Sub Admin',
+            'username' => 'att_subadmin',
+            'phone' => '+91 9898000088',
+            'password' => Hash::make('password123'),
+            'role' => 'SUB_ADMIN',
+            'status' => 'ACTIVE',
+            'permissions' => ['view_attendance_daily']
+        ]);
+
+        $company = \App\Models\Company::create(['name' => 'ACME CORP 2']);
+        $product = \App\Models\Product::create(['name' => 'Pipe 50mm 2', 'type' => 'FINISHED', 'unit' => 'm', 'is_active' => true]);
+
+        $order = \App\Models\Order::create([
+            'created_by'      => $subAdmin->id,
+            'company_id'      => $company->id,
+            'total'           => 1000,
+            'status'          => 'OPEN',
+            'dispatch_status' => 'PENDING',
+        ]);
+
+        \App\Models\OrderItem::create([
+            'order_id'   => $order->id,
+            'product_id' => $product->id,
+            'grade'      => 'A',
+            'quantity'   => 10,
+            'price'      => 100,
+        ]);
+
+        $response = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->get('/sub_admin/sales/order/pdf/' . $order->id);
+
+        $response->assertStatus(403);
     }
 }
 

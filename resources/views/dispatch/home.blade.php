@@ -131,6 +131,37 @@
     background: rgba(14, 165, 233, 0.18);
     border-color: rgba(56, 189, 248, 0.45);
   }
+
+  .due-days-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 700;
+    margin-left: 6px;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+  .due-days-badge.overdue {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #dc2626 !important;
+  }
+  .due-days-badge.today {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #b45309 !important;
+  }
+  .due-days-badge.upcoming {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #047857 !important;
+  }
+  .due-days-badge.done {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #16a34a !important;
+  }
 </style>
 
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
@@ -222,6 +253,20 @@
             $statusBadgeBg = '#ef4444';
             $statusBadgeFg = '#ffffff';
           }
+
+          $rawDueDate = $o['rawDueDate'] ?? (!empty($o['dueDate']) && $o['dueDate'] !== 'Not Specified' ? \Carbon\Carbon::parse($o['dueDate'])->format('Y-m-d') : null);
+          $dueDaysBadge = '';
+          if ($rawDueDate) {
+              $diffDays = (int) now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($rawDueDate)->startOfDay(), false);
+              if ($diffDays < 0) {
+                  $days = abs($diffDays);
+                  $dueDaysBadge = '<span class="due-days-badge overdue">' . $days . ' ' . ($days === 1 ? 'day' : 'days') . ' overdue</span>';
+              } elseif ($diffDays === 0) {
+                  $dueDaysBadge = '<span class="due-days-badge today">Due today</span>';
+              } else {
+                  $dueDaysBadge = '<span class="due-days-badge upcoming">' . $diffDays . ' ' . ($diffDays === 1 ? 'day' : 'days') . ' left</span>';
+              }
+          }
         @endphp
         <div class="card dispatch-order-card" style="border-left: 4px solid {{ $progressColor }}; background:#ffffff; box-shadow:0 2px 10px rgba(0,0,0,0.04); transition: transform 0.2s; margin-bottom: 0; padding:0; overflow:hidden; border-radius:12px; border:1px solid #e2e8f0;">
           <!-- Clickable Header Row -->
@@ -236,7 +281,7 @@
                 <!-- Expected Delivery Date & Sales Person Highlights -->
                 <div style="font-size:0.83rem; color:var(--text-muted, #64748b); margin-top:6px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
                   <span class="highlight-expected-delivery">
-                    EXPECTED DELIVERY DATE: {{ !empty($o['dueDate']) && $o['dueDate'] !== 'Not Specified' ? strtoupper($o['dueDate']) : 'NOT SPECIFIED' }}
+                    EXPECTED DELIVERY DATE: {{ !empty($o['dueDate']) && $o['dueDate'] !== 'Not Specified' ? strtoupper($o['dueDate']) : 'NOT SPECIFIED' }}{!! $dueDaysBadge !!}
                   </span>
                   <span>•</span>
                   <span><strong>Sales By:</strong> <span style="color:var(--primary, #D88A00); font-weight:600;">{{ $o['salesPerson'] ?? 'N/A' }}</span></span>

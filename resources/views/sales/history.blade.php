@@ -36,7 +36,7 @@
         return $oStatus === 'CANCELLED';
       }
       if ($statusFilter === 'PENDING') {
-        return ($oStatus !== 'CANCELLED') && (in_array($dStatus, ['PENDING', 'OPEN', 'UNASSIGNED', 'PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL_PENDING', 'PARTIAL PENDING']) || empty($dStatus));
+        return ($oStatus !== 'CANCELLED') && (in_array($dStatus, ['PENDING', 'OPEN', 'UNASSIGNED']) || empty($dStatus));
       }
       if ($statusFilter === 'PARTIAL' || $statusFilter === 'PARTIAL_PENDING' || $statusFilter === 'PARTIAL_DISPATCH') {
         return ($oStatus !== 'CANCELLED') && in_array($dStatus, ['PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL_PENDING', 'PARTIAL PENDING']);
@@ -114,11 +114,19 @@
 
 <!-- Quick Filter Buttons -->
 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:0.8rem;">
-  <a href="{{ request()->fullUrlWithQuery(['due' => null, 'page' => 1]) }}" 
-     style="padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; {{ empty($dueFilter) ? 'background:var(--primary, #D88A00); color:#fff;' : 'background:rgba(255,255,255,0.06); border:1px solid var(--border-soft, rgba(0,0,0,0.1)); color:var(--text-main);' }}">
+  <a href="{{ request()->fullUrlWithQuery(['due' => null, 'status' => null, 'page' => 1]) }}" 
+     style="padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; {{ empty($dueFilter) && empty($statusFilter) ? 'background:var(--primary, #D88A00); color:#fff;' : 'background:rgba(255,255,255,0.06); border:1px solid var(--border-soft, rgba(0,0,0,0.1)); color:var(--text-main);' }}">
     All Orders
   </a>
-  <a href="{{ request()->fullUrlWithQuery(['due' => 'today', 'page' => 1]) }}" 
+  <a href="{{ request()->fullUrlWithQuery(['status' => 'PENDING', 'due' => null, 'page' => 1]) }}" 
+     style="padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; {{ $statusFilter === 'PENDING' ? 'background:#3b82f6; color:#fff;' : 'background:rgba(255,255,255,0.06); border:1px solid var(--border-soft, rgba(0,0,0,0.1)); color:var(--text-main);' }}">
+    ⏳ Pending
+  </a>
+  <a href="{{ request()->fullUrlWithQuery(['status' => 'PARTIAL', 'due' => null, 'page' => 1]) }}" 
+     style="padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; {{ $statusFilter === 'PARTIAL' ? 'background:#f59e0b; color:#fff;' : 'background:rgba(255,255,255,0.06); border:1px solid var(--border-soft, rgba(0,0,0,0.1)); color:var(--text-main);' }}">
+    📦 Partial
+  </a>
+  <a href="{{ request()->fullUrlWithQuery(['due' => 'today', 'status' => null, 'page' => 1]) }}" 
      style="padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; {{ $dueFilter === 'today' ? 'background:var(--primary, #D88A00); color:#fff;' : 'background:rgba(255,255,255,0.06); border:1px solid var(--border-soft, rgba(0,0,0,0.1)); color:var(--text-main);' }}">
     📅 Due Today ({{ $dueTodayTotal }})
   </a>
@@ -226,24 +234,6 @@
             @if(!empty($item['dueDate']))
               <span>•</span>
               <span>DUE: <strong style="color:var(--text-main, #111827); font-weight:700;">{{ $item['dueDate'] }}</strong></span>
-            @endif
-            @php
-              $totOrderQty = (float)($item['totalQty'] ?? collect($item['items'] ?? [])->sum('quantity'));
-              $dispOrderQty = (float)($item['dispatchedQty'] ?? collect($item['items'] ?? [])->sum(fn($p) => $p['dispatchedQty'] ?? $p['dispatched_qty'] ?? 0));
-              $remOrderQty = (float)($item['remainingQty'] ?? max(0, $totOrderQty - $dispOrderQty));
-              $fmtBadge = fn($v) => (floor($v) == $v ? number_format($v, 0) : number_format($v, 2)) . ' kg';
-            @endphp
-            <span>•</span>
-            <span style="background:rgba(0,0,0,0.04); color:var(--text-main, #111827); padding:2px 6px; border-radius:4px; font-size:0.72rem; font-weight:600; border:1px solid rgba(0,0,0,0.08);">
-              ORDER: <strong style="color:var(--primary, #D88A00);">{{ $fmtBadge($totOrderQty) }}</strong>
-            </span>
-            <span style="background:rgba(22, 163, 74, 0.12); color:#15803d; border:1px solid rgba(22, 163, 74, 0.25); padding:2px 6px; border-radius:4px; font-size:0.72rem; font-weight:700;">
-              DISPATCHED: <strong>{{ $fmtBadge($dispOrderQty) }}</strong>
-            </span>
-            @if($remOrderQty > 0)
-              <span style="background:rgba(239, 68, 68, 0.12); color:#dc2626; border:1px solid rgba(239, 68, 68, 0.25); padding:2px 6px; border-radius:4px; font-size:0.72rem; font-weight:700;">
-                PENDING: <strong>{{ $fmtBadge($remOrderQty) }}</strong>
-              </span>
             @endif
             @if(!empty($item['lrCopies']) && count($item['lrCopies']) > 0)
               <span>•</span>
