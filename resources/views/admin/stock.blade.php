@@ -1,6 +1,18 @@
 @extends('layouts.admin')
 
 @section('content')
+@if(session('success'))
+  <div style="background:#dcfce7; border:1px solid #86efac; color:#166534; padding:0.8rem 1.2rem; border-radius:8px; margin-bottom:1rem; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+    <span>✓ {{ session('success') }}</span>
+    <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:#166534; font-size:1.1rem; cursor:pointer;">&times;</button>
+  </div>
+@endif
+@if(session('error'))
+  <div style="background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; padding:0.8rem 1.2rem; border-radius:8px; margin-bottom:1rem; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+    <span>⚠️ {{ session('error') }}</span>
+    <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:#991b1b; font-size:1.1rem; cursor:pointer;">&times;</button>
+  </div>
+@endif
 
 @php
   $typeFilter = request('type') ? strtoupper(request('type')) : null;
@@ -86,10 +98,16 @@
       <button type="button" class="btn btn-secondary stock-action-btn-secondary stock-btn-csv" onclick="adminExportStockCsv()" title="Export CSV report for stock" style="background:#10b981 !important; color:#ffffff !important; border-color:#059669 !important; font-weight:700 !important; display:inline-flex; align-items:center; gap:6px;">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         Export CSV
-       <button type="button" class="btn btn-secondary stock-action-btn-secondary" onclick="adminExportStockPdf()" title="Export PDF report for selected stages">
+      </button>
+      <button type="button" class="btn btn-secondary stock-action-btn-secondary" onclick="adminExportStockPdf()" title="Export PDF report for selected stages">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
         Generate PDF Report
       </button>
+      @if(empty($isReadOnly) && in_array(session('auth_user')['role'] ?? '', ['ADMIN', 'SUB_ADMIN']))
+      <button type="button" class="btn btn-secondary stock-action-btn-secondary" onclick="confirmClearStockData()" title="Reset all inventory stock quantities back to zero" style="background:#dc2626 !important; color:#ffffff !important; border-color:#b91c1c !important; font-weight:700 !important; display:inline-flex; align-items:center; gap:6px;">
+        🗑️ Clear Live Stock
+      </button>
+      @endif
       @if(empty($isReadOnly))
       <button type="button" class="btn stock-action-btn-primary" onclick="toggleStockFormCard()" title="Add or record incoming stock">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -2808,6 +2826,22 @@ function adminExportStockPdf() {
       date: selectedDate
     }, btn);
   });
+}
+
+function confirmClearStockData() {
+  if (!confirm('Are you sure you want to permanently clear ALL inventory stock data? This will reset all live stock quantities back to zero. Products, grades, and locations will remain 100% intact.')) {
+    return;
+  }
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '{{ url(request()->segment(1) . "/admin/stock/clear") }}';
+  const csrf = document.createElement('input');
+  csrf.type = 'hidden';
+  csrf.name = '_token';
+  csrf.value = '{{ csrf_token() }}';
+  form.appendChild(csrf);
+  document.body.appendChild(form);
+  form.submit();
 }
 
 function adminExportStockCsv() {

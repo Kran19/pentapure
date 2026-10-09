@@ -8,6 +8,8 @@ use App\Models\TransactionBill;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class CashierController extends Controller
@@ -1003,5 +1005,51 @@ class CashierController extends Controller
                 'url'           => $b->url,
             ])->toArray(),
         ];
+    }
+
+    public function clearLedger(Request $request)
+    {
+        $user = $this->authUser();
+        if (!in_array($user['role'] ?? '', ['ADMIN', 'SUB_ADMIN'])) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized. Only Admin can clear cashier ledger data.'], 403);
+            }
+            abort(403, 'Unauthorized.');
+        }
+
+        try {
+            Schema::disableForeignKeyConstraints();
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        } catch (\Throwable $e) {}
+
+        $tables = [
+            'transaction_bills',
+            'transaction_logs',
+            'transactions',
+        ];
+
+        foreach ($tables as $table) {
+            if (Schema::hasTable($table)) {
+                try {
+                    DB::table($table)->truncate();
+                } catch (\Throwable $e) {
+                    DB::table($table)->delete();
+                }
+            }
+        }
+
+        try {
+            Schema::enableForeignKeyConstraints();
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        } catch (\Throwable $e) {}
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'All cashier ledger transactions, bills, and logs have been successfully cleared!'
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'All cashier ledger transactions, bills, and logs have been successfully cleared!');
     }
 }

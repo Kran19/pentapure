@@ -33,7 +33,10 @@ class ClearCashierDataCommand extends Command
         }
 
         $this->info('Disabling foreign key constraints...');
-        Schema::disableForeignKeyConstraints();
+        try {
+            Schema::disableForeignKeyConstraints();
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        } catch (\Throwable $e) {}
 
         $tables = [
             'transaction_bills',
@@ -42,11 +45,20 @@ class ClearCashierDataCommand extends Command
         ];
 
         foreach ($tables as $table) {
-            $this->line("Truncating table: <comment>{$table}</comment>...");
-            DB::table($table)->truncate();
+            if (Schema::hasTable($table)) {
+                $this->line("Truncating table: <comment>{$table}</comment>...");
+                try {
+                    DB::table($table)->truncate();
+                } catch (\Throwable $e) {
+                    DB::table($table)->delete();
+                }
+            }
         }
 
-        Schema::enableForeignKeyConstraints();
+        try {
+            Schema::enableForeignKeyConstraints();
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        } catch (\Throwable $e) {}
         $this->info('Foreign key constraints re-enabled.');
 
         $this->newLine();

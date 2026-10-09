@@ -846,6 +846,44 @@ class AdminController extends Controller
         return view('admin.stock', compact('pageData'));
     }
 
+    public function clearStock(Request $request)
+    {
+        $authUser = session('auth_user') ?? [];
+        if (!empty($authUser['role']) && !in_array($authUser['role'], ['ADMIN', 'SUB_ADMIN'])) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized. Only Admin can clear stock data.'], 403);
+            }
+            abort(403, 'Unauthorized.');
+        }
+
+        try {
+            Schema::disableForeignKeyConstraints();
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        } catch (\Throwable $e) {}
+
+        if (Schema::hasTable('stocks')) {
+            try {
+                DB::table('stocks')->truncate();
+            } catch (\Throwable $e) {
+                DB::table('stocks')->delete();
+            }
+        }
+
+        try {
+            Schema::enableForeignKeyConstraints();
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        } catch (\Throwable $e) {}
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'All live stock inventory data has been cleared successfully! All stock reset to 0.'
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'All live stock inventory data has been cleared successfully! All stock reset to 0.');
+    }
+
     public function downloadStockPdf(Request $request)
     {
         $stages = $request->input('stages', ['RAW', 'SEMI', 'FINISHED', 'PACKAGING']);

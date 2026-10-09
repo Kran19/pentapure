@@ -105,6 +105,11 @@ Route::middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CA
     Route::post('/admin/dispatch/clear', [\App\Http\Controllers\SalesController::class, 'clearHistory']);
     Route::post('/sales/history/clear', [\App\Http\Controllers\SalesController::class, 'clearHistory']);
     Route::post('/dispatch/history/clear', [\App\Http\Controllers\DispatchController::class, 'clearHistory']);
+    Route::post('/admin/cashier/clear', [\App\Http\Controllers\CashierController::class, 'clearLedger']);
+    Route::post('/cashier/ledger/clear', [\App\Http\Controllers\CashierController::class, 'clearLedger']);
+    Route::post('/cashier/history/clear', [\App\Http\Controllers\CashierController::class, 'clearLedger']);
+    Route::post('/admin/stock/clear', [\App\Http\Controllers\AdminController::class, 'clearStock']);
+    Route::post('/stock/clear', [\App\Http\Controllers\AdminController::class, 'clearStock']);
     Route::post('/stock_manager/history/clear', [\App\Http\Controllers\StockManagerController::class, 'clearHistory']);
     Route::delete('/stock_manager/history/{id}', [\App\Http\Controllers\StockManagerController::class, 'destroyHistory']);
 });
@@ -449,6 +454,8 @@ foreach ($adminSlugs as $slug) {
     Route::post('/stock/adjust',      'adjustStock');
     Route::post('/stock/limit',       'setStockLimit');
     Route::post('/stock/rate',        'updateProductRate');
+    Route::post('/stock/clear',       'clearStock')->name($slug.'.stock.clear');
+    Route::post('/admin/stock/clear', 'clearStock')->name($slug.'.admin.stock.clear');
     Route::post('/stock/pdf',         'downloadStockPdf')->name($slug.'.stock.pdf');
     Route::match(['get', 'post'], '/stock/csv', 'downloadStockCsv')->name($slug.'.stock.csv');
     Route::post('/stock/note/{id}',   'updateStockNote')->name($slug.'.stock.note.update');
@@ -523,6 +530,8 @@ foreach ($adminSlugs as $slug) {
     Route::delete('/action/{id}',        [CashierController::class, 'destroyTransaction']);
     Route::get('/cashier/history',       [CashierController::class, 'history'])->name($slug.'.cashier.history');
     Route::get('/cashier/ledger',        [CashierController::class, 'ledger'])->name($slug.'.cashier.ledger');
+    Route::post('/cashier/ledger/clear', [CashierController::class, 'clearLedger'])->name($slug.'.cashier.ledger.clear');
+    Route::post('/cashier/history/clear',[CashierController::class, 'clearLedger'])->name($slug.'.cashier.history.clear');
     Route::delete('/bill/{id}',          [CashierController::class, 'destroyBill'])->name($slug.'.bill.destroy');
     Route::post('/bill/upload',          [CashierController::class, 'uploadBill'])->name($slug.'.bill.upload');
 

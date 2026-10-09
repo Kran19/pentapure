@@ -62,4 +62,71 @@ class ClearCashierDataCommandTest extends TestCase
         $this->assertEquals($initialUserCount + 1, User::count());
         $this->assertEquals($initialCategoryCount + 1, Category::count());
     }
+
+    public function test_admin_can_clear_cashier_ledger_via_web_route(): void
+    {
+        $adminUser = User::create([
+            'name' => 'Admin Boss',
+            'email' => 'admin_cashier@example.com',
+            'password' => 'secret123',
+            'role' => 'ADMIN',
+            'status' => 'ACTIVE',
+        ]);
+
+        $category = Category::create([
+            'name' => 'Stationery',
+            'is_active' => true,
+        ]);
+
+        $tx = Transaction::create([
+            'user_id' => $adminUser->id,
+            'type' => 'IN',
+            'amount' => 5000,
+            'category' => 'stationery',
+            'date' => now(),
+        ]);
+
+        $this->assertDatabaseCount('transactions', 1);
+
+        $session = [
+            'auth_user' => [
+                'id' => $adminUser->id,
+                'name' => $adminUser->name,
+                'role' => 'ADMIN',
+                'status' => 'ACTIVE',
+            ],
+        ];
+
+        $response = $this->withSession($session)
+            ->post('/cashier/ledger/clear');
+
+        $response->assertStatus(302);
+        $this->assertDatabaseCount('transactions', 0);
+        $this->assertDatabaseCount('categories', 1);
+    }
+
+    public function test_non_admin_cannot_clear_cashier_ledger(): void
+    {
+        $cashierUser = User::create([
+            'name' => 'Cashier Regular',
+            'email' => 'cashier_reg@example.com',
+            'password' => 'secret123',
+            'role' => 'CASHIER',
+            'status' => 'ACTIVE',
+        ]);
+
+        $session = [
+            'auth_user' => [
+                'id' => $cashierUser->id,
+                'name' => $cashierUser->name,
+                'role' => 'CASHIER',
+                'status' => 'ACTIVE',
+            ],
+        ];
+
+        $response = $this->withSession($session)
+            ->post('/cashier/ledger/clear');
+
+        $response->assertStatus(403);
+    }
 }
