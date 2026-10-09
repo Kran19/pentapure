@@ -152,9 +152,19 @@ class PdfGenerationTest extends TestCase
                     'location' => '&bull; PALLET 3 (200.000 KG)',
                     'rate' => 250.0,
                     'amount' => 50000.0
+                ],
+                [
+                    'name' => 'TOMATO POWDER SD',
+                    'stage' => 'FINISHED',
+                    'grade' => 'TPS',
+                    'quantity' => 100,
+                    'unit' => 'KG',
+                    'location' => '&bull; PALLET 4 (100.000 KG)',
+                    'rate' => 300.0,
+                    'amount' => 30000.0
                 ]
             ],
-            'totalValuation' => 55250.0,
+            'totalValuation' => 85250.0,
             'generatedOn' => '06 Oct 2026, 08:00 PM',
             'stages' => ['RAW', 'FINISHED'],
             'date' => null,
@@ -171,12 +181,16 @@ class PdfGenerationTest extends TestCase
         }
         $this->assertNotContains('Stage', $headerTexts);
 
-        // 2. Product Name column contains stage badge and grade badge (only if grade exists)
+        // 2. Product Name column contains stage badge and grade badge without 'GRADE' prefix
         $this->assertStringContainsString('badge-raw', $view);
         $this->assertStringContainsString('RAW', $view);
         $this->assertStringContainsString('badge-finished', $view);
         $this->assertStringContainsString('FG', $view);
-        $this->assertStringContainsString('GRADE A', $view);
+        $this->assertStringContainsString('badge-grade', $view);
+        $this->assertStringContainsString('>A<', $view);
+        $this->assertStringContainsString('>TPS<', $view);
+        $this->assertStringNotContainsString('GRADE A', $view);
+        $this->assertStringNotContainsString('GRADE TPS', $view);
 
         // 3. DomPDF rendered stream does not fall back to Helvetica question mark
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($view);

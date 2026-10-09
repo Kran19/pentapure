@@ -427,9 +427,10 @@
                         'PACKAGING', 'PKG' => 'badge-packaging',
                         default => 'badge-raw'
                     };
-                    $gradeTrim = strtoupper(trim($item['grade'] ?? ''));
-                    $hasGrade = !empty($gradeTrim) && !in_array($gradeTrim, ['NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', '-'], true);
-                    $gradeLabel = $hasGrade ? (str_starts_with($gradeTrim, 'GRADE') ? $gradeTrim : 'GRADE ' . $gradeTrim) : '';
+                    $rawGrade = strtoupper(trim($item['grade'] ?? ''));
+                    $cleanGrade = trim(preg_replace('/^GRADE[\s:\-_]*/i', '', $rawGrade));
+                    $hasGrade = !empty($cleanGrade) && !in_array($cleanGrade, ['NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', '-'], true);
+                    $gradeLabel = $hasGrade ? $cleanGrade : '';
                 @endphp
                 <tr>
                     <td class="text-center" style="font-weight: bold; color: #475467;">{{ $idx + 1 }}</td>
