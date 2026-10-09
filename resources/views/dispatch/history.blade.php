@@ -7,7 +7,8 @@
   $startDate = request('start', '');
   $endDate = request('end', '');
   $companyId = request('company_id', '');
-  $statusFilter = request('status', '');
+  $statusFilter = strtoupper(trim((string)request('status', 'ALL')));
+  if (!$statusFilter || $statusFilter === '') $statusFilter = 'ALL';
 
   $filtered = collect($pageData['dispatchLogs'] ?? []);
 
@@ -18,27 +19,7 @@
     });
   }
 
-  // 2. Status Filter
-  if ($statusFilter) {
-    $filtered = $filtered->filter(function($d) use ($statusFilter) {
-      $st = strtoupper(trim((string)($d['dispatchStatus'] ?? $d['status'] ?? '')));
-      $st = str_replace('_', ' ', $st);
-      $target = strtoupper(trim(str_replace('_', ' ', $statusFilter)));
-      
-      if ($target === 'FULLY DISPATCHED' || $target === 'DONE') {
-        return in_array($st, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED']);
-      }
-      if ($target === 'PARTIAL') {
-        return in_array($st, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIAL PENDING']);
-      }
-      if ($target === 'PENDING') {
-        return in_array($st, ['PENDING', 'OPEN', 'UNASSIGNED']);
-      }
-      return str_contains($st, $target);
-    });
-  }
-
-  // 3. Search Query Filter
+  // 2. Search Query Filter
   if ($q) {
     $filtered = $filtered->filter(function($d) use ($q) {
       $query = strtolower($q);
@@ -54,7 +35,7 @@
     });
   }
 
-  // 4. Date Range Filter
+  // 3. Date Range Filter
   if ($dateRange && $dateRange !== 'all') {
     $now = \Carbon\Carbon::now();
     $start = null;
@@ -62,6 +43,7 @@
 
     if ($dateRange === 'today') {
       $start = \Carbon\Carbon::today();
+      $end = \Carbon\Carbon::today()->endOfDay();
     } elseif ($dateRange === 'yesterday') {
       $start = \Carbon\Carbon::yesterday()->startOfDay();
       $end = \Carbon\Carbon::yesterday()->endOfDay();
@@ -86,6 +68,44 @@
         return $date->greaterThanOrEqualTo($start) && $date->lessThanOrEqualTo($end);
       });
     }
+  }
+
+  // Base list before applying status filter to calculate counts for tabs
+  $baseLogs = $filtered;
+  $statusCounts = [
+    'ALL' => $baseLogs->count(),
+    'PENDING' => $baseLogs->filter(function($d) {
+      $st = strtoupper(trim(str_replace('_', ' ', (string)($d['dispatchStatus'] ?? $d['status'] ?? ''))));
+      return in_array($st, ['PENDING', 'OPEN', 'UNASSIGNED', 'PARTIAL', 'PARTIAL DISPATCH', 'PARTIAL PENDING']);
+    })->count(),
+    'PARTIAL' => $baseLogs->filter(function($d) {
+      $st = strtoupper(trim(str_replace('_', ' ', (string)($d['dispatchStatus'] ?? $d['status'] ?? ''))));
+      return in_array($st, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIAL PENDING']);
+    })->count(),
+    'FULLY_DISPATCH' => $baseLogs->filter(function($d) {
+      $st = strtoupper(trim(str_replace('_', ' ', (string)($d['dispatchStatus'] ?? $d['status'] ?? ''))));
+      return in_array($st, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED']);
+    })->count(),
+  ];
+
+  // 4. Status Filter: when PENDING is selected, also show PARTIAL
+  if ($statusFilter && $statusFilter !== 'ALL') {
+    $filtered = $baseLogs->filter(function($d) use ($statusFilter) {
+      $st = strtoupper(trim((string)($d['dispatchStatus'] ?? $d['status'] ?? '')));
+      $st = str_replace('_', ' ', $st);
+      $target = strtoupper(trim(str_replace('_', ' ', $statusFilter)));
+      
+      if (in_array($target, ['FULLY DISPATCHED', 'FULLY DISPATCH', 'DONE'])) {
+        return in_array($st, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED']);
+      }
+      if ($target === 'PARTIAL' || $target === 'PARTIAL DISPATCH' || $target === 'PARTIAL PENDING') {
+        return in_array($st, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIAL PENDING']);
+      }
+      if ($target === 'PENDING') {
+        return in_array($st, ['PENDING', 'OPEN', 'UNASSIGNED', 'PARTIAL', 'PARTIAL DISPATCH', 'PARTIAL PENDING']);
+      }
+      return str_contains($st, $target);
+    });
   }
 
   // 5. Step-by-Step Priority Sorting: PENDING (1) -> PARTIAL PENDING (2) -> PARTIAL DISPATCH (3) -> FULLY DISPATCHED (4)
@@ -118,7 +138,7 @@
   $userSlug = in_array(request()->segment(1), ['admin', 'sub_admin', 'dispatch', 'sales', 'stock_manager'])
     ? request()->segment(1)
     : (session('auth_user')['login_slug'] ?? strtolower(session('auth_user')['role'] ?? 'dispatch'));
-  $pdfUrl = route('history.pdf', ['user_slug' => $userSlug, 'panel' => 'dispatch']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&company_id=' . $companyId . '&status=' . $statusFilter . '&q=' . $q;
+  $pdfUrl = route('history.pdf', ['user_slug' => $userSlug, 'panel' => 'dispatch']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&company_id=' . $companyId . '&status=' . ($statusFilter === 'ALL' ? '' : $statusFilter) . '&q=' . $q;
 @endphp
 <style>
 @media (max-width: 720px) {
@@ -126,6 +146,89 @@
     grid-template-columns: repeat(3, 1fr) !important;
     width: 100% !important;
   }
+}
+.status-tabs-wrapper {
+  display: inline-flex;
+  align-items: center;
+  background: #ffffff;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.status-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.45rem 0.85rem;
+  border-radius: 7px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  color: #475569;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+.status-tab-btn:hover:not(.active-all):not(.active-pending):not(.active-partial):not(.active-done) {
+  color: #111827;
+  background: #f1f5f9;
+}
+.status-tab-btn .tab-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+}
+
+/* Active Tab Styles */
+.status-tab-btn.active-all {
+  background: var(--primary, #D88A00);
+  color: #000000 !important;
+  font-weight: 800;
+}
+.status-tab-btn.active-all .tab-badge {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: transparent;
+  color: #000000;
+}
+
+.status-tab-btn.active-pending {
+  background: #ef4444;
+  color: #ffffff !important;
+  font-weight: 800;
+}
+.status-tab-btn.active-pending .tab-badge {
+  background: rgba(0, 0, 0, 0.22);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.status-tab-btn.active-partial {
+  background: #f59e0b;
+  color: #ffffff !important;
+  font-weight: 800;
+}
+.status-tab-btn.active-partial .tab-badge {
+  background: rgba(0, 0, 0, 0.22);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.status-tab-btn.active-done {
+  background: #16a34a;
+  color: #ffffff !important;
+  font-weight: 800;
+}
+.status-tab-btn.active-done .tab-badge {
+  background: rgba(0, 0, 0, 0.22);
+  border-color: transparent;
+  color: #ffffff;
 }
 </style>
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
@@ -139,9 +242,11 @@
   </div>
 </div>
 
-<form method="GET" action="" style="margin-bottom:1.2rem; display:flex; flex-direction:column; gap:10px;">
-  <!-- 3 Filter Boxes in 1 Line -->
-  <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; align-items:center;">
+<form method="GET" action="" style="margin-bottom:1rem; display:flex; flex-direction:column; gap:10px;">
+  <input type="hidden" name="status" value="{{ $statusFilter }}">
+
+  <!-- 2 Filter Boxes in 1 Line: Date Range & Company Name -->
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; align-items:center;">
     
     <!-- 1st: Date Range Filter -->
     <div>
@@ -162,16 +267,6 @@
         @endforeach
       </select>
     </div>
-
-    <!-- 3rd: Status Filter -->
-    <div>
-      <select name="status" onchange="this.form.submit()" style="width:100%; padding:0.65rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600;">
-        <option value="">ALL STATUS</option>
-        <option value="PENDING" {{ $statusFilter === 'PENDING' ? 'selected' : '' }}>PENDING</option>
-        <option value="PARTIAL" {{ $statusFilter === 'PARTIAL' ? 'selected' : '' }}>PARTIAL</option>
-        <option value="DONE" {{ $statusFilter === 'DONE' ? 'selected' : '' }}>FULLY DISPATCHED</option>
-      </select>
-    </div>
   </div>
 
   @if($dateRange === 'custom')
@@ -188,6 +283,36 @@
     <input type="text" name="q" placeholder="SEARCH CUSTOMER, SALESPERSON, TRANSPORTER OR ORDER ID..." value="{{ $q }}" onchange="this.form.submit()" style="padding:0.65rem 0.9rem; font-size:0.9rem; width:100%; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
   </div>
 </form>
+
+<!-- Status Tabs Filter Bar (matching screenshot: ALL, PENDING, PARTIAL, FULLY DISPATCHED) -->
+<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:1.2rem;">
+  <div class="status-tabs-wrapper">
+    <!-- All -->
+    <a href="{{ request()->fullUrlWithQuery(['status' => 'ALL', 'page' => 1]) }}"
+       class="status-tab-btn {{ in_array($statusFilter, ['', 'ALL']) ? 'active-all' : '' }}" title="Show All Orders">
+      ALL <span class="tab-badge">{{ $statusCounts['ALL'] ?? 0 }}</span>
+    </a>
+    <!-- Pending (shows Pending and Partial) -->
+    <a href="{{ request()->fullUrlWithQuery(['status' => 'PENDING', 'page' => 1]) }}"
+       class="status-tab-btn {{ $statusFilter === 'PENDING' ? 'active-pending' : '' }}" title="Filter Pending &amp; Partial Orders">
+      PENDING <span class="tab-badge">{{ $statusCounts['PENDING'] ?? 0 }}</span>
+    </a>
+    <!-- Partial -->
+    <a href="{{ request()->fullUrlWithQuery(['status' => 'PARTIAL', 'page' => 1]) }}"
+       class="status-tab-btn {{ in_array($statusFilter, ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL_DISPATCH']) ? 'active-partial' : '' }}" title="Filter Partial Orders">
+      PARTIAL <span class="tab-badge">{{ $statusCounts['PARTIAL'] ?? 0 }}</span>
+    </a>
+    <!-- Fully Dispatched -->
+    <a href="{{ request()->fullUrlWithQuery(['status' => 'FULLY_DISPATCHED', 'page' => 1]) }}"
+       class="status-tab-btn {{ in_array($statusFilter, ['FULLY_DISPATCH', 'FULLY_DISPATCHED', 'DONE']) ? 'active-done' : '' }}" title="Filter Fully Dispatched Orders">
+      FULLY DISPATCHED <span class="tab-badge">{{ $statusCounts['FULLY_DISPATCH'] ?? 0 }}</span>
+    </a>
+  </div>
+
+  <div style="font-size:0.85rem; color:var(--text-muted); font-weight:600;">
+    Showing <strong>{{ $total }}</strong> {{ $total == 1 ? 'record' : 'records' }}
+  </div>
+</div>
 
 <div style="display:flex; flex-direction:column; gap:10px;">
   @forelse($paginated as $idx => $d)

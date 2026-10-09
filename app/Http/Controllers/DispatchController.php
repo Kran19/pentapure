@@ -1078,7 +1078,7 @@ class DispatchController extends Controller
         ])
             ->where('status', '!=', 'CANCELLED')
             ->where(function($q) {
-                $q->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED'])
+                $q->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED', 'PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED'])
                   ->orWhereNull('dispatch_status');
             })
             ->whereDoesntHave('dispatchLogs')
@@ -1086,6 +1086,9 @@ class DispatchController extends Controller
             ->get();
 
         $pendingData = $pendingOrders->map(function($o) {
+            $rawStatus = strtoupper(trim(str_replace('_', ' ', (string)($o->dispatch_status ?? 'PENDING'))));
+            $dispStatus = in_array($rawStatus, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED']) ? 'PARTIAL' : 'PENDING';
+
             return [
                 'id'            => 'ord_' . $o->id,
                 'isOrderOnly'   => true,
@@ -1101,7 +1104,7 @@ class DispatchController extends Controller
                 'orderLrCopies' => [],
                 'orderTotal'    => $o->total,
                 'status'        => $o->status,
-                'dispatchStatus'=> 'PENDING',
+                'dispatchStatus'=> $dispStatus,
                 'date'          => $o->created_at ? $o->created_at->toISOString() : ($o->date ? \Carbon\Carbon::parse($o->date)->toISOString() : now()->toISOString()),
                 'notes'         => $o->notes,
                 'dispatchNotes' => null,

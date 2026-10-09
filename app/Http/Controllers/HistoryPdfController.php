@@ -611,7 +611,7 @@ class HistoryPdfController extends Controller
                     $qo->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIAL_PENDING', 'PARTIAL PENDING']);
                 } elseif ($target === 'PENDING') {
                     $qo->where(function($sub) {
-                        $sub->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED'])
+                        $sub->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED', 'PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIAL_PENDING', 'PARTIAL PENDING'])
                             ->orWhereNull('dispatch_status');
                     });
                 } else {
