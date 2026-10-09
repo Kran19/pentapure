@@ -1027,8 +1027,15 @@ class DispatchController extends Controller
                 }
             }
 
+            $orderTotalQty = (float) ($d->order?->items?->sum('quantity') ?? 0);
+            $orderRemainingQty = (float) ($d->order?->items?->sum(fn($i) => $i->remainingQty()) ?? 0);
+            $rawDispStatus = strtoupper(trim((string)($d->order?->dispatch_status ?? '')));
+            $isOrderDone = in_array($rawDispStatus, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED']) || ($orderTotalQty > 0 && $orderRemainingQty <= 0);
+            $computedStatus = $isOrderDone ? 'DONE' : 'PARTIAL';
+
             return [
                 'id'            => $d->id,
+                'isOrderOnly'   => false,
                 'orderId'       => $d->order_id,
                 'companyId'     => $d->order?->company_id,
                 'companyName'   => $d->order?->company?->name,
@@ -1041,7 +1048,7 @@ class DispatchController extends Controller
                 'orderLrCopies' => $orderLrCopies,
                 'orderTotal'    => $d->order?->total,
                 'status'        => $d->order?->status,
-                'dispatchStatus'=> $d->order?->dispatch_status,
+                'dispatchStatus'=> $computedStatus,
                 'date'          => $d->created_at ? $d->created_at->toISOString() : ($d->date ? \Carbon\Carbon::parse($d->date)->toISOString() : now()->toISOString()),
                 'notes'         => $d->notes ?: $d->order?->notes,
                 'dispatchNotes' => $d->notes,
@@ -1062,13 +1069,68 @@ class DispatchController extends Controller
             ];
         });
 
+        // Also load pending orders that have no dispatch logs yet, so they appear under PENDING in Dispatch History
+        $pendingOrders = Order::with([
+            'company',
+            'transporter',
+            'creator',
+            'items.product',
+        ])
+            ->where('status', '!=', 'CANCELLED')
+            ->where(function($q) {
+                $q->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED'])
+                  ->orWhereNull('dispatch_status');
+            })
+            ->whereDoesntHave('dispatchLogs')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $pendingData = $pendingOrders->map(function($o) {
+            return [
+                'id'            => 'ord_' . $o->id,
+                'isOrderOnly'   => true,
+                'orderId'       => $o->id,
+                'companyId'     => $o->company_id,
+                'companyName'   => $o->company?->name,
+                'transportName' => $o->transporter?->name,
+                'salesPerson'   => $o->creator?->name ?? 'N/A',
+                'salesBy'       => $o->creator?->name ?? 'N/A',
+                'dispatchedBy'  => 'Not Dispatched',
+                'lrImage'       => null,
+                'lrImages'      => [],
+                'orderLrCopies' => [],
+                'orderTotal'    => $o->total,
+                'status'        => $o->status,
+                'dispatchStatus'=> 'PENDING',
+                'date'          => $o->created_at ? $o->created_at->toISOString() : ($o->date ? \Carbon\Carbon::parse($o->date)->toISOString() : now()->toISOString()),
+                'notes'         => $o->notes,
+                'dispatchNotes' => null,
+                'orderNotes'    => $o->notes,
+                'items'         => $o->items->map(fn($oi) => [
+                    'id'            => $oi->id,
+                    'dispatchItemId'=> null,
+                    'orderItemId'   => $oi->id,
+                    'productName'   => $oi->product?->name ?? 'Unknown',
+                    'rawProductName'=> $oi->product?->name ?? 'Unknown',
+                    'formattedName' => $oi->product ? $oi->product->formatName($oi->grade) : 'Unknown',
+                    'grade'         => $oi->grade,
+                    'productType'   => $oi->product?->type,
+                    'totalQty'      => (float) ($oi->quantity ?? 0),
+                    'dispatchedQty' => 0,
+                    'remainingQty'  => (float) ($oi->quantity ?? 0),
+                ])->values(),
+            ];
+        });
+
+        $allData = $logsData->concat($pendingData);
+
         $companies = Company::orderBy('name')->get()->map(fn($c) => [
             'id' => $c->id,
             'name' => strtoupper($c->name ?? '')
         ]);
 
         $pageData = [
-            'dispatchLogs' => $logsData,
+            'dispatchLogs' => $allData,
             'companies'    => $companies,
         ];
         return view('dispatch.history', compact('pageData'));

@@ -32,7 +32,7 @@
         return in_array($st, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIAL PENDING']);
       }
       if ($target === 'PENDING') {
-        return in_array($st, ['PENDING', 'OPEN', 'UNASSIGNED', 'PARTIAL', 'PARTIAL DISPATCH', 'PARTIAL PENDING']);
+        return in_array($st, ['PENDING', 'OPEN', 'UNASSIGNED']);
       }
       return str_contains($st, $target);
     });
@@ -234,23 +234,34 @@
         </div>
         <div style="display:flex; align-items:center; gap:10px; text-align:right; flex-wrap:nowrap;">
           <div style="display:flex; flex-direction:column; gap:5px; align-items:stretch;">
-            <a href="{{ url(request()->segment(1) . '/pdf/' . $d['id']) }}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm" style="width:100%; padding:0.3rem 0.75rem; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-weight:600; background:var(--primary, #D88A00); color:#000; white-space:nowrap;">
-              📄 Download PDF
-            </a>
-            @if($lrUploaded)
-            <a href="{{ url(request()->segment(1) . '/dispatch/download-lr/' . $d['id']) }}" download onclick="event.stopPropagation()" class="btn btn-sm" style="width:100%; padding:0.3rem 0.75rem; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-weight:600; background:#059669 !important; color:#ffffff !important; white-space:nowrap; border-radius:4px; border:none;" title="Download LR Copy">
-              📥 Download LR
-            </a>
-            @endif
-            @if(!empty($d['orderLrCopies']) && count($d['orderLrCopies']) > 1)
-            <a href="{{ url(request()->segment(1) . '/dispatch/download-multiple-lr?order_id=' . $d['orderId']) }}" download onclick="event.stopPropagation()" class="btn btn-sm" style="width:100%; padding:0.3rem 0.75rem; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-weight:700; background:#0284c7 !important; color:#ffffff !important; white-space:nowrap; border-radius:4px; border:none;" title="Download all {{ count($d['orderLrCopies']) }} LR copies for this order">
-              📥 All {{ count($d['orderLrCopies']) }} LRs
-            </a>
-            @endif
-            @if(empty($isReadOnly))
-            <button type="button" class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); app.revertDispatch({{ $d['id'] }})" style="width:100%; padding:0.3rem 0.75rem; font-size:0.75rem; border-color:#ef4444 !important; color:#ef4444 !important; display:inline-flex; align-items:center; justify-content:center; gap:4px; white-space:nowrap;">
-              ↩ Revert Dispatch
-            </button>
+            @if(!empty($d['isOrderOnly']))
+              <a href="{{ url(request()->segment(1) . '/sales/order/pdf/' . $d['orderId']) }}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm" style="width:100%; padding:0.3rem 0.75rem; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-weight:600; background:var(--primary, #D88A00); color:#000; white-space:nowrap;">
+                📄 View Order PDF
+              </a>
+              @if(empty($isReadOnly))
+              <a href="{{ url(request()->segment(1) . '/dispatch/action?order_id=' . $d['orderId']) }}" onclick="event.stopPropagation()" class="btn btn-sm" style="width:100%; padding:0.3rem 0.75rem; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-weight:700; background:#059669; color:#fff !important; white-space:nowrap; border-radius:4px;">
+                📦 Dispatch Now
+              </a>
+              @endif
+            @else
+              <a href="{{ url(request()->segment(1) . '/pdf/' . $d['id']) }}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm" style="width:100%; padding:0.3rem 0.75rem; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-weight:600; background:var(--primary, #D88A00); color:#000; white-space:nowrap;">
+                📄 Download PDF
+              </a>
+              @if($lrUploaded)
+              <a href="{{ url(request()->segment(1) . '/dispatch/download-lr/' . $d['id']) }}" download onclick="event.stopPropagation()" class="btn btn-sm" style="width:100%; padding:0.3rem 0.75rem; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-weight:600; background:#059669 !important; color:#ffffff !important; white-space:nowrap; border-radius:4px; border:none;" title="Download LR Copy">
+                📥 Download LR
+              </a>
+              @endif
+              @if(!empty($d['orderLrCopies']) && count($d['orderLrCopies']) > 1)
+              <a href="{{ url(request()->segment(1) . '/dispatch/download-multiple-lr?order_id=' . $d['orderId']) }}" download onclick="event.stopPropagation()" class="btn btn-sm" style="width:100%; padding:0.3rem 0.75rem; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-weight:700; background:#0284c7 !important; color:#ffffff !important; white-space:nowrap; border-radius:4px; border:none;" title="Download all {{ count($d['orderLrCopies']) }} LR copies for this order">
+                📥 All {{ count($d['orderLrCopies']) }} LRs
+              </a>
+              @endif
+              @if(empty($isReadOnly))
+              <button type="button" class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); app.revertDispatch({{ $d['id'] }})" style="width:100%; padding:0.3rem 0.75rem; font-size:0.75rem; border-color:#ef4444 !important; color:#ef4444 !important; display:inline-flex; align-items:center; justify-content:center; gap:4px; white-space:nowrap;">
+                ↩ Revert Dispatch
+              </button>
+              @endif
             @endif
           </div>
           <div class="acc-chevron" style="transition:transform 0.25s ease; color:var(--text-muted); display:flex; align-items:center;">
@@ -300,7 +311,7 @@
 
         @if(!empty($d['items']) && count($d['items']) > 0)
           <div style="margin-bottom:1rem; background:rgba(0,0,0,0.15); border-radius:8px; padding:12px; border-left:3px solid var(--primary, #D88A00);">
-            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">Items Dispatched in this Round</div>
+            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">{{ !empty($d['isOrderOnly']) ? 'Items Pending Dispatch' : 'Items Dispatched in this Round' }}</div>
             @foreach($d['items'] as $item)
               @php
                 $rawName = $item['rawProductName'] ?? $item['productName'] ?? 'Unknown';
@@ -346,7 +357,16 @@
           </div>
         @endif
 
-        @if($lrUploaded)
+        @if(!empty($d['isOrderOnly']))
+          <div style="margin-bottom:1rem; padding:1.2rem; background:rgba(239,68,68,0.06); border:1px dashed rgba(239,68,68,0.3); border-radius:10px; text-align:center;">
+            <div style="color:#ef4444; font-weight:700; font-size:0.88rem; margin-bottom:8px;">Dispatch &amp; LR Copy Pending (Order not yet dispatched)</div>
+            @if(empty($isReadOnly))
+              <a href="{{ url(request()->segment(1) . '/dispatch/action?order_id=' . $d['orderId']) }}" class="btn btn-sm" style="font-size:0.82rem; padding:0.5rem 1rem; background:#059669; color:#fff !important; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-weight:700; border-radius:6px;">
+                📦 Dispatch Order Now
+              </a>
+            @endif
+          </div>
+        @elseif($lrUploaded)
           <div style="margin-bottom:1rem;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:6px;">
               <span style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600;">LR Copy (Round #{{ $d['id'] }})</span>
@@ -408,8 +428,10 @@
             </div>
           </div>
         @endif
-        <input type="file" id="late-lr-cam-{{ $d['id'] }}" accept="image/*" capture="environment" style="display:none;" onchange="app.handleLateLRUpload(event, {{ $d['id'] }}, {{ $idx }})">
-        <input type="file" id="late-lr-input-{{ $d['id'] }}" accept=".jpg,.jpeg,.png,.webp,image/*" style="display:none;" onchange="app.handleLateLRUpload(event, {{ $d['id'] }}, {{ $idx }})">
+        @if(empty($d['isOrderOnly']))
+          <input type="file" id="late-lr-cam-{{ $d['id'] }}" accept="image/*" capture="environment" style="display:none;" onchange="app.handleLateLRUpload(event, {{ $d['id'] }}, {{ $idx }})">
+          <input type="file" id="late-lr-input-{{ $d['id'] }}" accept=".jpg,.jpeg,.png,.webp,image/*" style="display:none;" onchange="app.handleLateLRUpload(event, {{ $d['id'] }}, {{ $idx }})">
+        @endif
       </div>
     </div>
   @empty

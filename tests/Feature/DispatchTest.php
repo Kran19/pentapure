@@ -697,4 +697,107 @@ class DispatchTest extends TestCase
         $this->assertEquals(200, $resp3->status());
         $resp3->assertHeader('Content-Type', 'application/pdf');
     }
+
+    public function test_dispatch_history_filters_status_properly(): void
+    {
+        $subAdmin = User::create([
+            'name'        => 'Sub Admin User',
+            'email'       => 'subadmin@example.com',
+            'password'    => 'password123',
+            'role'        => 'SUB_ADMIN',
+            'status'      => 'ACTIVE',
+            'permissions' => ['dispatch_history', 'dispatch_action'],
+        ]);
+        $session = ['auth_user' => $subAdmin->toArray()];
+
+        $dispatchSession = ['auth_user' => [
+            'id'   => $this->dispatchUser->id,
+            'name' => $this->dispatchUser->name,
+            'role' => 'DISPATCH',
+        ]];
+
+        // 1. $this->order is PENDING (300m, 0 dispatched)
+
+        // 2. Create partial order
+        $partialOrder = Order::create([
+            'created_by'      => $this->dispatchUser->id,
+            'company_id'      => $this->company->id,
+            'transporter_id'  => $this->transporter->id,
+            'total'           => 10000,
+            'status'          => 'OPEN',
+            'dispatch_status' => 'PENDING',
+        ]);
+        $partialItem = OrderItem::create([
+            'order_id'       => $partialOrder->id,
+            'product_id'     => $this->finishedProduct->id,
+            'grade'          => 'NONE',
+            'quantity'       => 200,
+            'price'          => 50,
+            'dispatched_qty' => 0,
+        ]);
+        // Dispatch partial: 50m
+        $resp1 = $this->withSession($dispatchSession)->postJson('/dispatch/action', [
+            'order_id' => $partialOrder->id,
+            'items'    => [
+                [
+                    'order_item_id' => $partialItem->id,
+                    'quantity'      => 50,
+                ]
+            ]
+        ]);
+        $resp1->assertJson(['success' => true]);
+
+        // 3. Create done order
+        $doneOrder = Order::create([
+            'created_by'      => $this->dispatchUser->id,
+            'company_id'      => $this->company->id,
+            'transporter_id'  => $this->transporter->id,
+            'total'           => 5000,
+            'status'          => 'OPEN',
+            'dispatch_status' => 'PENDING',
+        ]);
+        $doneItem = OrderItem::create([
+            'order_id'       => $doneOrder->id,
+            'product_id'     => $this->finishedProduct->id,
+            'grade'          => 'NONE',
+            'quantity'       => 50,
+            'price'          => 100,
+            'dispatched_qty' => 0,
+        ]);
+        // Dispatch all: 50m
+        $resp2 = $this->withSession($dispatchSession)->postJson('/dispatch/action', [
+            'order_id' => $doneOrder->id,
+            'items'    => [
+                [
+                    'order_item_id' => $doneItem->id,
+                    'quantity'      => 50,
+                ]
+            ]
+        ]);
+        $resp2->assertJson(['success' => true]);
+
+        // Test PENDING filter on sub_admin dispatch history
+        $pendingResp = $this->withSession($session)->get('/sub_admin/dispatch/history?range=all&company_id=&status=PENDING&q=');
+        $pendingResp->assertStatus(200);
+        $pendingContent = $pendingResp->getContent();
+        $this->assertStringContainsString("Order #{$this->order->id}", $pendingContent);
+        $this->assertStringNotContainsString("Order #{$partialOrder->id}", $pendingContent);
+        $this->assertStringNotContainsString("Order #{$doneOrder->id}", $pendingContent);
+
+        // Test PARTIAL filter
+        $partialResp = $this->withSession($session)->get('/sub_admin/dispatch/history?range=all&company_id=&status=PARTIAL&q=');
+        $partialResp->assertStatus(200);
+        $partialContent = $partialResp->getContent();
+        $this->assertStringContainsString("Order #{$partialOrder->id}", $partialContent);
+        $this->assertStringNotContainsString("Order #{$this->order->id}", $partialContent);
+        $this->assertStringNotContainsString("Order #{$doneOrder->id}", $partialContent);
+
+        // Test FULLY DISPATCHED (DONE) filter
+        $doneResp = $this->withSession($session)->get('/sub_admin/dispatch/history?range=all&company_id=&status=DONE&q=');
+        $doneResp->assertStatus(200);
+        $doneContent = $doneResp->getContent();
+        $this->assertStringContainsString("Order #{$doneOrder->id}", $doneContent);
+        $this->assertStringNotContainsString("Order #{$this->order->id}", $doneContent);
+        $this->assertStringNotContainsString("Order #{$partialOrder->id}", $doneContent);
+    }
 }
