@@ -1,6 +1,18 @@
 @extends(in_array(session('auth_user')['role'] ?? '', ['ADMIN', 'SUB_ADMIN', 'STOCK_MANAGER']) || str_contains(request()->path(), 'sub_admin') || str_contains(request()->path(), 'admin') ? 'layouts.admin' : 'layouts.app')
 
 @section('content')
+@if(session('success'))
+  <div style="background:#dcfce7; border:1px solid #86efac; color:#166534; padding:0.8rem 1.2rem; border-radius:8px; margin-bottom:1rem; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+    <span>✓ {{ session('success') }}</span>
+    <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:#166534; font-size:1.1rem; cursor:pointer;">&times;</button>
+  </div>
+@endif
+@if(session('error'))
+  <div style="background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; padding:0.8rem 1.2rem; border-radius:8px; margin-bottom:1rem; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+    <span>⚠️ {{ session('error') }}</span>
+    <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:#991b1b; font-size:1.1rem; cursor:pointer;">&times;</button>
+  </div>
+@endif
 @php
   $q = request('q', '');
   $dateRange = request('range', 'all');
@@ -373,6 +385,11 @@
     </button>
     <button id="export-pdf-btn" class="btn btn-sm btn-secondary" style="width:auto; padding:0.5rem 1rem;"
       onclick="app.exportHistoryPdf(this, '{{ $pdfUrl }}')">📄 Export PDF</button>
+    @if(in_array(session('auth_user')['role'] ?? '', ['ADMIN', 'SUB_ADMIN']))
+      <button type="button" class="btn btn-sm" onclick="confirmClearDispatchHistory()" style="width:auto; padding:0.5rem 1rem; background:#dc2626; color:#fff; border:none; border-radius:6px; font-weight:700; cursor:pointer;" title="Permanently clear all dispatch logs and sales orders">
+        🗑️ Clear All Dispatch History
+      </button>
+    @endif
   </div>
 </div>
 
@@ -747,6 +764,22 @@
       content.style.display = 'none';
       if (chevron) chevron.style.transform = 'rotate(0deg)';
     }
+  }
+
+  function confirmClearDispatchHistory() {
+    if (!confirm('Are you sure you want to permanently delete ALL sales orders and dispatch history? This will wipe all orders and dispatches from both Dispatch History and Sales History. Users, companies, and products will remain 100% intact.')) {
+      return;
+    }
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url(request()->segment(1) . "/dispatch/history/clear") }}';
+    const csrf = document.createElement('input');
+    csrf.type = 'hidden';
+    csrf.name = '_token';
+    csrf.value = '{{ csrf_token() }}';
+    form.appendChild(csrf);
+    document.body.appendChild(form);
+    form.submit();
   }
 </script>
 <!-- Floating Batch Download Bar for Multiple Selected LRs -->

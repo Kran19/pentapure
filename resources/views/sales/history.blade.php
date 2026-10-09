@@ -1,6 +1,18 @@
 @extends(in_array(session('auth_user')['role'] ?? '', ['ADMIN', 'SUB_ADMIN', 'STOCK_MANAGER']) || str_contains(request()->path(), 'sub_admin') || str_contains(request()->path(), 'admin') ? 'layouts.admin' : 'layouts.app')
 
 @section('content')
+@if(session('success'))
+  <div style="background:#dcfce7; border:1px solid #86efac; color:#166534; padding:0.8rem 1.2rem; border-radius:8px; margin-bottom:1rem; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+    <span>✓ {{ session('success') }}</span>
+    <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:#166534; font-size:1.1rem; cursor:pointer;">&times;</button>
+  </div>
+@endif
+@if(session('error'))
+  <div style="background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; padding:0.8rem 1.2rem; border-radius:8px; margin-bottom:1rem; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+    <span>⚠️ {{ session('error') }}</span>
+    <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:#991b1b; font-size:1.1rem; cursor:pointer;">&times;</button>
+  </div>
+@endif
 @php
   $q = request('q', '');
   $dateRange = request('range', 'all');
@@ -104,11 +116,16 @@
 
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
   <h2 style="margin:0;">📈 Sales Orders History</h2>
-  <div style="display:flex; gap:8px;">
+  <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
     <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action') }}" style="width:auto; padding:0.5rem 1rem; text-decoration:none;">+ Create New Order</a>
     @php $pdfUrl = route('history.pdf', ['user_slug' => request()->segment(1) ?: 'sales', 'panel' => 'sales']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&company_id=' . $companyId . '&status=' . $statusFilter . '&q=' . $q . '&due=' . $dueFilter; @endphp
     <button id="export-pdf-btn" class="btn btn-sm btn-secondary" style="width:auto; padding:0.5rem 1rem;"
       onclick="app.exportHistoryPdf(this, '{{ $pdfUrl }}')">📄 Export PDF</button>
+    @if(in_array(session('auth_user')['role'] ?? '', ['ADMIN', 'SUB_ADMIN']))
+      <button type="button" class="btn btn-sm" onclick="confirmClearSalesHistory()" style="width:auto; padding:0.5rem 1rem; background:#dc2626; color:#fff; border:none; border-radius:6px; font-weight:700; cursor:pointer;" title="Permanently clear all sales orders and dispatch records">
+        🗑️ Clear All Sales History
+      </button>
+    @endif
   </div>
 </div>
 
@@ -464,6 +481,22 @@
       content.style.display = 'none';
       if (chevron) chevron.style.transform = 'rotate(0deg)';
     }
+  }
+
+  function confirmClearSalesHistory() {
+    if (!confirm('Are you sure you want to permanently delete ALL sales orders and dispatch history? This will wipe all orders and dispatches from both Sales History and Dispatch History. Users, companies, and products will remain 100% intact.')) {
+      return;
+    }
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url(request()->segment(1) . "/sales/history/clear") }}';
+    const csrf = document.createElement('input');
+    csrf.type = 'hidden';
+    csrf.name = '_token';
+    csrf.value = '{{ csrf_token() }}';
+    form.appendChild(csrf);
+    document.body.appendChild(form);
+    form.submit();
   }
 </script>
 @endsection

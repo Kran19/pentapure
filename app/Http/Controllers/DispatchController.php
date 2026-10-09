@@ -1296,4 +1296,9 @@ class DispatchController extends Controller
 
         return response()->json(['success' => true, 'message' => 'Dispatch reverted successfully!']);
     }
+
+    public function clearHistory(Request $request)
+    {
+        return app(\App\Http\Controllers\SalesController::class)->clearHistory($request);
+    }
 }

@@ -771,4 +771,62 @@ class SalesController extends Controller
     {
         return view('sales.profile');
     }
+
+    public function clearHistory(Request $request)
+    {
+        $user = $this->authUser();
+        if (!in_array($user['role'] ?? '', ['ADMIN', 'SUB_ADMIN'])) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized. Only Admin can clear sales and dispatch data.'], 403);
+            }
+            abort(403, 'Unauthorized.');
+        }
+
+        try {
+            Schema::disableForeignKeyConstraints();
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        } catch (\Throwable $e) {}
+
+        $tables = [
+            'dispatch_item_locations',
+            'dispatch_log_items',
+            'dispatch_logs',
+            'order_items',
+            'orders',
+        ];
+
+        foreach ($tables as $table) {
+            if (Schema::hasTable($table)) {
+                try {
+                    DB::table($table)->truncate();
+                } catch (\Throwable $e) {
+                    DB::table($table)->delete();
+                }
+            }
+        }
+
+        try {
+            Schema::enableForeignKeyConstraints();
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        } catch (\Throwable $e) {}
+
+        $lrDir = public_path('lr_images');
+        if (!app()->environment('testing') && is_dir($lrDir)) {
+            $files = glob($lrDir . '/*');
+            foreach ($files as $file) {
+                if (is_file($file)) {
+                    @unlink($file);
+                }
+            }
+        }
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'All sales orders and dispatch history have been successfully cleared!'
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'All sales orders and dispatch history have been successfully cleared!');
+    }
 }

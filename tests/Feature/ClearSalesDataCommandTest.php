@@ -76,4 +76,80 @@ class ClearSalesDataCommandTest extends TestCase
         $this->assertDatabaseCount('companies', 1);
         $this->assertDatabaseCount('transporters', 1);
     }
+
+    public function test_admin_can_clear_sales_and_dispatch_history_via_web_route(): void
+    {
+        $adminUser = User::create([
+            'name' => 'Admin Boss',
+            'email' => 'admin_boss@example.com',
+            'password' => 'secret123',
+            'role' => 'ADMIN',
+            'status' => 'ACTIVE',
+        ]);
+
+        $company = Company::create([
+            'name' => 'Beta Corp',
+            'contact' => '9998887776',
+        ]);
+
+        $order = Order::create([
+            'created_by' => $adminUser->id,
+            'company_id' => $company->id,
+            'total' => 12000,
+            'status' => 'OPEN',
+            'dispatch_status' => 'PENDING',
+        ]);
+
+        $dispatchLog = \App\Models\DispatchLog::create([
+            'user_id' => $adminUser->id,
+            'order_id' => $order->id,
+            'lr_no' => 'LR-9988',
+        ]);
+
+        $this->assertDatabaseCount('orders', 1);
+        $this->assertDatabaseCount('dispatch_logs', 1);
+
+        $session = [
+            'auth_user' => [
+                'id' => $adminUser->id,
+                'name' => $adminUser->name,
+                'role' => 'ADMIN',
+                'status' => 'ACTIVE',
+            ],
+        ];
+
+        // Call web clear endpoint
+        $response = $this->withSession($session)
+            ->post('/sales/history/clear');
+
+        $response->assertStatus(302);
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('dispatch_logs', 0);
+        $this->assertDatabaseCount('companies', 1);
+    }
+
+    public function test_non_admin_cannot_clear_sales_and_dispatch_history(): void
+    {
+        $salesUser = User::create([
+            'name' => 'Regular Sales',
+            'email' => 'reg_sales@example.com',
+            'password' => 'secret123',
+            'role' => 'SALES',
+            'status' => 'ACTIVE',
+        ]);
+
+        $session = [
+            'auth_user' => [
+                'id' => $salesUser->id,
+                'name' => $salesUser->name,
+                'role' => 'SALES',
+                'status' => 'ACTIVE',
+            ],
+        ];
+
+        $response = $this->withSession($session)
+            ->post('/sales/history/clear');
+
+        $response->assertStatus(403);
+    }
 }

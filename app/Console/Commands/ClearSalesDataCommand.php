@@ -33,7 +33,10 @@ class ClearSalesDataCommand extends Command
         }
 
         $this->info('Disabling foreign key constraints...');
-        Schema::disableForeignKeyConstraints();
+        try {
+            Schema::disableForeignKeyConstraints();
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        } catch (\Throwable $e) {}
 
         $tables = [
             'dispatch_item_locations',
@@ -44,12 +47,32 @@ class ClearSalesDataCommand extends Command
         ];
 
         foreach ($tables as $table) {
-            $this->line("Truncating table: <comment>{$table}</comment>...");
-            DB::table($table)->truncate();
+            if (Schema::hasTable($table)) {
+                $this->line("Truncating table: <comment>{$table}</comment>...");
+                try {
+                    DB::table($table)->truncate();
+                } catch (\Throwable $e) {
+                    DB::table($table)->delete();
+                }
+            }
         }
 
-        Schema::enableForeignKeyConstraints();
+        try {
+            Schema::enableForeignKeyConstraints();
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        } catch (\Throwable $e) {}
         $this->info('Foreign key constraints re-enabled.');
+
+        // Clean up uploaded LR image files (skip in test environment to preserve repo fixtures)
+        $lrDir = public_path('lr_images');
+        if (!app()->environment('testing') && is_dir($lrDir)) {
+            $files = glob($lrDir . '/*');
+            foreach ($files as $file) {
+                if (is_file($file)) {
+                    @unlink($file);
+                }
+            }
+        }
 
         $this->newLine();
         $this->info('✓ All sales orders and linked dispatches have been successfully cleared.');

@@ -101,6 +101,10 @@ Route::middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CA
     Route::post('/admin/logs/clear', [\App\Http\Controllers\AdminController::class, 'clearLogs']);
     Route::post('/admin/attendance/clear', [\App\Http\Controllers\AttendanceController::class, 'clearAllAttendanceData']);
     Route::post('/attendance/clear', [\App\Http\Controllers\AttendanceController::class, 'clearAllAttendanceData']);
+    Route::post('/admin/sales/clear', [\App\Http\Controllers\SalesController::class, 'clearHistory']);
+    Route::post('/admin/dispatch/clear', [\App\Http\Controllers\SalesController::class, 'clearHistory']);
+    Route::post('/sales/history/clear', [\App\Http\Controllers\SalesController::class, 'clearHistory']);
+    Route::post('/dispatch/history/clear', [\App\Http\Controllers\DispatchController::class, 'clearHistory']);
     Route::post('/stock_manager/history/clear', [\App\Http\Controllers\StockManagerController::class, 'clearHistory']);
     Route::delete('/stock_manager/history/{id}', [\App\Http\Controllers\StockManagerController::class, 'destroyHistory']);
 });
@@ -535,6 +539,7 @@ foreach ($adminSlugs as $slug) {
     Route::delete('/sales/transport/{id}', [SalesController::class, 'destroyTransporter']);
     Route::delete('/transport/{id}',     [SalesController::class, 'destroyTransporter']);
     Route::get('/sales/history',         [SalesController::class, 'history'])->name($slug.'.sales.history');
+    Route::post('/sales/history/clear',  [SalesController::class, 'clearHistory'])->name($slug.'.sales.history.clear');
     Route::get('/sales/download-lr/{id}', [DispatchController::class, 'downloadLR'])->name($slug.'.sales.download_lr');
     Route::get('/sales/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR'])->name($slug.'.sales.download_multiple_lr');
     Route::get('/sales/order/pdf/{id}',  [HistoryPdfController::class, 'salesOrderPdf'])->name($slug.'.sales.order.pdf');
@@ -545,6 +550,7 @@ foreach ($adminSlugs as $slug) {
     Route::post('/dispatch/action',      [DispatchController::class, 'storeDispatch']);
     Route::get('/dispatch/order-details/{id}', [DispatchController::class, 'getOrderDetails']);
     Route::get('/dispatch/history',      [DispatchController::class, 'history'])->name($slug.'.dispatch.history');
+    Route::post('/dispatch/history/clear', [DispatchController::class, 'clearHistory'])->name($slug.'.dispatch.history.clear');
     Route::post('/dispatch/update/{id}', [DispatchController::class, 'updateDispatch']);
     Route::post('/dispatch/revert/{id}', [DispatchController::class, 'revertDispatch']);
     Route::post('/dispatch/update-lr',   [DispatchController::class, 'updateLR']);
