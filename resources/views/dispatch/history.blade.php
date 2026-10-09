@@ -204,9 +204,9 @@
         $statusBadge = '<span class="badge badge-pending" style="font-size:0.65rem; background:#ef4444; color:#ffffff !important; padding:3px 8px; border-radius:4px; font-weight:700;">PENDING</span>';
       }
     @endphp
-    <div class="card dispatch-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--glass-border, rgba(255,255,255,0.06)); background:var(--card-bg, rgba(255,255,255,0.03)); transition:all 0.2s ease;">
+    <div class="card dispatch-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--border-soft, #e5e7eb); background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.04); transition:all 0.2s ease;">
       <!-- Clickable Header Row -->
-      <div onclick="toggleHistoryAccordion('disp-acc-{{ $d['id'] }}', this)" style="cursor:pointer; padding:1.1rem; display:flex; justify-content:space-between; align-items:center; user-select:none;">
+      <div onclick="toggleHistoryAccordion('disp-acc-{{ $d['id'] }}', this)" style="cursor:pointer; padding:1.1rem; display:flex; justify-content:space-between; align-items:center; user-select:none; background:#ffffff;">
         <div style="display:flex; align-items:center; flex:1; padding-right:15px;">
           <div onclick="event.stopPropagation()" style="display:inline-flex; align-items:center; margin-right:12px; flex-shrink:0;">
             @if($lrUploaded)
@@ -216,7 +216,7 @@
             @endif
           </div>
           <div style="flex:1;">
-            <div style="font-weight:600; font-size:1rem; color:var(--text-main); line-height:1.3;">
+            <div style="font-weight:600; font-size:1rem; color:var(--text-main, #111827); line-height:1.3;">
               Order #{{ strtoupper((string)$d['orderId']) }} - {{ $d['companyName'] ?? 'N/A' }}
             </div>
             <div style="margin-top:6px; font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
@@ -224,7 +224,7 @@
               <span>•</span>
               {!! $lrStatus !!}
               <span>•</span>
-              <span>Sales By: <strong style="color:var(--text-main, #fff);">{{ $d['salesPerson'] ?? 'N/A' }}</strong></span>
+              <span>Sales By: <strong style="color:var(--text-main, #111827);">{{ $d['salesPerson'] ?? 'N/A' }}</strong></span>
               <span>•</span>
               <span>Transporter: {{ $d['transportName'] ?? 'N/A' }}</span>
               <span>•</span>
@@ -273,31 +273,31 @@
       </div>
 
       <!-- Expandable Details Dropdown / Collapsible -->
-      <div id="disp-acc-{{ $d['id'] }}" class="disp-accordion-content" style="display:none; padding:1.2rem; border-top:1px solid var(--glass-border, rgba(255,255,255,0.06)); background:rgba(0,0,0,0.02);">
+      <div id="disp-acc-{{ $d['id'] }}" class="disp-accordion-content" style="display:none; padding:1.2rem; border-top:1px solid #f3f4f6; background:#ffffff;">
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:1rem; margin-bottom:1rem;">
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Order</div>
-            <div style="font-weight:700;">#{{ strtoupper((string)$d['orderId']) }}</div>
+            <div style="font-weight:700; color:var(--text-main, #111827);">#{{ strtoupper((string)$d['orderId']) }}</div>
           </div>
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Date & Time</div>
-            <div style="font-size:0.85rem; font-weight:500;">{{ \Carbon\Carbon::parse($d['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i:s A') }}</div>
+            <div style="font-size:0.85rem; font-weight:500; color:var(--text-main, #111827);">{{ \Carbon\Carbon::parse($d['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i:s A') }}</div>
           </div>
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Company</div>
-            <div style="font-weight:600; font-size:0.9rem;">{{ $d['companyName'] ?? 'N/A' }}</div>
+            <div style="font-weight:600; font-size:0.9rem; color:var(--text-main, #111827);">{{ $d['companyName'] ?? 'N/A' }}</div>
           </div>
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Sales By</div>
-            <div style="font-weight:600; font-size:0.9rem; color:var(--text-main, #fff);">{{ $d['salesPerson'] ?? 'N/A' }}</div>
+            <div style="font-weight:600; font-size:0.9rem; color:var(--text-main, #111827);">{{ $d['salesPerson'] ?? 'N/A' }}</div>
           </div>
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Transport</div>
-            <div style="font-weight:600; font-size:0.9rem;">{{ $d['transportName'] ?? 'N/A' }}</div>
+            <div style="font-weight:600; font-size:0.9rem; color:var(--text-main, #111827);">{{ $d['transportName'] ?? 'N/A' }}</div>
           </div>
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Dispatched By</div>
-            <div style="font-weight:500; font-size:0.85rem;">{{ $d['dispatchedBy'] ?? 'System' }}</div>
+            <div style="font-weight:500; font-size:0.85rem; color:var(--text-main, #111827);">{{ $d['dispatchedBy'] ?? 'System' }}</div>
           </div>
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Order Value</div>
@@ -310,8 +310,8 @@
         </div>
 
         @if(!empty($d['items']) && count($d['items']) > 0)
-          <div style="margin-bottom:1rem; background:rgba(0,0,0,0.15); border-radius:8px; padding:12px; border-left:3px solid var(--primary, #D88A00);">
-            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">{{ !empty($d['isOrderOnly']) ? 'Items Pending Dispatch' : 'Items Dispatched in this Round' }}</div>
+          <div style="margin-bottom:1rem; background:#ffffff; border:1px solid #e5e7eb; border-radius:8px; padding:12px; border-left:3px solid var(--primary, #D88A00); box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+            <div style="color:#6b7280; font-size:0.75rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">{{ !empty($d['isOrderOnly']) ? 'Items Pending Dispatch' : 'Items Dispatched in this Round' }}</div>
             @foreach($d['items'] as $item)
               @php
                 $rawName = $item['rawProductName'] ?? $item['productName'] ?? 'Unknown';
@@ -327,30 +327,29 @@
                 $rem = (float)($item['remainingQty'] ?? 0);
                 $fmtQty = fn($val) => (floor($val) == $val ? number_format($val, 0) : number_format($val, 2)) . ' kg';
               @endphp
-              <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.88rem; flex-wrap:wrap; gap:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f3f4f6; font-size:0.88rem; flex-wrap:wrap; gap:12px;">
                 <div style="flex:1; min-width:200px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                  <span style="font-weight:600; color:var(--text-main, #fff);">{{ $pName }}</span>
+                  <span style="font-weight:600; color:#111827;">{{ $pName }}</span>
                   @if($gName)
                     <strong style="font-weight:800; color:var(--primary, #D88A00);">{{ $gName }}</strong>
                   @endif
-                  <span style="color:var(--text-muted, #9ca3af); font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
+                  <span style="color:#6b7280; font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
                 </div>
                 <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
                   <div class="dispatch-item-badges" style="display:grid; grid-template-columns:135px 145px 145px; gap:8px; align-items:center;">
-                    <span style="background:rgba(255,255,255,0.08); padding:4px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.15); font-weight:600; color:var(--text-main, #fff); width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
-                      <span style="color:var(--text-muted, #9ca3af); font-size:0.72rem; font-weight:700;">ORDER:</span>
+                    <span style="background:#f9fafb; padding:4px 8px; border-radius:6px; border:1px solid #e5e7eb; font-weight:600; color:#111827; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                      <span style="color:#6b7280; font-size:0.72rem; font-weight:700;">ORDER:</span>
                       <strong style="color:var(--primary, #D88A00);">{{ $fmtQty($tot) }}</strong>
                     </span>
-                    <span style="background:rgba(22,163,74,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(22,163,74,0.3); font-weight:700; color:#16a34a; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                    <span style="background:rgba(22,163,74,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(22,163,74,0.3); font-weight:700; color:#15803d; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
                       <span style="font-size:0.72rem;">DISPATCHED:</span>
                       <strong>{{ $fmtQty($disp) }}</strong>
                     </span>
-                    <span style="background:rgba(239,68,68,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(239,68,68,0.3); font-weight:700; color:#ef4444; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                    <span style="background:rgba(239,68,68,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(239,68,68,0.3); font-weight:700; color:#b91c1c; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
                       <span style="font-size:0.72rem;">PENDING:</span>
                       <strong>{{ $fmtQty($rem) }}</strong>
                     </span>
                   </div>
-
                 </div>
               </div>
             @endforeach
@@ -369,12 +368,14 @@
         @elseif($lrUploaded)
           <div style="margin-bottom:1rem;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:6px;">
-              <span style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600;">LR Copy (Round #{{ $d['id'] }})</span>
+              <span style="color:var(--text-muted, #6b7280); font-size:0.75rem; text-transform:uppercase; font-weight:600;">LR Copy (Round #{{ $d['id'] }})</span>
               <a href="{{ url(request()->segment(1) . '/dispatch/download-lr/' . $d['id']) }}" download class="btn btn-sm" style="font-size:0.75rem; padding:0.25rem 0.65rem; background:#059669; color:#fff !important; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:4px;">
                 📥 Download LR Copy
               </a>
             </div>
-            <img src="{{ $d['lrImage'] }}" style="width:100%; border-radius:10px; max-height:220px; object-fit:contain; cursor:pointer; background:rgba(0,0,0,0.2);" onclick="app.viewImage(this.src)">
+            <div style="background:#ffffff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+              <img src="{{ $d['lrImage'] }}" style="max-width:100%; width:auto; border-radius:6px; max-height:300px; object-fit:contain; cursor:pointer; background:#ffffff; display:inline-block;" onclick="app.viewImage(this.src)" title="Click to view full image">
+            </div>
             <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
               <a href="{{ url(request()->segment(1) . '/dispatch/download-lr/' . $d['id']) }}" download class="btn btn-sm" style="font-size:0.78rem; padding:0.45rem 0.8rem; background:#059669; color:#fff !important; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:6px;">
                 📥 Download LR
@@ -394,9 +395,9 @@
         @endif
 
         @if(!empty($d['orderLrCopies']) && count($d['orderLrCopies']) > 1)
-          <div style="margin-bottom:1rem; padding:1rem; background:rgba(2,132,199,0.06); border-radius:10px; border:1px solid rgba(2,132,199,0.25);">
+          <div style="margin-bottom:1rem; padding:1rem; background:#f0f9ff; border-radius:10px; border:1px solid #bae6fd;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
-              <div style="font-size:0.82rem; font-weight:700; color:#38bdf8; display:flex; align-items:center; gap:6px;">
+              <div style="font-size:0.82rem; font-weight:700; color:#0369a1; display:flex; align-items:center; gap:6px;">
                 <span>📦 All LR Copies for Order #{{ strtoupper((string)$d['orderId']) }}</span>
                 <span class="badge" style="background:#0284c7; color:#fff; font-size:0.7rem; padding:2px 8px; border-radius:10px;">{{ count($d['orderLrCopies']) }} Copies</span>
               </div>
@@ -406,18 +407,18 @@
             </div>
             <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:10px;">
               @foreach($d['orderLrCopies'] as $olr)
-                <div style="background:rgba(0,0,0,0.25); border:1px solid {{ $olr['isCurrent'] ? '#38bdf8' : 'rgba(255,255,255,0.08)' }}; border-radius:8px; padding:8px; display:flex; flex-direction:column; gap:6px;">
+                <div style="background:#ffffff; border:1px solid {{ $olr['isCurrent'] ? '#0284c7' : '#e5e7eb' }}; border-radius:8px; padding:8px; display:flex; flex-direction:column; gap:6px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
                   <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem;">
-                    <span style="font-weight:700; color:var(--text-main);">Dispatch #{{ $olr['logId'] }}</span>
+                    <span style="font-weight:700; color:#111827;">Dispatch #{{ $olr['logId'] }}</span>
                     @if($olr['isCurrent'])
-                      <span style="color:#38bdf8; font-weight:700; font-size:0.65rem;">(CURRENT)</span>
+                      <span style="color:#0284c7; font-weight:700; font-size:0.65rem;">(CURRENT)</span>
                     @endif
                   </div>
-                  <img src="{{ $olr['url'] }}" style="width:100%; height:90px; object-fit:contain; border-radius:6px; cursor:pointer; background:rgba(0,0,0,0.3);" onclick="app.viewImage(this.src)">
-                  <div style="font-size:0.7rem; color:var(--text-muted); display:flex; justify-content:space-between; flex-wrap:wrap;">
+                  <img src="{{ $olr['url'] }}" style="width:100%; height:90px; object-fit:contain; border-radius:6px; cursor:pointer; background:#ffffff; border:1px solid #f3f4f6;" onclick="app.viewImage(this.src)">
+                  <div style="font-size:0.7rem; color:#6b7280; display:flex; justify-content:space-between; flex-wrap:wrap;">
                     <span>{{ $olr['date'] }}</span>
                     @if(!empty($olr['lrNo']))
-                      <span style="font-weight:600; color:var(--text-main);">LR: {{ $olr['lrNo'] }}</span>
+                      <span style="font-weight:600; color:#111827;">LR: {{ $olr['lrNo'] }}</span>
                     @endif
                   </div>
                   <a href="{{ url(request()->segment(1) . '/dispatch/download-lr/' . $olr['logId']) }}" download class="btn btn-sm" style="padding:0.25rem; font-size:0.72rem; background:#059669; color:#fff !important; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:4px; font-weight:600; border-radius:4px; margin-top:2px;">
