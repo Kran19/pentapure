@@ -222,6 +222,118 @@ class PdfGenerationTest extends TestCase
         $this->assertNotEmpty($response->getContent());
     }
 
+    public function test_stock_manager_pdf_view_omits_rate_and_valuation(): void
+    {
+        $view = view('pdf.live-stock', [
+            'items' => [
+                [
+                    'name' => 'SALT',
+                    'stage' => 'RAW',
+                    'grade' => null,
+                    'quantity' => 1500,
+                    'unit' => 'KG',
+                    'location' => '&bull; RACK 1 (1500.000 KG)',
+                    'rate' => 3.5,
+                    'amount' => 5250.0
+                ],
+                [
+                    'name' => 'JEERA WHOLE',
+                    'stage' => 'FINISHED',
+                    'grade' => 'A',
+                    'quantity' => 200,
+                    'unit' => 'KG',
+                    'location' => '&bull; PALLET 3 (200.000 KG)',
+                    'rate' => 250.0,
+                    'amount' => 50000.0
+                ]
+            ],
+            'totalValuation' => 55250.0,
+            'generatedOn' => '06 Oct 2026, 08:00 PM',
+            'stages' => ['RAW', 'FINISHED'],
+            'date' => null,
+            'isStockManager' => true,
+        ])->render();
+
+        $dom = new \DOMDocument();
+        @$dom->loadHTML($view);
+        $ths = $dom->getElementsByTagName('th');
+        $headerTexts = [];
+        foreach ($ths as $th) {
+            $headerTexts[] = trim($th->textContent);
+        }
+
+        $this->assertContains('#', $headerTexts);
+        $this->assertContains('Product Name', $headerTexts);
+        $this->assertContains('Location Breakdown', $headerTexts);
+        $this->assertContains('Available Qty', $headerTexts);
+        $this->assertNotContains('Rate', $headerTexts);
+        $this->assertNotContains('Valuation (₹)', $headerTexts);
+        $this->assertStringNotContainsString('Total Valuation (Ref)', $view);
+        $this->assertStringNotContainsString('TOTAL STOCK VALUATION (REF):', $view);
+    }
+
+    public function test_sub_admin_stock_manager_stock_pdf_download_hides_rate_and_valuation(): void
+    {
+        $subAdmin = User::create([
+            'name' => 'Sub Admin User',
+            'email' => 'subadmin_sm@example.com',
+            'password' => 'password123',
+            'role' => 'SUB_ADMIN',
+            'status' => 'ACTIVE',
+            'permissions' => ['view_stock_manager_stock', 'stock_manager_stock'],
+        ]);
+
+        $product = Product::create([
+            'name' => 'TEST PRODUCT SM',
+            'type' => 'FINISHED',
+            'unit' => 'KG',
+            'rate' => 150.00,
+            'threshold' => 10,
+            'is_active' => true,
+        ]);
+
+        $location = \App\Models\Location::firstOrCreate(['name' => 'Main Warehouse']);
+
+        Stock::create([
+            'product_id' => $product->id,
+            'stage' => 'FINISHED',
+            'grade' => 'NONE',
+            'location_id' => $location->id,
+            'quantity' => 50,
+            'transaction_type' => 'IN',
+            'user_id' => $subAdmin->id,
+            'notes' => 'Testing initial stock',
+        ]);
+
+        // 1. Download via /sub_admin/stock-manager/stock/pdf
+        $response = $this->withSession(['auth_user' => [
+            'id' => $subAdmin->id,
+            'name' => $subAdmin->name,
+            'role' => 'SUB_ADMIN',
+        ]])->post('/sub_admin/stock-manager/stock/pdf', [
+            'stages' => 'FINISHED',
+            'panel' => 'stock_manager',
+            'hide_rates' => 1,
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/pdf');
+
+        // 2. Also test downloading via /sub_admin/stock/pdf with panel='stock_manager'
+        $response2 = $this->withSession(['auth_user' => [
+            'id' => $subAdmin->id,
+            'name' => $subAdmin->name,
+            'role' => 'SUB_ADMIN',
+        ]])->post('/sub_admin/stock/pdf', [
+            'stages' => 'FINISHED',
+            'panel' => 'stock_manager',
+            'hide_rates' => 1,
+        ]);
+
+        $response2->assertStatus(200);
+        $response2->assertHeader('Content-Type', 'application/pdf');
+    }
+
     public function test_admin_dispatch_activity_pdf_download(): void
     {
         $response = $this->withSession(['auth_user' => [

@@ -8,11 +8,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class StockLimit extends Model
 {
     protected $fillable = [
-        'product_id', 'stage', 'grade', 'alert_limit'
+        'product_id', 'stage', 'grade', 'alert_limit', 'rate'
     ];
 
     protected $casts = [
-        'alert_limit' => 'decimal:3'
+        'alert_limit' => 'decimal:3',
+        'rate' => 'decimal:2',
     ];
 
     public function product(): BelongsTo

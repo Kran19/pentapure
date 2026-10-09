@@ -41,7 +41,12 @@ class AuthMiddleware
 
         // Granular permission check for SUB_ADMIN and STOCK_MANAGER
         if (in_array($user['role'], ['SUB_ADMIN', 'STOCK_MANAGER'])) {
-            $isWrite = in_array($request->method(), ['POST', 'PUT', 'PATCH', 'DELETE']);
+            $pathLower = strtolower($request->path());
+            $isExport = str_ends_with($pathLower, '/pdf')
+                || str_ends_with($pathLower, '/csv')
+                || str_contains($pathLower, '/pdf/')
+                || str_contains($pathLower, '/csv/');
+            $isWrite = in_array($request->method(), ['POST', 'PUT', 'PATCH', 'DELETE']) && !$isExport;
             $moduleKey = $this->resolveModuleKey($request);
 
             // Skip strict checks for routes that are not module-specific (profile, logout, notifications, etc.)

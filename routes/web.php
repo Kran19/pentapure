@@ -578,6 +578,8 @@ foreach ($adminSlugs as $slug) {
     Route::post('/stock-manager/action', [\App\Http\Controllers\StockManagerController::class, 'storeInward']);
     Route::post('/stock-manager/outward',[\App\Http\Controllers\StockManagerController::class, 'storeOutward']);
     Route::get('/stock-manager/stock',   [\App\Http\Controllers\StockManagerController::class, 'stock'])->name($slug.'.stock_manager.stock');
+    Route::post('/stock-manager/stock/pdf', [AdminController::class, 'downloadStockPdf'])->name($slug.'.stock_manager.stock.pdf');
+    Route::match(['get', 'post'], '/stock-manager/stock/csv', [AdminController::class, 'downloadStockCsv'])->name($slug.'.stock_manager.stock.csv');
     Route::get('/stock-manager/po',      [\App\Http\Controllers\StockManagerController::class, 'po'])->name($slug.'.stock_manager.po');
     Route::post('/stock-manager/po',     [\App\Http\Controllers\StockManagerController::class, 'storePO']);
     Route::post('/stock-manager/po/receive', [\App\Http\Controllers\StockManagerController::class, 'receivePO']);
@@ -596,6 +598,8 @@ foreach ($adminSlugs as $slug) {
     Route::post('/stock_manager/action', [\App\Http\Controllers\StockManagerController::class, 'storeInward']);
     Route::post('/stock_manager/outward',[\App\Http\Controllers\StockManagerController::class, 'storeOutward']);
     Route::get('/stock_manager/stock',   [\App\Http\Controllers\StockManagerController::class, 'stock']);
+    Route::post('/stock_manager/stock/pdf', [AdminController::class, 'downloadStockPdf']);
+    Route::match(['get', 'post'], '/stock_manager/stock/csv', [AdminController::class, 'downloadStockCsv']);
     Route::get('/stock_manager/po',      [\App\Http\Controllers\StockManagerController::class, 'po']);
     Route::post('/stock_manager/po',     [\App\Http\Controllers\StockManagerController::class, 'storePO']);
     Route::post('/stock_manager/po/receive', [\App\Http\Controllers\StockManagerController::class, 'receivePO']);

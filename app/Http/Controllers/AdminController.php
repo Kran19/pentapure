@@ -924,7 +924,19 @@ class AdminController extends Controller
 
         $authUser = session('auth_user');
         $userRole = strtoupper($authUser['role'] ?? '');
-        $isStockManager = ($userRole === 'STOCK_MANAGER') || str_contains($request->path(), 'stock-manager') || str_contains($request->path(), 'stock_manager');
+        $referer = strtolower($request->header('referer') ?? '');
+        $path = strtolower($request->path());
+
+        $isStockManager = ($userRole === 'STOCK_MANAGER')
+            || str_contains($path, 'stock-manager')
+            || str_contains($path, 'stock_manager')
+            || in_array(strtolower($request->input('panel', '')), ['stock_manager', 'stock-manager'])
+            || in_array(strtolower($request->input('source', '')), ['stock_manager', 'stock-manager'])
+            || $request->boolean('is_stock_manager')
+            || $request->boolean('hide_rate')
+            || $request->boolean('hide_rates')
+            || str_contains($referer, 'stock-manager')
+            || str_contains($referer, 'stock_manager');
 
         $pdfData = [
             'items' => $items,
@@ -1022,7 +1034,19 @@ class AdminController extends Controller
 
         $authUser = session('auth_user');
         $userRole = strtoupper($authUser['role'] ?? '');
-        $isStockManager = ($userRole === 'STOCK_MANAGER') || str_contains($request->path(), 'stock-manager') || str_contains($request->path(), 'stock_manager');
+        $referer = strtolower($request->header('referer') ?? '');
+        $path = strtolower($request->path());
+
+        $isStockManager = ($userRole === 'STOCK_MANAGER')
+            || str_contains($path, 'stock-manager')
+            || str_contains($path, 'stock_manager')
+            || in_array(strtolower($request->input('panel', '')), ['stock_manager', 'stock-manager'])
+            || in_array(strtolower($request->input('source', '')), ['stock_manager', 'stock-manager'])
+            || $request->boolean('is_stock_manager')
+            || $request->boolean('hide_rate')
+            || $request->boolean('hide_rates')
+            || str_contains($referer, 'stock-manager')
+            || str_contains($referer, 'stock_manager');
 
         $asOnDate = $date ? \Carbon\Carbon::parse($date)->format('d-m-Y') : now()->format('d-m-Y');
         $filename = 'PentaPure_Live_Stock_As_On_Date_' . $asOnDate . '.csv';

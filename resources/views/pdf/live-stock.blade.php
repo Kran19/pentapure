@@ -313,7 +313,9 @@
             PENTAPURE LIVE STOCK AS ON DATE {{ \Carbon\Carbon::parse($date ?? now())->format('d-m-Y') }}
         </div>
         <div class="title-sub">
-            @if(!empty($date))
+            @if(!empty($isStockManager))
+                {{ !empty($date) ? 'Historical Stock Inventory Report as on ' . \Carbon\Carbon::parse($date)->format('d M Y') . ' (Portrait)' : 'Real-Time Live Stock Inventory Status (Portrait)' }}
+            @elseif(!empty($date))
                 Historical Stock Valuation Report as on {{ \Carbon\Carbon::parse($date)->format('d M Y') }} (Portrait)
             @else
                 Real-Time Live Stock Inventory Status (Portrait)
@@ -487,7 +489,7 @@
                 <div><strong>Notes:</strong></div>
                 <div>• This is an automated, system-generated stock inventory report printed in portrait format.</div>
                 @if(!empty($date))
-                    <div>• Stock quantities and estimated valuations reflect recorded transactions up to {{ \Carbon\Carbon::parse($date)->format('d M Y') }}.</div>
+                    <div>• Stock quantities {{ empty($isStockManager) ? 'and estimated valuations ' : '' }}reflect recorded transactions up to {{ \Carbon\Carbon::parse($date)->format('d M Y') }}.</div>
                 @else
                     <div>• Stock quantities reflect real-time live inventory recorded in the system.</div>
                 @endif

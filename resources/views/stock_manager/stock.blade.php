@@ -1649,9 +1649,19 @@ window.transferLocationMapping = async function(productId, stage, grade, buttonE
   }
 }
 
+@php
+  $isSmRoute = (request()->segment(2) === 'stock-manager' || request()->segment(2) === 'stock_manager');
+  $stockPdfExportUrl = $isSmRoute 
+      ? url(request()->segment(1) . '/stock-manager/stock/pdf') 
+      : route(request()->segment(1) . '.stock.pdf');
+  $stockCsvExportUrl = $isSmRoute 
+      ? url(request()->segment(1) . '/stock-manager/stock/csv') 
+      : route(request()->segment(1) . '.stock.csv');
+@endphp
+
 function adminExportStockPdf() {
   Swal.fire({
-    title: '📄 EXPORT STOCK VALUATION PDF',
+    title: '📄 EXPORT LIVE STOCK PDF',
     html: `
       <div style="text-align:left; font-size:0.95rem; color:#333;">
         <p style="margin-bottom:12px; color:#6b7280;">Select the stock panels to include in the PDF report:</p>
@@ -1718,9 +1728,13 @@ function adminExportStockPdf() {
     const { stages, selectedDate } = result.value;
     const btn = document.querySelector('button[onclick="adminExportStockPdf()"]');
     
-    window.downloadPdfAsync('{{ route(request()->segment(1) . ".stock.pdf") }}', {
+    window.downloadPdfAsync('{{ $stockPdfExportUrl }}', {
       stages: stages.join(','),
-      date: selectedDate
+      date: selectedDate,
+      panel: 'stock_manager',
+      source: 'stock_manager',
+      hide_rates: 1,
+      is_stock_manager: 1
     }, btn);
   });
 }
@@ -1794,7 +1808,7 @@ function adminExportStockCsv() {
     const { stages, selectedDate } = result.value;
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = '{{ route(request()->segment(1) . ".stock.csv") }}';
+    form.action = '{{ $stockCsvExportUrl }}';
     
     const csrf = document.createElement('input');
     csrf.type = 'hidden';
@@ -1815,6 +1829,24 @@ function adminExportStockCsv() {
       dateInput.value = selectedDate;
       form.appendChild(dateInput);
     }
+
+    const panelInput = document.createElement('input');
+    panelInput.type = 'hidden';
+    panelInput.name = 'panel';
+    panelInput.value = 'stock_manager';
+    form.appendChild(panelInput);
+
+    const hideRatesInput = document.createElement('input');
+    hideRatesInput.type = 'hidden';
+    hideRatesInput.name = 'hide_rates';
+    hideRatesInput.value = '1';
+    form.appendChild(hideRatesInput);
+
+    const isSmInput = document.createElement('input');
+    isSmInput.type = 'hidden';
+    isSmInput.name = 'is_stock_manager';
+    isSmInput.value = '1';
+    form.appendChild(isSmInput);
     
     document.body.appendChild(form);
     form.submit();
