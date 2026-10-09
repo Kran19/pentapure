@@ -378,6 +378,7 @@ foreach ($roleSlugs['STOCK_MANAGER'] ?? [] as $slug) {
         Route::post('/users',      [AdminController::class, 'storeUser']);
         Route::post('/users/toggle', [AdminController::class, 'toggleUserStatus']);
         Route::delete('/users/{id}', [AdminController::class, 'destroyUser']);
+        Route::post('/branches/rename', [AdminController::class, 'renameBranch']);
 
         // Additional permissioned routes (Products, Grades, Locations, Categories, Dispatch Activity, Cashier Overview)
         Route::get('/products',           [AdminController::class, 'products'])->name($slug.'.products');
@@ -424,6 +425,7 @@ foreach ($adminSlugs as $slug) {
     Route::get('/users',              'users')->name($slug.'.users');
     Route::post('/users',             'storeUser');
     Route::post('/users/toggle',      'toggleUserStatus');
+    Route::post('/branches/rename',   'renameBranch');
 
     // Locations admin management
     Route::get('/locations',          'locations')->name($slug.'.locations');

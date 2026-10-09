@@ -138,7 +138,16 @@ class AdminController extends Controller
             ->paginate(15);
         $allCashiers = User::where('role', 'CASHIER')->orderBy('name')->get(['id', 'name', 'branch', 'status']);
         $departments = \App\Models\Department::orderBy('name')->get();
-        return view('admin.users', ['pageData' => ['users' => $users, 'cashiers' => $allCashiers, 'departments' => $departments]]);
+        $userBranches = User::whereNotNull('branch')->where('branch', '!=', '')->distinct()->pluck('branch')->toArray();
+        $txSites = \App\Models\Transaction::whereNotNull('site')->where('site', '!=', '')->distinct()->pluck('site')->toArray();
+        $branches = collect(array_merge($userBranches, $txSites))->map(fn($b) => trim((string)$b))->filter()->unique()->sort()->values()->toArray();
+
+        return view('admin.users', ['pageData' => [
+            'users' => $users,
+            'cashiers' => $allCashiers,
+            'departments' => $departments,
+            'branches' => $branches,
+        ]]);
     }
 
     public function storeUser(Request $request)
@@ -213,6 +222,9 @@ class AdminController extends Controller
 
         if ($request->user_id) {
             $user = User::findOrFail($request->user_id);
+            $oldBranch = trim((string)$user->branch);
+            $newBranch = trim((string)$request->branch);
+
             $user->name     = $request->name;
             $user->username = strtolower(trim($request->username));
             $user->email    = $request->email;
@@ -223,15 +235,56 @@ class AdminController extends Controller
             }
             $user->parent_id = $request->parent_id ?: null;
             if ($request->role === 'CASHIER') {
-                $user->branch = $request->branch;
+                $user->branch = $newBranch ?: null;
             } else {
                 $user->branch = null;
             }
             $user->permissions = $permissions;
             $user->visible_cashiers = $visibleCashiers;
             $user->save();
+
+            // When editing a Cashier branch:
+            // If the branch name changed, update the branch across transactions and users so it edits the branch instead of creating a new duplicate branch!
+            if ($request->role === 'CASHIER' && !empty($newBranch)) {
+                if (!empty($oldBranch) && strcasecmp($oldBranch, $newBranch) !== 0) {
+                    // Update all transactions that had the old branch name as site
+                    \App\Models\Transaction::where(function($q) use ($oldBranch) {
+                        $q->where('site', $oldBranch)
+                          ->orWhereRaw('LOWER(TRIM(site)) = ?', [strtolower($oldBranch)]);
+                    })->update(['site' => $newBranch]);
+
+                    // Update any transactions by this cashier that had null or empty site
+                    \App\Models\Transaction::where('user_id', $user->id)
+                        ->where(function($q) {
+                            $q->whereNull('site')->orWhere('site', '');
+                        })->update(['site' => $newBranch]);
+
+                    // Update any other cashiers who had this same old branch name
+                    User::where('role', 'CASHIER')
+                        ->where('id', '!=', $user->id)
+                        ->where(function($q) use ($oldBranch) {
+                            $q->where('branch', $oldBranch)
+                              ->orWhereRaw('LOWER(TRIM(branch)) = ?', [strtolower($oldBranch)]);
+                        })->update(['branch' => $newBranch]);
+
+                    // Update session if current user is logged into this branch
+                    if (session('auth_user') && strcasecmp(session('auth_user.branch') ?? '', $oldBranch) === 0) {
+                        $sess = session('auth_user');
+                        $sess['branch'] = $newBranch;
+                        session(['auth_user' => $sess]);
+                    }
+                } else {
+                    // If user was previously assigned no branch, attach unassigned transactions by this user to this branch
+                    \App\Models\Transaction::where('user_id', $user->id)
+                        ->where(function($q) {
+                            $q->whereNull('site')->orWhere('site', '');
+                        })->update(['site' => $newBranch]);
+                }
+            }
+
             $msg = 'User updated!';
         } else {
+            $newBranch = trim((string)$request->branch);
             User::create([
                 'name'      => $request->name,
                 'username'  => strtolower(trim($request->username)),
@@ -240,7 +293,7 @@ class AdminController extends Controller
                 'password'  => Hash::make($request->password),
                 'role'      => $request->role,
                 'parent_id' => $request->parent_id ?: null,
-                'branch'    => $request->role === 'CASHIER' ? $request->branch : null,
+                'branch'    => $request->role === 'CASHIER' ? ($newBranch ?: null) : null,
                 'status'    => 'ACTIVE',
                 'permissions' => $permissions,
                 'visible_cashiers' => $visibleCashiers,
@@ -249,6 +302,51 @@ class AdminController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => $msg]);
+    }
+
+    public function renameBranch(Request $request)
+    {
+        $request->validate([
+            'old_branch' => 'required|string',
+            'new_branch' => 'required|string|max:100',
+        ]);
+
+        $oldBranch = trim((string)$request->old_branch);
+        $newBranch = trim((string)$request->new_branch);
+
+        if ($oldBranch === '' || $newBranch === '') {
+            return response()->json(['success' => false, 'message' => 'Branch name cannot be empty.'], 422);
+        }
+
+        if (strcasecmp($oldBranch, $newBranch) === 0) {
+            return response()->json(['success' => true, 'message' => 'Branch name unchanged.']);
+        }
+
+        $usersUpdated = User::where('role', 'CASHIER')
+            ->where(function($q) use ($oldBranch) {
+                $q->where('branch', $oldBranch)
+                  ->orWhereRaw('LOWER(TRIM(branch)) = ?', [strtolower($oldBranch)]);
+            })
+            ->update(['branch' => $newBranch]);
+
+        $txsUpdated = \App\Models\Transaction::where(function($q) use ($oldBranch) {
+                $q->where('site', $oldBranch)
+                  ->orWhereRaw('LOWER(TRIM(site)) = ?', [strtolower($oldBranch)]);
+            })
+            ->update(['site' => $newBranch]);
+
+        if (session('auth_user') && strcasecmp(session('auth_user.branch') ?? '', $oldBranch) === 0) {
+            $sess = session('auth_user');
+            $sess['branch'] = $newBranch;
+            session(['auth_user' => $sess]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Branch successfully renamed from '{$oldBranch}' to '{$newBranch}'.",
+            'users_updated' => $usersUpdated,
+            'transactions_updated' => $txsUpdated
+        ]);
     }
 
     public function toggleUserStatus(Request $request)

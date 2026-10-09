@@ -55,7 +55,12 @@
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
     <h2 style="margin:0;">👥 Users & Hierarchy</h2>
     @if(empty($isReadOnly))
-    <button class="btn" onclick="resetUserForm()" style="width:auto; padding:0.6rem 1.2rem;">+ Add User</button>
+    <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+      <button class="btn btn-secondary" onclick="openRenameBranchModal()" style="width:auto; padding:0.6rem 1.1rem; background:#475569; color:#fff; border:1px solid #64748b; display:inline-flex; align-items:center; gap:6px; font-weight:600;">
+        🏢 Rename Branch
+      </button>
+      <button class="btn" onclick="resetUserForm()" style="width:auto; padding:0.6rem 1.2rem;">+ Add User</button>
+    </div>
     @endif
   </div>
 
@@ -89,7 +94,15 @@
       </div>
       <div class="form-group" id="branch-field-container" style="display:none;">
         <label>Assigned Branch (Cashier Only) <span class="required-star" style="color:#dc2626 !important; font-weight:700;">*</span></label>
-        <input type="text" id="u-branch" placeholder="e.g. Main Factory">
+        <input type="text" id="u-branch" list="branch-suggestions" placeholder="e.g. Main Factory" autocomplete="off">
+        <datalist id="branch-suggestions">
+          @foreach($pageData['branches'] ?? [] as $b)
+            <option value="{{ $b }}">
+          @endforeach
+        </datalist>
+        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+          💡 When editing an existing branch name, all transactions and cashier records under that branch will automatically be renamed.
+        </div>
       </div>
     </div>
 
@@ -301,7 +314,14 @@
               <span class="badge badge-info">{{ $user['role'] }}</span>
               @if($user['role'] === 'CASHIER')
                 @if(!empty($user['branch']))
-                  <div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px;">🏢 {{ $user['branch'] }}</div>
+                  <div style="display:inline-flex; align-items:center; gap:6px; font-size:0.75rem; color:var(--text-muted); margin-top:3px;">
+                    <span>🏢 {{ $user['branch'] }}</span>
+                    @if(empty($isReadOnly))
+                    <button type="button" onclick="openRenameBranchModal('{{ addslashes($user['branch']) }}')" title="Rename Branch" style="background:none; border:none; padding:1px 4px; cursor:pointer; color:#f59e0b; display:inline-flex; align-items:center; border-radius:4px;" onmouseover="this.style.background='rgba(245,158,11,0.1)'" onmouseout="this.style.background='none'">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 2 2h14a2 2 0 0 2 2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+                    </button>
+                    @endif
+                  </div>
                 @endif
                 @php
                   $vc = $user['visible_cashiers'] ?? [];
@@ -994,6 +1014,102 @@ function openNotifyModal(userId, userName) {
             });
         }
     });
+}
+
+window.allBranchesList = @json($pageData['branches'] ?? []);
+
+function openRenameBranchModal(currentBranch = '') {
+  if (window.isReadOnly) {
+    return Swal.fire('View-Only Mode', 'You have View-Only permission. Modifying branches is disabled.', 'warning');
+  }
+  
+  const branches = window.allBranchesList || [];
+  let branchSelectHtml = '';
+  if (currentBranch) {
+    branchSelectHtml = `
+      <div style="margin-bottom:12px;">
+        <label style="display:block; font-weight:600; font-size:0.85rem; margin-bottom:4px; color:#334155;">Branch to Rename</label>
+        <input id="swal-old-branch" class="swal2-input" value="${currentBranch.replace(/"/g, '&quot;')}" readonly style="margin:0; width:100%; background:#f1f5f9; cursor:not-allowed;">
+      </div>
+    `;
+  } else {
+    let options = '<option value="">-- Select Existing Branch --</option>';
+    branches.forEach(b => {
+      options += `<option value="${b.replace(/"/g, '&quot;')}">${b}</option>`;
+    });
+    branchSelectHtml = `
+      <div style="margin-bottom:12px;">
+        <label style="display:block; font-weight:600; font-size:0.85rem; margin-bottom:4px; color:#334155;">Select Branch to Rename</label>
+        <select id="swal-old-branch" class="swal2-select" style="margin:0; width:100%; display:block; padding:0.6rem; border:1px solid #d1d5db; border-radius:6px;">${options}</select>
+      </div>
+    `;
+  }
+
+  Swal.fire({
+    title: '🏢 Edit / Rename Branch',
+    html: `
+      <div style="text-align:left; font-size:0.9rem;">
+        ${branchSelectHtml}
+        <div style="margin-bottom:8px;">
+          <label style="display:block; font-weight:600; font-size:0.85rem; margin-bottom:4px; color:#334155;">New Branch Name <span style="color:#dc2626;">*</span></label>
+          <input id="swal-new-branch" class="swal2-input" placeholder="e.g. Main Factory Unit 1" value="${currentBranch ? currentBranch.replace(/"/g, '&quot;') : ''}" style="margin:0; width:100%;">
+        </div>
+        <div style="font-size:0.78rem; color:#64748b; margin-top:6px; line-height:1.4;">
+          ⚠️ Renaming this branch will automatically update all Cashier profiles assigned to it and all associated past and present transactions.
+        </div>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: 'Rename Branch',
+    confirmButtonColor: '#f59e0b',
+    cancelButtonText: 'Cancel',
+    preConfirm: () => {
+      const oldBranch = (document.getElementById('swal-old-branch').value || '').trim();
+      const newBranch = (document.getElementById('swal-new-branch').value || '').trim();
+      if (!oldBranch) {
+        Swal.showValidationMessage('Please select the branch you wish to rename.');
+        return false;
+      }
+      if (!newBranch) {
+        Swal.showValidationMessage('Please enter the new branch name.');
+        return false;
+      }
+      if (oldBranch.toLowerCase() === newBranch.toLowerCase()) {
+        Swal.showValidationMessage('The new branch name must be different from the current name.');
+        return false;
+      }
+      return { old_branch: oldBranch, new_branch: newBranch };
+    }
+  }).then((res) => {
+    if (res.isConfirmed && res.value) {
+      Swal.fire({ title: 'Updating Branch...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      fetch(window.baseUrl + '/' + window.userSlug + '/branches/rename', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRF-TOKEN': window.csrfToken
+        },
+        body: JSON.stringify(res.value)
+      })
+      .then(async r => {
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.message || 'Server error: ' + r.status);
+        return d;
+      })
+      .then(d => {
+        if (d.success) {
+          Swal.fire('Branch Updated!', d.message || 'Branch successfully renamed.', 'success')
+            .then(() => location.reload());
+        } else {
+          Swal.fire('Error', d.message || 'Could not rename branch.', 'error');
+        }
+      })
+      .catch(err => {
+        Swal.fire('Error', err.message || 'An error occurred while updating the branch.', 'error');
+      });
+    }
+  });
 }
 </script>
 @endsection
