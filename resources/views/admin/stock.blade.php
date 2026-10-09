@@ -271,6 +271,7 @@
     /* Stock Table Uniform Column Alignment */
     .table-container table.stock-table {
       width: 100% !important;
+      min-width: 820px !important;
       table-layout: fixed !important;
       border-collapse: collapse !important;
     }
@@ -281,15 +282,15 @@
       box-sizing: border-box !important;
     }
     .table-container table.stock-table th:nth-child(1),
-    .table-container table.stock-table td:nth-child(1) { width: 46% !important; text-align: left !important; }
+    .table-container table.stock-table td:nth-child(1) { width: 44% !important; text-align: left !important; }
     .table-container table.stock-table th:nth-child(2),
-    .table-container table.stock-table td:nth-child(2) { width: 10% !important; text-align: right !important; }
+    .table-container table.stock-table td:nth-child(2) { width: 11% !important; text-align: right !important; white-space: nowrap !important; }
     .table-container table.stock-table th:nth-child(3),
     .table-container table.stock-table td:nth-child(3) { width: 5% !important; text-align: left !important; }
     .table-container table.stock-table th:nth-child(4),
-    .table-container table.stock-table td:nth-child(4) { width: 12% !important; text-align: right !important; }
+    .table-container table.stock-table td:nth-child(4) { width: 13% !important; text-align: right !important; white-space: nowrap !important; }
     .table-container table.stock-table th:nth-child(5),
-    .table-container table.stock-table td:nth-child(5) { width: 10% !important; text-align: right !important; }
+    .table-container table.stock-table td:nth-child(5) { width: 10% !important; text-align: right !important; white-space: nowrap !important; }
     .table-container table.stock-table th:nth-child(6),
     .table-container table.stock-table td:nth-child(6) { width: 11% !important; text-align: center !important; }
     .table-container table.stock-table th:nth-child(7),

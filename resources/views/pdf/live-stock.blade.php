@@ -168,15 +168,16 @@
         .data-table th {
             background: #f8c300;
             color: #101828;
-            padding: 4px 4px;
+            padding: 4px 5px;
             font-weight: bold;
             text-align: left;
             font-size: 7.8px;
             border: 1px solid #344054;
             vertical-align: middle;
+            white-space: nowrap;
         }
         .data-table td {
-            padding: 4px 4px;
+            padding: 4px 5px;
             border: 1px solid #d0d5dd;
             font-size: 7.8px;
             vertical-align: middle;
@@ -224,6 +225,7 @@
             font-family: 'DejaVu Sans', sans-serif !important;
             font-weight: bold;
             color: #b45309;
+            white-space: nowrap !important;
         }
 
         .total-row td {
@@ -232,7 +234,8 @@
             font-weight: bold;
             font-size: 8.2px;
             border-top: 1.5px solid #f8c300 !important;
-            padding: 5px 4px;
+            padding: 5px 6px;
+            white-space: nowrap !important;
         }
 
         /* Footer */
@@ -399,12 +402,12 @@
         <thead>
             <tr>
                 @if(empty($isStockManager))
-                    <th style="width: 4%;" class="text-center">#</th>
-                    <th style="width: 40%;">Product Name</th>
-                    <th style="width: 27%;">Location Breakdown</th>
-                    <th style="width: 13%;" class="text-right">Available Qty</th>
-                    <th style="width: 7%;" class="text-right">Rate</th>
-                    <th style="width: 9%;" class="text-right">Valuation (&#8377;)</th>
+                    <th style="width: 3.5%;" class="text-center">#</th>
+                    <th style="width: 33.5%;">Product Name</th>
+                    <th style="width: 21.5%;">Location Breakdown</th>
+                    <th style="width: 12.5%;" class="text-right">Available Qty</th>
+                    <th style="width: 11%;" class="text-right">Rate</th>
+                    <th style="width: 18%;" class="text-right">Valuation (&#8377;)</th>
                 @else
                     <th style="width: 5%;" class="text-center">#</th>
                     <th style="width: 50%;">Product Name</th>
@@ -444,12 +447,12 @@
                         @endif
                     </td>
                     <td style="font-size: 7.2px;">{!! $item['location'] !!}</td>
-                    <td class="text-right" style="font-weight: bold;">
+                    <td class="text-right" style="font-weight: bold; white-space: nowrap;">
                         {{ number_format($item['quantity'], 2) }} <span style="font-size: 6.8px; font-weight: normal; color: #475467;">{{ $item['unit'] }}</span>
                     </td>
                     @if(empty($isStockManager))
-                        <td class="text-right">&#8377;{{ number_format($item['rate'], 2) }}</td>
-                        <td class="text-right amount-highlight">&#8377;{{ number_format($item['amount'], 2) }}</td>
+                        <td class="text-right" style="white-space: nowrap;">&#8377;{{ number_format($item['rate'], 2) }}</td>
+                        <td class="text-right amount-highlight" style="white-space: nowrap;">&#8377;{{ number_format($item['amount'], 2) }}</td>
                     @endif
                 </tr>
             @empty
@@ -463,8 +466,8 @@
             @if(!empty($items))
                 @if(empty($isStockManager))
                     <tr class="total-row">
-                        <td colspan="5" class="text-right">TOTAL STOCK VALUATION (REF):</td>
-                        <td class="text-right amount-highlight">&#8377;{{ number_format($totalValuation, 2) }}</td>
+                        <td colspan="5" class="text-right" style="white-space: nowrap;">TOTAL STOCK VALUATION (REF):</td>
+                        <td class="text-right amount-highlight" style="white-space: nowrap;">&#8377;{{ number_format($totalValuation, 2) }}</td>
                     </tr>
                 @else
                     <tr class="total-row">
