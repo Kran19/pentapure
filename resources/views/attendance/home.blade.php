@@ -31,9 +31,6 @@
   $reportsUrl = $isAdmin 
       ? (Route::has($roleSlug . '.attendance.reports') ? route($roleSlug . '.attendance.reports') : url($roleSlug . '/attendance/reports')) 
       : (Route::has($roleSlug . '.history') ? route($roleSlug . '.history') : url($roleSlug . '/history'));
-  $deleteUrl = $isAdmin 
-      ? (Route::has($roleSlug . '.attendance.daily.delete') ? route($roleSlug . '.attendance.daily.delete') : url($roleSlug . '/attendance/daily/delete')) 
-      : (Route::has($roleSlug . '.daily.delete') ? route($roleSlug . '.daily.delete') : url($roleSlug . '/daily/delete'));
 @endphp
 
   <!-- Summary Cards -->
@@ -114,15 +111,6 @@
                   <a href="{{ $dailyPdfUrl }}" class="btn" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; background: #c0392b; color: white; font-size: 0.85rem;" target="_blank">
                     PDF ↓
                   </a>
-                @endif
-                @if(empty($isReadOnly) && in_array(session('auth_user.role') ?? '', ['ADMIN', 'SUB_ADMIN', 'ATTENDANCE']))
-                  <button type="button" 
-                          onclick="deleteAttendanceRecord('{{ $sub->attendance_date->format('Y-m-d') }}', '{{ $sub->attendance_date->format('d-m-Y') }}', this)" 
-                          class="btn" 
-                          style="padding:0.3rem 0.6rem; background:rgba(239,68,68,0.1); color:#ef4444; border:1px solid rgba(239,68,68,0.3); font-size: 0.85rem; cursor:pointer;" 
-                          title="Delete attendance for {{ $sub->attendance_date->format('d-m-Y') }}">
-                    🗑️ Delete
-                  </button>
                 @endif
               </div>
             </td>
@@ -205,51 +193,6 @@
 <script>
 const csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
 
-function deleteAttendanceRecord(dateStr, formattedDate, btn) {
-  if (!confirm(`Are you sure you want to delete all attendance records for ${formattedDate}? This action cannot be undone.`)) return;
-
-  btn.disabled = true;
-  btn.innerText = '⏳ Deleting...';
-
-  const deleteUrl = '{{ $deleteUrl }}';
-
-  fetch(deleteUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRF-TOKEN': csrfToken,
-      'Accept': 'application/json'
-    },
-    body: JSON.stringify({ date: dateStr, _token: csrfToken })
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      const row = btn.closest('tr');
-      if (row) {
-        row.style.opacity = '0';
-        row.style.transform = 'scale(0.95)';
-        setTimeout(() => {
-          row.remove();
-          const tbody = document.querySelector('table tbody');
-          if (tbody && tbody.children.length === 0) {
-            location.reload();
-          }
-        }, 250);
-      }
-    } else {
-      alert(data.message || 'Failed to delete attendance record');
-      btn.disabled = false;
-      btn.innerText = '🗑️ Delete';
-    }
-  })
-  .catch(err => {
-    console.error(err);
-    alert('An error occurred while deleting attendance record');
-    btn.disabled = false;
-    btn.innerText = '🗑️ Delete';
-  });
-}
 
 const defaultModalSalaryOptions = [
   { value: 'DAILY', text: 'Daily (₹ / Day)' },

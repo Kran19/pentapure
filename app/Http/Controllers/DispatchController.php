@@ -1018,7 +1018,7 @@ class DispatchController extends Controller
             'order.company',
             'order.transporter',
             'order.creator',
-            'order.dispatchLogs',
+            'order.dispatchLogs.dispatchItems',
             'user',
             'dispatchItems.orderItem.product'
         ])
@@ -1076,41 +1076,75 @@ class DispatchController extends Controller
             $isOrderDone = in_array($rawDispStatus, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED']) || ($orderTotalQty > 0 && $orderRemainingQty <= 0);
             $computedStatus = $isOrderDone ? 'DONE' : 'PARTIAL';
 
+            $totalPrevDispatched = 0;
+            $items = $d->dispatchItems->filter(fn($di) => $di->orderItem && $di->orderItem->order_id == $d->order_id)->map(function($di) use ($d, &$totalPrevDispatched) {
+                // Calculate previous dispatch quantity for this specific order item before this dispatch round
+                $prevDispatched = 0;
+                if ($d->order && $d->order->dispatchLogs) {
+                    foreach ($d->order->dispatchLogs as $priorLog) {
+                        $isPrior = ($priorLog->created_at && $d->created_at)
+                            ? ($priorLog->created_at < $d->created_at || ($priorLog->created_at == $d->created_at && $priorLog->id < $d->id))
+                            : ($priorLog->id < $d->id);
+                        if ($isPrior && $priorLog->dispatchItems) {
+                            foreach ($priorLog->dispatchItems as $pdi) {
+                                if ($pdi->order_item_id == $di->order_item_id) {
+                                    $prevDispatched += (float) $pdi->quantity;
+                                }
+                            }
+                        }
+                    }
+                }
+                $totalPrevDispatched += $prevDispatched;
+
+                return [
+                    'id'                => $di->id,
+                    'dispatchItemId'    => $di->id,
+                    'orderItemId'       => $di->order_item_id,
+                    'productName'       => $di->orderItem?->product?->name ?? 'Unknown',
+                    'rawProductName'    => $di->orderItem?->product?->name ?? 'Unknown',
+                    'formattedName'     => $di->orderItem?->product ? $di->orderItem->product->formatName($di->orderItem->grade) : 'Unknown',
+                    'grade'             => $di->orderItem?->grade,
+                    'productType'       => $di->orderItem?->product?->type,
+                    'totalQty'          => (float) ($di->orderItem?->quantity ?? 0),
+                    'prevDispatchedQty' => (float) $prevDispatched,
+                    'dispatchedQty'     => (float) $di->quantity,
+                    'remainingQty'      => (float) max(0, ($di->orderItem?->quantity ?? 0) - ($prevDispatched + (float) $di->quantity)),
+                ];
+            })->values();
+
+            $totalCurrentDispatched = (float) $items->sum('dispatchedQty');
+            $totalRemaining = (float) $items->sum('remainingQty');
+            $totalOrdered = (float) $items->sum('totalQty');
+
             return [
-                'id'            => $d->id,
-                'isOrderOnly'   => false,
-                'orderId'       => $d->order_id,
-                'companyId'     => $d->order?->company_id,
-                'companyName'   => $d->order?->company?->name,
-                'transportName' => $d->transporter?->name ?? $d->order?->transporter?->name,
-                'salesPerson'   => $d->order?->creator?->name ?? 'N/A',
-                'salesBy'       => $d->order?->creator?->name ?? 'N/A',
-                'dispatchedBy'  => $d->user?->name,
-                'lrImage'       => $effectiveLr,
-                'ownLrImage'    => $ownLr,
-                'isOrderLrCopy' => empty($ownLr) && !empty($effectiveLr),
-                'lrImages'      => $lrImages,
-                'orderLrCopies' => $orderLrCopies,
-                'orderTotal'    => $d->order?->total,
-                'status'        => $d->order?->status,
-                'dispatchStatus'=> $computedStatus,
-                'date'          => $d->created_at ? $d->created_at->toISOString() : ($d->date ? \Carbon\Carbon::parse($d->date)->toISOString() : now()->toISOString()),
-                'notes'         => $d->notes ?: $d->order?->notes,
-                'dispatchNotes' => $d->notes,
-                'orderNotes'    => $d->order?->notes,
-                'items'         => $d->dispatchItems->filter(fn($di) => $di->orderItem && $di->orderItem->order_id == $d->order_id)->map(fn($di) => [
-                    'id'            => $di->id,
-                    'dispatchItemId'=> $di->id,
-                    'orderItemId'   => $di->order_item_id,
-                    'productName'   => $di->orderItem?->product?->name ?? 'Unknown',
-                    'rawProductName'=> $di->orderItem?->product?->name ?? 'Unknown',
-                    'formattedName' => $di->orderItem?->product ? $di->orderItem->product->formatName($di->orderItem->grade) : 'Unknown',
-                    'grade'         => $di->orderItem?->grade,
-                    'productType'   => $di->orderItem?->product?->type,
-                    'totalQty'      => (float) ($di->orderItem?->quantity ?? 0),
-                    'dispatchedQty' => (float) $di->quantity,
-                    'remainingQty'  => (float) max(0, ($di->orderItem?->quantity ?? 0) - ($di->orderItem?->dispatched_qty ?? 0)),
-                ])->values(),
+                'id'                        => $d->id,
+                'dispatchId'                => $d->id,
+                'isOrderOnly'               => false,
+                'orderId'                   => $d->order_id,
+                'companyId'                 => $d->order?->company_id,
+                'companyName'               => $d->order?->company?->name,
+                'transportName'             => $d->transporter?->name ?? $d->order?->transporter?->name,
+                'salesPerson'               => $d->order?->creator?->name ?? 'N/A',
+                'salesBy'                   => $d->order?->creator?->name ?? 'N/A',
+                'dispatchedBy'              => $d->user?->name,
+                'lrImage'                   => $effectiveLr,
+                'ownLrImage'                => $ownLr,
+                'isOrderLrCopy'             => empty($ownLr) && !empty($effectiveLr),
+                'lrImages'                  => $lrImages,
+                'orderLrCopies'             => $orderLrCopies,
+                'orderTotal'                => $d->order?->total,
+                'status'                    => $d->order?->status,
+                'dispatchStatus'            => $computedStatus,
+                'date'                      => $d->created_at ? $d->created_at->toISOString() : ($d->date ? \Carbon\Carbon::parse($d->date)->toISOString() : now()->toISOString()),
+                'dispatchDate'              => $d->created_at ? $d->created_at->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') : ($d->date ? \Carbon\Carbon::parse($d->date)->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') : now()->timezone('Asia/Kolkata')->format('d-m-Y, h:i A')),
+                'notes'                     => $d->notes ?: $d->order?->notes,
+                'dispatchNotes'             => $d->notes,
+                'orderNotes'                => $d->order?->notes,
+                'totalPrevDispatchedQty'    => (float) $totalPrevDispatched,
+                'totalCurrentDispatchedQty' => (float) $totalCurrentDispatched,
+                'totalRemainingQty'         => (float) $totalRemaining,
+                'totalOrderQty'             => (float) $totalOrdered,
+                'items'                     => $items,
             ];
         });
 

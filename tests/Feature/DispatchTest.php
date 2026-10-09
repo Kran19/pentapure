@@ -933,4 +933,60 @@ class DispatchTest extends TestCase
             @unlink(public_path($log2->lr_image_path));
         }
     }
+
+    public function test_dispatch_history_displays_dispatch_id_date_and_previous_dispatch_quantity(): void
+    {
+        $session = ['auth_user' => [
+            'id'   => $this->dispatchUser->id,
+            'name' => $this->dispatchUser->name,
+            'role' => 'DISPATCH',
+        ]];
+
+        // Round 1 dispatch: 200 kg of 500 kg
+        $log1 = \App\Models\DispatchLog::create([
+            'user_id'        => $this->dispatchUser->id,
+            'order_id'       => $this->order->id,
+            'transporter_id' => $this->transporter->id,
+            'created_at'     => now()->subHour(),
+        ]);
+        \App\Models\DispatchLogItem::create([
+            'dispatch_log_id' => $log1->id,
+            'order_item_id'   => $this->orderItem->id,
+            'quantity'        => 200,
+        ]);
+        $this->orderItem->update(['dispatched_qty' => 200]);
+
+        $resp1 = $this->withSession($session)->get('/dispatch/history');
+        $resp1->assertStatus(200);
+        $content1 = $resp1->getContent();
+
+        $this->assertStringContainsString("DSP #{$log1->id}", $content1);
+        $this->assertStringContainsString("Dispatch ID:", $content1);
+        $this->assertStringContainsString("Dispatch Date:", $content1);
+        $this->assertStringContainsString("PREV. DISPATCH:", $content1);
+        $this->assertStringContainsString("0 kg", $content1);
+
+        // Round 2 dispatch: 150 kg
+        $log2 = \App\Models\DispatchLog::create([
+            'user_id'        => $this->dispatchUser->id,
+            'order_id'       => $this->order->id,
+            'transporter_id' => $this->transporter->id,
+            'created_at'     => now(),
+        ]);
+        \App\Models\DispatchLogItem::create([
+            'dispatch_log_id' => $log2->id,
+            'order_item_id'   => $this->orderItem->id,
+            'quantity'        => 150,
+        ]);
+        $this->orderItem->update(['dispatched_qty' => 350]);
+
+        $resp2 = $this->withSession($session)->get('/dispatch/history');
+        $resp2->assertStatus(200);
+        $content2 = $resp2->getContent();
+
+        // Round 2 should have DSP #log2->id and show 200 kg as previous dispatch
+        $this->assertStringContainsString("DSP #{$log2->id}", $content2);
+        $this->assertStringContainsString("Prev. Dispatched:", $content2);
+        $this->assertStringContainsString("200 kg", $content2);
+    }
 }
