@@ -739,9 +739,35 @@ class AdminController extends Controller
         return response()->json(['success' => true]);
     }
 
+    public function hasStockLimitsRateColumn(): bool
+    {
+        static $hasCol = null;
+        if ($hasCol !== null) return $hasCol;
+
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasColumn('stock_limits', 'rate')) {
+                return $hasCol = true;
+            }
+            \Illuminate\Support\Facades\Schema::table('stock_limits', function (\Illuminate\Database\Schema\Blueprint $table) {
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('stock_limits', 'rate')) {
+                    $table->decimal('rate', 10, 2)->nullable()->default(null)->after('alert_limit');
+                }
+            });
+            return $hasCol = \Illuminate\Support\Facades\Schema::hasColumn('stock_limits', 'rate');
+        } catch (\Throwable $e) {
+            return $hasCol = false;
+        }
+    }
+
     // ── LIVE STOCK ─────────────────────────────────────────────────────────
     public function stock()
     {
+        $hasLimitRate = $this->hasStockLimitsRateColumn();
+        $rateSelect = $hasLimitRate 
+            ? "COALESCE(stock_limits.rate, products.rate, 0) as rate" 
+            : "products.rate";
+        $rateGroupBy = $hasLimitRate ? ['stock_limits.rate'] : [];
+
         $allStock = DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
             ->leftJoin('stock_limits', function($join) {
@@ -749,13 +775,13 @@ class AdminController extends Controller
                      ->on('stocks.stage', '=', 'stock_limits.stage')
                      ->on('stocks.grade', '=', 'stock_limits.grade');
             })
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.threshold', 'products.rate', 'products.sort_order', 'stock_limits.alert_limit')
+            ->groupBy(array_merge(['stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.threshold', 'products.rate', 'products.sort_order', 'stock_limits.alert_limit'], $rateGroupBy))
             ->selectRaw("
                 stocks.product_id as productId,
                 products.name,
                 products.unit,
                 products.threshold,
-                products.rate,
+                {$rateSelect},
                 stocks.stage,
                 stocks.grade,
                 products.sort_order,
@@ -830,20 +856,35 @@ class AdminController extends Controller
         
         $date = $request->input('date');
 
+        $hasLimitRate = $this->hasStockLimitsRateColumn();
+        $rateSelect = $hasLimitRate 
+            ? "COALESCE(stock_limits.rate, products.rate, 0) as rate" 
+            : "products.rate";
+        $rateGroupBy = $hasLimitRate ? ['stock_limits.rate'] : [];
+
         $stockQuery = DB::table('stocks')
-            ->join('products', 'stocks.product_id', '=', 'products.id')
-            ->whereIn('stocks.stage', $stages);
+            ->join('products', 'stocks.product_id', '=', 'products.id');
+
+        if ($hasLimitRate) {
+            $stockQuery->leftJoin('stock_limits', function($join) {
+                $join->on('stocks.product_id', '=', 'stock_limits.product_id')
+                     ->on('stocks.stage', '=', 'stock_limits.stage')
+                     ->on('stocks.grade', '=', 'stock_limits.grade');
+            });
+        }
+
+        $stockQuery->whereIn('stocks.stage', $stages);
 
         if ($date) {
             $stockQuery->whereRaw('COALESCE(stocks.date, stocks.created_at) <= ?', [$date . ' 23:59:59']);
         }
 
-        $stockData = $stockQuery->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.rate', 'products.sort_order')
+        $stockData = $stockQuery->groupBy(array_merge(['stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.rate', 'products.sort_order'], $rateGroupBy))
             ->selectRaw("
                 stocks.product_id as productId,
                 products.name,
                 products.unit,
-                products.rate,
+                {$rateSelect},
                 stocks.stage,
                 stocks.grade,
                 SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
@@ -972,15 +1013,30 @@ class AdminController extends Controller
 
         $date = $request->input('date');
 
+        $hasLimitRate = $this->hasStockLimitsRateColumn();
+        $rateSelect = $hasLimitRate 
+            ? "COALESCE(stock_limits.rate, products.rate, 0) as rate" 
+            : "products.rate";
+        $rateGroupBy = $hasLimitRate ? ['stock_limits.rate'] : [];
+
         $stockQuery = DB::table('stocks')
-            ->join('products', 'stocks.product_id', '=', 'products.id')
-            ->whereIn('stocks.stage', $stages);
+            ->join('products', 'stocks.product_id', '=', 'products.id');
+
+        if ($hasLimitRate) {
+            $stockQuery->leftJoin('stock_limits', function($join) {
+                $join->on('stocks.product_id', '=', 'stock_limits.product_id')
+                     ->on('stocks.stage', '=', 'stock_limits.stage')
+                     ->on('stocks.grade', '=', 'stock_limits.grade');
+            });
+        }
+
+        $stockQuery->whereIn('stocks.stage', $stages);
 
         if ($date) {
             $stockQuery->whereRaw('COALESCE(stocks.date, stocks.created_at) <= ?', [$date . ' 23:59:59']);
         }
 
-        $stockData = $stockQuery->groupBy(
+        $stockData = $stockQuery->groupBy(array_merge([
                 'stocks.product_id',
                 'stocks.stage',
                 'stocks.grade',
@@ -988,12 +1044,12 @@ class AdminController extends Controller
                 'products.unit',
                 'products.rate',
                 'products.sort_order'
-            )
+            ], $rateGroupBy))
             ->selectRaw("
                 stocks.product_id as productId,
                 products.name,
                 products.unit,
-                products.rate,
+                {$rateSelect},
                 stocks.stage,
                 stocks.grade,
                 products.sort_order,
@@ -1239,6 +1295,12 @@ class AdminController extends Controller
 
     public function liveStockApi()
     {
+        $hasLimitRate = $this->hasStockLimitsRateColumn();
+        $rateSelect = $hasLimitRate 
+            ? "COALESCE(stock_limits.rate, products.rate, 0) as rate" 
+            : "products.rate";
+        $rateGroupBy = $hasLimitRate ? ['stock_limits.rate'] : [];
+
         $allStock = DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
             ->leftJoin('stock_limits', function($join) {
@@ -1246,13 +1308,13 @@ class AdminController extends Controller
                      ->on('stocks.stage', '=', 'stock_limits.stage')
                      ->on('stocks.grade', '=', 'stock_limits.grade');
             })
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.type', 'products.unit', 'products.rate', 'products.threshold', 'products.sort_order', 'stock_limits.alert_limit')
+            ->groupBy(array_merge(['stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.type', 'products.unit', 'products.rate', 'products.threshold', 'products.sort_order', 'stock_limits.alert_limit'], $rateGroupBy))
             ->selectRaw("
                 stocks.product_id as productId,
                 products.name,
                 products.type,
                 products.unit,
-                products.rate,
+                {$rateSelect},
                 products.threshold,
                 products.sort_order,
                 stocks.stage,
@@ -1319,14 +1381,33 @@ class AdminController extends Controller
     {
         $request->validate([
             'product_id' => 'required|exists:products,id',
+            'stage' => 'nullable|string',
+            'grade' => 'nullable|string',
             'rate' => 'required|numeric|min:0'
         ]);
 
-        $product = \App\Models\Product::findOrFail($request->product_id);
-        $product->rate = $request->rate;
-        $product->save();
+        $stage = $request->input('stage');
+        $rawGrade = $request->input('grade');
+        $grade = ($rawGrade && trim($rawGrade) !== '') ? trim($rawGrade) : 'NONE';
 
-        return response()->json(['success' => true, 'message' => 'Product rate updated successfully!']);
+        if ($stage && $this->hasStockLimitsRateColumn()) {
+            \App\Models\StockLimit::updateOrCreate(
+                [
+                    'product_id' => $request->product_id,
+                    'stage' => $stage,
+                    'grade' => $grade,
+                ],
+                [
+                    'rate' => $request->rate
+                ]
+            );
+        } else {
+            $product = \App\Models\Product::findOrFail($request->product_id);
+            $product->rate = $request->rate;
+            $product->save();
+        }
+
+        return response()->json(['success' => true, 'message' => 'Rate updated successfully!']);
     }
 
     // ── PURCHASE ORDERS ────────────────────────────────────────────────────
@@ -2077,16 +2158,23 @@ class AdminController extends Controller
                     $entryDate = !empty($item['date']) ? $item['date'] : ($request->input('date') ?: now()->toDateString());
                     $stockDate = Carbon::parse($entryDate)->setTime(now()->hour, now()->minute, now()->second);
 
+                    $limitData = [];
                     if (isset($item['alert_limit'])) {
+                        $limitData['alert_limit'] = $item['alert_limit'];
+                    }
+                    if (isset($item['rate']) && $item['rate'] > 0 && $this->hasStockLimitsRateColumn()) {
+                        $limitData['rate'] = $item['rate'];
+                    }
+                    if (!empty($limitData)) {
                         \App\Models\StockLimit::updateOrCreate(
                             ['product_id' => $productId, 'stage' => $stage, 'grade' => $grade],
-                            ['alert_limit' => $item['alert_limit']]
+                            $limitData
                         );
                     }
 
                     if (isset($item['rate']) && $item['rate'] > 0) {
                         $product = Product::find($productId);
-                        if ($product) {
+                        if ($product && empty($product->rate)) {
                             $product->update(['rate' => $item['rate']]);
                         }
                     }

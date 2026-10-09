@@ -255,6 +255,12 @@ class StockManagerController extends Controller
     // ── LIVE STOCK: Admin-like Live Stock view ────────────────────────────
     public function stock()
     {
+        $hasLimitRate = \Illuminate\Support\Facades\Schema::hasColumn('stock_limits', 'rate');
+        $rateSelect = $hasLimitRate 
+            ? "COALESCE(stock_limits.rate, products.rate, 0) as rate" 
+            : "products.rate";
+        $rateGroupBy = $hasLimitRate ? ['stock_limits.rate'] : [];
+
         $allStock = DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
             ->leftJoin('stock_limits', function($join) {
@@ -262,13 +268,13 @@ class StockManagerController extends Controller
                      ->on('stocks.stage', '=', 'stock_limits.stage')
                      ->on('stocks.grade', '=', 'stock_limits.grade');
             })
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.threshold', 'products.rate', 'products.sort_order', 'stock_limits.alert_limit')
+            ->groupBy(array_merge(['stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.threshold', 'products.rate', 'products.sort_order', 'stock_limits.alert_limit'], $rateGroupBy))
             ->selectRaw("
                 stocks.product_id as productId,
                 products.name,
                 products.unit,
                 products.threshold,
-                products.rate,
+                {$rateSelect},
                 stocks.stage,
                 stocks.grade,
                 products.sort_order,

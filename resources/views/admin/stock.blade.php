@@ -1158,7 +1158,7 @@
             <td style="font-weight:bold;">
               ₹{{ number_format($s->rate ?? 0, 2) }}
               @if(empty($isReadOnly))
-              <button class="btn-icon edit" onclick="adminUpdateRate('{{ $s->productId }}', '{{ $s->rate ?? 0 }}', '{{ addslashes($s->name) }}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
+              <button class="btn-icon edit" onclick="adminUpdateRate('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->rate ?? 0 }}', '{{ addslashes($s->name) }}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
               @endif
@@ -1246,7 +1246,7 @@
             <td style="font-weight:bold;">
               ₹{{ number_format($s->rate ?? 0, 2) }}
               @if(empty($isReadOnly))
-              <button class="btn-icon edit" onclick="adminUpdateRate('{{ $s->productId }}', '{{ $s->rate ?? 0 }}', '{{ addslashes($s->name) }}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
+              <button class="btn-icon edit" onclick="adminUpdateRate('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->rate ?? 0 }}', '{{ addslashes($s->name) }}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
               @endif
@@ -1334,7 +1334,7 @@
             <td style="font-weight:bold;">
               ₹{{ number_format($s->rate ?? 0, 2) }}
               @if(empty($isReadOnly))
-              <button class="btn-icon edit" onclick="adminUpdateRate('{{ $s->productId }}', '{{ $s->rate ?? 0 }}', '{{ addslashes($s->name) }}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
+              <button class="btn-icon edit" onclick="adminUpdateRate('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->rate ?? 0 }}', '{{ addslashes($s->name) }}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
               @endif
@@ -1422,7 +1422,7 @@
             <td style="font-weight:bold;">
               ₹{{ number_format($s->rate ?? 0, 2) }}
               @if(empty($isReadOnly))
-              <button class="btn-icon edit" onclick="adminUpdateRate('{{ $s->productId }}', '{{ $s->rate ?? 0 }}', '{{ addslashes($s->name) }}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
+              <button class="btn-icon edit" onclick="adminUpdateRate('{{ $s->productId }}', '{{ $s->stage }}', '{{ $s->grade }}', '{{ $s->rate ?? 0 }}', '{{ addslashes($s->name) }}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
               </button>
               @endif
@@ -2016,29 +2016,37 @@ function onSwalMainQtyInput(mainInput) {
   }
 }
 
-function adminUpdateRate(productId, currentRate, name) {
+function adminUpdateRate(productId, stage, grade, currentRate, name) {
   if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
+  
+  const stageRaw = (stage || '').toUpperCase();
+  const stageLabel = (stageRaw === 'FINISHED' || stageRaw === 'FG') ? 'FG' : (stageRaw === 'PACKAGING' || stageRaw === 'PKG' ? 'PM' : stageRaw);
+  const gradeClean = (grade && !['NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', '-'].includes(grade.toUpperCase().trim())) ? grade.trim() : '';
+  const itemSubtitle = stageLabel ? `(${stageLabel}${gradeClean ? ' - ' + gradeClean : ''})` : '';
+
   Swal.fire({
     title: 'Edit Rate',
     html: `
-      <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:#6b7280;">
-        <strong style="color:#333;">${name}</strong>
+      <div style="text-align:left; font-size:0.95rem; margin-bottom:1rem; color:#333;">
+        <strong style="color:#111827;">${name}</strong>
+        ${itemSubtitle ? `<div style="font-size:0.85rem; font-weight:700; color:#d97706; margin-top:3px;">${itemSubtitle}</div>` : ''}
       </div>
       <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
-        New Rate (₹)
+        Rate for this item (₹)
       </label>
-      <input id="swal-rate-val" type="number" min="0" step="0.01" value="${currentRate}" style="width:100%; padding:0.65rem; border-radius:8px; border:1px solid #d1d5db; background:#fff; color:#333;">
+      <input id="swal-rate-val" type="number" min="0" step="0.01" value="${currentRate}" style="width:100%; padding:0.65rem; border-radius:8px; border:1px solid #d1d5db; background:#fff; color:#333; font-weight:700; font-size:1.05rem;">
+      <p style="text-align:left; font-size:0.75rem; color:#9ca3af; margin-top:6px; font-style:italic;">Updates rate specifically for this individual stock item (${stageLabel}${gradeClean ? ' ' + gradeClean : ''}).</p>
     `,
     background: '#ffffff',
     color: '#333333',
     showCancelButton: true,
-    confirmButtonText: 'Save',
+    confirmButtonText: 'Save Rate',
     confirmButtonColor: '#f59e0b',
     cancelButtonColor: '#9ca3af',
     preConfirm: () => {
       const val = document.getElementById('swal-rate-val').value;
-      if (!val || val < 0) {
-        Swal.showValidationMessage('Enter a valid rate');
+      if (val === '' || isNaN(val) || parseFloat(val) < 0) {
+        Swal.showValidationMessage('Enter a valid positive rate');
         return false;
       }
       return val;
@@ -2054,6 +2062,8 @@ function adminUpdateRate(productId, currentRate, name) {
         },
         body: JSON.stringify({
           product_id: productId,
+          stage: stage,
+          grade: grade,
           rate: result.value
         })
       })
@@ -2320,7 +2330,7 @@ function updateStockTables(stockData) {
           <td style="font-weight:bold;">
             ₹${window.number_format(s.rate ?? 0, 2)}
             ${window.isReadOnly ? '' : `
-            <button class="btn-icon edit" onclick="adminUpdateRate('${s.productId}', '${s.rate ?? 0}', '${escapeHtml(s.name)}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
+            <button class="btn-icon edit" onclick="adminUpdateRate('${s.productId}', '${s.stage}', '${s.grade}', '${s.rate ?? 0}', '${escapeHtml(s.name)}')" title="Edit Rate" style="color:var(--secondary); padding: 0; margin-left: 0.4rem; background: none; border: none; cursor: pointer; display: inline-flex; vertical-align: middle;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
             </button>
             `}
