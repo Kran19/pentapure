@@ -242,4 +242,100 @@ class WorkerAndDepartmentUsageTest extends TestCase
         ]);
         $this->assertDatabaseMissing('workers', ['id' => $worker->id]);
     }
+
+    public function test_can_toggle_department_status_to_disabled_and_enabled(): void
+    {
+        $dept = Department::create([
+            'name'      => 'Disablable Dept',
+            'is_active' => true,
+        ]);
+
+        // Toggle to disabled (Inactive)
+        $response = $this->withSession(['auth_user' => $this->adminUser->toArray()])
+            ->postJson("/admin/attendance/departments/{$dept->id}/toggle-status");
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success'   => true,
+            'is_active' => false,
+        ]);
+        $this->assertDatabaseHas('departments', [
+            'id'        => $dept->id,
+            'is_active' => false,
+        ]);
+
+        // Toggle back to enabled (Active)
+        $response2 = $this->withSession(['auth_user' => $this->adminUser->toArray()])
+            ->postJson("/admin/attendance/departments/{$dept->id}/toggle-status");
+
+        $response2->assertStatus(200);
+        $response2->assertJson([
+            'success'   => true,
+            'is_active' => true,
+        ]);
+        $this->assertDatabaseHas('departments', [
+            'id'        => $dept->id,
+            'is_active' => true,
+        ]);
+    }
+
+    public function test_cannot_disable_mukadam_department(): void
+    {
+        $dept = Department::firstOrCreate(['name' => 'MUKADAM'], ['is_active' => true]);
+
+        $response = $this->withSession(['auth_user' => $this->adminUser->toArray()])
+            ->postJson("/admin/attendance/departments/{$dept->id}/toggle-status");
+
+        $response->assertStatus(422);
+        $response->assertJson(['success' => false]);
+        $this->assertDatabaseHas('departments', [
+            'id'        => $dept->id,
+            'is_active' => true,
+        ]);
+    }
+
+    public function test_can_toggle_worker_status_to_disabled_and_enabled(): void
+    {
+        $dept = Department::create([
+            'name'      => 'Worker Status Dept',
+            'is_active' => true,
+        ]);
+
+        $worker = Worker::create([
+            'name'          => 'Toggleable Worker',
+            'department_id' => $dept->id,
+            'shift_type'    => 'DAY',
+            'salary_type'   => 'DAILY',
+            'salary_amount' => 450,
+            'status'        => 'ACTIVE',
+        ]);
+
+        // Toggle to disabled (INACTIVE)
+        $response = $this->withSession(['auth_user' => $this->adminUser->toArray()])
+            ->postJson("/admin/attendance/workers/{$worker->id}/toggle-status");
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+            'status'  => 'INACTIVE',
+        ]);
+        $this->assertDatabaseHas('workers', [
+            'id'     => $worker->id,
+            'status' => 'INACTIVE',
+        ]);
+
+        // Toggle back to enabled (ACTIVE)
+        $response2 = $this->withSession(['auth_user' => $this->adminUser->toArray()])
+            ->postJson("/admin/attendance/workers/{$worker->id}/toggle-status");
+
+        $response2->assertStatus(200);
+        $response2->assertJson([
+            'success' => true,
+            'status'  => 'ACTIVE',
+        ]);
+        $this->assertDatabaseHas('workers', [
+            'id'     => $worker->id,
+            'status' => 'ACTIVE',
+        ]);
+    }
 }

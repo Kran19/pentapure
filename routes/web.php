@@ -478,9 +478,11 @@ foreach ($adminSlugs as $slug) {
     Route::get('/attendance/dashboard',   [AttendanceController::class, 'home'])->name($slug.'.attendance.dashboard');
     Route::get('/attendance/departments', [AttendanceController::class, 'departments'])->name($slug.'.attendance.departments');
     Route::post('/attendance/departments',[AttendanceController::class, 'storeDepartment']);
+    Route::post('/attendance/departments/{id}/toggle-status', [AttendanceController::class, 'toggleDepartmentStatus'])->name($slug.'.attendance.departments.toggle_status');
     Route::delete('/attendance/departments/{id}', [AttendanceController::class, 'destroyDepartment']);
     Route::get('/attendance/workers',     [AttendanceController::class, 'workers'])->name($slug.'.attendance.workers');
     Route::post('/attendance/workers',    [AttendanceController::class, 'storeWorker']);
+    Route::post('/attendance/workers/{id}/toggle-status', [AttendanceController::class, 'toggleWorkerStatus'])->name($slug.'.attendance.workers.toggle_status');
     Route::delete('/attendance/workers/{id}', [AttendanceController::class, 'destroyWorker']);
     Route::get('/attendance/daily',       [AttendanceController::class, 'daily'])->name($slug.'.attendance.daily');
     Route::post('/attendance/daily',      [AttendanceController::class, 'storeDailyAttendance']);
@@ -622,10 +624,12 @@ foreach ($roleSlugs['ATTENDANCE'] ?? [] as $slug) {
     Route::get('/home',               'home')->name($slug.'.home');
     Route::get('/departments',        'departments')->name($slug.'.departments');
     Route::post('/departments',       'storeDepartment');
+    Route::post('/departments/{id}/toggle-status', 'toggleDepartmentStatus');
     Route::delete('/departments/{id}','destroyDepartment');
 
     Route::get('/workers',            'workers')->name($slug.'.workers');
     Route::post('/workers',           'storeWorker');
+    Route::post('/workers/{id}/toggle-status', 'toggleWorkerStatus');
     Route::delete('/workers/{id}',    'destroyWorker');
 
     Route::get('/daily',              'daily')->name($slug.'.daily');

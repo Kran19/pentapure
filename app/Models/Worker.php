@@ -23,4 +23,9 @@ class Worker extends Model
     {
         return $this->hasMany(Attendance::class);
     }
+
+    public function monthlyAdjustments()
+    {
+        return $this->hasMany(WorkerMonthlyAdjustment::class);
+    }
 }

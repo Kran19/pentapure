@@ -106,17 +106,46 @@
               @endif
             </td>
             <td>
-              <span class="badge {{ $w->status=='ACTIVE'?'badge-done':'badge-danger' }}">{{ $w->status }}</span>
+              <span class="badge {{ $w->status=='ACTIVE'?'badge-done':'badge-danger' }}"
+                style="cursor:pointer;"
+                onclick="toggleWorkerStatus({{ $w->id }}, '{{ addslashes($w->name) }}', '{{ $w->status }}')"
+                title="Click to {{ $w->status == 'ACTIVE' ? 'Disable (mark Inactive)' : 'Enable (mark Active)' }}">
+                {{ $w->status == 'ACTIVE' ? 'Active' : 'Inactive (Disabled)' }}
+              </span>
             </td>
             <td>
-              <div class="action-btns">
+              <div class="action-btns" style="display:flex; align-items:center; gap:6px;">
                 @if(empty($isReadOnly))
-                <button class="btn-icon edit" onclick="editWorker({{ json_encode($w) }})" title="Edit">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
-                </button>
-                <button class="btn-icon delete" onclick="deleteWorker({{ $w->id }})" title="{{ ($w->attendances_count ?? 0) > 0 ? 'Worker has attendance records (In Use)' : 'Delete' }}">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                </button>
+                  <button type="button" class="btn-icon edit" onclick="editWorker({{ json_encode($w) }})" title="Edit">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
+                  </button>
+
+                  @if($w->status === 'ACTIVE')
+                    <button type="button" class="btn-icon" onclick="toggleWorkerStatus({{ $w->id }}, '{{ addslashes($w->name) }}', 'ACTIVE')"
+                      style="background:rgba(239, 68, 68, 0.12); color:#dc2626; border:1px solid rgba(239, 68, 68, 0.3); border-radius:6px; padding:4px 8px; font-size:0.75rem; font-weight:700; cursor:pointer;"
+                      title="Disable Worker (mark Inactive)">
+                      Disable
+                    </button>
+                  @else
+                    <button type="button" class="btn-icon" onclick="toggleWorkerStatus({{ $w->id }}, '{{ addslashes($w->name) }}', 'INACTIVE')"
+                      style="background:rgba(22, 163, 74, 0.12); color:#16a34a; border:1px solid rgba(22, 163, 74, 0.3); border-radius:6px; padding:4px 8px; font-size:0.75rem; font-weight:700; cursor:pointer;"
+                      title="Enable Worker (mark Active)">
+                      Enable
+                    </button>
+                  @endif
+
+                  @if(!empty($w->is_used))
+                    <button type="button" class="btn-icon delete" disabled
+                      onclick="inUseWorkerAlert('{{ addslashes($w->name) }}', {{ $w->id }}, '{{ $w->status }}')"
+                      style="opacity:0.35; cursor:not-allowed; background:#f3f4f6; color:#9ca3af; border:1px solid #d1d5db;"
+                      title="Worker in use (Attendance / Salary records exist) - Cannot delete, Disable instead">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    </button>
+                  @else
+                    <button type="button" class="btn-icon delete" onclick="deleteWorker({{ $w->id }})" title="Delete Worker (No records in use)">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    </button>
+                  @endif
                 @else
                   <span style="font-size:0.8rem; color:var(--text-muted);">View Only</span>
                 @endif
@@ -259,6 +288,65 @@ document.getElementById('worker-form').onsubmit = function(e) {
 
 
 
+function inUseWorkerAlert(name, id, currentStatus) {
+  if (currentStatus === 'ACTIVE') {
+    Swal.fire({
+      title: 'Cannot Delete Worker',
+      text: `Worker "${name}" has associated attendance or salary records and cannot be deleted. Would you like to Disable (mark INACTIVE) this worker instead?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Disable Worker',
+      confirmButtonColor: '#f59e0b',
+      cancelButtonText: 'Cancel'
+    }).then((res) => {
+      if (res.isConfirmed) {
+        toggleWorkerStatus(id, name, 'ACTIVE');
+      }
+    });
+  } else {
+    Swal.fire({
+      title: 'Worker In Use & Disabled',
+      text: `Worker "${name}" is already Disabled (Inactive). This worker cannot be deleted permanently because historical attendance or salary records exist for data integrity.`,
+      icon: 'info',
+      confirmButtonText: 'OK'
+    });
+  }
+}
+
+function toggleWorkerStatus(id, name, currentStatus) {
+  const isActivating = (currentStatus === 'INACTIVE');
+  const actionText = isActivating ? 'Enable (Activate)' : 'Disable (Deactivate)';
+  Swal.fire({
+    title: `${actionText} Worker?`,
+    text: isActivating 
+      ? `Are you sure you want to activate worker "${name}"?` 
+      : `Are you sure you want to disable worker "${name}"? They will no longer appear for daily attendance marking.`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: isActivating ? '#16a34a' : '#d33',
+    confirmButtonText: isActivating ? 'Yes, Enable' : 'Yes, Disable'
+  }).then((res) => {
+    if (res.isConfirmed) {
+      const baseUrl = window.location.href.split('?')[0].replace(/\/$/, '');
+      fetch(`${baseUrl}/${id}/toggle-status`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRF-TOKEN': csrfToken 
+        }
+      }).then(async r => {
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok || !d.success) throw new Error(d.message || ('Server error ' + r.status));
+        return d;
+      }).then(d => {
+        Swal.fire('Success', d.message || 'Status updated', 'success');
+        setTimeout(() => location.reload(), 700);
+      }).catch(err => Swal.fire('Error', err.message || 'Failed to update worker status', 'error'));
+    }
+  });
+}
+
 function deleteWorker(id) {
   Swal.fire({
     title: 'Delete Worker?',
@@ -283,7 +371,19 @@ function deleteWorker(id) {
         Swal.fire('Deleted!', d.message || '', 'success'); 
         setTimeout(()=>location.reload(),800); 
       }).catch(e => {
-        Swal.fire('Cannot Delete', e.message || 'An unexpected error occurred during deletion.', 'error');
+        Swal.fire({
+          title: 'Cannot Delete Worker',
+          text: e.message || 'Worker cannot be deleted because they are in use. Would you like to Disable this worker instead?',
+          icon: 'error',
+          showCancelButton: true,
+          confirmButtonText: 'Disable Worker Instead',
+          confirmButtonColor: '#f59e0b',
+          cancelButtonText: 'Cancel'
+        }).then((promptRes) => {
+          if (promptRes.isConfirmed) {
+            toggleWorkerStatus(id, '', 'ACTIVE');
+          }
+        });
       });
     }
   });

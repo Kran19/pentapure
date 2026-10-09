@@ -224,6 +224,23 @@ class AttendanceController extends Controller
             $departmentsQuery->whereIn('id', $allowedDeptIds);
         }
         $departments = $departmentsQuery->get();
+
+        $deptsWithAttendance = \App\Models\Attendance::join('workers', 'attendances.worker_id', '=', 'workers.id')
+            ->distinct()
+            ->pluck('workers.department_id')
+            ->toArray();
+        $deptsWithAdjustments = \App\Models\WorkerMonthlyAdjustment::join('workers', 'worker_monthly_adjustments.worker_id', '=', 'workers.id')
+            ->distinct()
+            ->pluck('workers.department_id')
+            ->toArray();
+
+        $departments->each(function($d) use ($deptsWithAttendance, $deptsWithAdjustments) {
+            $d->has_attendance = in_array($d->id, $deptsWithAttendance);
+            $d->has_adjustments = in_array($d->id, $deptsWithAdjustments);
+            $d->is_mukadam = (strtoupper(trim($d->name)) === 'MUKADAM');
+            $d->is_used = ($d->workers_count > 0 || $d->has_attendance || $d->has_adjustments || $d->is_mukadam);
+        });
+
         return view('attendance.departments', [
             'departments' => $departments,
             'layout'      => $this->getLayout($request)
@@ -232,10 +249,18 @@ class AttendanceController extends Controller
 
     public function storeDepartment(Request $request)
     {
-        $request->validate(['name' => 'required|string|max:255']);
+        $request->validate([
+            'name'      => 'required|string|max:255',
+            'is_active' => 'nullable',
+        ]);
         $allowedDeptIds = $this->getAllowedDeptIds();
         if (!empty($allowedDeptIds) && $request->department_id && !in_array((int)$request->department_id, $allowedDeptIds, true)) {
             return response()->json(['success' => false, 'message' => 'Unauthorized department.'], 403);
+        }
+
+        $data = ['name' => $request->name];
+        if ($request->has('is_active')) {
+            $data['is_active'] = filter_var($request->is_active, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? true;
         }
 
         if ($request->department_id) {
@@ -243,11 +268,40 @@ class AttendanceController extends Controller
             if (strtoupper(trim($dept->name)) === 'MUKADAM' && strtoupper(trim($request->name)) !== 'MUKADAM') {
                 return response()->json(['success' => false, 'message' => 'MUKADAM is a fixed system department name.'], 422);
             }
-            $dept->update($request->only('name'));
+            if (strtoupper(trim($dept->name)) === 'MUKADAM' && array_key_exists('is_active', $data) && !$data['is_active']) {
+                return response()->json(['success' => false, 'message' => 'MUKADAM is a fixed system department and cannot be disabled.'], 422);
+            }
+            $dept->update($data);
             return response()->json(['success' => true, 'message' => 'Department updated']);
         }
-        Department::create($request->only('name'));
+        if (!isset($data['is_active'])) {
+            $data['is_active'] = true;
+        }
+        Department::create($data);
         return response()->json(['success' => true, 'message' => 'Department created']);
+    }
+
+    public function toggleDepartmentStatus($id)
+    {
+        $allowedDeptIds = $this->getAllowedDeptIds();
+        if (!empty($allowedDeptIds) && !in_array((int)$id, $allowedDeptIds, true)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized department.'], 403);
+        }
+        $dept = Department::find($id);
+        if (!$dept) {
+            return response()->json(['success' => false, 'message' => 'Department not found.'], 404);
+        }
+        if (strtoupper(trim($dept->name)) === 'MUKADAM' && $dept->is_active) {
+            return response()->json(['success' => false, 'message' => 'MUKADAM is a fixed system department and cannot be disabled.'], 422);
+        }
+        $dept->is_active = !$dept->is_active;
+        $dept->save();
+        $statusText = $dept->is_active ? 'Active' : 'Inactive (Disabled)';
+        return response()->json([
+            'success'   => true,
+            'message'   => "Department '{$dept->name}' is now {$statusText}.",
+            'is_active' => (bool)$dept->is_active
+        ]);
     }
 
     public function destroyDepartment($id)
@@ -309,6 +363,16 @@ class AttendanceController extends Controller
 
         $workers     = $workersQuery->get();
         $departments = $departmentsQuery->get();
+
+        $workersWithAdjustments = \App\Models\WorkerMonthlyAdjustment::distinct()
+            ->pluck('worker_id')
+            ->toArray();
+
+        $workers->each(function($w) use ($workersWithAdjustments) {
+            $hasAdjustments = in_array($w->id, $workersWithAdjustments);
+            $w->is_used = (($w->attendances_count ?? 0) > 0 || $hasAdjustments);
+        });
+
         return view('attendance.workers', [
             'workers'     => $workers,
             'departments' => $departments,
@@ -441,6 +505,32 @@ class AttendanceController extends Controller
 
         $worker->delete();
         return response()->json(['success' => true, 'message' => 'Worker deleted']);
+    }
+
+    public function toggleWorkerStatus($id)
+    {
+        $worker = Worker::find($id);
+        if (!$worker) {
+            return response()->json(['success' => false, 'message' => 'Worker not found.'], 404);
+        }
+        $allowedDeptIds = $this->getAllowedDeptIds();
+        if (!empty($allowedDeptIds) && !in_array((int)$worker->department_id, $allowedDeptIds, true)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized worker.'], 403);
+        }
+        if ($worker->status === 'ACTIVE') {
+            $worker->status = 'INACTIVE';
+            $worker->inactivated_at = now()->toDateString();
+        } else {
+            $worker->status = 'ACTIVE';
+            $worker->inactivated_at = null;
+        }
+        $worker->save();
+        $statusText = $worker->status === 'ACTIVE' ? 'Active' : 'Inactive (Disabled)';
+        return response()->json([
+            'success' => true,
+            'message' => "Worker '{$worker->name}' is now {$statusText}.",
+            'status'  => $worker->status
+        ]);
     }
 
     // --- DAILY ATTENDANCE ---
