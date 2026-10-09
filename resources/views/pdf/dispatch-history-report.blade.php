@@ -72,7 +72,7 @@
         .cell-item-last { border-bottom: 1.5px solid #344054 !important; }
         
         /* Badges */
-        .badge { display: inline-block; padding: 3px 6px; border-radius: 3px; font-weight: bold; font-size: 7px; text-transform: uppercase; white-space: nowrap; }
+        .badge { display: inline-block; padding: 2.5px 5px; border-radius: 3px; font-weight: bold; font-size: 6.8px; text-transform: uppercase; white-space: nowrap; letter-spacing: 0.2px; }
         .badge-fully-dispatched, .badge-completed { background: #ecfdf3; color: #027a48; border: 1px solid #abefc6; }
         .badge-partial-dispatch, .badge-partial { background: #eff8ff; color: #175cd3; border: 1px solid #b2ddff; }
         .badge-partial-pending { background: #fff8eb; color: #b45309; border: 1px solid #fef08a; }
@@ -175,26 +175,109 @@
         </tr>
     </table>
 
+    @php
+        $showDueDays = ($statusFilter !== 'FULLY_DISPATCHED' && $statusFilter !== 'FULLY DISPATCHED' && $statusFilter !== 'DONE');
+        $showDispatchedDate = ($statusFilter !== 'PENDING');
+
+        // Dynamic column width distribution summing to exactly 100%
+        if ($showDueDays && $showDispatchedDate) {
+            $colWidths = [
+                'id'            => '6.5%',
+                'date'          => '9.5%',
+                'due_days'      => '5.5%',
+                'dispatch_date' => '7%',
+                'customer'      => '13%',
+                'product'       => '14.5%',
+                'ord_qty'       => '7%',
+                'disp_qty'      => '7%',
+                'pend_qty'      => '7%',
+                'amount'        => '11%',
+                'status'        => '12%',
+            ];
+        } elseif (!$showDueDays && $showDispatchedDate) {
+            // FULLY DISPATCHED (no due days)
+            $colWidths = [
+                'id'            => '6.5%',
+                'date'          => '9.5%',
+                'due_days'      => '0%',
+                'dispatch_date' => '7%',
+                'customer'      => '15.5%',
+                'product'       => '17.5%',
+                'ord_qty'       => '7%',
+                'disp_qty'      => '7%',
+                'pend_qty'      => '7%',
+                'amount'        => '11%',
+                'status'        => '12%',
+            ];
+        } elseif ($showDueDays && !$showDispatchedDate) {
+            // PENDING (no dispatch date)
+            $colWidths = [
+                'id'            => '6.5%',
+                'date'          => '9.5%',
+                'due_days'      => '6.5%',
+                'dispatch_date' => '0%',
+                'customer'      => '16%',
+                'product'       => '17.5%',
+                'ord_qty'       => '7%',
+                'disp_qty'      => '7%',
+                'pend_qty'      => '7%',
+                'amount'        => '11%',
+                'status'        => '12%',
+            ];
+        } else {
+            $colWidths = [
+                'id'            => '7%',
+                'date'          => '11%',
+                'due_days'      => '0%',
+                'dispatch_date' => '0%',
+                'customer'      => '19%',
+                'product'       => '21%',
+                'ord_qty'       => '7.5%',
+                'disp_qty'      => '7.5%',
+                'pend_qty'      => '7.5%',
+                'amount'        => '11.5%',
+                'status'        => '12%',
+            ];
+        }
+    @endphp
+
     <!-- Dispatch History Table -->
     <div class="section-header" style="border-radius: 3px 3px 0 0; margin-bottom: 0;">DISPATCH HISTORY</div>
     <table class="data-table">
+        <colgroup>
+            <col style="width: {{ $colWidths['id'] }};">
+            <col style="width: {{ $colWidths['date'] }};">
+            @if($showDueDays)
+                <col style="width: {{ $colWidths['due_days'] }};">
+            @endif
+            @if($showDispatchedDate)
+                <col style="width: {{ $colWidths['dispatch_date'] }};">
+            @endif
+            <col style="width: {{ $colWidths['customer'] }};">
+            <col style="width: {{ $colWidths['product'] }};">
+            <col style="width: {{ $colWidths['ord_qty'] }};">
+            <col style="width: {{ $colWidths['disp_qty'] }};">
+            <col style="width: {{ $colWidths['pend_qty'] }};">
+            <col style="width: {{ $colWidths['amount'] }};">
+            <col style="width: {{ $colWidths['status'] }};">
+        </colgroup>
         <thead>
             <tr>
-                <th style="width: 7%;">Dispatch ID</th>
-                <th style="width: 9%; text-align: center;" class="text-center">Order Date / Due Date</th>
-                @if($statusFilter !== 'FULLY_DISPATCHED' && $statusFilter !== 'FULLY DISPATCHED' && $statusFilter !== 'DONE')
-                    <th style="width: 6%; text-align: center;" class="text-center nowrap">Due Days</th>
+                <th class="text-center nowrap" style="text-align: center;">Dispatch ID</th>
+                <th class="text-center" style="text-align: center;">Order Date / Due Date</th>
+                @if($showDueDays)
+                    <th class="text-center nowrap" style="text-align: center;">Due Days</th>
                 @endif
-                @if($statusFilter !== 'PENDING')
-                    <th style="width: 7.5%;">Dispatched Date</th>
+                @if($showDispatchedDate)
+                    <th class="text-center nowrap" style="text-align: center;">Dispatched Date</th>
                 @endif
-                <th style="width: 13.5%;">Customer</th>
-                <th style="width: 16%;">Product Details</th>
-                <th style="width: 8%; color: #027a48; text-align: right;" class="text-right nowrap">Ord. Qty</th>
-                <th style="width: 8%; color: #b37400; text-align: right;" class="text-right nowrap">Disp. Qty</th>
-                <th style="width: 8%; color: #b42318; text-align: right;" class="text-right nowrap">Pend. Qty</th>
-                <th style="width: 11%; text-align: right;" class="text-right nowrap">Amount</th>
-                <th style="width: 6%; text-align: center;" class="text-center nowrap">Status</th>
+                <th class="text-left" style="text-align: left;">Customer</th>
+                <th class="text-left" style="text-align: left;">Product Details</th>
+                <th class="text-right nowrap" style="color: #027a48; text-align: right; padding-right: 6px;">Ord. Qty</th>
+                <th class="text-right nowrap" style="color: #b37400; text-align: right; padding-right: 6px;">Disp. Qty</th>
+                <th class="text-right nowrap" style="color: #b42318; text-align: right; padding-right: 6px;">Pend. Qty</th>
+                <th class="text-right nowrap" style="text-align: right; padding-right: 6px;">Amount</th>
+                <th class="text-center nowrap" style="text-align: center;">Status</th>
             </tr>
         </thead>
         <tbody>
@@ -237,12 +320,12 @@
                     }
                 @endphp
                 <tr style="background-color: {{ $rowBg }};">
-                    <td class="text-center {{ $orderClass }}" style="vertical-align: top;">
+                    <td class="text-center {{ $orderClass }}" style="vertical-align: top; text-align: center;">
                         @if($isFirst)
                             <strong>{{ $logRow['dispatch_id'] }}</strong>
                         @endif
                     </td>
-                    <td class="text-center {{ $orderClass }}" style="vertical-align: top; padding: 4px 2px;">
+                    <td class="text-center {{ $orderClass }}" style="vertical-align: top; text-align: center; padding: 4px 2px;">
                         @if($isFirst)
                             <div style="font-weight: 700; color: #101828; font-size: 7.5px;">{{ $logRow['order_date'] }}</div>
                             @if(!empty($logRow['due_date']))
@@ -256,8 +339,8 @@
                             @endif
                         @endif
                     </td>
-                    @if($statusFilter !== 'FULLY_DISPATCHED' && $statusFilter !== 'FULLY DISPATCHED' && $statusFilter !== 'DONE')
-                        <td class="text-center {{ $orderClass }}" style="vertical-align: top; font-weight: bold; color: #344054; font-size: 8px;">
+                    @if($showDueDays)
+                        <td class="text-center {{ $orderClass }}" style="vertical-align: top; text-align: center; font-weight: bold; color: #344054; font-size: 8px;">
                             @if($isFirst)
                                 @if(!$isRowFullyDispatched)
                                     {{ $logRow['due_days_text'] ?? '0 Days' }}
@@ -267,8 +350,8 @@
                             @endif
                         </td>
                     @endif
-                    @if($statusFilter !== 'PENDING')
-                        <td class="text-center {{ $orderClass }}" style="vertical-align: top; font-size: 8px; color: #101828;">
+                    @if($showDispatchedDate)
+                        <td class="text-center {{ $orderClass }}" style="vertical-align: top; text-align: center; font-size: 8px; color: #101828;">
                             @if($isFirst)
                                 @if($rawStatus !== 'PENDING')
                                     {{ $logRow['dispatch_date'] ?? '-' }}
@@ -278,7 +361,7 @@
                             @endif
                         </td>
                     @endif
-                    <td class="{{ $orderClass }}" style="vertical-align: top;">
+                    <td class="text-left {{ $orderClass }}" style="vertical-align: top; text-align: left;">
                         @if($isFirst)
                             <strong>{{ $logRow['customer'] }}</strong>
                             @if(!empty($logRow['sales_by']) && $logRow['sales_by'] !== 'N/A')
@@ -286,22 +369,22 @@
                             @endif
                         @endif
                     </td>
-                    <td class="{{ $itemClass }}">
+                    <td class="text-left {{ $itemClass }}" style="vertical-align: top; text-align: left;">
                         <div style="font-weight: bold; color: #101828;">{{ $item['product'] }}</div>
                     </td>
-                    <td class="text-right text-green {{ $itemClass }} nowrap" style="text-align: right; white-space: nowrap;">
+                    <td class="text-right text-green {{ $itemClass }} nowrap" style="vertical-align: top; text-align: right; white-space: nowrap; padding-right: 6px;">
                         <strong>{!! str_replace(' ', '&nbsp;', e($item['ordered_qty_formatted'] ?? (number_format($item['ordered_qty'] ?? 0) . ' KG'))) !!}</strong>
                     </td>
-                    <td class="text-right {{ $itemClass }} nowrap" style="color: #b37400; text-align: right; white-space: nowrap;">
+                    <td class="text-right {{ $itemClass }} nowrap" style="vertical-align: top; color: #b37400; text-align: right; white-space: nowrap; padding-right: 6px;">
                         <strong>{!! str_replace(' ', '&nbsp;', e($item['dispatch_qty_formatted'] ?? (number_format($item['qty'] ?? 0) . ' KG'))) !!}</strong>
                     </td>
-                    <td class="text-right {{ $itemClass }} nowrap" style="color: #b42318; text-align: right; white-space: nowrap;">
+                    <td class="text-right {{ $itemClass }} nowrap" style="vertical-align: top; color: #b42318; text-align: right; white-space: nowrap; padding-right: 6px;">
                         <strong>{!! str_replace(' ', '&nbsp;', e($item['pending_qty_formatted'] ?? (number_format($item['pending_qty'] ?? 0) . ' KG'))) !!}</strong>
                     </td>
-                    <td class="text-right {{ $itemClass }} nowrap" style="text-align: right; white-space: nowrap;">
+                    <td class="text-right {{ $itemClass }} nowrap" style="vertical-align: top; text-align: right; white-space: nowrap; padding-right: 6px;">
                         <strong>Rs.&nbsp;{{ number_format($item['amount'], 2) }}</strong>
                     </td>
-                    <td class="text-center {{ $orderClass }} nowrap" style="vertical-align: middle; text-align: center;">
+                    <td class="text-center {{ $orderClass }} nowrap" style="vertical-align: top; text-align: center;">
                         @if($isFirst)
                             <span class="badge {{ $badgeClass }}">
                                 {{ $displayStatus }}
@@ -312,10 +395,7 @@
             @endforeach
         @empty
             @php
-                $colSpanCount = 11;
-                if ($statusFilter === 'PENDING' || in_array($statusFilter, ['FULLY_DISPATCHED', 'FULLY DISPATCHED', 'DONE'])) {
-                    $colSpanCount = 10;
-                }
+                $colSpanCount = 4 + ($showDueDays ? 1 : 0) + ($showDispatchedDate ? 1 : 0) + 5;
             @endphp
             <tr>
                 <td colspan="{{ $colSpanCount }}" class="text-center" style="padding: 15px; color: #667085;">No dispatch history found for the selected filters.</td>
@@ -323,18 +403,15 @@
         @endforelse
         @if(count($rows) > 0)
             @php
-                $labelColSpan = 6;
-                if ($statusFilter === 'PENDING' || in_array($statusFilter, ['FULLY_DISPATCHED', 'FULLY DISPATCHED', 'DONE'])) {
-                    $labelColSpan = 5;
-                }
+                $labelColSpan = 4 + ($showDueDays ? 1 : 0) + ($showDispatchedDate ? 1 : 0);
             @endphp
             <tr class="total-row">
-                <td colspan="{{ $labelColSpan }}" style="text-align: right; padding-right: 8px;">TOTAL</td>
-                <td class="text-right text-green nowrap" style="text-align: right; white-space: nowrap;">{{ number_format($totalOrderedQty ?? 0) }}&nbsp;KG</td>
-                <td class="text-right nowrap" style="color: #b37400; text-align: right; white-space: nowrap;">{{ number_format($totalQuantity) }}&nbsp;KG</td>
-                <td class="text-right nowrap" style="color: {{ ($totalPendingQty ?? 0) > 0 ? '#b42318' : 'inherit' }}; text-align: right; white-space: nowrap;">{{ number_format($totalPendingQty ?? 0) }}&nbsp;KG</td>
-                <td class="text-right nowrap" style="text-align: right; white-space: nowrap;">Rs.&nbsp;{{ number_format($totalValue, 2) }}</td>
-                <td></td>
+                <td colspan="{{ $labelColSpan }}" style="text-align: right; padding-right: 8px; vertical-align: middle;">TOTAL</td>
+                <td class="text-right text-green nowrap" style="text-align: right; white-space: nowrap; padding-right: 6px; vertical-align: middle;">{{ number_format($totalOrderedQty ?? 0) }}&nbsp;KG</td>
+                <td class="text-right nowrap" style="color: #b37400; text-align: right; white-space: nowrap; padding-right: 6px; vertical-align: middle;">{{ number_format($totalQuantity) }}&nbsp;KG</td>
+                <td class="text-right nowrap" style="color: {{ ($totalPendingQty ?? 0) > 0 ? '#b42318' : 'inherit' }}; text-align: right; white-space: nowrap; padding-right: 6px; vertical-align: middle;">{{ number_format($totalPendingQty ?? 0) }}&nbsp;KG</td>
+                <td class="text-right nowrap" style="text-align: right; white-space: nowrap; padding-right: 6px; vertical-align: middle;">Rs.&nbsp;{{ number_format($totalValue, 2) }}</td>
+                <td style="vertical-align: middle;"></td>
             </tr>
         @endif
         </tbody>
