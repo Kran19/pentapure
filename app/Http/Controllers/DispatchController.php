@@ -132,7 +132,7 @@ class DispatchController extends Controller
                     'transporterName' => $o->transporter?->name,
                     'salesPerson'  => $o->creator?->name ?? 'N/A',
                     'total'        => $o->total,
-                    'date'         => $o->created_at->toISOString(),
+                    'date'         => $o->created_at ? $o->created_at->toISOString() : ($o->date ? \Carbon\Carbon::parse($o->date)->toISOString() : now()->toISOString()),
                     'dueDate'      => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
                     'rawDueDate'   => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('Y-m-d') : null,
                     'totalQty'     => $o->items->sum('quantity'),
@@ -151,7 +151,7 @@ class DispatchController extends Controller
                 'transporterName' => $o->transporter?->name,
                 'salesPerson'  => $o->creator?->name ?? 'N/A',
                 'total'        => $o->total,
-                'date'         => $o->created_at->toISOString(),
+                'date'         => $o->created_at ? $o->created_at->toISOString() : ($o->date ? \Carbon\Carbon::parse($o->date)->toISOString() : now()->toISOString()),
                 'dueDate'      => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
                 'rawDueDate'   => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('Y-m-d') : null,
                 'notes'        => $o->notes,
@@ -798,6 +798,45 @@ class DispatchController extends Controller
     }
 
     /**
+     * Helper to resolve physical local file path for an image URL/relative path.
+     */
+    public static function resolveLocalFilePath(string $rp): ?string
+    {
+        $cleanRp = $rp;
+        if (str_starts_with($cleanRp, 'http://') || str_starts_with($cleanRp, 'https://')) {
+            $cleanRp = parse_url($cleanRp, PHP_URL_PATH);
+        }
+        $relative = ltrim(str_replace('\\', '/', $cleanRp), '/');
+
+        $candidates = [
+            public_path($relative),
+            storage_path('app/public/' . $relative),
+            storage_path($relative),
+            base_path($relative),
+        ];
+
+        if (str_starts_with($relative, 'public/')) {
+            $sub = substr($relative, 7);
+            $candidates[] = public_path($sub);
+            $candidates[] = storage_path('app/public/' . $sub);
+        }
+
+        if (str_starts_with($relative, 'storage/')) {
+            $sub = substr($relative, 8);
+            $candidates[] = storage_path('app/public/' . $sub);
+            $candidates[] = public_path($sub);
+        }
+
+        foreach ($candidates as $cand) {
+            if (file_exists($cand) && is_file($cand)) {
+                return $cand;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Download LR copy file for a specific dispatch log.
      */
     public function downloadLR($id)
@@ -811,16 +850,8 @@ class DispatchController extends Controller
 
         $validFiles = [];
         foreach ($rawPaths as $idx => $rp) {
-            $relative = ltrim(str_replace('\\', '/', $rp), '/');
-            $fullPath = public_path($relative);
-            if (!file_exists($fullPath)) {
-                if (file_exists(storage_path('app/public/' . $relative))) {
-                    $fullPath = storage_path('app/public/' . $relative);
-                } elseif (file_exists(storage_path($relative))) {
-                    $fullPath = storage_path($relative);
-                }
-            }
-            if (file_exists($fullPath)) {
+            $fullPath = self::resolveLocalFilePath($rp);
+            if ($fullPath) {
                 $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION) ?: 'jpg');
                 $lrNo = $log->lr_no ? '_' . preg_replace('/[^A-Za-z0-9_-]/', '', $log->lr_no) : '';
                 $suffix = count($rawPaths) > 1 ? "_img" . ($idx + 1) : '';
@@ -892,16 +923,8 @@ class DispatchController extends Controller
         foreach ($logs as $log) {
             $rawPaths = self::getLrImagePaths($log);
             foreach ($rawPaths as $idx => $rp) {
-                $relative = ltrim(str_replace('\\', '/', $rp), '/');
-                $fullPath = public_path($relative);
-                if (!file_exists($fullPath)) {
-                    if (file_exists(storage_path('app/public/' . $relative))) {
-                        $fullPath = storage_path('app/public/' . $relative);
-                    } elseif (file_exists(storage_path($relative))) {
-                        $fullPath = storage_path($relative);
-                    }
-                }
-                if (file_exists($fullPath)) {
+                $fullPath = self::resolveLocalFilePath($rp);
+                if ($fullPath) {
                     $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION) ?: 'jpg');
                     $lrNo = $log->lr_no ? '_' . preg_replace('/[^A-Za-z0-9_-]/', '', $log->lr_no) : '';
                     $suffix = count($rawPaths) > 1 ? "_img" . ($idx + 1) : '';
@@ -1019,7 +1042,7 @@ class DispatchController extends Controller
                 'orderTotal'    => $d->order?->total,
                 'status'        => $d->order?->status,
                 'dispatchStatus'=> $d->order?->dispatch_status,
-                'date'          => $d->created_at->toISOString(),
+                'date'          => $d->created_at ? $d->created_at->toISOString() : ($d->date ? \Carbon\Carbon::parse($d->date)->toISOString() : now()->toISOString()),
                 'notes'         => $d->notes ?: $d->order?->notes,
                 'dispatchNotes' => $d->notes,
                 'orderNotes'    => $d->order?->notes,
@@ -1087,7 +1110,7 @@ class DispatchController extends Controller
                 'orderTotal'     => $o->total,
                 'status'         => $o->status,
                 'dispatchStatus' => $dispatchStatus,
-                'date'           => $o->created_at->toISOString(),
+                'date'           => $o->created_at ? $o->created_at->toISOString() : ($o->date ? \Carbon\Carbon::parse($o->date)->toISOString() : now()->toISOString()),
                 'dueDate'        => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
                 'notes'          => $o->notes,
                 'totalQty'       => $totalQty,

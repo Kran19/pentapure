@@ -140,7 +140,12 @@
   $paginatedArray = $paginated->values()->toArray();
 @endphp
 
-@php $pdfUrl = route('history.pdf', ['user_slug' => request()->segment(1) ?: 'dispatch', 'panel' => 'dispatch']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&company_id=' . $companyId . '&status=' . $statusFilter . '&q=' . $q; @endphp
+@php
+  $userSlug = in_array(request()->segment(1), ['admin', 'sub_admin', 'dispatch', 'sales', 'stock_manager'])
+    ? request()->segment(1)
+    : (session('auth_user')['login_slug'] ?? strtolower(session('auth_user')['role'] ?? 'dispatch'));
+  $pdfUrl = route('history.pdf', ['user_slug' => $userSlug, 'panel' => 'dispatch']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&company_id=' . $companyId . '&status=' . $statusFilter . '&q=' . $q;
+@endphp
 <style>
 .status-tabs-wrapper {
   display: inline-flex;

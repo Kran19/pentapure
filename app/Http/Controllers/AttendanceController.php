@@ -257,17 +257,48 @@ class AttendanceController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized department.'], 403);
         }
         $dept = Department::find($id);
-        if ($dept && strtoupper(trim($dept->name)) === 'MUKADAM') {
+        if (!$dept) {
+            return response()->json(['success' => false, 'message' => 'Department not found.'], 404);
+        }
+        if (strtoupper(trim($dept->name)) === 'MUKADAM') {
             return response()->json(['success' => false, 'message' => 'MUKADAM is a fixed system department and cannot be deleted.'], 422);
         }
-        Department::destroy($id);
+
+        // Check if department has associated workers
+        $workerCount = $dept->workers()->count();
+        if ($workerCount > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete department "' . $dept->name . '" because it is in use by ' . $workerCount . ' worker(s). Please reassign or remove workers first.'
+            ], 422);
+        }
+
+        // Check if any attendance records exist for workers of this department
+        $hasAttendance = \App\Models\Attendance::whereHas('worker', fn($q) => $q->where('department_id', $dept->id))->exists();
+        if ($hasAttendance) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete department "' . $dept->name . '" because it has associated attendance history.'
+            ], 422);
+        }
+
+        // Check if any worker monthly adjustments exist
+        $hasAdjustments = \App\Models\WorkerMonthlyAdjustment::whereHas('worker', fn($q) => $q->where('department_id', $dept->id))->exists();
+        if ($hasAdjustments) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete department "' . $dept->name . '" because it has associated salary adjustment records.'
+            ], 422);
+        }
+
+        $dept->delete();
         return response()->json(['success' => true, 'message' => 'Department deleted']);
     }
 
     // --- WORKERS ---
     public function workers(Request $request)
     {
-        $workersQuery = Worker::with('department')->orderBy('id');
+        $workersQuery = Worker::with('department')->withCount('attendances')->orderBy('id');
         $departmentsQuery = Department::where('is_active', true)->orderBy('name');
 
         $allowedDeptIds = $this->getAllowedDeptIds();
@@ -389,6 +420,25 @@ class AttendanceController extends Controller
         if (!empty($allowedDeptIds) && !in_array((int)$worker->department_id, $allowedDeptIds, true)) {
             return response()->json(['success' => false, 'message' => 'Unauthorized department.'], 403);
         }
+
+        // Check if worker has attendance records
+        $attendanceCount = $worker->attendances()->count();
+        if ($attendanceCount > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete worker "' . $worker->name . '" because they have ' . $attendanceCount . ' attendance record(s) in use. You can mark their status as INACTIVE instead.'
+            ], 422);
+        }
+
+        // Check if worker has monthly salary adjustments
+        $adjustmentCount = \App\Models\WorkerMonthlyAdjustment::where('worker_id', $worker->id)->count();
+        if ($adjustmentCount > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete worker "' . $worker->name . '" because they have salary adjustment record(s) in use. You can mark their status as INACTIVE instead.'
+            ], 422);
+        }
+
         $worker->delete();
         return response()->json(['success' => true, 'message' => 'Worker deleted']);
     }

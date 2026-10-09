@@ -3976,10 +3976,16 @@ const app = {
     }
   },
 
-  viewImage(src) {
+  viewImage(src, downloadUrl = null) {
+    const dlTarget = downloadUrl || src;
     this.openModal(`
-      <div style="text-align:center; position:relative;">
-        <img src="${src}" style="width:100%; max-height:80vh; object-fit:contain; border-radius:12px;">
+      <div style="text-align:center; position:relative; display:flex; flex-direction:column; align-items:center; gap:12px;">
+        <img src="${src}" style="width:100%; max-height:75vh; object-fit:contain; border-radius:12px; background:rgba(0,0,0,0.3);">
+        <div style="display:flex; justify-content:center; gap:8px;">
+          <a href="${dlTarget}" download class="btn btn-sm" style="background:#059669; color:#fff !important; text-decoration:none; padding:0.4rem 1.2rem; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px; font-weight:600; border-radius:6px;">
+            📥 Download Image
+          </a>
+        </div>
       </div>
     `);
   },

@@ -631,7 +631,7 @@ class DispatchTest extends TestCase
         $this->assertEquals('OPEN', $this->order->status);
     }
 
-    public function test_dispatch_history_renders_edit_qty_buttons(): void
+    public function test_dispatch_history_does_not_render_edit_qty_buttons(): void
     {
         $session = ['auth_user' => [
             'id'   => $this->dispatchUser->id,
@@ -652,7 +652,49 @@ class DispatchTest extends TestCase
         $resp = $this->withSession($session)->get('/dispatch/history');
         $resp->assertStatus(200);
         $content = $resp->getContent();
-        $this->assertStringContainsString('Edit Qty', $content);
-        $this->assertStringContainsString('openEditDispatchModal', $content);
+        $this->assertStringNotContainsString('Edit Qty', $content);
+        $this->assertStringNotContainsString('openEditDispatchModal', $content);
+        $this->assertStringContainsString('Revert Dispatch', $content);
+    }
+
+    public function test_pending_pdf_download(): void
+    {
+        $session = ['auth_user' => [
+            'id'   => $this->dispatchUser->id,
+            'name' => $this->dispatchUser->name,
+            'role' => 'DISPATCH',
+        ]];
+
+        // Create an order with null created_at to verify null-safety
+        $nullDateOrder = Order::create([
+            'created_by'      => $this->dispatchUser->id,
+            'company_id'      => $this->company->id,
+            'transporter_id'  => $this->transporter->id,
+            'total'           => 5000,
+            'status'          => 'OPEN',
+            'dispatch_status' => 'PENDING',
+        ]);
+        \Illuminate\Support\Facades\DB::table('orders')->where('id', $nullDateOrder->id)->update(['created_at' => null]);
+
+        OrderItem::create([
+            'order_id'   => $nullDateOrder->id,
+            'product_id' => $this->finishedProduct->id,
+            'grade'      => 'A',
+            'quantity'   => 50,
+            'price'      => 100,
+        ]);
+
+        $resp = $this->withSession($session)->get('/dispatch/history/dispatch/pdf?range=all&status=PENDING');
+        $this->assertEquals(200, $resp->status());
+        $resp->assertHeader('Content-Type', 'application/pdf');
+
+        // Also test direct fallback routes
+        $resp2 = $this->withSession($session)->get('/dispatch/history/pdf?range=all&status=PENDING');
+        $this->assertEquals(200, $resp2->status());
+        $resp2->assertHeader('Content-Type', 'application/pdf');
+
+        $resp3 = $this->withSession($session)->get('/dispatch/report/pdf?range=all&status=PENDING');
+        $this->assertEquals(200, $resp3->status());
+        $resp3->assertHeader('Content-Type', 'application/pdf');
     }
 }

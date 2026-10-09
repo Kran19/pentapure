@@ -114,7 +114,12 @@
   $paginatedArray = $paginated->values()->toArray();
 @endphp
 
-@php $pdfUrl = route('history.pdf', ['user_slug' => request()->segment(1) ?: 'dispatch', 'panel' => 'dispatch']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&company_id=' . $companyId . '&status=' . $statusFilter . '&q=' . $q; @endphp
+@php
+  $userSlug = in_array(request()->segment(1), ['admin', 'sub_admin', 'dispatch', 'sales', 'stock_manager'])
+    ? request()->segment(1)
+    : (session('auth_user')['login_slug'] ?? strtolower(session('auth_user')['role'] ?? 'dispatch'));
+  $pdfUrl = route('history.pdf', ['user_slug' => $userSlug, 'panel' => 'dispatch']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&company_id=' . $companyId . '&status=' . $statusFilter . '&q=' . $q;
+@endphp
 <style>
 @media (max-width: 720px) {
   .dispatch-item-badges {
@@ -243,9 +248,6 @@
             </a>
             @endif
             @if(empty($isReadOnly))
-            <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); app.openEditDispatchModal({{ json_encode($d) }})" style="width:100%; padding:0.3rem 0.75rem; font-size:0.75rem; background:#2563eb !important; color:#ffffff !important; display:inline-flex; align-items:center; justify-content:center; gap:4px; white-space:nowrap; border:none; border-radius:4px; font-weight:600;">
-              ✏️ Edit Qty
-            </button>
             <button type="button" class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); app.revertDispatch({{ $d['id'] }})" style="width:100%; padding:0.3rem 0.75rem; font-size:0.75rem; border-color:#ef4444 !important; color:#ef4444 !important; display:inline-flex; align-items:center; justify-content:center; gap:4px; white-space:nowrap;">
               ↩ Revert Dispatch
             </button>
@@ -337,11 +339,7 @@
                       <strong>{{ $fmtQty($rem) }}</strong>
                     </span>
                   </div>
-                  @if(empty($isReadOnly))
-                  <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); app.openEditDispatchModal({{ json_encode($d) }}, {{ $item['id'] ?? $item['dispatchItemId'] ?? 'null' }})" style="padding:0.35rem 0.65rem; font-size:0.75rem; background:#2563eb !important; color:#ffffff !important; font-weight:600; border:none; border-radius:6px; display:inline-flex; align-items:center; gap:3px; cursor:pointer; white-space:nowrap;" title="Edit this item quantity">
-                    ✏️ Edit
-                  </button>
-                  @endif
+
                 </div>
               </div>
             @endforeach

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
     use App\Models\Company;
+    use App\Models\DispatchLog;
     use App\Models\Grade;
     use App\Models\Order;
     use App\Models\OrderItem;
@@ -351,6 +352,107 @@ namespace Tests\Feature;
             $order = Order::where('notes', 'Test order with NA transport')->first();
             $this->assertNotNull($order);
             $this->assertNull($order->transporter_id);
+        }
+
+        public function test_sales_history_renders_lr_copies_with_single_and_multiple_download_buttons(): void
+        {
+            $order = Order::create([
+                'created_by'      => $this->salesUser->id,
+                'company_id'      => $this->company->id,
+                'transporter_id'  => $this->transporter->id,
+                'total'           => 12000,
+                'status'          => 'OPEN',
+                'dispatch_status' => 'PARTIAL_DISPATCH',
+            ]);
+
+            $log1 = DispatchLog::create([
+                'order_id'       => $order->id,
+                'user_id'        => $this->salesUser->id,
+                'transporter_id' => $this->transporter->id,
+                'lr_image_path'  => 'uploads/lr/test1.jpg',
+                'lr_no'          => 'LR123',
+            ]);
+
+            $log2 = DispatchLog::create([
+                'order_id'       => $order->id,
+                'user_id'        => $this->salesUser->id,
+                'transporter_id' => $this->transporter->id,
+                'lr_image_path'  => 'uploads/lr/test2.jpg',
+                'lr_no'          => 'LR456',
+            ]);
+
+            $session = ['auth_user' => [
+                'id'   => $this->salesUser->id,
+                'name' => $this->salesUser->name,
+                'role' => 'SALES',
+            ]];
+
+            $response = $this->withSession($session)->get('/sales/history');
+            $response->assertStatus(200);
+            $content = $response->getContent();
+
+            // Verify LR Copies section header and counts
+            $this->assertStringContainsString('Dispatched Lorry Receipt (LR) Copies', $content);
+            $this->assertStringContainsString('LR UPLOADED', $content);
+            $this->assertStringContainsString('Download All (2) LRs (ZIP)', $content);
+
+            // Verify individual LR copies with single download button
+            $dsp1 = 'DSP-' . str_pad($log1->id, 4, '0', STR_PAD_LEFT);
+            $dsp2 = 'DSP-' . str_pad($log2->id, 4, '0', STR_PAD_LEFT);
+            $this->assertStringContainsString($dsp1, $content);
+            $this->assertStringContainsString($dsp2, $content);
+            $this->assertStringContainsString('/dispatch/download-lr/' . $log1->id, $content);
+            $this->assertStringContainsString('/dispatch/download-lr/' . $log2->id, $content);
+            $this->assertStringContainsString('Download LR', $content);
+        }
+
+        public function test_sales_user_can_download_single_and_multiple_lr_copies(): void
+        {
+            // Create dummy file for download
+            $testDir = public_path('uploads/lr');
+            if (!file_exists($testDir)) {
+                mkdir($testDir, 0777, true);
+            }
+            $testFile = $testDir . '/test_download.jpg';
+            file_put_contents($testFile, 'dummy image content');
+
+            $order = Order::create([
+                'created_by'      => $this->salesUser->id,
+                'company_id'      => $this->company->id,
+                'transporter_id'  => $this->transporter->id,
+                'total'           => 12000,
+                'status'          => 'OPEN',
+                'dispatch_status' => 'DONE',
+            ]);
+
+            $log = DispatchLog::create([
+                'order_id'       => $order->id,
+                'user_id'        => $this->salesUser->id,
+                'transporter_id' => $this->transporter->id,
+                'lr_image_path'  => 'uploads/lr/test_download.jpg',
+                'lr_no'          => 'LR999',
+            ]);
+
+            $session = ['auth_user' => [
+                'id'   => $this->salesUser->id,
+                'name' => $this->salesUser->name,
+                'role' => 'SALES',
+            ]];
+
+            // 1. Download via /sales/dispatch/download-lr/{id}
+            $res1 = $this->withSession($session)->get('/sales/dispatch/download-lr/' . $log->id);
+            $res1->assertStatus(200);
+
+            // 2. Download via /sales/download-lr/{id}
+            $res2 = $this->withSession($session)->get('/sales/download-lr/' . $log->id);
+            $res2->assertStatus(200);
+
+            // 3. Download multiple via /sales/dispatch/download-multiple-lr?order_id={id}
+            $res3 = $this->withSession($session)->get('/sales/dispatch/download-multiple-lr?order_id=' . $order->id);
+            $res3->assertStatus(200);
+
+            // Cleanup
+            @unlink($testFile);
         }
     }
 

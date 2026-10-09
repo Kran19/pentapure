@@ -533,14 +533,21 @@ class SalesController extends Controller
                 'date'           => $o->created_at->toISOString(),
                 'dueDate'        => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
                 'notes'          => $o->notes,
-                'lrCopies'       => $o->dispatchLogs ? $o->dispatchLogs->filter(fn($l) => !empty($l->lr_image_path))->map(fn($l) => [
-                    'id'         => $l->id,
-                    'dispatchId' => 'DSP-' . str_pad($l->id, 4, '0', STR_PAD_LEFT),
-                    'url'        => asset($l->lr_image_path),
-                    'date'       => $l->created_at->format('d M Y, h:i A'),
-                    'driverNo'   => $l->driver_no,
-                    'lrNo'       => $l->lr_no,
-                ])->values()->toArray() : [],
+                'lrCopies'       => $o->dispatchLogs ? $o->dispatchLogs->filter(fn($l) => !empty($l->lr_image_path))->flatMap(function($l) {
+                    $rawPaths = \App\Http\Controllers\DispatchController::getLrImagePaths($l);
+                    if (empty($rawPaths)) return [];
+                    return collect($rawPaths)->map(function($path, $idx) use ($l, $rawPaths) {
+                        $suffix = count($rawPaths) > 1 ? ' (' . ($idx + 1) . ')' : '';
+                        return [
+                            'id'         => $l->id,
+                            'dispatchId' => 'DSP-' . str_pad($l->id, 4, '0', STR_PAD_LEFT) . $suffix,
+                            'url'        => asset($path),
+                            'date'       => $l->created_at ? $l->created_at->timezone('Asia/Kolkata')->format('d M Y, h:i A') : '',
+                            'driverNo'   => $l->driver_no,
+                            'lrNo'       => $l->lr_no,
+                        ];
+                    });
+                })->values()->toArray() : [],
                 'items'          => $o->items->map(fn($i)=>[
                     'id'          => $i->id,
                     'productId'   => $i->product_id,

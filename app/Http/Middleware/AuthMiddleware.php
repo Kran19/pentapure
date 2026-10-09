@@ -85,6 +85,9 @@ class AuthMiddleware
                 'cashier_categories' => ['cashier_categories', 'admin_categories'],
                 'stock_manager_home' => ['stock_manager_home', 'admin_dashboard'],
                 'admin_dashboard' => ['admin_dashboard', 'stock_manager_home'],
+                'sales_history' => ['sales_history', 'dispatch_history'],
+                'dispatch_history' => ['dispatch_history', 'sales_history', 'dispatch_report'],
+                'dispatch_report' => ['dispatch_report', 'dispatch_history'],
             ];
             $keysToCheck = $moduleEquivalents[$moduleKey] ?? [$moduleKey];
 
@@ -245,7 +248,7 @@ class AuthMiddleware
             $salesSub = ($section === 'sales') ? $action : $section;
             if (in_array($salesSub, ['home', 'dashboard', ''])) return 'sales_home';
             if (in_array($salesSub, ['action', 'order', 'company', 'transport'])) return 'sales_action';
-            if (in_array($salesSub, ['history'])) return 'sales_history';
+            if (in_array($salesSub, ['history', 'download-lr', 'download-multiple-lr'])) return 'sales_history';
             return 'sales_action';
         }
         if (in_array($section, ['order', 'company', 'transport'])) {
@@ -288,7 +291,11 @@ class AuthMiddleware
             return 'admin_dashboard';
         }
         if (in_array($section, ['action', 'outward'])) return 'stock_manager_action';
-        if (in_array($section, ['history'])) return 'stock_manager_history';
+        if (in_array($section, ['history'])) {
+            if ($action === 'dispatch' || $subaction === 'dispatch') return 'dispatch_history';
+            if ($action === 'sales' || $subaction === 'sales') return 'sales_history';
+            return 'stock_manager_history';
+        }
         if (in_array($section, ['users'])) return 'admin_users';
         if (in_array($section, ['products'])) return 'admin_products';
         if (in_array($section, ['stock'])) return 'admin_stock';

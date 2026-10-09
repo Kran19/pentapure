@@ -16,18 +16,38 @@ class HistoryPdfController extends Controller
 {
     private function authUser(): array
     {
-        return session('auth_user');
+        return session('auth_user') ?? (auth()->check() ? auth()->user()->toArray() : []);
     }
 
-    public function download(Request $request, string $panel)
+    public function download(Request $request, ?string $arg1 = null, ?string $arg2 = null)
     {
-        $panel = strtoupper($panel);
+        $panel = null;
+
+        if ($arg2 && in_array(strtoupper($arg2), ['RAW', 'SEMI', 'FINISHED', 'SALES', 'DISPATCH', 'CASHIER', 'ATTENDANCE', 'PDF'], true)) {
+            $panel = $arg2;
+        } elseif ($arg1 && in_array(strtoupper($arg1), ['RAW', 'SEMI', 'FINISHED', 'SALES', 'DISPATCH', 'CASHIER', 'ATTENDANCE', 'PDF'], true)) {
+            $panel = $arg1;
+        } elseif ($request->route('panel')) {
+            $panel = $request->route('panel');
+        } elseif ($request->has('panel')) {
+            $panel = $request->query('panel');
+        } elseif (str_contains($request->path(), 'dispatch')) {
+            $panel = 'DISPATCH';
+        } elseif (str_contains($request->path(), 'sales')) {
+            $panel = 'SALES';
+        } elseif (str_contains($request->path(), 'cashier')) {
+            $panel = 'CASHIER';
+        } elseif (str_contains($request->path(), 'attendance')) {
+            $panel = 'ATTENDANCE';
+        }
+
+        $panel = strtoupper($panel ?? '');
         if ($panel === 'PDF') {
             $panel = 'CASHIER';
         }
         abort_unless(in_array($panel, ['RAW', 'SEMI', 'FINISHED', 'SALES', 'DISPATCH', 'CASHIER', 'ATTENDANCE'], true), 404);
         $user = $this->authUser();
-        abort_unless(($user['role'] ?? null) === 'ADMIN' || in_array($panel, ['RAW', 'SEMI', 'FINISHED', 'SALES', 'DISPATCH', 'CASHIER', 'ATTENDANCE'], true), 403);
+        abort_unless(in_array(($user['role'] ?? null), ['ADMIN', 'SUB_ADMIN', 'STOCK_MANAGER']) || in_array($panel, ['RAW', 'SEMI', 'FINISHED', 'SALES', 'DISPATCH', 'CASHIER', 'ATTENDANCE'], true), 403);
 
         if ($panel === 'CASHIER') {
             return app(\App\Http\Controllers\CashierController::class)->downloadPdf($request);
@@ -70,6 +90,7 @@ class HistoryPdfController extends Controller
                 : $formattedFromDate;
 
             $filename = 'DISPATCH_' . $companyName . '_' . $statusStr . '_' . $dateStr . '.pdf';
+            $filename = preg_replace('/[^A-Za-z0-9_\-\.]/', '_', $filename);
         } else {
             $randomSerial = rand(1000, 9999);
             if ($from && $to && $from->format('Y-m-d') !== $to->format('Y-m-d')) {
@@ -167,11 +188,27 @@ class HistoryPdfController extends Controller
 
         if (($request->range === 'all' || !$request->range) && !$fromInput && !$toInput) {
             $earliestOrderDate = Order::min('created_at');
-            $from = $earliestOrderDate ? Carbon::parse($earliestOrderDate)->startOfDay() : Carbon::parse('2020-01-01')->startOfDay();
+            try {
+                $from = $earliestOrderDate ? Carbon::parse($earliestOrderDate)->startOfDay() : Carbon::parse('2020-01-01')->startOfDay();
+            } catch (\Throwable $e) {
+                $from = Carbon::parse('2020-01-01')->startOfDay();
+            }
             $to = now()->endOfDay();
         } else {
-            $from = isset($from) ? $from : ($fromInput ? Carbon::parse($fromInput)->startOfDay() : Carbon::parse('2020-01-01')->startOfDay());
-            $to = isset($to) ? $to : ($toInput ? Carbon::parse($toInput)->endOfDay() : now()->endOfDay());
+            if (!isset($from)) {
+                try {
+                    $from = $fromInput ? Carbon::parse($fromInput)->startOfDay() : Carbon::parse('2020-01-01')->startOfDay();
+                } catch (\Throwable $e) {
+                    $from = Carbon::parse('2020-01-01')->startOfDay();
+                }
+            }
+            if (!isset($to)) {
+                try {
+                    $to = $toInput ? Carbon::parse($toInput)->endOfDay() : now()->endOfDay();
+                } catch (\Throwable $e) {
+                    $to = now()->endOfDay();
+                }
+            }
         }
 
         return [$from, $to];
@@ -526,6 +563,9 @@ class HistoryPdfController extends Controller
 
     private function buildDispatchReportData(Request $request): array
     {
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(120);
+
         $user = $this->authUser();
         [$from, $to] = $this->dateRange($request);
         
@@ -571,7 +611,7 @@ class HistoryPdfController extends Controller
                     $qo->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIAL_PENDING', 'PARTIAL PENDING']);
                 } elseif ($target === 'PENDING') {
                     $qo->where(function($sub) {
-                        $sub->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED'])
+                        $sub->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED', 'PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH'])
                             ->orWhereNull('dispatch_status');
                     });
                 } else {
@@ -665,12 +705,14 @@ class HistoryPdfController extends Controller
                 $totalValue += $amount;
 
                 $locationsList = [];
-                foreach ($order->dispatchLogs as $dlog) {
-                    foreach ($dlog->dispatchItems as $di) {
-                        if ($di->order_item_id == $item->id) {
-                            foreach ($di->locationAllocations as $alloc) {
-                                if (!empty($alloc->location?->name)) {
-                                    $locationsList[] = strtoupper($alloc->location->name);
+                if ($order->relationLoaded('dispatchLogs')) {
+                    foreach ($order->dispatchLogs as $dlog) {
+                        foreach ($dlog->dispatchItems as $di) {
+                            if ($di->order_item_id == $item->id) {
+                                foreach ($di->locationAllocations as $alloc) {
+                                    if (!empty($alloc->location?->name)) {
+                                        $locationsList[] = strtoupper($alloc->location->name);
+                                    }
                                 }
                             }
                         }
@@ -702,11 +744,23 @@ class HistoryPdfController extends Controller
             }
 
             if (!empty($orderItems)) {
-                $orderDate = $order->created_at;
-                $latestDispatchLog = $order->dispatchLogs->sortByDesc('created_at')->first();
-                $dispatchDateStr = $latestDispatchLog ? $latestDispatchLog->created_at->format('d-m-Y') : '-';
+                $orderDate = $order->created_at 
+                    ? \Carbon\Carbon::parse($order->created_at) 
+                    : ($order->date ? \Carbon\Carbon::parse($order->date) : now());
 
-                $dueDateStr = $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : null;
+                $latestDispatchLog = $order->dispatchLogs ? $order->dispatchLogs->sortByDesc('created_at')->first() : null;
+                $dispatchDateStr = ($latestDispatchLog && $latestDispatchLog->created_at)
+                    ? \Carbon\Carbon::parse($latestDispatchLog->created_at)->format('d-m-Y')
+                    : (($latestDispatchLog && $latestDispatchLog->date) ? \Carbon\Carbon::parse($latestDispatchLog->date)->format('d-m-Y') : '-');
+
+                $dueDateStr = null;
+                if (!empty($order->due_date)) {
+                    try {
+                        $dueDateStr = \Carbon\Carbon::parse($order->due_date)->format('d-m-Y');
+                    } catch (\Throwable $e) {
+                        $dueDateStr = null;
+                    }
+                }
 
                 $nowDate = now();
                 $diffDays = (int) $orderDate->copy()->startOfDay()->diffInDays($nowDate->copy()->startOfDay());

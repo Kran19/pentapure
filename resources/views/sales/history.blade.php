@@ -329,18 +329,41 @@
         </div>
 
         @if(!empty($item['lrCopies']) && count($item['lrCopies']) > 0)
-          <div style="margin-bottom:1rem; padding:0.8rem 1rem; background:rgba(0,128,0,0.04); border-radius:10px; border:1px solid rgba(46,204,113,0.3); box-sizing:border-box;">
-            <div style="color:#2ecc71; font-size:0.78rem; text-transform:uppercase; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-              <span>📦 Dispatched Lorry Receipt (LR) Copies</span>
-              <span class="badge badge-done" style="font-size:0.65rem; background:#16a34a; color:#ffffff !important; padding:2px 8px; border-radius:10px; font-weight:700;">LR UPLOADED</span>
+          <div style="margin-bottom:1rem; padding:1rem; background:rgba(46,204,113,0.04); border-radius:10px; border:1px solid rgba(46,204,113,0.3); box-sizing:border-box;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+              <div style="color:#2ecc71; font-size:0.82rem; text-transform:uppercase; font-weight:700; display:flex; align-items:center; gap:8px;">
+                <span>📦 Dispatched Lorry Receipt (LR) Copies</span>
+                <span class="badge badge-done" style="font-size:0.65rem; background:#16a34a; color:#ffffff !important; padding:2px 8px; border-radius:10px; font-weight:700;">LR UPLOADED</span>
+                <span style="font-size:0.72rem; color:var(--text-muted); font-weight:600;">({{ count($item['lrCopies']) }} {{ count($item['lrCopies']) === 1 ? 'Copy' : 'Copies' }})</span>
+              </div>
+              @if(count($item['lrCopies']) > 1)
+                <a href="{{ url(request()->segment(1) . '/dispatch/download-multiple-lr?order_id=' . $item['id']) }}" download onclick="event.stopPropagation()" class="btn btn-sm" style="padding:0.35rem 0.85rem; font-size:0.75rem; background:#0284c7 !important; color:#ffffff !important; text-decoration:none; display:inline-flex; align-items:center; gap:5px; font-weight:700; border-radius:6px; border:none; box-shadow:0 1px 3px rgba(0,0,0,0.15);" title="Download all {{ count($item['lrCopies']) }} LR copies as ZIP">
+                  📥 Download All ({{ count($item['lrCopies']) }}) LRs (ZIP)
+                </a>
+              @endif
             </div>
-            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:12px;">
               @foreach($item['lrCopies'] as $lr)
-                <div style="display:flex; flex-direction:column; gap:4px;">
-                  <img src="{{ $lr['url'] }}" style="max-height:140px; max-width:220px; border-radius:8px; object-fit:contain; cursor:pointer; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border, rgba(255,255,255,0.1));" onclick="app.viewImage(this.src)">
-                  <div style="font-size:0.72rem; color:var(--text-muted);">
+                @php
+                  $lrDlUrl = url(request()->segment(1) . '/dispatch/download-lr/' . $lr['id']);
+                @endphp
+                <div style="background:rgba(0,0,0,0.22); border:1px solid rgba(46,204,113,0.25); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px; box-sizing:border-box;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem;">
+                    <span style="font-weight:700; color:#2ecc71;">{{ $lr['dispatchId'] }}</span>
+                    @if(!empty($lr['lrNo']))
+                      <span style="font-size:0.7rem; color:var(--text-muted); font-weight:600;">LR: {{ $lr['lrNo'] }}</span>
+                    @endif
+                  </div>
+                  <div style="position:relative; width:100%; height:110px; border-radius:6px; overflow:hidden; background:rgba(0,0,0,0.3); cursor:pointer;" onclick="app.viewImage('{{ $lr['url'] }}', '{{ $lrDlUrl }}')">
+                    <img src="{{ $lr['url'] }}" alt="{{ $lr['dispatchId'] }}" style="width:100%; height:100%; object-fit:contain; border-radius:6px; transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
+                    <span style="position:absolute; bottom:4px; right:4px; background:rgba(0,0,0,0.7); color:#fff; font-size:0.65rem; padding:2px 6px; border-radius:4px; pointer-events:none;">🔍 View</span>
+                  </div>
+                  <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">
                     {{ $lr['dispatchId'] }} · {{ $lr['date'] }}
                   </div>
+                  <a href="{{ $lrDlUrl }}" download onclick="event.stopPropagation()" class="btn btn-sm" style="width:100%; padding:0.35rem 0.6rem; font-size:0.75rem; background:#059669 !important; color:#ffffff !important; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:5px; font-weight:600; border-radius:5px; border:none; margin-top:2px;" title="Download {{ $lr['dispatchId'] }} LR Copy">
+                    📥 Download LR
+                  </a>
                 </div>
               @endforeach
             </div>
@@ -368,6 +391,15 @@
           <a class="btn btn-sm btn-secondary" href="{{ url((request()->segment(1) === 'sales' ? 'sales' : request()->segment(1) . '/sales') . '/order/pdf/' . $item['id']) }}" target="_blank" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
             📄 Download PDF
           </a>
+          @if(!empty($item['lrCopies']) && count($item['lrCopies']) === 1)
+            <a href="{{ url(request()->segment(1) . '/dispatch/download-lr/' . $item['lrCopies'][0]['id']) }}" download class="btn btn-sm" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px; background:#059669 !important; color:#fff !important; font-weight:600; border-radius:6px;" title="Download LR Copy">
+              📥 Download LR
+            </a>
+          @elseif(!empty($item['lrCopies']) && count($item['lrCopies']) > 1)
+            <a href="{{ url(request()->segment(1) . '/dispatch/download-multiple-lr?order_id=' . $item['id']) }}" download class="btn btn-sm" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px; background:#0284c7 !important; color:#fff !important; font-weight:600; border-radius:6px;" title="Download all {{ count($item['lrCopies']) }} LR copies as ZIP">
+              📥 Download All ({{ count($item['lrCopies']) }}) LRs
+            </a>
+          @endif
         </div>
       </div>
     </div>

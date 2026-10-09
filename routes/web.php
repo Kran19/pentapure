@@ -70,6 +70,9 @@ Route::match(['get', 'post'], '/api/notifications/read-all', [\App\Http\Controll
 // ─── Global Direct Fallback PDF Routes ─────────────────────────────
 Route::middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE,STOCK_MANAGER')->group(function() {
     Route::get('/history/{panel}/pdf', [\App\Http\Controllers\HistoryPdfController::class, 'download']);
+    Route::get('/dispatch/history/pdf', fn(\Illuminate\Http\Request $r) => app(\App\Http\Controllers\HistoryPdfController::class)->download($r, 'DISPATCH'));
+    Route::get('/dispatch/report/pdf', fn(\Illuminate\Http\Request $r) => app(\App\Http\Controllers\HistoryPdfController::class)->download($r, 'DISPATCH'));
+    Route::get('/dispatch/history/dispatch/pdf', fn(\Illuminate\Http\Request $r) => app(\App\Http\Controllers\HistoryPdfController::class)->download($r, 'DISPATCH'));
     Route::get('/dispatch/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'dispatchNotePdf']);
     Route::get('/dispatch/dispatch/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'dispatchNotePdf']);
     Route::get('/order/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'salesOrderPdf']);
@@ -135,6 +138,9 @@ Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FIN
     Route::get('/history/all-sheets/pdf', [\App\Http\Controllers\AttendanceController::class, 'allWorkerMonthlySalaryPdf']);
     Route::get('/history/{panel}/pdf', [\App\Http\Controllers\HistoryPdfController::class, 'download'])
         ->name('history.pdf');
+    Route::get('/dispatch/history/pdf', fn(\Illuminate\Http\Request $r) => app(\App\Http\Controllers\HistoryPdfController::class)->download($r, 'DISPATCH'));
+    Route::get('/dispatch/report/pdf', fn(\Illuminate\Http\Request $r) => app(\App\Http\Controllers\HistoryPdfController::class)->download($r, 'DISPATCH'));
+    Route::get('/dispatch/history/dispatch/pdf', fn(\Illuminate\Http\Request $r) => app(\App\Http\Controllers\HistoryPdfController::class)->download($r, 'DISPATCH'));
     Route::get('/dispatch/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'dispatchNotePdf'])
         ->name('dispatch.note.pdf');
     Route::get('/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'dispatchNotePdf']);
@@ -246,6 +252,12 @@ foreach ($roleSlugs['SALES'] ?? [] as $slug) {
     Route::delete('/sales/transport/{id}', 'destroyTransporter');
     Route::get('/history',       'history')->name($slug.'.history');
     Route::get('/profile',       'profile')->name($slug.'.profile');
+    Route::get('/download-lr/{id}', [\App\Http\Controllers\DispatchController::class, 'downloadLR'])->name($slug.'.download_lr');
+    Route::get('/sales/download-lr/{id}', [\App\Http\Controllers\DispatchController::class, 'downloadLR']);
+    Route::get('/dispatch/download-lr/{id}', [\App\Http\Controllers\DispatchController::class, 'downloadLR']);
+    Route::get('/download-multiple-lr', [\App\Http\Controllers\DispatchController::class, 'downloadMultipleLR'])->name($slug.'.download_multiple_lr');
+    Route::get('/sales/download-multiple-lr', [\App\Http\Controllers\DispatchController::class, 'downloadMultipleLR']);
+    Route::get('/dispatch/download-multiple-lr', [\App\Http\Controllers\DispatchController::class, 'downloadMultipleLR']);
     Route::get('/order/pdf/{id}', [HistoryPdfController::class, 'salesOrderPdf'])->name($slug.'.order.pdf');
     Route::get('/sales/order/pdf/{id}', [HistoryPdfController::class, 'salesOrderPdf']);
     Route::get('/pdf/{id}', [HistoryPdfController::class, 'salesOrderPdf']);
@@ -279,7 +291,9 @@ foreach ($roleSlugs['DISPATCH'] ?? [] as $slug) {
     Route::get('/dispatch/download-multiple-lr', 'downloadMultipleLR');
     Route::post('/dispatch/download-multiple-lr', 'downloadMultipleLR');
     Route::get('/history',  'history')->name($slug.'.history');
+    Route::get('/history/pdf', fn(\Illuminate\Http\Request $r) => app(\App\Http\Controllers\HistoryPdfController::class)->download($r, 'DISPATCH'));
     Route::get('/report',   'report')->name($slug.'.report');
+    Route::get('/report/pdf', fn(\Illuminate\Http\Request $r) => app(\App\Http\Controllers\HistoryPdfController::class)->download($r, 'DISPATCH'));
     Route::get('/profile',  'profile')->name($slug.'.profile');
     Route::get('/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'dispatchNotePdf'])->name($slug.'.pdf');
     Route::get('/dispatch/pdf/{id}', [\App\Http\Controllers\HistoryPdfController::class, 'dispatchNotePdf']);
@@ -511,6 +525,8 @@ foreach ($adminSlugs as $slug) {
     Route::delete('/sales/transport/{id}', [SalesController::class, 'destroyTransporter']);
     Route::delete('/transport/{id}',     [SalesController::class, 'destroyTransporter']);
     Route::get('/sales/history',         [SalesController::class, 'history'])->name($slug.'.sales.history');
+    Route::get('/sales/download-lr/{id}', [DispatchController::class, 'downloadLR'])->name($slug.'.sales.download_lr');
+    Route::get('/sales/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR'])->name($slug.'.sales.download_multiple_lr');
     Route::get('/sales/order/pdf/{id}',  [HistoryPdfController::class, 'salesOrderPdf'])->name($slug.'.sales.order.pdf');
     Route::get('/order/pdf/{id}',        [HistoryPdfController::class, 'salesOrderPdf']);
 
@@ -529,6 +545,9 @@ foreach ($adminSlugs as $slug) {
     Route::get('/download-multiple-lr',          [DispatchController::class, 'downloadMultipleLR']);
     Route::post('/download-multiple-lr',         [DispatchController::class, 'downloadMultipleLR']);
     Route::get('/dispatch/report',       [DispatchController::class, 'report'])->name($slug.'.dispatch.report');
+    Route::get('/dispatch/report/pdf',   fn(\Illuminate\Http\Request $r) => app(\App\Http\Controllers\HistoryPdfController::class)->download($r, 'DISPATCH'))->name($slug.'.dispatch.report.pdf');
+    Route::get('/dispatch/history/pdf',  fn(\Illuminate\Http\Request $r) => app(\App\Http\Controllers\HistoryPdfController::class)->download($r, 'DISPATCH'))->name($slug.'.dispatch.history.pdf');
+    Route::get('/history/dispatch/pdf',  fn(\Illuminate\Http\Request $r) => app(\App\Http\Controllers\HistoryPdfController::class)->download($r, 'DISPATCH'));
     Route::get('/dispatch/order/pdf/{id}', [HistoryPdfController::class, 'salesOrderPdf']);
     Route::get('/dispatch/pdf/{id}',     [HistoryPdfController::class, 'dispatchNotePdf']);
 
@@ -650,14 +669,20 @@ Route::middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTE
     Route::get('/{user_slug}/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill']);
     Route::get('/{user_slug}/cashier/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill']);
     Route::get('/download-lr/{id}', [DispatchController::class, 'downloadLR']);
+    Route::get('/sales/download-lr/{id}', [DispatchController::class, 'downloadLR']);
     Route::get('/dispatch/download-lr/{id}', [DispatchController::class, 'downloadLR']);
     Route::get('/{user_slug}/download-lr/{id}', [DispatchController::class, 'downloadLR']);
+    Route::get('/{user_slug}/sales/download-lr/{id}', [DispatchController::class, 'downloadLR']);
     Route::get('/{user_slug}/dispatch/download-lr/{id}', [DispatchController::class, 'downloadLR']);
     Route::get('/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
     Route::post('/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
+    Route::get('/sales/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
+    Route::post('/sales/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
     Route::get('/dispatch/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
     Route::post('/dispatch/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
     Route::get('/{user_slug}/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
+    Route::get('/{user_slug}/sales/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
+    Route::post('/{user_slug}/sales/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
     Route::get('/{user_slug}/dispatch/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
     Route::post('/{user_slug}/dispatch/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR']);
 });
