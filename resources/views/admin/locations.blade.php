@@ -71,7 +71,12 @@
                 <span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">View Only</span>
               @else
               <div class="action-btns" style="display:flex; gap:6px; align-items:center;">
-                <button class="btn-icon edit" onclick="adminEditLocation({{ json_encode($loc) }})" title="Edit">
+                <button class="btn-icon edit" 
+                  data-id="{{ $loc->id }}" 
+                  data-name="{{ $loc->name }}" 
+                  data-description="{{ $loc->description ?? '' }}" 
+                  onclick="adminEditLocationFromBtn(this)" 
+                  title="Edit Location">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
                 @if(!$isFixed)
@@ -98,8 +103,15 @@
 </div>
 
 <script>
-const csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
 let editingLocationId = null;
+
+function getLocationsEndpoint() {
+  return window.location.pathname.replace(/\/+$/, '');
+}
+
+function getCsrfToken() {
+  return window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+}
 
 function resetLocationForm() {
   editingLocationId = null;
@@ -109,44 +121,94 @@ function resetLocationForm() {
   if (name) name.value = '';
   const desc = document.getElementById('loc-description');
   if (desc) desc.value = '';
+  const btn = document.getElementById('btn-save-loc');
+  if (btn) btn.innerText = 'Save Location';
+}
+
+function adminEditLocationFromBtn(btn) {
+  const id = btn.getAttribute('data-id');
+  const name = btn.getAttribute('data-name') || '';
+  const description = btn.getAttribute('data-description') || '';
+  adminEditLocation({ id, name, description });
 }
 
 function adminEditLocation(loc) {
   if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
+
+  const id = (typeof loc === 'object') ? (loc.id || loc.location_id) : loc;
+  const currentName = (typeof loc === 'object') ? (loc.name || '') : '';
+  const currentDesc = (typeof loc === 'object') ? (loc.description || '') : '';
+
   Swal.fire({
     title: 'Edit Warehouse Location',
     html: `
-      <div style="display:flex; flex-direction:column; gap:10px; text-align:left;">
-        <label style="font-weight:600; color:#4b5563;">Location Name *</label>
-        <input type="text" id="edit-loc-name" class="swal2-input" style="margin:0;" value="${escapeHtml(loc.name || '')}">
-        <label style="font-weight:600; color:#4b5563; margin-top:10px;">Description / Notes</label>
-        <input type="text" id="edit-loc-desc" class="swal2-input" style="margin:0;" value="${escapeHtml(loc.description || '')}">
+      <div style="display:flex; flex-direction:column; gap:12px; text-align:left;">
+        <div>
+          <label style="display:block; font-weight:600; font-size:0.85rem; color:#4b5563; margin-bottom:5px;">Location Name *</label>
+          <input type="text" id="edit-loc-name" class="swal2-input" style="width:100%; box-sizing:border-box; margin:0; font-size:0.95rem; height:42px; padding:8px 12px; border:1px solid #d1d5db; border-radius:6px; background:#fff; color:#111827;" value="${escapeHtml(currentName)}">
+        </div>
+        <div>
+          <label style="display:block; font-weight:600; font-size:0.85rem; color:#4b5563; margin-bottom:5px;">Description / Notes</label>
+          <input type="text" id="edit-loc-desc" class="swal2-input" style="width:100%; box-sizing:border-box; margin:0; font-size:0.95rem; height:42px; padding:8px 12px; border:1px solid #d1d5db; border-radius:6px; background:#fff; color:#111827;" value="${escapeHtml(currentDesc)}">
+        </div>
       </div>
     `,
     showCancelButton: true,
     confirmButtonText: 'Save Changes',
     confirmButtonColor: '#f59e0b',
+    cancelButtonColor: '#6b7280',
+    showLoaderOnConfirm: true,
+    didOpen: () => {
+      const input = document.getElementById('edit-loc-name');
+      if (input) { input.focus(); input.select(); }
+    },
     preConfirm: () => {
       const name = document.getElementById('edit-loc-name').value.trim();
       const description = document.getElementById('edit-loc-desc').value.trim();
-      if (!name) Swal.showValidationMessage('Location name is required');
-      return { name, description };
-    }
-  }).then((res) => {
-    if (res.isConfirmed) {
-      fetch(window.baseUrl + '/' + window.userSlug + '/locations', {
+      if (!name) {
+        Swal.showValidationMessage('Location name is required');
+        return false;
+      }
+
+      const endpoint = getLocationsEndpoint();
+      const token = getCsrfToken();
+
+      return fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.csrfToken },
-        body: JSON.stringify({ location_id: loc.id, name: res.value.name, description: res.value.description })
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': token,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          location_id: id,
+          name: name,
+          description: description
+        })
       })
-      .then(r => r.json())
-      .then(d => {
-        if (d.success) {
-          Swal.fire('Success', d.message, 'success');
-          setTimeout(() => location.reload(), 700);
-        } else {
-          Swal.fire('Error', d.message || 'Could not save location.', 'error');
+      .then(async response => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+          const errMsg = data.message || (data.errors ? Object.values(data.errors).flat().join('<br>') : 'Could not save location.');
+          throw new Error(errMsg);
         }
+        return data;
+      })
+      .catch(error => {
+        Swal.showValidationMessage(error.message || 'Failed to update location.');
+      });
+    },
+    allowOutsideClick: () => !Swal.isLoading()
+  }).then((res) => {
+    if (res.isConfirmed && res.value && res.value.success) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: res.value.message || 'Location updated successfully!',
+        confirmButtonColor: '#f59e0b',
+        timer: 1200
+      }).then(() => {
+        window.location.reload();
       });
     }
   });
@@ -169,26 +231,32 @@ function adminSaveLocation() {
   const payload = { name, description };
   if (editingLocationId) payload.location_id = editingLocationId;
 
-  fetch(window.baseUrl + '/' + window.userSlug + '/locations', {
+  const endpoint = getLocationsEndpoint();
+  const token = getCsrfToken();
+
+  fetch(endpoint, {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json',
-      'X-CSRF-TOKEN': window.csrfToken 
+      'X-CSRF-TOKEN': token,
+      'Accept': 'application/json'
     },
     body: JSON.stringify(payload)
   })
-  .then(r => r.json())
-  .then(d => {
-    if (d.success) {
-      Swal.fire('Success', d.message, 'success');
-      setTimeout(() => location.reload(), 700);
-    } else {
-      Swal.fire('Error', d.message || 'Could not save location.', 'error');
-      btn.disabled = false;
-      btn.style.opacity = '1';
+  .then(async r => {
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.success) {
+      const errMsg = d.message || (d.errors ? Object.values(d.errors).flat().join('\n') : 'Could not save location.');
+      throw new Error(errMsg);
     }
+    return d;
   })
-  .catch(() => {
+  .then(d => {
+    Swal.fire('Success', d.message, 'success');
+    setTimeout(() => location.reload(), 700);
+  })
+  .catch(err => {
+    Swal.fire('Error', err.message || 'Could not save location.', 'error');
     btn.disabled = false;
     btn.style.opacity = '1';
   });
@@ -212,25 +280,30 @@ function adminDeleteLocation(id, name, usageCount) {
     cancelButtonColor: '#6b7280',
   }).then(result => {
     if (result.isConfirmed) {
-      fetch(window.baseUrl + '/' + window.userSlug + '/locations/' + id, {
+      const endpoint = getLocationsEndpoint() + '/' + id;
+      const token = getCsrfToken();
+
+      fetch(endpoint, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRF-TOKEN': window.csrfToken,
+          'X-CSRF-TOKEN': token,
           'Accept': 'application/json'
         }
       })
-      .then(r => r.json())
-      .then(d => {
-        if (d.success) {
-          Swal.fire('Deleted!', d.message || 'Location deleted successfully.', 'success');
-          setTimeout(() => location.reload(), 700);
-        } else {
-          Swal.fire('Error', d.message || 'Failed to delete location.', 'error');
+      .then(async r => {
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok || !d.success) {
+          throw new Error(d.message || 'Failed to delete location.');
         }
+        return d;
       })
-      .catch(() => {
-        Swal.fire('Error', 'An unexpected error occurred while deleting.', 'error');
+      .then(d => {
+        Swal.fire('Deleted!', d.message || 'Location deleted successfully.', 'success');
+        setTimeout(() => location.reload(), 700);
+      })
+      .catch((err) => {
+        Swal.fire('Error', err.message || 'An unexpected error occurred while deleting.', 'error');
       });
     }
   });

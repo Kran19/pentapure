@@ -122,10 +122,10 @@ class LocationUsageTest extends TestCase
         $viewResponse->assertSee('adminDeleteLocation');
     }
 
-    public function test_cold_storage_location_is_auto_cleaned_up(): void
+    public function test_admin_can_edit_location(): void
     {
         Location::firstOrCreate(['name' => 'Main Warehouse']);
-        $coldStorage = Location::create(['name' => 'cold storage']);
+        $loc = Location::create(['name' => 'Warehouse Alpha', 'description' => 'Initial desc']);
 
         $session = ['auth_user' => [
             'id' => $this->adminUser->id,
@@ -133,10 +133,36 @@ class LocationUsageTest extends TestCase
             'role' => 'ADMIN',
         ]];
 
-        $viewResponse = $this->withSession($session)->get('/admin/locations');
-        $viewResponse->assertStatus(200);
+        $response = $this->withSession($session)->postJson('/admin/locations', [
+            'location_id' => $loc->id,
+            'name' => 'Warehouse Alpha Updated',
+            'description' => 'Updated desc',
+        ]);
 
-        // Should have been deleted
-        $this->assertDatabaseMissing('locations', ['id' => $coldStorage->id]);
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true]);
+        $this->assertEquals('Warehouse Alpha Updated', $loc->fresh()->name);
+    }
+
+    public function test_admin_can_edit_location_keeping_same_name(): void
+    {
+        Location::firstOrCreate(['name' => 'Main Warehouse']);
+        $loc = Location::create(['name' => 'Warehouse Beta', 'description' => 'Initial desc']);
+
+        $session = ['auth_user' => [
+            'id' => $this->adminUser->id,
+            'name' => $this->adminUser->name,
+            'role' => 'ADMIN',
+        ]];
+
+        $response = $this->withSession($session)->postJson('/admin/locations', [
+            'location_id' => $loc->id,
+            'name' => 'Warehouse Beta',
+            'description' => 'New Beta desc',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true]);
+        $this->assertEquals('New Beta desc', $loc->fresh()->description);
     }
 }

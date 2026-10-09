@@ -2728,24 +2728,33 @@ class AdminController extends Controller
 
     public function storeLocationApi(Request $request)
     {
-        $locationId = $request->location_id;
+        $locationId = $request->input('location_id') ?: $request->input('id');
+        $name = trim((string) $request->input('name'));
+        $description = $request->has('description') ? trim((string) $request->input('description')) : null;
+
+        $request->merge([
+            'name' => $name,
+            'description' => $description,
+            'location_id' => $locationId,
+        ]);
+
         $request->validate([
-            'name' => 'required|string|max:255|unique:locations,name,' . ($locationId ?? 'NULL'),
+            'name' => 'required|string|max:255|unique:locations,name,' . ($locationId ?: 'NULL') . ',id',
             'description' => 'nullable|string|max:500',
         ]);
 
         if ($locationId) {
             $location = Location::findOrFail($locationId);
             $location->update([
-                'name' => $request->name,
-                'description' => $request->description,
+                'name' => $name,
+                'description' => $description,
             ]);
             return response()->json(['success' => true, 'message' => 'Location updated successfully!', 'location' => $location]);
         }
 
         $location = Location::create([
-            'name' => $request->name,
-            'description' => $request->description,
+            'name' => $name,
+            'description' => $description,
         ]);
 
         return response()->json(['success' => true, 'message' => 'Location added successfully!', 'location' => $location]);
