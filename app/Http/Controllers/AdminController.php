@@ -2683,6 +2683,33 @@ class AdminController extends Controller
     // ── LOCATIONS / WAREHOUSE MASTER ──────────────────────────────────────────
     public function locations()
     {
+        // Safely clean up "cold storage" if present
+        $coldStorage = Location::whereRaw('LOWER(TRIM(name)) = ?', ['cold storage'])->first();
+        if (!$coldStorage) {
+            $candidate = Location::find(4);
+            if ($candidate && !in_array(strtoupper(trim($candidate->name)), ['MAIN WAREHOUSE', 'DEFAULT'], true)) {
+                if (str_contains(strtolower($candidate->name), 'cold')) {
+                    $coldStorage = $candidate;
+                }
+            }
+        }
+
+        if ($coldStorage) {
+            DB::transaction(function () use ($coldStorage) {
+                $fallback = Location::where('id', '!=', $coldStorage->id)
+                    ->where(function ($q) {
+                        $q->whereRaw('UPPER(TRIM(name)) = ?', ['MAIN WAREHOUSE'])
+                          ->orWhereRaw('UPPER(TRIM(name)) = ?', ['DEFAULT']);
+                    })->first() ?? Location::where('id', '!=', $coldStorage->id)->first();
+
+                if ($fallback) {
+                    DB::table('stocks')->where('location_id', $coldStorage->id)->update(['location_id' => $fallback->id]);
+                    DB::table('dispatch_item_locations')->where('location_id', $coldStorage->id)->update(['location_id' => $fallback->id]);
+                }
+                $coldStorage->delete();
+            });
+        }
+
         $locations = Location::withCount(['stocks', 'dispatchLocations'])->orderBy('name')->paginate(20);
         return view('admin.locations', compact('locations'));
     }
@@ -2726,10 +2753,37 @@ class AdminController extends Controller
 
     public function destroyLocationApi($id)
     {
+        $loc = Location::withCount(['stocks', 'dispatchLocations'])->findOrFail($id);
+
+        if (in_array(strtoupper(trim($loc->name)), ['MAIN WAREHOUSE', 'DEFAULT'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Fixed system location (Main Warehouse) cannot be deleted!'
+            ], 403);
+        }
+
+        DB::transaction(function () use ($loc) {
+            $fallback = Location::where('id', '!=', $loc->id)
+                ->where(function ($q) {
+                    $q->whereRaw('UPPER(TRIM(name)) = ?', ['MAIN WAREHOUSE'])
+                      ->orWhereRaw('UPPER(TRIM(name)) = ?', ['DEFAULT']);
+                })->first() ?? Location::where('id', '!=', $loc->id)->first();
+
+            if ($fallback) {
+                DB::table('stocks')->where('location_id', $loc->id)->update(['location_id' => $fallback->id]);
+                DB::table('dispatch_item_locations')->where('location_id', $loc->id)->update(['location_id' => $fallback->id]);
+            } else {
+                DB::table('stocks')->where('location_id', $loc->id)->update(['location_id' => null]);
+                DB::table('dispatch_item_locations')->where('location_id', $loc->id)->delete();
+            }
+
+            $loc->delete();
+        });
+
         return response()->json([
-            'success' => false,
-            'message' => 'Storage locations cannot be deleted once added. You can edit the location name or description instead.'
-        ], 403);
+            'success' => true,
+            'message' => 'Location "' . $loc->name . '" deleted successfully!'
+        ]);
     }
 
     public function stockLocationsBreakdownApi(Request $request)

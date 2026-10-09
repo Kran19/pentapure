@@ -70,10 +70,19 @@
               @if(!empty($isReadOnly))
                 <span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">View Only</span>
               @else
-              <div class="action-btns">
+              <div class="action-btns" style="display:flex; gap:6px; align-items:center;">
                 <button class="btn-icon edit" onclick="adminEditLocation({{ json_encode($loc) }})" title="Edit">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
+                @if(!$isFixed)
+                <button class="btn-icon delete" onclick="adminDeleteLocation({{ $loc->id }}, '{{ addslashes($loc->name) }}', {{ $usageCount }})" title="Delete Location" style="color:var(--danger, #ef4444); background:none; border:none; cursor:pointer; padding:4px; display:inline-flex; align-items:center;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
+                @else
+                <button class="btn-icon delete is-disabled" disabled style="opacity:0.35; cursor:not-allowed; background:none; border:none; padding:4px; display:inline-flex; align-items:center;" title="System fixed location cannot be deleted">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
+                @endif
               </div>
               @endif
             </td>
@@ -182,6 +191,48 @@ function adminSaveLocation() {
   .catch(() => {
     btn.disabled = false;
     btn.style.opacity = '1';
+  });
+}
+
+function adminDeleteLocation(id, name, usageCount) {
+  if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
+
+  let warningHtml = `Are you sure you want to delete warehouse location <strong>"${escapeHtml(name)}"</strong>?`;
+  if (usageCount > 0) {
+    warningHtml += `<br><br><span style="color:#ef4444; font-size:0.85rem; font-weight:600;">⚠️ Note: This location is referenced in ${usageCount} record(s). Any linked inventory or history will be safely moved to Main Warehouse.</span>`;
+  }
+
+  Swal.fire({
+    title: 'Delete Location?',
+    html: warningHtml,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, Delete',
+    confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#6b7280',
+  }).then(result => {
+    if (result.isConfirmed) {
+      fetch(window.baseUrl + '/' + window.userSlug + '/locations/' + id, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': window.csrfToken,
+          'Accept': 'application/json'
+        }
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          Swal.fire('Deleted!', d.message || 'Location deleted successfully.', 'success');
+          setTimeout(() => location.reload(), 700);
+        } else {
+          Swal.fire('Error', d.message || 'Failed to delete location.', 'error');
+        }
+      })
+      .catch(() => {
+        Swal.fire('Error', 'An unexpected error occurred while deleting.', 'error');
+      });
+    }
   });
 }
 
