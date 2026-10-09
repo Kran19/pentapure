@@ -136,13 +136,151 @@
   $pdfUrl = route('history.pdf', ['user_slug' => $userSlug, 'panel' => 'dispatch']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&company_id=' . $companyId . '&status=' . ($statusFilter === 'ALL' ? '' : $statusFilter) . '&q=' . $q;
 @endphp
 <style>
-@media (max-width: 900px) {
+/* Dispatch Item Badges */
+.dispatch-item-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.dispatch-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  box-sizing: border-box;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.dispatch-badge .badge-lbl {
+  font-size: 0.72rem;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+.dispatch-badge.badge-order {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  color: #111827;
+}
+.dispatch-badge.badge-order strong {
+  color: var(--primary, #D88A00);
+  font-weight: 800;
+}
+
+.dispatch-badge.badge-prev {
+  background: rgba(217, 119, 6, 0.1);
+  border: 1px solid rgba(217, 119, 6, 0.3);
+  color: #b45309;
+}
+
+.dispatch-badge.badge-disp {
+  background: rgba(22, 163, 74, 0.12);
+  border: 1px solid rgba(22, 163, 74, 0.3);
+  color: #15803d;
+}
+
+.dispatch-badge.badge-rem {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #b91c1c;
+}
+
+@media (max-width: 992px) {
+  .dispatch-item-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+  .dispatch-item-name {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .dispatch-item-badges-wrap {
+    width: 100% !important;
+  }
   .dispatch-item-badges {
+    display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
     width: 100% !important;
     gap: 6px !important;
   }
+  .dispatch-badge {
+    width: 100% !important;
+    padding: 6px 8px !important;
+  }
 }
+
+@media (max-width: 640px) {
+  .dispatch-filters-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  .dispatch-custom-range-row {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  .disp-card-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding: 1rem 0.85rem !important;
+  }
+  .disp-card-header-main {
+    padding-right: 0 !important;
+  }
+  .disp-card-header-actions {
+    justify-content: space-between !important;
+    width: 100% !important;
+    padding-top: 10px !important;
+    border-top: 1px dashed #e5e7eb !important;
+  }
+  .disp-card-header-actions > div:first-child {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    flex: 1 !important;
+  }
+  .disp-card-header-actions > div:first-child .btn {
+    flex: 1 1 auto !important;
+  }
+  #lr-batch-bar {
+    width: calc(100% - 24px) !important;
+    padding: 10px 14px !important;
+    border-radius: 16px !important;
+    gap: 8px !important;
+    justify-content: space-between !important;
+    bottom: 12px !important;
+  }
+  #lr-batch-bar button {
+    padding: 6px 10px !important;
+    font-size: 0.75rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .dispatch-item-badges {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 5px !important;
+  }
+  .dispatch-badge {
+    font-size: 0.72rem !important;
+    padding: 5px 6px !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    text-align: center !important;
+  }
+  .dispatch-badge .badge-lbl {
+    font-size: 0.65rem !important;
+  }
+}
+
 .status-tabs-wrapper {
   display: inline-flex;
   align-items: center;
@@ -242,7 +380,7 @@
   <input type="hidden" name="status" value="{{ $statusFilter }}">
 
   <!-- 2 Filter Boxes in 1 Line: Date Range & Company Name -->
-  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; align-items:center;">
+  <div class="dispatch-filters-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; align-items:center;">
     
     <!-- 1st: Date Range Filter -->
     <div>
@@ -266,7 +404,7 @@
   </div>
 
   @if($dateRange === 'custom')
-    <div style="display:flex; gap:10px; align-items:center;">
+    <div class="dispatch-custom-range-row" style="display:flex; gap:10px; align-items:center;">
       <input type="date" name="start" value="{{ $startDate }}" onchange="this.form.submit()"
         style="flex:1; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
       <input type="date" name="end" value="{{ $endDate }}" onchange="this.form.submit()"
@@ -322,8 +460,8 @@
     @endphp
     <div class="card dispatch-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--border-soft, #e5e7eb); background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.04); transition:all 0.2s ease;">
       <!-- Clickable Header Row -->
-      <div onclick="toggleHistoryAccordion('disp-acc-{{ $d['id'] }}', this)" style="cursor:pointer; padding:1.1rem; display:flex; justify-content:space-between; align-items:center; user-select:none; background:#ffffff;">
-        <div style="display:flex; align-items:center; flex:1; padding-right:15px;">
+      <div onclick="toggleHistoryAccordion('disp-acc-{{ $d['id'] }}', this)" class="disp-card-header" style="cursor:pointer; padding:1.1rem; display:flex; justify-content:space-between; align-items:center; user-select:none; background:#ffffff;">
+        <div class="disp-card-header-main" style="display:flex; align-items:center; flex:1; padding-right:15px;">
           <div onclick="event.stopPropagation()" style="display:inline-flex; align-items:center; margin-right:12px; flex-shrink:0;">
             @if($lrUploaded)
               <input type="checkbox" class="lr-select-check" data-id="{{ $d['id'] }}" data-order-id="{{ $d['orderId'] }}" data-has-lr="1" onclick="app.updateLRSelection();" style="width:18px; height:18px; cursor:pointer; accent-color:#059669;" title="Select to download LR copy">
@@ -363,7 +501,7 @@
             </div>
           </div>
         </div>
-        <div style="display:flex; align-items:center; gap:10px; text-align:right; flex-wrap:nowrap;">
+        <div class="disp-card-header-actions" style="display:flex; align-items:center; gap:10px; text-align:right; flex-wrap:nowrap;">
           <div style="display:flex; flex-direction:column; gap:5px; align-items:stretch;">
             <a href="{{ url($userSlug . '/pdf/' . $d['id']) }}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm" style="width:100%; padding:0.3rem 0.75rem; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-weight:600; background:var(--primary, #D88A00); color:#000; white-space:nowrap;">
               📄 Download PDF
@@ -453,30 +591,30 @@
                 $disp = (float)($item['dispatchedQty'] ?? 0);
                 $rem = (float)($item['remainingQty'] ?? 0);
               @endphp
-              <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f3f4f6; font-size:0.88rem; flex-wrap:wrap; gap:12px;">
-                <div style="flex:1; min-width:200px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <div class="dispatch-item-row" style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f3f4f6; font-size:0.88rem; flex-wrap:wrap; gap:12px;">
+                <div class="dispatch-item-name" style="flex:1; min-width:200px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
                   <span style="font-weight:600; color:#111827;">{{ $pName }}</span>
                   @if($gName)
                     <strong style="font-weight:800; color:var(--primary, #D88A00);">{{ $gName }}</strong>
                   @endif
                   <span style="color:#6b7280; font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
                 </div>
-                <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
-                  <div class="dispatch-item-badges" style="display:grid; grid-template-columns:120px 135px 135px 125px; gap:8px; align-items:center;">
-                    <span style="background:#f9fafb; padding:4px 8px; border-radius:6px; border:1px solid #e5e7eb; font-weight:600; color:#111827; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
-                      <span style="color:#6b7280; font-size:0.72rem; font-weight:700;">ORDER:</span>
+                <div class="dispatch-item-badges-wrap" style="display:flex; align-items:center;">
+                  <div class="dispatch-item-badges">
+                    <span class="dispatch-badge badge-order">
+                      <span class="badge-lbl" style="color:#6b7280;">ORDER:</span>
                       <strong style="color:var(--primary, #D88A00);">{{ $fmtQty($tot) }}</strong>
                     </span>
-                    <span style="background:rgba(217,119,6,0.1); padding:4px 8px; border-radius:6px; border:1px solid rgba(217,119,6,0.25); font-weight:700; color:#b45309; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;" title="Previously dispatched before this round">
-                      <span style="font-size:0.72rem;">PREV. DISPATCH:</span>
+                    <span class="dispatch-badge badge-prev" title="Previously dispatched before this round">
+                      <span class="badge-lbl">PREV. DISPATCH:</span>
                       <strong>{{ $fmtQty($prev) }}</strong>
                     </span>
-                    <span style="background:rgba(22,163,74,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(22,163,74,0.3); font-weight:700; color:#15803d; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;" title="Dispatched in this round">
-                      <span style="font-size:0.72rem;">DISPATCHED:</span>
+                    <span class="dispatch-badge badge-disp" title="Dispatched in this round">
+                      <span class="badge-lbl">DISPATCHED:</span>
                       <strong>{{ $fmtQty($disp) }}</strong>
                     </span>
-                    <span style="background:rgba(239,68,68,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(239,68,68,0.3); font-weight:700; color:#b91c1c; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;" title="Remaining pending quantity">
-                      <span style="font-size:0.72rem;">PENDING:</span>
+                    <span class="dispatch-badge badge-rem" title="Remaining pending quantity">
+                      <span class="badge-lbl">PENDING:</span>
                       <strong>{{ $fmtQty($rem) }}</strong>
                     </span>
                   </div>
