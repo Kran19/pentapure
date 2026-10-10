@@ -79,11 +79,12 @@
         <tr>
             <td style="border:none; width:70px; text-align:left; vertical-align:middle; padding:0;">
                 @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
-                    <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 42px; height: 42px; object-fit: contain;">
+                    <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 52px; height: 52px; object-fit: contain;">
                 @endif
             </td>
             <td style="border:none; text-align:center; vertical-align:middle; padding:0;">
-                <div style="font-size:16px; font-weight:800; letter-spacing:1px; color:#0f172a; text-transform:uppercase;">PPF</div>
+                <div style="font-size:26px; font-weight:800; letter-spacing:1px; color:#0f172a; text-transform:uppercase; line-height:1.1;">PPF</div>
+                <div style="font-size:12px; font-weight:bold; color:#b45309; letter-spacing:0.8px; margin-top:2px;">FOOD &amp; SPICES PVT. LTD.</div>
                 <div style="font-size:10px; color:#475569; font-weight:bold; margin-top:2px;">MONTHLY ATTENDANCE &amp; PAYROLL SUMMARY REPORT</div>
                 <div style="font-size:11px; color:#000; font-weight:bold; margin-top:2px; text-transform:uppercase;">PERIOD: {{ \Carbon\Carbon::parse($month)->format('F Y') }}</div>
             </td>

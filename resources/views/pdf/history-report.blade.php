@@ -28,8 +28,8 @@
             font-weight: 800;
         }
         .brand-text { display: inline-block; vertical-align: middle; }
-        .brand-title { font-size: 34px; font-weight: 800; color: #111827; }
-        .tagline { font-size: 14px; margin-top: 2px; color: #111827; }
+        .brand-title { font-size: 40px; font-weight: 800; color: #111827; line-height: 1.1; }
+        .tagline { font-size: 16px; margin-top: 3px; color: #b45309; font-weight: bold; letter-spacing: 0.8px; }
         .title { text-align: center; margin: 34px 0 26px; font-size: 32px; font-weight: 800; letter-spacing: 1px; color: #111827; }
         .meta { display: table; width: 100%; margin-bottom: 34px; font-size: 16px; }
         .meta-col { display: table-cell; width: 50%; }

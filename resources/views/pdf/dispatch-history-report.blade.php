@@ -139,8 +139,8 @@
                         </td>
                         @endif
                         <td style="vertical-align: middle; padding: 0;">
-                            <div class="brand-title" style="font-size: 22px; font-weight: 800; color: #101828; letter-spacing: 0.5px;">PPF</div>
-                            <div class="brand-tagline" style="font-size: 9.5px; color: #d88a00; font-weight: bold; letter-spacing: 1px; margin-top: 2px;">FOOD &amp; SPICES PVT. LTD.</div>
+                            <div class="brand-title" style="font-size: 26px; font-weight: 800; color: #101828; letter-spacing: 0.5px; line-height: 1.1;">PPF</div>
+                            <div class="brand-tagline" style="font-size: 12px; color: #b45309; font-weight: bold; letter-spacing: 0.8px; margin-top: 2px;">FOOD &amp; SPICES PVT. LTD.</div>
                             <div style="font-size: 7.5px; color: #667085; margin-top: 2px;">PREMIUM QUALITY FOOD PRODUCTS &amp; SPICES</div>
                         </td>
                     </tr>

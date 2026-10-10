@@ -40,15 +40,18 @@
         }
         .header-right div { margin-bottom: 4px; }
         .brand-name {
-            font-size: 24px;
-            font-weight: bold;
+            font-size: 26px;
+            font-weight: 800;
             color: #101828;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
+            line-height: 1.1;
         }
         .brand-tagline {
-            font-size: 10px;
-            color: #101828;
+            font-size: 12px;
+            font-weight: bold;
+            color: #b45309;
             margin-top: 2px;
+            letter-spacing: 0.8px;
         }
         .logo-icon {
             display: inline-block;
@@ -285,7 +288,7 @@
     <div class="header-bar">
         <div class="header-left">
             @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
-            <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 40px; height: 40px; vertical-align: middle; margin-right: 12px; object-fit: contain;">
+            <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 52px; height: 52px; vertical-align: middle; margin-right: 12px; object-fit: contain;">
             @endif
             <span style="display:inline-block; vertical-align:middle;">
                 <span class="brand-name">PPF</span><br>

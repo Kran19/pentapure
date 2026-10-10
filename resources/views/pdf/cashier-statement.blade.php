@@ -36,8 +36,8 @@ table, th, td, div, span, p, a, strong, small {
     border: 1px solid #cbd5e1;
     border-top: 3px solid #f59e0b;
 }
-.brand-name { font-size: 18px; font-weight: bold; color: #0f172a; letter-spacing: 0.5px; text-transform: uppercase; }
-.brand-sub  { font-size: 8px; font-weight: bold; color: #475569; margin-top: 1px; text-transform: uppercase; }
+.brand-name { font-size: 26px; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; line-height: 1.1; text-transform: uppercase; }
+.brand-sub  { font-size: 12px; font-weight: bold; color: #b45309; margin-top: 2px; letter-spacing: 0.8px; text-transform: uppercase; }
 
 /* ── META BOX ── */
 .meta-table {
@@ -130,9 +130,9 @@ table, th, td, div, span, p, a, strong, small {
         <td style="width: 60%; color: #101828; vertical-align: middle;">
             <table style="width: 100%; border-collapse: collapse;">
                 <tr>
-                    <td style="width: 45px; padding: 0; vertical-align: middle; border: none; background: transparent;">
+                    <td style="width: 58px; padding: 0; vertical-align: middle; border: none; background: transparent;">
                         @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
-                            <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 40px; height: 40px; object-fit: contain;">
+                            <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 52px; height: 52px; object-fit: contain;">
                         @endif
                     </td>
                     <td style="text-align: left; padding-left: 8px; vertical-align: middle; border: none; background: transparent;">

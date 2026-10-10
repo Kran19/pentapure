@@ -24,8 +24,8 @@
         .header-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; border-bottom: 2px solid #f8c300; padding-bottom: 6px; }
         .header-logo-cell { width: 60%; vertical-align: middle; }
         .header-contact-cell { width: 40%; text-align: right; vertical-align: middle; font-size: 9px; color: #475467; }
-        .brand-title { font-size: 20px; font-weight: 800; color: #101828; letter-spacing: 0.5px; }
-        .brand-tagline { font-size: 9px; color: #d88a00; font-weight: 700; letter-spacing: 1px; }
+        .brand-title { font-size: 26px; font-weight: 800; color: #101828; letter-spacing: 0.5px; line-height: 1.1; }
+        .brand-tagline { font-size: 12px; color: #b45309; font-weight: bold; letter-spacing: 0.8px; margin-top: 2px; }
         
         .title { text-align: center; font-size: 15px; font-weight: 800; letter-spacing: 1px; color: #101828; margin: 4px 0 10px 0; }
         
@@ -90,9 +90,9 @@
             <td class="header-logo-cell">
                 <table style="width: 100%; border-collapse: collapse;">
                     <tr>
-                        <td style="width: 50px; vertical-align: middle; padding: 0;">
+                        <td style="width: 58px; vertical-align: middle; padding: 0;">
                             @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
-                                <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 45px; height: 45px; object-fit: contain;">
+                                <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 52px; height: 52px; object-fit: contain;">
                             @endif
                         </td>
                         <td style="vertical-align: middle; padding: 0 0 0 8px;">

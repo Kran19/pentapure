@@ -45,16 +45,18 @@
             line-height: 1.35;
         }
         .brand-title {
-            font-size: 16px;
-            font-weight: bold;
+            font-size: 26px;
+            font-weight: 800;
             color: #101828;
             letter-spacing: 0.5px;
+            line-height: 1.1;
         }
         .brand-tagline {
-            font-size: 7.5px;
+            font-size: 12px;
             color: #b45309;
             font-weight: bold;
             letter-spacing: 0.8px;
+            margin-top: 2px;
         }
 
         /* Title */
@@ -291,8 +293,8 @@
                 <table style="border-collapse: collapse;">
                     <tr>
                         @if($logoBase64)
-                        <td style="width: 58px; vertical-align: middle; padding: 0 8px 0 0;">
-                            <img src="{{ $logoBase64 }}" style="width: 50px; height: 50px; object-fit: contain; display: block;">
+                        <td style="width: 65px; vertical-align: middle; padding: 0 10px 0 0;">
+                            <img src="{{ $logoBase64 }}" style="width: 55px; height: 55px; object-fit: contain; display: block;">
                         </td>
                         @endif
                         <td style="vertical-align: middle;">

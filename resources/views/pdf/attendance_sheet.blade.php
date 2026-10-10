@@ -18,17 +18,19 @@
             padding-bottom: 10px;
         }
         .header .brand-title {
-            font-size: 22px;
-            font-weight: bold;
+            font-size: 26px;
+            font-weight: 800;
             color: #101828;
             margin: 0;
             letter-spacing: 0.5px;
+            line-height: 1.1;
         }
         .header .tagline {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: bold;
-            color: #101828;
+            color: #b45309;
             margin-top: 2px;
+            letter-spacing: 0.8px;
         }
         .subheader {
             margin-top: 10px;
@@ -82,15 +84,16 @@
             <tr>
                 <td style="width: 20%; text-align: left; vertical-align: middle; border: none; background: transparent; padding: 0;">
                     @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
-                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 48px; height: 48px; object-fit: contain;">
+                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 52px; height: 52px; object-fit: contain;">
                     @endif
                 </td>
                 <td style="width: 60%; text-align: center; vertical-align: middle; border: none; background: transparent; padding: 0;">
                     <div class="brand-title">PPF</div>
+                    <div class="tagline">FOOD &amp; SPICES PVT. LTD.</div>
                 </td>
                 <td style="width: 20%; text-align: right; vertical-align: middle; border: none; background: transparent; padding: 0;">
                     @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
-                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 48px; height: 48px; object-fit: contain;">
+                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 52px; height: 52px; object-fit: contain;">
                     @endif
                 </td>
             </tr>
