@@ -352,7 +352,7 @@ class AttendanceController extends Controller
     // --- WORKERS ---
     public function workers(Request $request)
     {
-        $workersQuery = Worker::with('department')->withCount('attendances')->orderBy('id');
+        $workersQuery = Worker::with('department')->withCount(['attendances', 'monthlyAdjustments'])->orderBy('id');
         $departmentsQuery = Department::where('is_active', true)->orderBy('name');
 
         $allowedDeptIds = $this->getAllowedDeptIds();
@@ -364,13 +364,8 @@ class AttendanceController extends Controller
         $workers     = $workersQuery->get();
         $departments = $departmentsQuery->get();
 
-        $workersWithAdjustments = \App\Models\WorkerMonthlyAdjustment::distinct()
-            ->pluck('worker_id')
-            ->toArray();
-
-        $workers->each(function($w) use ($workersWithAdjustments) {
-            $hasAdjustments = in_array($w->id, $workersWithAdjustments);
-            $w->is_used = (($w->attendances_count ?? 0) > 0 || $hasAdjustments);
+        $workers->each(function($w) {
+            $w->is_used = (($w->attendances_count ?? 0) > 0 || ($w->monthly_adjustments_count ?? 0) > 0);
         });
 
         return view('attendance.workers', [

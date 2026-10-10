@@ -90,7 +90,20 @@
           @foreach($workers as $i => $w)
           <tr class="worker-row">
             <td style="text-align:center; font-weight:bold; color:var(--text-muted); font-size:0.85rem;">{{ $i + 1 }}</td>
-            <td style="font-weight:600;">{{ $w->name }}</td>
+            <td style="font-weight:600;">
+              {{ $w->name }}
+              @if(!empty($w->is_used))
+                @php
+                  $usageBadges = [];
+                  if (($w->attendances_count ?? 0) > 0) $usageBadges[] = $w->attendances_count . ' ' . \Illuminate\Support\Str::plural('log', $w->attendances_count);
+                  if (($w->monthly_adjustments_count ?? 0) > 0) $usageBadges[] = $w->monthly_adjustments_count . ' ' . \Illuminate\Support\Str::plural('adj', $w->monthly_adjustments_count);
+                  $usageBadgeStr = implode(', ', $usageBadges);
+                @endphp
+                <span style="font-size:0.7rem; background:rgba(59, 130, 246, 0.15); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.3); padding:2px 6px; border-radius:4px; margin-left:6px; font-weight:500;" title="Worker has {{ $usageBadgeStr }}">
+                  {{ $usageBadgeStr ?: 'In Use' }}
+                </span>
+              @endif
+            </td>
             <td>{{ $w->department->name }}</td>
             <td style="color:var(--text-muted);">{{ $w->role ?? '—' }}</td>
             <td><span class="badge {{ $w->shift_type=='NIGHT'?'badge-danger':'badge-info' }}">{{ $w->shift_type }}</span></td>
@@ -121,7 +134,10 @@
                   </button>
 
                   @if(!empty($w->is_used))
-                    <button type="button" class="btn-icon delete is-disabled" disabled style="opacity:0.35; cursor:not-allowed;" title="Cannot delete: worker has attendance or salary records in use">
+                    <button type="button" class="btn-icon delete is-disabled" 
+                      onclick="inUseWorkerAlert('{{ addslashes($w->name) }}', {{ $w->id }}, '{{ $w->status }}', {{ $w->attendances_count ?? 0 }}, {{ $w->monthly_adjustments_count ?? 0 }})" 
+                      style="opacity:0.35; cursor:not-allowed;" 
+                      title="Cannot delete: worker has attendance or salary records in use">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                     </button>
                   @else
@@ -271,14 +287,19 @@ document.getElementById('worker-form').onsubmit = function(e) {
 
 
 
-function inUseWorkerAlert(name, id, currentStatus) {
+function inUseWorkerAlert(name, id, currentStatus, attCount, adjCount) {
+  let records = [];
+  if (attCount > 0) records.push(`<strong>${attCount}</strong> attendance record(s)`);
+  if (adjCount > 0) records.push(`<strong>${adjCount}</strong> salary adjustment(s)`);
+  const recordInfo = records.length > 0 ? ` (${records.join(', ')})` : '';
+
   if (currentStatus === 'ACTIVE') {
     Swal.fire({
-      title: 'Cannot Delete Worker',
-      text: `Worker "${name}" has associated attendance or salary records and cannot be deleted. Would you like to Disable (mark INACTIVE) this worker instead?`,
+      title: 'Worker Cannot Be Deleted',
+      html: `Worker <strong>"${escapeHtml(name)}"</strong> has associated records in the system${recordInfo}.<br><br>Deleting this worker is disabled to protect past daily attendance records and payroll calculations.<br><br><strong>Recommended:</strong> Would you like to mark this worker as <strong>Inactive</strong> instead?<br><small style="color:#6b7280;">(Inactive workers will stop appearing on daily attendance logging forms, while past records remain safe.)</small>`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Yes, Disable Worker',
+      confirmButtonText: 'Yes, Mark Inactive',
       confirmButtonColor: '#f59e0b',
       cancelButtonText: 'Cancel'
     }).then((res) => {
@@ -288,10 +309,11 @@ function inUseWorkerAlert(name, id, currentStatus) {
     });
   } else {
     Swal.fire({
-      title: 'Worker In Use & Disabled',
-      text: `Worker "${name}" is already Disabled (Inactive). This worker cannot be deleted permanently because historical attendance or salary records exist for data integrity.`,
+      title: 'Worker In Use & Already Inactive',
+      html: `Worker <strong>"${escapeHtml(name)}"</strong> is already Inactive.<br><br>Permanent deletion is disabled because this worker has ${recordInfo || 'historical records'} that must be preserved for financial and operational records.`,
       icon: 'info',
-      confirmButtonText: 'OK'
+      confirmButtonText: 'OK',
+      confirmButtonColor: '#3b82f6'
     });
   }
 }
