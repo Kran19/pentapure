@@ -839,7 +839,7 @@ class AttendanceController extends Controller
         // Sort by department name to have consistent ordering
         $grouped = $grouped->sortKeys();
 
-        $companyName = config('app.name', 'PENTAPURE FOODS & SPICES PVT.LTD.');
+        $companyName = config('app.name', 'PPF');
         
         $pdf = Pdf::loadView('pdf.attendance_sheet', [
             'date' => $date,

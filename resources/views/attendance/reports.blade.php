@@ -28,7 +28,7 @@
 
   <div class="card" id="printable-report" style="padding:1.5rem;">
     <div style="text-align:center; margin-bottom:1.5rem;">
-      <h3 style="margin:0;">PPF FOOD &amp; SPICES PVT. LTD.</h3>
+      <h3 style="margin:0;">PPF</h3>
       <div style="color:var(--text-muted);">Attendance &amp; Payroll Report - {{ \Carbon\Carbon::parse($month)->format('F Y') }}</div>
     </div>
 

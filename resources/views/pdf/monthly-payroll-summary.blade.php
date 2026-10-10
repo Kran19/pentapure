@@ -83,7 +83,7 @@
                 @endif
             </td>
             <td style="border:none; text-align:center; vertical-align:middle; padding:0;">
-                <div style="font-size:16px; font-weight:800; letter-spacing:1px; color:#0f172a; text-transform:uppercase;">PPF FOOD &amp; SPICES PVT. LTD.</div>
+                <div style="font-size:16px; font-weight:800; letter-spacing:1px; color:#0f172a; text-transform:uppercase;">PPF</div>
                 <div style="font-size:10px; color:#475569; font-weight:bold; margin-top:2px;">MONTHLY ATTENDANCE &amp; PAYROLL SUMMARY REPORT</div>
                 <div style="font-size:11px; color:#000; font-weight:bold; margin-top:2px; text-transform:uppercase;">PERIOD: {{ \Carbon\Carbon::parse($month)->format('F Y') }}</div>
             </td>

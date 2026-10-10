@@ -500,7 +500,7 @@
             <td class="footer-right">
                 <div class="signature-line"></div>
                 <div><strong>Authorized Signatory</strong></div>
-                <div style="color: #475467; font-size: 7px;">PPF Food &amp; Spices Pvt. Ltd.</div>
+                <div style="color: #475467; font-size: 7px;">PPF</div>
             </td>
         </tr>
     </table>
