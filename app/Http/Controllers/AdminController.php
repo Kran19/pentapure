@@ -1165,7 +1165,7 @@ class AdminController extends Controller
                     ? 'Historical Stock Valuation Report as on ' . \Carbon\Carbon::parse($date)->format('d M Y')
                     : 'Real-Time Live Stock Inventory Status'
             ]);
-            fputcsv($handle, ['PentaPure FOOD & SPICES PVT. LTD.', '', '', 'Email: info@pentapure.com', 'Phone: +91 98765 43210', 'Web: www.pentapure.com']);
+            fputcsv($handle, ['PentaPure FOOD & SPICES PVT. LTD.']);
             
             $stageLabels = array_map(function($st) {
                 $st = strtoupper(trim($st));

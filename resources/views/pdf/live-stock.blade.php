@@ -287,7 +287,7 @@
     <!-- Branding Header -->
     <table class="header-table">
         <tr>
-            <td class="header-logo-cell">
+            <td class="header-logo-cell" style="width: 100%;">
                 <table style="border-collapse: collapse;">
                     <tr>
                         @if($logoBase64)
@@ -301,11 +301,6 @@
                         </td>
                     </tr>
                 </table>
-            </td>
-            <td class="header-contact-cell">
-                <div><strong>Email:</strong> info@pentapure.com</div>
-                <div><strong>Phone:</strong> +91 98765 43210</div>
-                <div><strong>Web:</strong> www.pentapure.com</div>
             </td>
         </tr>
     </table>
