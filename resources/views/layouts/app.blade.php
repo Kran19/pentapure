@@ -11,9 +11,9 @@
     window.isReadOnly = {{ !empty($isReadOnly) ? 'true' : 'false' }};
   </script>
   <title>Pentapure Factory Operations</title>
-  <link rel="icon" type="image/png" href="{{ asset('logo.png') }}?v=1">
-  <link rel="shortcut icon" type="image/png" href="{{ asset('logo.png') }}?v=1">
-  <link rel="apple-touch-icon" href="{{ asset('logo.png') }}?v=1">
+  <link rel="icon" type="image/png" href="{{ asset('logo.png') }}?v={{ filemtime(public_path('logo.png')) }}">
+  <link rel="shortcut icon" type="image/png" href="{{ asset('logo.png') }}?v={{ filemtime(public_path('logo.png')) }}">
+  <link rel="apple-touch-icon" href="{{ asset('logo.png') }}?v={{ filemtime(public_path('logo.png')) }}">
   <link rel="stylesheet" href="{{ asset('css/style.css') }}?v={{ filemtime(public_path('css/style.css')) }}">
   <link rel="stylesheet" href="{{ asset('css/tabulator-custom.css') }}">
   <!-- Select2 CSS -->
@@ -80,7 +80,7 @@
         @endphp
 
         <div class="nav-logo desktop-only">
-          <img src="{{ asset('logo.png') }}" alt="Logo">
+          <img src="{{ asset('logo.png') }}?v={{ filemtime(public_path('logo.png')) }}" alt="Logo">
           <span>Penta<span class="text-primary">Pure</span></span>
         </div>
 

@@ -12,9 +12,9 @@
     window.isReadOnly = {{ !empty($isReadOnly) ? 'true' : 'false' }};
   </script>
   <title>Pentapure Factory Operations - Admin</title>
-  <link rel="icon" type="image/png" href="{{ asset('logo.png') }}?v=1">
-  <link rel="shortcut icon" type="image/png" href="{{ asset('logo.png') }}?v=1">
-  <link rel="apple-touch-icon" href="{{ asset('logo.png') }}?v=1">
+  <link rel="icon" type="image/png" href="{{ asset('logo.png') }}?v={{ filemtime(public_path('logo.png')) }}">
+  <link rel="shortcut icon" type="image/png" href="{{ asset('logo.png') }}?v={{ filemtime(public_path('logo.png')) }}">
+  <link rel="apple-touch-icon" href="{{ asset('logo.png') }}?v={{ filemtime(public_path('logo.png')) }}">
   <link rel="stylesheet" href="{{ asset('css/style.css') }}?v={{ filemtime(public_path('css/style.css')) }}">
   <link rel="stylesheet" href="{{ asset('css/tabulator-custom.css') }}">
   <!-- Cropper.js -->
@@ -143,7 +143,7 @@
         @endphp
         <div id="admin-sidebar" class="admin-sidebar">
           <div style="text-align:center;padding:1rem 1rem 0.5rem;">
-            <img src="{{ asset('logo.png') }}" alt="Logo"
+            <img src="{{ asset('logo.png') }}?v={{ filemtime(public_path('logo.png')) }}" alt="Logo"
               style="width:80px;object-fit:contain;margin-bottom:0.5rem;">
           </div>
           <div style="padding:0 1rem 1rem;font-size:1.3rem;font-weight:bold;color:var(--dark-brand);
