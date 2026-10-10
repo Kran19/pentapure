@@ -2819,23 +2819,15 @@ class AdminController extends Controller
             ], 403);
         }
 
-        DB::transaction(function () use ($loc) {
-            $fallback = Location::where('id', '!=', $loc->id)
-                ->where(function ($q) {
-                    $q->whereRaw('UPPER(TRIM(name)) = ?', ['MAIN WAREHOUSE'])
-                      ->orWhereRaw('UPPER(TRIM(name)) = ?', ['DEFAULT']);
-                })->first() ?? Location::where('id', '!=', $loc->id)->first();
+        $usageCount = ($loc->stocks_count ?? 0) + ($loc->dispatch_locations_count ?? 0);
+        if ($usageCount > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => "Cannot delete location \"{$loc->name}\": it is currently in use across {$usageCount} " . (\Illuminate\Support\Str::plural('record', $usageCount)) . "!"
+            ], 422);
+        }
 
-            if ($fallback) {
-                DB::table('stocks')->where('location_id', $loc->id)->update(['location_id' => $fallback->id]);
-                DB::table('dispatch_item_locations')->where('location_id', $loc->id)->update(['location_id' => $fallback->id]);
-            } else {
-                DB::table('stocks')->where('location_id', $loc->id)->update(['location_id' => null]);
-                DB::table('dispatch_item_locations')->where('location_id', $loc->id)->delete();
-            }
-
-            $loc->delete();
-        });
+        $loc->delete();
 
         return response()->json([
             'success' => true,

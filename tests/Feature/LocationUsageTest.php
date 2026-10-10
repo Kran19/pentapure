@@ -67,7 +67,7 @@ class LocationUsageTest extends TestCase
         $this->assertDatabaseMissing('locations', ['id' => $loc->id]);
     }
 
-    public function test_location_with_stock_reassigns_to_main_warehouse_and_deletes(): void
+    public function test_location_with_stock_cannot_be_deleted(): void
     {
         $mainWarehouse = Location::firstOrCreate(['name' => 'Main Warehouse']);
         $shelf = Location::create(['name' => 'Shelf Area B']);
@@ -95,14 +95,22 @@ class LocationUsageTest extends TestCase
         ]];
 
         $response = $this->withSession($session)->deleteJson("/admin/locations/{$shelf->id}");
-        $response->assertStatus(200);
-        $response->assertJson(['success' => true]);
+        $response->assertStatus(422);
+        $response->assertJson([
+            'success' => false,
+        ]);
+        $this->assertStringContainsString('currently in use', $response->json('message'));
 
-        // Shelf location deleted
-        $this->assertDatabaseMissing('locations', ['id' => $shelf->id]);
+        // Shelf location must NOT be deleted
+        $this->assertDatabaseHas('locations', ['id' => $shelf->id]);
 
-        // Stock reassigned to Main Warehouse
-        $this->assertEquals($mainWarehouse->id, $stock->fresh()->location_id);
+        // Stock remains at that location
+        $this->assertEquals($shelf->id, $stock->fresh()->location_id);
+
+        // Also verify that the UI renders the delete button as disabled for in-use location
+        $viewResponse = $this->withSession($session)->get('/admin/locations');
+        $viewResponse->assertStatus(200);
+        $viewResponse->assertSee('Cannot delete: Location is currently in use across 1 record');
     }
 
     public function test_locations_view_has_edit_and_delete_buttons(): void

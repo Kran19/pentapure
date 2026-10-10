@@ -79,12 +79,16 @@
                   title="Edit Location">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>
                 </button>
-                @if(!$isFixed)
-                <button class="btn-icon delete" onclick="adminDeleteLocation({{ $loc->id }}, '{{ addslashes($loc->name) }}', {{ $usageCount }})" title="Delete Location" style="color:var(--danger, #ef4444); background:none; border:none; cursor:pointer; padding:4px; display:inline-flex; align-items:center;">
+                @if(!$isFixed && !$isInUse)
+                <button type="button" class="btn-icon delete" onclick="adminDeleteLocation({{ $loc->id }}, '{{ addslashes($loc->name) }}')" title="Delete Location" style="color:var(--danger, #ef4444); background:none; border:none; cursor:pointer; padding:4px; display:inline-flex; align-items:center;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
+                @elseif($isFixed)
+                <button type="button" class="btn-icon delete is-disabled" onclick="adminUsedLocationAlert('{{ addslashes($loc->name) }}', 'system')" style="opacity:0.35; cursor:not-allowed; background:none; border:none; padding:4px; display:inline-flex; align-items:center;" title="System fixed location cannot be deleted">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                 </button>
                 @else
-                <button class="btn-icon delete is-disabled" disabled style="opacity:0.35; cursor:not-allowed; background:none; border:none; padding:4px; display:inline-flex; align-items:center;" title="System fixed location cannot be deleted">
+                <button type="button" class="btn-icon delete is-disabled" onclick="adminUsedLocationAlert('{{ addslashes($loc->name) }}', {{ $usageCount }})" style="opacity:0.35; cursor:not-allowed; background:none; border:none; padding:4px; display:inline-flex; align-items:center;" title="Cannot delete: Location is currently in use across {{ $usageCount }} {{ \Illuminate\Support\Str::plural('record', $usageCount) }}">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                 </button>
                 @endif
@@ -106,6 +110,11 @@
 let editingLocationId = null;
 
 function getLocationsEndpoint() {
+  if (typeof window.baseUrl !== 'undefined' && typeof window.userSlug !== 'undefined' && window.userSlug) {
+    const slug = window.userSlug.replace(/^\/+|\/+$/g, '');
+    const base = window.baseUrl.replace(/\/+$/, '');
+    return `${base}/${slug}/locations`;
+  }
   return window.location.pathname.replace(/\/+$/, '');
 }
 
@@ -262,13 +271,28 @@ function adminSaveLocation() {
   });
 }
 
-function adminDeleteLocation(id, name, usageCount) {
+function adminUsedLocationAlert(name, typeOrCount) {
+  if (typeOrCount === 'system') {
+    Swal.fire({
+      icon: 'info',
+      title: 'Fixed System Location',
+      text: `Location "${name}" is a protected system location and cannot be deleted.`,
+      confirmButtonColor: '#3b82f6'
+    });
+  } else {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Location In Use',
+      html: `Warehouse location <strong>"${escapeHtml(name)}"</strong> is currently in use across <strong>${typeOrCount} record(s)</strong>.<br><br><span style="color:#ef4444; font-weight:600;">Locations in use cannot be deleted to protect inventory integrity.</span>`,
+      confirmButtonColor: '#ef4444'
+    });
+  }
+}
+
+function adminDeleteLocation(id, name) {
   if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
 
-  let warningHtml = `Are you sure you want to delete warehouse location <strong>"${escapeHtml(name)}"</strong>?`;
-  if (usageCount > 0) {
-    warningHtml += `<br><br><span style="color:#ef4444; font-size:0.85rem; font-weight:600;">⚠️ Note: This location is referenced in ${usageCount} record(s). Any linked inventory or history will be safely moved to Main Warehouse.</span>`;
-  }
+  const warningHtml = `Are you sure you want to delete warehouse location <strong>"${escapeHtml(name)}"</strong>?`;
 
   Swal.fire({
     title: 'Delete Location?',
@@ -278,12 +302,12 @@ function adminDeleteLocation(id, name, usageCount) {
     confirmButtonText: 'Yes, Delete',
     confirmButtonColor: '#ef4444',
     cancelButtonColor: '#6b7280',
-  }).then(result => {
-    if (result.isConfirmed) {
+    showLoaderOnConfirm: true,
+    preConfirm: () => {
       const endpoint = getLocationsEndpoint() + '/' + id;
       const token = getCsrfToken();
 
-      fetch(endpoint, {
+      return fetch(endpoint, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -298,12 +322,21 @@ function adminDeleteLocation(id, name, usageCount) {
         }
         return d;
       })
-      .then(d => {
-        Swal.fire('Deleted!', d.message || 'Location deleted successfully.', 'success');
-        setTimeout(() => location.reload(), 700);
-      })
       .catch((err) => {
-        Swal.fire('Error', err.message || 'An unexpected error occurred while deleting.', 'error');
+        Swal.showValidationMessage(err.message || 'An unexpected error occurred while deleting.');
+      });
+    },
+    allowOutsideClick: () => !Swal.isLoading()
+  }).then(result => {
+    if (result.isConfirmed && result.value && result.value.success) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Deleted!',
+        text: result.value.message || 'Location deleted successfully.',
+        timer: 1000,
+        showConfirmButton: false
+      }).then(() => {
+        window.location.reload();
       });
     }
   });
