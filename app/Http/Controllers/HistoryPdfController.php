@@ -418,7 +418,7 @@ class HistoryPdfController extends Controller
         $start = Carbon::parse($month)->startOfMonth()->toDateString();
         $end = Carbon::parse($month)->endOfMonth()->toDateString();
 
-        return Worker::with(['department', 'attendances' => fn ($q) => $q->whereBetween('date', [$start, $end])])->where('status', 'ACTIVE')->orderBy('name')->get()
+        return Worker::with(['department', 'attendances' => fn ($q) => $q->whereBetween('date', [$start, $end])])->orderBy('name')->get()
             ->map(function ($w) {
                 $present = $w->attendances->where('status', 'PRESENT')->count();
                 $absent = $w->attendances->where('status', 'ABSENT')->count();

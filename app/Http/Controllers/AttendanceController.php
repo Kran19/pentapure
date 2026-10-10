@@ -361,6 +361,18 @@ class AttendanceController extends Controller
             $departmentsQuery->whereIn('id', $allowedDeptIds);
         }
 
+        $search = trim((string)$request->query('search', ''));
+        if ($search !== '') {
+            $workersQuery->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('role', 'like', "%{$search}%")
+                  ->orWhere('status', 'like', "%{$search}%")
+                  ->orWhereHas('department', function($dq) use ($search) {
+                      $dq->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
         $workers     = $workersQuery->get();
         $departments = $departmentsQuery->get();
 
@@ -371,6 +383,7 @@ class AttendanceController extends Controller
         return view('attendance.workers', [
             'workers'     => $workers,
             'departments' => $departments,
+            'search'      => $search,
             'layout'      => $this->getLayout($request)
         ]);
     }
@@ -792,16 +805,15 @@ class AttendanceController extends Controller
         $attQuery = Attendance::with(['worker.department'])
             ->where('date', $date)
             ->whereHas('worker', function($q) use ($allowedDeptIds) {
-                $q->where('status', 'ACTIVE');
                 if (!empty($allowedDeptIds)) {
                     $q->whereIn('department_id', $allowedDeptIds);
                 }
             });
         $attendances = $attQuery->get();
 
-        // If nothing saved yet, we still want to show all active workers with blank data
+        // If nothing saved yet, we still want to show all workers with blank data
         if ($attendances->isEmpty()) {
-            $wQuery = Worker::with('department')->where('status', 'ACTIVE');
+            $wQuery = Worker::with('department');
             if (!empty($allowedDeptIds)) {
                 $wQuery->whereIn('department_id', $allowedDeptIds);
             }
@@ -856,19 +868,25 @@ class AttendanceController extends Controller
             $workerNumberMap[$wId] = $idx + 1;
         }
 
-        // Get workers who are ACTIVE OR INACTIVE with attendance records in the month
+        // Get all workers (both ACTIVE and INACTIVE so inactive workers also show in reports and PDF exports)
         $workersQuery = Worker::with(['department', 'attendances' => function($q) use ($startDate, $endDate) {
             $q->whereBetween('date', [$startDate, $endDate]);
-        }])->where(function($q) use ($startDate, $endDate) {
-            $q->where('status', 'ACTIVE')
-              ->orWhereHas('attendances', function($aq) use ($startDate, $endDate) {
-                  $aq->whereBetween('date', [$startDate, $endDate]);
-              });
-        });
+        }]);
 
         $allowedDeptIds = $this->getAllowedDeptIds();
         if (!empty($allowedDeptIds)) {
             $workersQuery->whereIn('department_id', $allowedDeptIds);
+        }
+
+        $search = trim((string)$request->query('search', ''));
+        if ($search !== '') {
+            $workersQuery->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('status', 'like', "%{$search}%")
+                  ->orWhereHas('department', function($dq) use ($search) {
+                      $dq->where('name', 'like', "%{$search}%");
+                  });
+            });
         }
 
         $workers = $workersQuery->orderBy('name')->get();
@@ -890,6 +908,7 @@ class AttendanceController extends Controller
         return view('attendance.reports', [
             'reportData' => $reportData,
             'month'      => $month,
+            'search'     => $search,
             'layout'     => $this->getLayout($request)
         ]);
     }
@@ -1005,12 +1024,7 @@ class AttendanceController extends Controller
         $startDate = Carbon::parse($month)->startOfMonth()->toDateString();
         $endDate   = Carbon::parse($month)->endOfMonth()->toDateString();
 
-        $workersQuery = Worker::where(function($q) use ($startDate, $endDate) {
-            $q->where('status', 'ACTIVE')
-              ->orWhereHas('attendances', function($aq) use ($startDate, $endDate) {
-                  $aq->whereBetween('date', [$startDate, $endDate]);
-              });
-        });
+        $workersQuery = Worker::with('department');
 
         $allowedDeptIds = $this->getAllowedDeptIds();
         if (!empty($allowedDeptIds)) {
@@ -1050,12 +1064,7 @@ class AttendanceController extends Controller
 
         $workersQuery = Worker::with(['department', 'attendances' => function($q) use ($startDate, $endDate) {
             $q->whereBetween('date', [$startDate, $endDate]);
-        }])->where(function($q) use ($startDate, $endDate) {
-            $q->where('status', 'ACTIVE')
-              ->orWhereHas('attendances', function($aq) use ($startDate, $endDate) {
-                  $aq->whereBetween('date', [$startDate, $endDate]);
-              });
-        });
+        }]);
 
         $allowedDeptIds = $this->getAllowedDeptIds();
         if (!empty($allowedDeptIds)) {

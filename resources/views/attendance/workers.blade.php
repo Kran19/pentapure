@@ -71,7 +71,29 @@
     </form>
   </div>
 
-  <div class="card">
+  <div class="card" style="overflow:hidden;">
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:1rem 1.25rem; border-bottom:1px solid var(--border-soft, #e5e7eb); flex-wrap:wrap; gap:0.75rem; background:rgba(255,255,255,0.03);">
+      <div style="position:relative; flex:1; max-width:440px; min-width:260px;">
+        <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:0.95rem; opacity:0.6; pointer-events:none;">🔍</span>
+        <input type="text" 
+               id="workerSearchInput" 
+               value="{{ $search ?? '' }}"
+               placeholder="Search by worker name, dept, role, shift, status..." 
+               oninput="filterWorkersTable()" 
+               style="width:100%; padding:0.55rem 2.2rem 0.55rem 2.4rem; border-radius:8px; border:1px solid var(--border-soft, #cbd5e1); background:var(--input-bg, #ffffff); font-size:0.875rem; color:inherit; outline:none; transition:border-color 0.2s, box-shadow 0.2s;">
+        <button type="button" 
+                id="workerSearchClear" 
+                onclick="clearWorkerSearch()" 
+                style="{{ !empty($search) ? 'display:inline-block;' : 'display:none;' }} position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:#9ca3af; font-size:1.1rem; cursor:pointer; padding:0 4px; line-height:1;" 
+                title="Clear search">✕</button>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.75rem;">
+        <span id="workerCountBadge" style="font-size:0.82rem; font-weight:600; padding:5px 12px; border-radius:6px; background:rgba(59, 130, 246, 0.1); color:#3b82f6; border:1px solid rgba(59, 130, 246, 0.25);">
+          Total: {{ count($workers) }} workers
+        </span>
+      </div>
+    </div>
+
     <div class="table-container">
       <table>
         <thead>
@@ -86,9 +108,15 @@
             <th>Actions</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="workersTableBody">
           @foreach($workers as $i => $w)
-          <tr class="worker-row">
+          <tr class="worker-row"
+              data-name="{{ strtolower($w->name) }}"
+              data-dept="{{ strtolower($w->department->name ?? '') }}"
+              data-role="{{ strtolower($w->role ?? '') }}"
+              data-shift="{{ strtolower($w->shift_type ?? '') }}"
+              data-status="{{ strtolower($w->status ?? '') }}"
+              data-salary="{{ strtolower($w->salary_type . ' ' . $w->salary_amount) }}">
             <td style="text-align:center; font-weight:bold; color:var(--text-muted); font-size:0.85rem;">{{ $i + 1 }}</td>
             <td style="font-weight:600;">
               {{ $w->name }}
@@ -152,6 +180,13 @@
             </td>
           </tr>
           @endforeach
+          <tr id="worker-no-match-row" style="display:none;">
+            <td colspan="8" style="text-align:center; padding:2.5rem 1rem; color:var(--text-muted);">
+              <div style="font-size:1.8rem; margin-bottom:0.5rem; opacity:0.6;">🔍</div>
+              <div style="font-weight:600; font-size:0.95rem;">No workers found</div>
+              <div style="font-size:0.82rem; margin-top:0.25rem;">No workers matched "<span id="workerSearchKeyword" style="font-weight:bold; color:var(--text-color, #0f172a);"></span>"</div>
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -393,6 +428,90 @@ function deleteWorker(id) {
     }
   });
 }
+
+function filterWorkersTable() {
+  const input = document.getElementById('workerSearchInput');
+  const clearBtn = document.getElementById('workerSearchClear');
+  const badge = document.getElementById('workerCountBadge');
+  const query = (input ? input.value : '').trim().toLowerCase();
+  
+  if (clearBtn) {
+    clearBtn.style.display = query.length > 0 ? 'inline-block' : 'none';
+  }
+
+  const rows = document.querySelectorAll('.worker-row');
+  let visibleCount = 0;
+  const noMatchRow = document.getElementById('worker-no-match-row');
+
+  rows.forEach(row => {
+    if (!query) {
+      row.style.display = '';
+      visibleCount++;
+      return;
+    }
+    const name = row.getAttribute('data-name') || '';
+    const dept = row.getAttribute('data-dept') || '';
+    const role = row.getAttribute('data-role') || '';
+    const shift = row.getAttribute('data-shift') || '';
+    const status = row.getAttribute('data-status') || '';
+    const salary = row.getAttribute('data-salary') || '';
+    const fullText = (row.textContent || '').toLowerCase();
+
+    const matches = name.includes(query) || 
+                    dept.includes(query) || 
+                    role.includes(query) || 
+                    shift.includes(query) || 
+                    status.includes(query) || 
+                    salary.includes(query) || 
+                    fullText.includes(query);
+
+    if (matches) {
+      row.style.display = '';
+      visibleCount++;
+    } else {
+      row.style.display = 'none';
+    }
+  });
+
+  if (noMatchRow) {
+    noMatchRow.style.display = (visibleCount === 0 && rows.length > 0) ? '' : 'none';
+    const keywordSpan = document.getElementById('workerSearchKeyword');
+    if (keywordSpan) keywordSpan.textContent = query;
+  }
+
+  if (badge) {
+    if (!query) {
+      badge.textContent = `Total: ${rows.length} workers`;
+    } else {
+      badge.textContent = `Showing ${visibleCount} of ${rows.length} workers`;
+    }
+  }
+}
+
+function clearWorkerSearch() {
+  const input = document.getElementById('workerSearchInput');
+  if (input) {
+    input.value = '';
+    filterWorkersTable();
+    input.focus();
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    const active = document.activeElement;
+    if (active && active.id === 'workerSearchInput') {
+      clearWorkerSearch();
+    }
+  }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  const input = document.getElementById('workerSearchInput');
+  if (input && input.value.trim().length > 0) {
+    filterWorkersTable();
+  }
+});
 </script>
 @endsection
 

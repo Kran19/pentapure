@@ -27,9 +27,32 @@
   </div>
 
   <div class="card" id="printable-report" style="padding:1.5rem;">
-    <div style="text-align:center; margin-bottom:2rem;">
-      <h3 style="margin:0;">PENTAPURE FACTORY</h3>
-      <div style="color:var(--text-muted);">Attendance & Payroll Report - {{ \Carbon\Carbon::parse($month)->format('F Y') }}</div>
+    <div style="text-align:center; margin-bottom:1.5rem;">
+      <h3 style="margin:0;">PPF FOOD &amp; SPICES PVT. LTD.</h3>
+      <div style="color:var(--text-muted);">Attendance &amp; Payroll Report - {{ \Carbon\Carbon::parse($month)->format('F Y') }}</div>
+    </div>
+
+    <!-- Search Toolbar -->
+    <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
+      <div style="position:relative; flex:1; max-width:440px; min-width:260px;">
+        <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:0.95rem; opacity:0.6; pointer-events:none;">🔍</span>
+        <input type="text" 
+               id="reportSearchInput" 
+               value="{{ $search ?? '' }}"
+               placeholder="Search employee by name, department, status..." 
+               oninput="filterReportsTable()" 
+               style="width:100%; padding:0.55rem 2.2rem 0.55rem 2.4rem; border-radius:8px; border:1px solid var(--border-soft, #cbd5e1); background:var(--input-bg, #ffffff); font-size:0.875rem; color:inherit; outline:none; transition:border-color 0.2s, box-shadow 0.2s;">
+        <button type="button" 
+                id="reportSearchClear" 
+                onclick="clearReportSearch()" 
+                style="{{ !empty($search) ? 'display:inline-block;' : 'display:none;' }} position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:#9ca3af; font-size:1.1rem; cursor:pointer; padding:0 4px; line-height:1;" 
+                title="Clear search">✕</button>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.75rem;">
+        <span id="reportCountBadge" style="font-size:0.82rem; font-weight:600; padding:5px 12px; border-radius:6px; background:rgba(59, 130, 246, 0.1); color:#3b82f6; border:1px solid rgba(59, 130, 246, 0.25);">
+          Total: {{ count($reportData) }} employees
+        </span>
+      </div>
     </div>
 
     <div class="table-container">
@@ -66,8 +89,9 @@
               $deptTotalAdvance = array_sum(array_column($workers, 'advance'));
               $deptTotalPayable = array_sum(array_map(fn($w) => (float)($w['payable_salary'] ?? $w['total_wage']), $workers));
               $deptWorkerCount = count($workers);
+              $deptSlug = \Illuminate\Support\Str::slug($deptName ?: 'other');
             @endphp
-            <tr style="background:rgba(255,255,255,0.07); border-top:2px solid var(--border-soft, #e5e7eb);">
+            <tr class="dept-header-row" data-dept-group="{{ $deptSlug }}" style="background:rgba(255,255,255,0.07); border-top:2px solid var(--border-soft, #e5e7eb);">
               <td colspan="5" style="font-weight:bold; color:var(--secondary); font-size:0.92rem;">
                 📂 {{ strtoupper($deptName) }} <span style="font-size:0.8rem; font-weight:600; opacity:0.85; margin-left:0.4rem; color:var(--text-color);">(Total Workers: {{ $deptWorkerCount }})</span>
               </td>
@@ -86,9 +110,19 @@
                 $rawDate = $adj?->paid_at ? \Carbon\Carbon::parse($adj->paid_at)->format('Y-m-d') : ($adj?->paid_note && preg_match('/^\d{4}-\d{2}-\d{2}$/', $adj->paid_note) ? $adj->paid_note : '');
                 $paidDate = $isPaid ? ($rawDate ?: now()->format('Y-m-d')) : $rawDate;
               @endphp
-              <tr class="report-row" id="row-worker-{{ $data['worker']->id }}">
+              <tr class="report-row" 
+                  id="row-worker-{{ $data['worker']->id }}"
+                  data-dept-group="{{ $deptSlug }}"
+                  data-name="{{ strtolower($data['worker']->name) }}"
+                  data-dept="{{ strtolower($deptName) }}"
+                  data-status="{{ strtolower($data['worker']->status ?? 'active') }}">
                 <td style="font-weight:bold; color:var(--text-muted);">{{ $data['worker_number'] ?? '-' }}</td>
-                <td style="font-weight:600;">{{ $data['worker']->name }}</td>
+                <td style="font-weight:600;">
+                  {{ $data['worker']->name }}
+                  @if($data['worker']->status === 'INACTIVE')
+                    <span style="font-size:0.65rem; background:rgba(239, 68, 68, 0.15); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.3); padding:1px 5px; border-radius:4px; font-weight:700; margin-left:4px; vertical-align:middle;">INACTIVE</span>
+                  @endif
+                </td>
                 <td>{{ $data['worker']->department->name }}</td>
                 <td>
                   @php
@@ -168,13 +202,21 @@
             @endforeach
           @endforeach
           
+          <tr id="report-no-match-row" style="display:none;">
+            <td colspan="10" style="text-align:center; padding:2.5rem 1rem; color:var(--text-muted);">
+              <div style="font-size:1.8rem; margin-bottom:0.5rem; opacity:0.6;">🔍</div>
+              <div style="font-weight:600; font-size:0.95rem;">No employees found</div>
+              <div style="font-size:0.82rem; margin-top:0.25rem;">No employees matched "<span id="reportSearchKeyword" style="font-weight:bold; color:var(--text-color, #0f172a);"></span>"</div>
+            </td>
+          </tr>
+
           @if(empty($reportData))
             <tr><td colspan="10" style="text-align:center; color:var(--text-muted);">No attendance records found for this month.</td></tr>
           @else
             @php
               $grandTotalAdvance = array_sum(array_column($reportData, 'advance'));
             @endphp
-            <tr style="background:var(--glass-bg); font-weight:bold;">
+            <tr class="payroll-grand-total-row" style="background:var(--glass-bg); font-weight:bold;">
               <td colspan="4" style="text-align:right;">Grand Total Payroll Liability:</td>
               <td class="no-print"></td>
               <td colspan="2"></td>
@@ -314,6 +356,111 @@ function exportToExcel() {
 function downloadAllIndividualSheets() {
     window.open("{{ $allSheetsPdfUrl }}", '_blank');
 }
+
+function filterReportsTable() {
+    const input = document.getElementById('reportSearchInput');
+    const clearBtn = document.getElementById('reportSearchClear');
+    const badge = document.getElementById('reportCountBadge');
+    const query = (input ? input.value : '').trim().toLowerCase();
+
+    if (clearBtn) {
+        clearBtn.style.display = query.length > 0 ? 'inline-block' : 'none';
+    }
+
+    const rows = document.querySelectorAll('.report-row');
+    const deptHeaders = document.querySelectorAll('.dept-header-row');
+    const grandTotalRow = document.querySelector('.payroll-grand-total-row');
+    const deptMatchCounts = {};
+    let totalVisible = 0;
+
+    deptHeaders.forEach(h => {
+        const group = h.getAttribute('data-dept-group');
+        if (group) deptMatchCounts[group] = 0;
+    });
+
+    rows.forEach(row => {
+        const group = row.getAttribute('data-dept-group');
+        if (!query) {
+            row.style.display = '';
+            totalVisible++;
+            if (group) deptMatchCounts[group] = (deptMatchCounts[group] || 0) + 1;
+            return;
+        }
+
+        const name = row.getAttribute('data-name') || '';
+        const dept = row.getAttribute('data-dept') || '';
+        const status = row.getAttribute('data-status') || '';
+        const fullText = (row.textContent || '').toLowerCase();
+
+        const matches = name.includes(query) || 
+                        dept.includes(query) || 
+                        status.includes(query) || 
+                        fullText.includes(query);
+
+        if (matches) {
+            row.style.display = '';
+            totalVisible++;
+            if (group) deptMatchCounts[group] = (deptMatchCounts[group] || 0) + 1;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    // Show or hide department header rows based on whether their workers match
+    deptHeaders.forEach(h => {
+        const group = h.getAttribute('data-dept-group');
+        if (!group) return;
+        if (!query || (deptMatchCounts[group] && deptMatchCounts[group] > 0)) {
+            h.style.display = '';
+        } else {
+            h.style.display = 'none';
+        }
+    });
+
+    const noMatchRow = document.getElementById('report-no-match-row');
+    if (noMatchRow) {
+        noMatchRow.style.display = (totalVisible === 0 && rows.length > 0) ? '' : 'none';
+        const keywordSpan = document.getElementById('reportSearchKeyword');
+        if (keywordSpan) keywordSpan.textContent = query;
+    }
+
+    if (grandTotalRow) {
+        grandTotalRow.style.display = (totalVisible === 0) ? 'none' : '';
+    }
+
+    if (badge) {
+        if (!query) {
+            badge.textContent = `Total: ${rows.length} employees`;
+        } else {
+            badge.textContent = `Showing ${totalVisible} of ${rows.length} employees`;
+        }
+    }
+}
+
+function clearReportSearch() {
+    const input = document.getElementById('reportSearchInput');
+    if (input) {
+        input.value = '';
+        filterReportsTable();
+        input.focus();
+    }
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const active = document.activeElement;
+        if (active && active.id === 'reportSearchInput') {
+            clearReportSearch();
+        }
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('reportSearchInput');
+    if (input && input.value.trim().length > 0) {
+        filterReportsTable();
+    }
+});
 </script>
 
 <style>

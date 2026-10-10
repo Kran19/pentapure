@@ -145,7 +145,12 @@
                     @endphp
                     <tr>
                         <td style="text-align:center; color:#64748b; font-weight:bold;">{{ $data['worker_number'] ?? '-' }}</td>
-                        <td style="font-weight:bold; color:#0f172a;">{{ strtoupper($data['worker']->name) }}</td>
+                        <td style="font-weight:bold; color:#0f172a;">
+                            {{ strtoupper($data['worker']->name) }}
+                            @if($data['worker']->status === 'INACTIVE')
+                                <span style="font-size:7px; color:#b91c1c; font-weight:bold;">(INACTIVE)</span>
+                            @endif
+                        </td>
                         <td style="color:#334155;">{{ strtoupper($data['worker']->department->name ?? '-') }}</td>
                         <td>
                             @php

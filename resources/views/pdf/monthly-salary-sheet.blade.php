@@ -103,7 +103,7 @@
                     @if(!empty($workerNumber))
                         <span style="margin-right:8px; border:1px solid #777; padding:1px 6px; border-radius:3px; background:#f5f5f5;">EMP NO: {{ $workerNumber }}</span>
                     @endif
-                    NAME: {{ strtoupper($worker->name) }}
+                    NAME: {{ strtoupper($worker->name) }} @if($worker->status === 'INACTIVE') <span style="font-size:8px; color:#b91c1c; font-weight:bold;">(INACTIVE)</span> @endif
                 </td>
                 <td style="border:none; text-align:right; vertical-align:middle; width:25%; padding:0; font-size:11px; font-weight:bold;">
                     {{ strtoupper(\Carbon\Carbon::parse($month)->format('Y F')) }}
