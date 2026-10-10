@@ -299,7 +299,6 @@
                         @endif
                         <td style="vertical-align: middle;">
                             <div class="brand-title">PPF</div>
-                            <div class="brand-tagline">FOOD &amp; SPICES PVT. LTD.</div>
                         </td>
                     </tr>
                 </table>

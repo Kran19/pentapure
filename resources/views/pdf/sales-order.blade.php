@@ -89,7 +89,6 @@
                         </td>
                         <td style="vertical-align: middle; padding: 0 0 0 8px;">
                             <div class="brand-title">PPF</div>
-                            <div class="brand-tagline">FOOD &amp; SPICES PVT. LTD.</div>
                         </td>
                     </tr>
                 </table>

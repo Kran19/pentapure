@@ -73,7 +73,6 @@
             @endif
             <div class="brand-text">
                 <div class="brand-title">PPF</div>
-                <div class="tagline">FOOD &amp; SPICES PVT. LTD.</div>
             </div>
         </div>
         <div class="contact">

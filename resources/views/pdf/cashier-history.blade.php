@@ -291,8 +291,7 @@
             <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 52px; height: 52px; vertical-align: middle; margin-right: 12px; object-fit: contain;">
             @endif
             <span style="display:inline-block; vertical-align:middle;">
-                <span class="brand-name">PPF</span><br>
-                <span class="brand-tagline">FOOD &amp; SPICES PVT. LTD.</span>
+                <span class="brand-name">PPF</span>
             </span>
         </div>
         <div class="header-right">

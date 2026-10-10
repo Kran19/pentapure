@@ -137,7 +137,6 @@ table, th, td, div, span, p, a, strong, small {
                     </td>
                     <td style="text-align: left; padding-left: 8px; vertical-align: middle; border: none; background: transparent;">
                         <div class="brand-name">PPF</div>
-                        <div class="brand-sub">FOOD &amp; SPICES PVT. LTD.</div>
                     </td>
                 </tr>
             </table>
