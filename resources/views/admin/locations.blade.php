@@ -158,27 +158,7 @@ function adminEditLocation(loc) {
   const currentDesc = (typeof loc === 'object') ? (loc.description || '') : '';
   const locId = parseInt(id, 10);
 
-  // 1. Populate and show inline form card
-  editingLocationId = locId;
-  const idInput = document.getElementById('loc-id');
-  if (idInput) idInput.value = locId;
-  const title = document.getElementById('loc-card-title');
-  if (title) title.innerText = `Edit Warehouse Location: "${currentName}"`;
-  const nameInput = document.getElementById('loc-name');
-  if (nameInput) nameInput.value = currentName;
-  const descInput = document.getElementById('loc-description');
-  if (descInput) descInput.value = currentDesc;
-  const btn = document.getElementById('btn-save-loc');
-  if (btn) btn.innerText = 'Update Location';
-
-  const formCard = document.getElementById('loc-form-card');
-  if (formCard) {
-    formCard.style.display = 'block';
-    formCard.scrollIntoView({ behavior: 'smooth' });
-    setTimeout(() => { if (nameInput) nameInput.focus(); }, 150);
-  }
-
-  // 2. Also open SweetAlert modal for quick in-place editing
+  // Open modal directly for fast in-place editing
   openEditLocationModal(locId, currentName, currentDesc);
 }
 

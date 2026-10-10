@@ -2731,14 +2731,6 @@ class AdminController extends Controller
     // ── LOCATIONS / WAREHOUSE MASTER ──────────────────────────────────────────
     public function locations()
     {
-        $hasCold = Location::whereRaw('UPPER(TRIM(name)) = ?', ['COLD STORAGE'])->exists();
-        if (!$hasCold) {
-            Location::create([
-                'name' => 'Cold Storage',
-                'description' => 'Temperature-controlled cold storage warehouse',
-            ]);
-        }
-
         $locations = Location::withCount(['stocks', 'dispatchLocations'])->orderBy('name')->paginate(20);
         return view('admin.locations', compact('locations'));
     }
