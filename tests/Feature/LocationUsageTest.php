@@ -48,6 +48,30 @@ class LocationUsageTest extends TestCase
         $this->assertDatabaseHas('locations', ['id' => $mainLoc->id]);
     }
 
+    public function test_cold_storage_is_fixed_and_cannot_be_deleted(): void
+    {
+        $coldLoc = Location::firstOrCreate(['name' => 'Cold Storage']);
+
+        $session = ['auth_user' => [
+            'id' => $this->adminUser->id,
+            'name' => $this->adminUser->name,
+            'role' => 'ADMIN',
+        ]];
+
+        $response = $this->withSession($session)->deleteJson("/admin/locations/{$coldLoc->id}");
+        $response->assertStatus(403);
+        $response->assertJson([
+            'success' => false,
+            'message' => 'Fixed system location (Cold Storage) cannot be deleted!'
+        ]);
+        $this->assertDatabaseHas('locations', ['id' => $coldLoc->id]);
+
+        $viewResponse = $this->withSession($session)->get('/admin/locations');
+        $viewResponse->assertStatus(200);
+        $viewResponse->assertSee('Cold Storage');
+        $viewResponse->assertSee('System Fixed');
+    }
+
     public function test_added_location_can_be_deleted(): void
     {
         Location::firstOrCreate(['name' => 'Main Warehouse']);

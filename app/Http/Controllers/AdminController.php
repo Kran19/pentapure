@@ -2731,31 +2731,12 @@ class AdminController extends Controller
     // ── LOCATIONS / WAREHOUSE MASTER ──────────────────────────────────────────
     public function locations()
     {
-        // Safely clean up "cold storage" if present
-        $coldStorage = Location::whereRaw('LOWER(TRIM(name)) = ?', ['cold storage'])->first();
-        if (!$coldStorage) {
-            $candidate = Location::find(4);
-            if ($candidate && !in_array(strtoupper(trim($candidate->name)), ['MAIN WAREHOUSE', 'DEFAULT'], true)) {
-                if (str_contains(strtolower($candidate->name), 'cold')) {
-                    $coldStorage = $candidate;
-                }
-            }
-        }
-
-        if ($coldStorage) {
-            DB::transaction(function () use ($coldStorage) {
-                $fallback = Location::where('id', '!=', $coldStorage->id)
-                    ->where(function ($q) {
-                        $q->whereRaw('UPPER(TRIM(name)) = ?', ['MAIN WAREHOUSE'])
-                          ->orWhereRaw('UPPER(TRIM(name)) = ?', ['DEFAULT']);
-                    })->first() ?? Location::where('id', '!=', $coldStorage->id)->first();
-
-                if ($fallback) {
-                    DB::table('stocks')->where('location_id', $coldStorage->id)->update(['location_id' => $fallback->id]);
-                    DB::table('dispatch_item_locations')->where('location_id', $coldStorage->id)->update(['location_id' => $fallback->id]);
-                }
-                $coldStorage->delete();
-            });
+        $hasCold = Location::whereRaw('UPPER(TRIM(name)) = ?', ['COLD STORAGE'])->exists();
+        if (!$hasCold) {
+            Location::create([
+                'name' => 'Cold Storage',
+                'description' => 'Temperature-controlled cold storage warehouse',
+            ]);
         }
 
         $locations = Location::withCount(['stocks', 'dispatchLocations'])->orderBy('name')->paginate(20);
@@ -2812,10 +2793,10 @@ class AdminController extends Controller
     {
         $loc = Location::withCount(['stocks', 'dispatchLocations'])->findOrFail($id);
 
-        if (in_array(strtoupper(trim($loc->name)), ['MAIN WAREHOUSE', 'DEFAULT'], true)) {
+        if (in_array(strtoupper(trim($loc->name)), ['MAIN WAREHOUSE', 'DEFAULT', 'COLD STORAGE'], true)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Fixed system location (Main Warehouse) cannot be deleted!'
+                'message' => "Fixed system location ({$loc->name}) cannot be deleted!"
             ], 403);
         }
 

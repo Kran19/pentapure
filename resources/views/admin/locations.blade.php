@@ -48,7 +48,7 @@
         <tbody>
           @foreach($locations as $loc)
           @php
-            $isFixed = in_array(strtoupper(trim($loc->name)), ['MAIN WAREHOUSE', 'DEFAULT'], true);
+            $isFixed = in_array(strtoupper(trim($loc->name)), ['MAIN WAREHOUSE', 'DEFAULT', 'COLD STORAGE'], true);
             $usageCount = ($loc->stocks_count ?? 0) + ($loc->dispatch_locations_count ?? 0);
             $isInUse = $usageCount > 0;
           @endphp
