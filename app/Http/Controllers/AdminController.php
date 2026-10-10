@@ -2757,7 +2757,8 @@ class AdminController extends Controller
 
     public function storeLocationApi(Request $request)
     {
-        $locationId = $request->input('location_id') ?: $request->input('id');
+        $rawId = $request->input('location_id') ?? $request->input('id');
+        $locationId = (!empty($rawId) && is_numeric($rawId)) ? (int) $rawId : null;
         $name = trim((string) $request->input('name'));
         $description = $request->has('description') ? trim((string) $request->input('description')) : null;
 

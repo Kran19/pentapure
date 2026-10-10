@@ -5,14 +5,15 @@
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
     <h2 style="margin:0;">📍 Warehouse / Storage Locations Master</h2>
     @if(empty($isReadOnly))
-    <button class="btn" onclick="document.getElementById('loc-form-card').style.display='block'; resetLocationForm(); document.getElementById('loc-form-card').scrollIntoView({ behavior: 'smooth' });" style="width:auto; padding:0.6rem 1.2rem;">+ Add Location</button>
+    <button class="btn" onclick="openAddLocationForm()" style="width:auto; padding:0.6rem 1.2rem;">+ Add Location</button>
     @endif
   </div>
 
   <!-- Add / Edit Form Card -->
   @if(empty($isReadOnly))
   <div id="loc-form-card" class="card" style="display:none; margin-bottom:1.5rem; padding:1.2rem;">
-    <div class="card-title" id="loc-card-title">Add / Edit Warehouse Location</div>
+    <div class="card-title" id="loc-card-title">Add Warehouse Location</div>
+    <input type="hidden" id="loc-id" value="">
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1rem;">
       <div class="form-group">
         <label>Location Name *</label>
@@ -26,7 +27,7 @@
 
     <div style="display:flex; gap:1rem; margin-top:1.5rem;">
       <button class="btn" id="btn-save-loc" onclick="adminSaveLocation()" style="width:auto; padding:0.6rem 1.5rem;">Save Location</button>
-      <button class="btn btn-secondary" onclick="document.getElementById('loc-form-card').style.display='none'" style="width:auto; padding:0.6rem 1.5rem;">Cancel</button>
+      <button class="btn btn-secondary" onclick="resetLocationForm(); document.getElementById('loc-form-card').style.display='none';" style="width:auto; padding:0.6rem 1.5rem;">Cancel</button>
     </div>
   </div>
   @endif
@@ -71,7 +72,7 @@
                 <span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">View Only</span>
               @else
               <div class="action-btns" style="display:flex; gap:6px; align-items:center;">
-                <button class="btn-icon edit" 
+                <button type="button" class="btn-icon edit" 
                   data-id="{{ $loc->id }}" 
                   data-name="{{ $loc->name }}" 
                   data-description="{{ $loc->description ?? '' }}" 
@@ -110,20 +111,28 @@
 let editingLocationId = null;
 
 function getLocationsEndpoint() {
-  if (typeof window.baseUrl !== 'undefined' && typeof window.userSlug !== 'undefined' && window.userSlug) {
-    const slug = window.userSlug.replace(/^\/+|\/+$/g, '');
-    const base = window.baseUrl.replace(/\/+$/, '');
-    return `${base}/${slug}/locations`;
-  }
-  return window.location.pathname.replace(/\/+$/, '');
+  return '{{ url(request()->path()) }}' || window.location.pathname.replace(/\/+$/, '');
 }
 
 function getCsrfToken() {
   return window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
 }
 
+function openAddLocationForm() {
+  resetLocationForm();
+  const card = document.getElementById('loc-form-card');
+  if (card) {
+    card.style.display = 'block';
+    card.scrollIntoView({ behavior: 'smooth' });
+  }
+  const nameInput = document.getElementById('loc-name');
+  if (nameInput) setTimeout(() => nameInput.focus(), 150);
+}
+
 function resetLocationForm() {
   editingLocationId = null;
+  const idInput = document.getElementById('loc-id');
+  if (idInput) idInput.value = '';
   const title = document.getElementById('loc-card-title');
   if (title) title.innerText = 'Add Warehouse Location';
   const name = document.getElementById('loc-name');
@@ -138,7 +147,7 @@ function adminEditLocationFromBtn(btn) {
   const id = btn.getAttribute('data-id');
   const name = btn.getAttribute('data-name') || '';
   const description = btn.getAttribute('data-description') || '';
-  adminEditLocation({ id, name, description });
+  adminEditLocation({ id: parseInt(id, 10), name: name, description: description });
 }
 
 function adminEditLocation(loc) {
@@ -147,7 +156,33 @@ function adminEditLocation(loc) {
   const id = (typeof loc === 'object') ? (loc.id || loc.location_id) : loc;
   const currentName = (typeof loc === 'object') ? (loc.name || '') : '';
   const currentDesc = (typeof loc === 'object') ? (loc.description || '') : '';
+  const locId = parseInt(id, 10);
 
+  // 1. Populate and show inline form card
+  editingLocationId = locId;
+  const idInput = document.getElementById('loc-id');
+  if (idInput) idInput.value = locId;
+  const title = document.getElementById('loc-card-title');
+  if (title) title.innerText = `Edit Warehouse Location: "${currentName}"`;
+  const nameInput = document.getElementById('loc-name');
+  if (nameInput) nameInput.value = currentName;
+  const descInput = document.getElementById('loc-description');
+  if (descInput) descInput.value = currentDesc;
+  const btn = document.getElementById('btn-save-loc');
+  if (btn) btn.innerText = 'Update Location';
+
+  const formCard = document.getElementById('loc-form-card');
+  if (formCard) {
+    formCard.style.display = 'block';
+    formCard.scrollIntoView({ behavior: 'smooth' });
+    setTimeout(() => { if (nameInput) nameInput.focus(); }, 150);
+  }
+
+  // 2. Also open SweetAlert modal for quick in-place editing
+  openEditLocationModal(locId, currentName, currentDesc);
+}
+
+function openEditLocationModal(locId, currentName, currentDesc) {
   Swal.fire({
     title: 'Edit Warehouse Location',
     html: `
@@ -190,7 +225,7 @@ function adminEditLocation(loc) {
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          location_id: id,
+          location_id: locId,
           name: name,
           description: description
         })
@@ -227,6 +262,8 @@ function adminSaveLocation() {
   if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
   const name = document.getElementById('loc-name').value.trim();
   const description = document.getElementById('loc-description').value.trim();
+  const rawId = editingLocationId || document.getElementById('loc-id')?.value;
+  const locId = (rawId && !isNaN(parseInt(rawId, 10))) ? parseInt(rawId, 10) : null;
 
   if (!name) {
     Swal.fire('Error', 'Please enter a location name.', 'error');
@@ -237,8 +274,13 @@ function adminSaveLocation() {
   btn.disabled = true;
   btn.style.opacity = '0.7';
 
-  const payload = { name, description };
-  if (editingLocationId) payload.location_id = editingLocationId;
+  const payload = { 
+    name: name, 
+    description: description 
+  };
+  if (locId) {
+    payload.location_id = locId;
+  }
 
   const endpoint = getLocationsEndpoint();
   const token = getCsrfToken();
@@ -261,8 +303,15 @@ function adminSaveLocation() {
     return d;
   })
   .then(d => {
-    Swal.fire('Success', d.message, 'success');
-    setTimeout(() => location.reload(), 700);
+    Swal.fire({
+      icon: 'success',
+      title: 'Success',
+      text: d.message || (locId ? 'Location updated successfully!' : 'Location added successfully!'),
+      confirmButtonColor: '#f59e0b',
+      timer: 1200
+    }).then(() => {
+      window.location.reload();
+    });
   })
   .catch(err => {
     Swal.fire('Error', err.message || 'Could not save location.', 'error');

@@ -197,4 +197,44 @@ class LocationUsageTest extends TestCase
         $response->assertJson(['success' => true]);
         $this->assertEquals('New Beta desc', $loc->fresh()->description);
     }
+
+    public function test_editing_location_updates_existing_record_without_creating_new_record(): void
+    {
+        Location::firstOrCreate(['name' => 'Main Warehouse']);
+        $loc = Location::create(['name' => 'Rack Zone 9', 'description' => 'Original Zone 9']);
+        $initialCount = Location::count();
+
+        $session = ['auth_user' => [
+            'id' => $this->adminUser->id,
+            'name' => $this->adminUser->name,
+            'role' => 'ADMIN',
+        ]];
+
+        // Edit via location_id
+        $response = $this->withSession($session)->postJson('/admin/locations', [
+            'location_id' => $loc->id,
+            'name' => 'Rack Zone 9 Renamed',
+            'description' => 'Updated Zone 9 notes',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true]);
+
+        // CRITICAL: Location count must NOT increase (no new record created)
+        $this->assertEquals($initialCount, Location::count());
+        $this->assertEquals('Rack Zone 9 Renamed', $loc->fresh()->name);
+        $this->assertEquals('Updated Zone 9 notes', $loc->fresh()->description);
+
+        // Edit via id alias
+        $response2 = $this->withSession($session)->postJson('/admin/locations', [
+            'id' => $loc->id,
+            'name' => 'Rack Zone 9 Final',
+            'description' => 'Final Zone 9 notes',
+        ]);
+
+        $response2->assertStatus(200);
+        $response2->assertJson(['success' => true]);
+        $this->assertEquals($initialCount, Location::count());
+        $this->assertEquals('Rack Zone 9 Final', $loc->fresh()->name);
+    }
 }
