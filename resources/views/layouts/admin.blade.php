@@ -11,7 +11,7 @@
     window.userSlug = '{{ request()->segment(1) }}';
     window.isReadOnly = {{ !empty($isReadOnly) ? 'true' : 'false' }};
   </script>
-  <title>Pentapure Factory Operations - Admin</title>
+  <title>PPF Factory Operations - Admin</title>
   <link rel="icon" type="image/png" href="{{ asset('logo.png') }}?v={{ filemtime(public_path('logo.png')) }}">
   <link rel="shortcut icon" type="image/png" href="{{ asset('logo.png') }}?v={{ filemtime(public_path('logo.png')) }}">
   <link rel="apple-touch-icon" href="{{ asset('logo.png') }}?v={{ filemtime(public_path('logo.png')) }}">

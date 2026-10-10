@@ -96,8 +96,8 @@
                             @endif
                         </td>
                         <td style="vertical-align: middle; padding: 0 0 0 8px;">
-                            <div class="brand-title">PentaPure</div>
-                            <div class="brand-tagline">FOOD &amp; SPICES PVT.LTD.</div>
+                            <div class="brand-title">PPF</div>
+                            <div class="brand-tagline">FOOD &amp; SPICES PVT. LTD.</div>
                         </td>
                     </tr>
                 </table>
@@ -324,7 +324,7 @@
                 <td class="footer-right">
                     <div class="signature-line"></div>
                     <strong>Authorized Signature</strong><br>
-                    PentaPure ERP System
+                    PPF ERP System
                 </td>
             </tr>
         </table>

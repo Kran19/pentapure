@@ -10,7 +10,7 @@
 <div id="login-screen">
   <div class="login-card" style="max-width:380px; margin:0 auto; padding:2rem 1.5rem; text-align:center;">
     <img src="{{ asset('logo.png') }}?v={{ filemtime(public_path('logo.png')) }}" alt="Logo" style="width:100px; margin-bottom:1rem; object-fit:contain;">
-    <h1 style="margin-bottom: 0.3rem; color: var(--text-main); font-size:1.6rem;"><span style="color: var(--primary-light);">Pentapure</span></h1>
+    <h1 style="margin-bottom: 0.3rem; color: var(--text-main); font-size:1.6rem;"><span style="color: var(--primary-light);">PPF</span></h1>
     <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size:0.9rem;">Enter your User ID and Password to login</p>
 
     <form id="login-form" action="{{ route('global.login.post') }}" method="POST" style="text-align:left;">

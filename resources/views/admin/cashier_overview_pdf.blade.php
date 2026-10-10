@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>PENTAPURE - CASHIER OVERVIEW STATEMENT</title>
+<title>PPF - CASHIER OVERVIEW STATEMENT</title>
 <style>
 @page {
     size: A4 portrait;
@@ -176,7 +176,7 @@ table, th, td, div, span, p, a, strong, small {
                         @endif
                     </td>
                     <td style="text-align: left; padding-left: 8px; vertical-align: middle; border: none; background: transparent;">
-                        <div class="brand-name">PENTAPURE</div>
+                        <div class="brand-name">PPF</div>
                         <div class="brand-sub">FOOD &amp; SPICES PVT. LTD.</div>
                     </td>
                 </tr>
@@ -275,15 +275,15 @@ table, th, td, div, span, p, a, strong, small {
             <td style="width: 60%; vertical-align: bottom;">
                 <div class="footer-note">
                     THIS IS A SYSTEM-GENERATED STATEMENT. NO SIGNATURE REQUIRED.<br>
-                    FOR QUERIES, CONTACT THE PENTAPURE ADMINISTRATOR.<br>
+                    FOR QUERIES, CONTACT THE PPF ADMINISTRATOR.<br>
                     REPORT PERIOD: {{ \Carbon\Carbon::parse($fromDate)->format('d-m-Y') }} TO {{ \Carbon\Carbon::parse($toDate)->format('d-m-Y') }}
                 </div>
             </td>
             <td style="width: 40%; text-align: right; vertical-align: bottom; padding-right: 10px;">
-                <div style="font-size: 14px; font-weight: bold; color: #1a2744; margin-bottom: 2px;">PENTAPURE</div>
+                <div style="font-size: 14px; font-weight: bold; color: #1a2744; margin-bottom: 2px;">PPF</div>
                 <div class="sig-line"></div><br>
                 <div class="sig-name">AUTHORIZED SIGNATURE</div>
-                <div class="sig-role">PENTAPURE ADMIN</div>
+                <div class="sig-role">PPF ADMIN</div>
             </td>
         </tr>
     </table>

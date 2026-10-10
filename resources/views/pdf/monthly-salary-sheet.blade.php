@@ -66,7 +66,7 @@
                 </td>
                 <td style="border:none; text-align:center; vertical-align:middle; padding:0;">
                     <div style="font-size:8px; font-weight:bold; border:1px solid #000; padding:1px 8px; display:inline-block; margin-bottom:2px;">OFFICIAL RECORD</div>
-                    <div style="font-size:14px; font-weight:800; letter-spacing:1px; color:#101828;">PENTAPURE FOOD &amp; SPICES PVT.LTD.</div>
+                    <div style="font-size:14px; font-weight:800; letter-spacing:1px; color:#101828;">PPF FOOD &amp; SPICES PVT. LTD.</div>
                     <div style="font-size:9px; margin-bottom:2px;">Factory &amp; Warehouse Operations</div>
                     <div style="border-top:1.5px solid #000; border-bottom:1.5px solid #000; padding:1px 8px; font-weight:bold; font-size:10px; display:inline-block;">MONTHLY SALARY SHEET</div>
                 </td>

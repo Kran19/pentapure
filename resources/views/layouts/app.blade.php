@@ -10,7 +10,7 @@
     window.userSlug = '{{ request()->segment(1) }}';
     window.isReadOnly = {{ !empty($isReadOnly) ? 'true' : 'false' }};
   </script>
-  <title>Pentapure Factory Operations</title>
+  <title>PPF Factory Operations</title>
   <link rel="icon" type="image/png" href="{{ asset('logo.png') }}?v={{ filemtime(public_path('logo.png')) }}">
   <link rel="shortcut icon" type="image/png" href="{{ asset('logo.png') }}?v={{ filemtime(public_path('logo.png')) }}">
   <link rel="apple-touch-icon" href="{{ asset('logo.png') }}?v={{ filemtime(public_path('logo.png')) }}">
@@ -81,7 +81,7 @@
 
         <div class="nav-logo desktop-only">
           <img src="{{ asset('logo.png') }}?v={{ filemtime(public_path('logo.png')) }}" alt="Logo">
-          <span>Penta<span class="text-primary">Pure</span></span>
+          <span>PPF</span>
         </div>
 
         <a href="{{ url($prefix . '/home') }}" class="nav-item {{ $currentRoute == 'home' ? 'active' : '' }}" style="text-decoration:none;">

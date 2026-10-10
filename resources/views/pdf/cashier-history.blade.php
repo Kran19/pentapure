@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>PentaPure - Transaction History Report</title>
+    <title>PPF - Transaction History Report</title>
     <style>
         @page {
             size: A4 portrait;
@@ -288,8 +288,8 @@
             <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 40px; height: 40px; vertical-align: middle; margin-right: 12px; object-fit: contain;">
             @endif
             <span style="display:inline-block; vertical-align:middle;">
-                <span class="brand-name">PentaPure</span><br>
-                <span class="brand-tagline">FOOD &amp; SPICES PVT.LTD.</span>
+                <span class="brand-name">PPF</span><br>
+                <span class="brand-tagline">FOOD &amp; SPICES PVT. LTD.</span>
             </span>
         </div>
         <div class="header-right">
@@ -325,7 +325,7 @@
                     <div class="detail-row"><span class="detail-label">User ID</span><span class="detail-sep">:</span> {{ $cashierId }}</div>
                 </div>
                 <div class="details-col">
-                    <div class="detail-row"><span class="detail-label">Company</span><span class="detail-sep">:</span> PentaPure Pvt. Ltd.</div>
+                    <div class="detail-row"><span class="detail-label">Company</span><span class="detail-sep">:</span> PPF Pvt. Ltd.</div>
                     <div class="detail-row"><span class="detail-label">Period</span><span class="detail-sep">:</span> {{ $fromDate }} — {{ $toDate }}</div>
                 </div>
             </div>
@@ -420,10 +420,10 @@
                 </div>
             </div>
             <div class="footer-right">
-                <div style="font-family: DejaVu Sans, sans-serif; font-size:18px; color:#333; margin-bottom:2px;">PentaPure</div>
+                <div style="font-family: DejaVu Sans, sans-serif; font-size:18px; color:#333; margin-bottom:2px;">PPF</div>
                 <div class="signature-line"></div><br>
                 <span class="signature-text">Authorized Signature</span><br>
-                <span class="signature-role">PentaPure Admin</span>
+                <span class="signature-role">PPF Admin</span>
             </div>
         </div>
     </div>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>PentaPure - Live Stock Valuation Report</title>
+    <title>PPF - Live Stock Valuation Report</title>
     <style>
         @page {
             size: A4 portrait;
@@ -296,7 +296,7 @@
                         </td>
                         @endif
                         <td style="vertical-align: middle;">
-                            <div class="brand-title">PentaPure</div>
+                            <div class="brand-title">PPF</div>
                             <div class="brand-tagline">FOOD &amp; SPICES PVT. LTD.</div>
                         </td>
                     </tr>
@@ -313,7 +313,7 @@
     <!-- Document Title -->
     <div class="title-container">
         <div class="title">
-            PENTAPURE LIVE STOCK AS ON DATE {{ \Carbon\Carbon::parse($date ?? now())->format('d-m-Y') }}
+            PPF LIVE STOCK AS ON DATE {{ \Carbon\Carbon::parse($date ?? now())->format('d-m-Y') }}
         </div>
         <div class="title-sub">
             @if(!empty($isStockManager))
@@ -500,7 +500,7 @@
             <td class="footer-right">
                 <div class="signature-line"></div>
                 <div><strong>Authorized Signatory</strong></div>
-                <div style="color: #475467; font-size: 7px;">PentaPure Food &amp; Spices Pvt. Ltd.</div>
+                <div style="color: #475467; font-size: 7px;">PPF Food &amp; Spices Pvt. Ltd.</div>
             </td>
         </tr>
     </table>

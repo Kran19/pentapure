@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>PentaPure - {{ $panel }} History Report</title>
+    <title>PPF - {{ $panel }} History Report</title>
     <style>
         @page { margin: 18px; }
         * { box-sizing: border-box; }
@@ -72,8 +72,8 @@
             <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 82px; height: 82px; vertical-align: middle; margin-right: 12px; object-fit: contain;">
             @endif
             <div class="brand-text">
-                <div class="brand-title">PentaPure</div>
-                <div class="tagline">FOOD &amp; SPICES PVT.LTD.</div>
+                <div class="brand-title">PPF</div>
+                <div class="tagline">FOOD &amp; SPICES PVT. LTD.</div>
             </div>
         </div>
         <div class="contact">
@@ -104,7 +104,7 @@
                 <div class="meta-row"><span class="label">Role</span><span class="colon">:</span>{{ $userRole }}</div>
             </div>
             <div class="details-col divider">
-                <div class="meta-row"><span class="label">Company</span><span class="colon">:</span>PentaPure</div>
+                <div class="meta-row"><span class="label">Company</span><span class="colon">:</span>PPF</div>
                 <div class="meta-row"><span class="label">Report Type</span><span class="colon">:</span>{{ $panel }} History</div>
             </div>
         </div>
@@ -112,7 +112,7 @@
 
     @if($isAttendance)
         <div style="text-align:center; margin-bottom:24px;">
-            <div style="font-size:24px; font-weight:800;">PENTAPURE FACTORY</div>
+            <div style="font-size:24px; font-weight:800;">PPF FACTORY</div>
             <div style="font-size:15px; color:#475467;">Attendance & Payroll Report - {{ \Carbon\Carbon::parse($fromDate)->format('F Y') }}</div>
         </div>
 
@@ -386,10 +386,10 @@
             <div>This is a system generated report.<br>For any queries, contact the administrator.</div>
         </div>
         <div class="sign">
-            <div class="scribble">PentaPure</div>
+            <div class="scribble">PPF</div>
             <div class="line"></div>
             <strong>Authorized Signature</strong><br>
-            PentaPure Admin
+            PPF Admin
         </div>
     </div>
 </div>
