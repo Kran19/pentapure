@@ -682,11 +682,40 @@ class AttendanceController extends Controller
         }
 
         if ($saveMode === 'final' && !$isAdmin) {
-            // Validate required fields for final submission (e.g. IN/OUT times for PRESENT workers)
+            $exemptStatuses = ['ABSENT', 'HOLIDAY', 'SUNDAY', 'PAID LEAVE'];
+            $missingWorkers = [];
+
+            $workerIds = collect($request->attendances)->pluck('worker_id')->filter()->unique();
+            $workersMap = Worker::with('department')->whereIn('id', $workerIds)->get()->keyBy('id');
+
+            // Validate required fields for final submission (e.g. IN/OUT times for working workers)
             foreach ($request->attendances as $rec) {
-                if ($rec['status'] !== 'ABSENT' && (empty($rec['in_time']) || empty($rec['out_time']))) {
-                    return response()->json(['success' => false, 'message' => 'All PRESENT workers must have IN and OUT times for Final Save.'], 422);
+                $status = $rec['status'] ?? 'ABSENT';
+                if (in_array($status, $exemptStatuses)) {
+                    continue;
                 }
+
+                $worker = $workersMap->get($rec['worker_id']);
+                $isMukadam = $worker && ($worker->salary_type === 'LABOUR_MUKADAM' || stripos($worker->department->name ?? '', 'MUKADAM') !== false);
+                if ($isMukadam) {
+                    continue;
+                }
+
+                if (empty($rec['in_time']) || empty($rec['out_time'])) {
+                    $missingWorkers[] = $worker ? $worker->name : "Worker #{$rec['worker_id']}";
+                }
+            }
+
+            if (!empty($missingWorkers)) {
+                $limit = 3;
+                $names = array_slice($missingWorkers, 0, $limit);
+                $extra = count($missingWorkers) - count($names);
+                $nameList = implode(', ', $names) . ($extra > 0 ? " and {$extra} more" : "");
+
+                return response()->json([
+                    'success' => false,
+                    'message' => "All PRESENT workers must have IN and OUT times for Final Save. Missing times for: {$nameList}."
+                ], 422);
             }
         }
 

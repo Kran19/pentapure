@@ -21,7 +21,7 @@ return new class extends Migration
             $table->time('break_out')->nullable();
             $table->decimal('total_hours', 5, 2)->default(0);
             $table->decimal('overtime_hours', 5, 2)->default(0); // can be negative for undertime
-            $table->enum('status', ['PRESENT', 'ABSENT', 'HALF_DAY'])->default('ABSENT');
+            $table->string('status', 100)->default('ABSENT');
             $table->decimal('calculated_wage', 10, 2)->default(0); // Final wage for that day
             $table->timestamps();
             

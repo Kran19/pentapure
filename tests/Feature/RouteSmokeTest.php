@@ -75,7 +75,7 @@ class RouteSmokeTest extends TestCase
             'is_active' => true,
         ]);
 
-        $loc = \App\Models\Location::create(['name' => 'Cold Storage']);
+        $loc = \App\Models\Location::firstOrCreate(['name' => 'Cold Storage']);
 
         \App\Models\Stock::create([
             'product_id' => $product->id,
