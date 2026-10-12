@@ -223,8 +223,8 @@ table, th, td, div, span, p, a, strong, small {
             @forelse($rowsList as $idx => $row)
             <tr>
                 <td>
-                    {{ \Carbon\Carbon::parse($row['date'])->format('d-m-Y') }}
-                    <br><span style="font-size: 7.5px; color: #64748b;">{{ \Carbon\Carbon::parse($row['date'])->format('h:i A') }}</span>
+                    {{ \Carbon\Carbon::parse($row['date'])->timezone('Asia/Kolkata')->format('d-m-Y') }}
+                    <br><span style="font-size: 7.5px; color: #64748b;">{{ \Carbon\Carbon::parse($row['date'])->timezone('Asia/Kolkata')->format('h:i A') }}</span>
                 </td>
                 <td>
                     <div style="font-weight: bold; color: #0f172a;">{{ strtoupper($row['note'] ?: ($row['description'] ?: '—')) }}</div>

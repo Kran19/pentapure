@@ -27,8 +27,8 @@
           @endphp
           <tr style="border-bottom:1px solid var(--border-soft); vertical-align:top;">
             <td style="padding:12px; font-size:0.8rem; white-space:nowrap;">
-              {{ $log->created_at->format('d M Y') }}<br>
-              <span style="color:var(--text-muted);">{{ $log->created_at->format('h:i A') }}</span>
+              {{ $log->created_at->timezone('Asia/Kolkata')->format('d M Y') }}<br>
+              <span style="color:var(--text-muted);">{{ $log->created_at->timezone('Asia/Kolkata')->format('h:i A') }}</span>
             </td>
             <td style="padding:12px; font-weight:600;">
               {{ $log->user->name ?? 'System' }}
@@ -101,7 +101,7 @@
                       <span>Ref: <strong>{{ $ref }}</strong></span>
                     @endif
                     @if($txDate)
-                      <span>📅 Date: <strong>{{ \Carbon\Carbon::parse($txDate)->format('d M Y, h:i A') }}</strong></span>
+                      <span>📅 Date: <strong>{{ \Carbon\Carbon::parse($txDate)->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}</strong></span>
                     @endif
                   </div>
 

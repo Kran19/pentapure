@@ -306,7 +306,7 @@ class StockManagerController extends Controller
                 'transaction_type' => $log->transaction_type,
                 'notes' => $log->notes,
                 'user_name' => $log->user?->name ?? 'Unknown',
-                'created_at' => optional($log->created_at)->format('d M Y, h:i A'),
+                'created_at' => optional($log->created_at)->timezone('Asia/Kolkata')->format('d M Y, h:i A'),
             ])->values());
 
         // Location mappings

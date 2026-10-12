@@ -334,7 +334,7 @@
               </div>
               <div>
                 <div style="font-size:0.72rem; color:var(--text-muted, #64748b); text-transform:uppercase; font-weight:600;">Order Date</div>
-                <div style="font-size:0.95rem; font-weight:500; color:var(--text-main, #111827);">{{ \Carbon\Carbon::parse($o['date'])->format('d-m-Y, h:i A') }}</div>
+                <div style="font-size:0.95rem; font-weight:500; color:var(--text-main, #111827);">{{ \Carbon\Carbon::parse($o['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }}</div>
               </div>
               <div>
                 <div style="font-size:0.72rem; color:var(--text-muted, #64748b); text-transform:uppercase; font-weight:600;">Total Quantity</div>
@@ -433,7 +433,7 @@
             <div style="font-size:0.85rem; color:var(--text-muted); line-height:1.5;">
               <strong>Customer:</strong> {{ $o['companyName'] ?? 'N/A' }} <br>
               <strong>Transport:</strong> {{ $o['transporterName'] ?? 'N/A' }} <br>
-              <strong>Date Closed:</strong> {{ \Carbon\Carbon::parse($o['date'])->format('d-m-Y, h:i A') }} <br>
+              <strong>Date Closed:</strong> {{ \Carbon\Carbon::parse($o['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }} <br>
               @if(!empty($o['notes']))
                 <div style="margin-top:8px; font-style:italic;">Notes: {{ $o['notes'] }}</div>
               @endif
@@ -452,7 +452,7 @@
               </div>
               <div>
                 <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Order Date</div>
-                <div style="font-size:0.95rem; font-weight:500;">{{ \Carbon\Carbon::parse($o['date'])->format('d-m-Y, h:i A') }}</div>
+                <div style="font-size:0.95rem; font-weight:500;">{{ \Carbon\Carbon::parse($o['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }}</div>
               </div>
             </div>
 

@@ -133,8 +133,8 @@
                     @forelse($pageData['transactions'] as $tx)
                     <tr style="border-bottom:1px solid var(--border-soft, #DDCFAF);">
                         <td style="padding:12px; font-size:0.75rem; white-space:nowrap;">
-                            {{ \Carbon\Carbon::parse($tx->date ?: $tx->created_at)->format('d/m/Y') }}<br>
-                            <span style="color:var(--text-muted);">{{ \Carbon\Carbon::parse($tx->date ?: $tx->created_at)->format('h:i A') }}</span>
+                            {{ \Carbon\Carbon::parse($tx->date ?: $tx->created_at)->timezone('Asia/Kolkata')->format('d/m/Y') }}<br>
+                            <span style="color:var(--text-muted);">{{ \Carbon\Carbon::parse($tx->date ?: $tx->created_at)->timezone('Asia/Kolkata')->format('h:i A') }}</span>
                         </td>
                         <td style="padding:12px; font-weight:600; color:var(--text-main); white-space:nowrap;">
                             <div>👤 {{ $tx->user?->name ?? 'Unknown' }}</div>

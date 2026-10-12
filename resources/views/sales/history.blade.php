@@ -300,7 +300,7 @@
           </div>
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Date & Time</div>
-            <div style="font-size:0.85rem; font-weight:500;">{{ \Carbon\Carbon::parse($item['date'])->format('d-m-Y, h:i A') }}</div>
+            <div style="font-size:0.85rem; font-weight:500;">{{ \Carbon\Carbon::parse($item['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }}</div>
           </div>
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Due Date</div>

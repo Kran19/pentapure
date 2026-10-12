@@ -33,7 +33,7 @@
           <tr id="history-row-{{ $s->id }}" class="history-row" data-name="{{ strtolower(($s->product?->name ?? '') . ' ' . ($s->notes ?? '') . ' ' . ($s->location?->name ?? '') . ' ' . ($s->stage ?? '') . ' ' . ($s->grade ?? '') . ' ' . ($s->user?->name ?? '') . ' ' . ($s->user?->username ?? '')) }}">
             <td style="white-space: nowrap;">{{ $loop->iteration }}</td>
             <td style="font-size:0.85rem; color:var(--text-muted); white-space: nowrap;">
-              {{ $s->created_at ? $s->created_at->format('d-m-Y, h:i A') : '-' }}
+              {{ $s->created_at ? $s->created_at->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') : '-' }}
             </td>
             <td style="font-weight:600; color:var(--text-main); white-space: nowrap;">
               {{ $s->product?->name ?? 'Unknown' }}

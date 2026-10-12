@@ -63,7 +63,7 @@
           @endphp
           <tr class="log-row" data-category="{{ $cat }}" data-user="{{ $log['by'] }}" data-date="{{ $logDate }}">
             <td style="font-size:0.85rem; font-family:monospace; color:var(--text-muted); white-space:nowrap;">
-              {{ \Carbon\Carbon::parse($log['date'])->format('d-m-Y, h:i A') }}
+              {{ \Carbon\Carbon::parse($log['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }}
             </td>
             <td>
               <span class="badge" style="font-size:0.75rem; padding:3px 8px; border-radius:6px; font-weight:700; {{ $badgeBg }}">

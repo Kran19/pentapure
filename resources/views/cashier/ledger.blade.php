@@ -52,7 +52,7 @@
   if ($q) {
     $filtered = $filtered->filter(function($t) use ($q) {
       $query = strtolower($q);
-      $dateStr = \Carbon\Carbon::parse($t['date'])->format('d-m-Y');
+      $dateStr = \Carbon\Carbon::parse($t['date'])->timezone('Asia/Kolkata')->format('d-m-Y');
       $details = ($t['note'] ?? '') . ' ' . ($t['description'] ?? '') . ' ' . ($t['reference'] ?? '') . ' ' . ($t['cashier_name'] ?? '') . ' ' . $dateStr;
       return str_contains(strtolower($details), $query) || str_contains((string)$t['amount'], $query);
     });
@@ -245,8 +245,8 @@
         @forelse($paginated as $t)
           <tr style="border-bottom:1px solid var(--border-soft, #DDCFAF);">
             <td style="padding:12px; font-size:0.75rem; white-space:nowrap;">
-              {{ \Carbon\Carbon::parse($t['date'])->format('d-m-Y') }}<br>
-              <span style="color:var(--text-muted);">{{ \Carbon\Carbon::parse($t['date'])->format('h:i A') }}</span>
+              {{ \Carbon\Carbon::parse($t['date'])->timezone('Asia/Kolkata')->format('d-m-Y') }}<br>
+              <span style="color:var(--text-muted);">{{ \Carbon\Carbon::parse($t['date'])->timezone('Asia/Kolkata')->format('h:i A') }}</span>
             </td>
             <td style="padding:12px; text-align:center;">
               <span style="display:inline-block; min-width:55px; text-align:center; padding:4px 8px; border-radius:4px; font-weight:bold; background: #d3d3d3de; color:{{ $t['type'] === 'IN' ? '#2ecc71' : 'red' }};">

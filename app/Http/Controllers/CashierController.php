@@ -81,10 +81,10 @@ class CashierController extends Controller
                 $rawType = strtoupper($tData['type'] ?? 'OUT');
                 $normalizedType = ($rawType === 'EXPENSE' || $rawType === 'OUT') ? 'OUT' : 'IN';
                 if (!empty($tData['date'])) {
-                    $parsed = \Carbon\Carbon::parse($tData['date']);
-                    $txDate = $parsed->isToday() ? now() : $parsed->copy()->setTime(12, 0, 0);
+                    $parsed = \Carbon\Carbon::parse($tData['date'], 'Asia/Kolkata');
+                    $txDate = $parsed->isToday() ? now()->timezone('Asia/Kolkata') : $parsed->copy()->setTime(12, 0, 0);
                 } else {
-                    $txDate = now();
+                    $txDate = now()->timezone('Asia/Kolkata');
                 }
 
                 $tx = Transaction::create([
@@ -152,8 +152,8 @@ class CashierController extends Controller
                 'reference' => $request->reference,
             ];
             if ($request->filled('date')) {
-                $parsedDate = \Carbon\Carbon::parse($request->date);
-                $txDate = $parsedDate->isToday() ? now() : $parsedDate->copy()->setTime(12, 0, 0);
+                $parsedDate = \Carbon\Carbon::parse($request->date, 'Asia/Kolkata');
+                $txDate = $parsedDate->isToday() ? now()->timezone('Asia/Kolkata') : $parsedDate->copy()->setTime(12, 0, 0);
                 $updatePayload['date'] = $txDate;
                 $updatePayload['created_at'] = $txDate;
             }
@@ -997,7 +997,7 @@ class CashierController extends Controller
             'site'         => $t->site ?: ($t->user?->branch ?? null),
             'user_branch'  => $t->user?->branch ?? null,
             'description'  => $t->description,
-            'date'        => ($t->date ? \Carbon\Carbon::parse($t->date) : $t->created_at)->toISOString(),
+            'date'        => ($t->date ? \Carbon\Carbon::parse($t->date) : $t->created_at)->timezone('Asia/Kolkata')->toIso8601String(),
             'bills'       => $t->bills->map(fn($b) => [
                 'id'            => $b->id,
                 'original_name' => $b->original_name,
