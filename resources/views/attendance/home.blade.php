@@ -101,22 +101,31 @@
         </p>
       </div>
 
-      <!-- Navigation Tabs -->
-      <div class="attendance-tabs" style="display:inline-flex; background:#f1f5f9; padding:4px; border-radius:10px; border:1px solid #e2e8f0; gap:4px;">
-        <button type="button" id="tab-btn-pending" class="att-tab-btn" onclick="switchAttendanceTab('pending')" style="display:flex; align-items:center; gap:6px; padding:0.45rem 0.9rem; border-radius:8px; border:none; font-weight:600; font-size:0.85rem; cursor:pointer; background:transparent; color:#64748b; transition:all 0.2s;">
-          <span>⏳ Pending Attendance</span>
-          <span style="background:{{ $pendingSubmissions->count() > 0 ? '#ef4444' : '#10b981' }}; color:white; font-size:0.75rem; padding:1px 7px; border-radius:12px; font-weight:700;">{{ $pendingSubmissions->count() }}</span>
-        </button>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <!-- Month Filter -->
+        <form method="GET" action="{{ url()->current() }}" id="monthFilterForm" style="display:inline-flex; align-items:center; gap:6px;">
+          <input type="hidden" name="tab" id="activeTabInput" value="{{ request('tab', 'pending') }}">
+          <label style="font-weight:600; font-size:0.85rem; color:#475569;">Month:</label>
+          <input type="month" name="month" value="{{ $selectedMonth ?? date('Y-m') }}" onchange="this.form.submit()" onclick="if(typeof this.showPicker === 'function'){ try{ this.showPicker(); }catch(e){} }" style="padding:0.4rem 0.65rem; border-radius:8px; border:1px solid #cbd5e1; font-weight:600; font-size:0.85rem; cursor:pointer; background:#fff; color:#0f172a;">
+        </form>
 
-        <button type="button" id="tab-btn-all" class="att-tab-btn" onclick="switchAttendanceTab('all')" style="display:flex; align-items:center; gap:6px; padding:0.45rem 0.9rem; border-radius:8px; border:none; font-weight:600; font-size:0.85rem; cursor:pointer; background:transparent; color:#64748b; transition:all 0.2s;">
-          <span>📋 All Records</span>
-          <span style="background:#e2e8f0; color:#334155; font-size:0.75rem; padding:1px 7px; border-radius:12px; font-weight:700;">{{ $recentSubmissions->count() }}</span>
-        </button>
+        <!-- Navigation Tabs -->
+        <div class="attendance-tabs" style="display:inline-flex; background:#f1f5f9; padding:4px; border-radius:10px; border:1px solid #e2e8f0; gap:4px;">
+          <button type="button" id="tab-btn-pending" class="att-tab-btn" onclick="switchAttendanceTab('pending')" style="display:flex; align-items:center; gap:6px; padding:0.45rem 0.9rem; border-radius:8px; border:none; font-weight:600; font-size:0.85rem; cursor:pointer; background:transparent; color:#64748b; transition:all 0.2s;">
+            <span>⏳ Pending Attendance</span>
+            <span style="background:{{ $pendingSubmissions->count() > 0 ? '#ef4444' : '#10b981' }}; color:white; font-size:0.75rem; padding:1px 7px; border-radius:12px; font-weight:700;">{{ $pendingSubmissions->count() }}</span>
+          </button>
 
-        <button type="button" id="tab-btn-submitted" class="att-tab-btn" onclick="switchAttendanceTab('submitted')" style="display:flex; align-items:center; gap:6px; padding:0.45rem 0.9rem; border-radius:8px; border:none; font-weight:600; font-size:0.85rem; cursor:pointer; background:transparent; color:#64748b; transition:all 0.2s;">
-          <span>🔒 Submitted</span>
-          <span style="background:#e2e8f0; color:#334155; font-size:0.75rem; padding:1px 7px; border-radius:12px; font-weight:700;">{{ $submittedSubmissions->count() }}</span>
-        </button>
+          <button type="button" id="tab-btn-all" class="att-tab-btn" onclick="switchAttendanceTab('all')" style="display:flex; align-items:center; gap:6px; padding:0.45rem 0.9rem; border-radius:8px; border:none; font-weight:600; font-size:0.85rem; cursor:pointer; background:transparent; color:#64748b; transition:all 0.2s;">
+            <span>📋 All Records</span>
+            <span style="background:#e2e8f0; color:#334155; font-size:0.75rem; padding:1px 7px; border-radius:12px; font-weight:700;">{{ $recentSubmissions->count() }}</span>
+          </button>
+
+          <button type="button" id="tab-btn-submitted" class="att-tab-btn" onclick="switchAttendanceTab('submitted')" style="display:flex; align-items:center; gap:6px; padding:0.45rem 0.9rem; border-radius:8px; border:none; font-weight:600; font-size:0.85rem; cursor:pointer; background:transparent; color:#64748b; transition:all 0.2s;">
+            <span>🔒 Submitted</span>
+            <span style="background:#e2e8f0; color:#334155; font-size:0.75rem; padding:1px 7px; border-radius:12px; font-weight:700;">{{ $submittedSubmissions->count() }}</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -124,7 +133,7 @@
     <div id="tab-content-pending" class="att-tab-pane">
       @if(isset($pendingSubmissions) && $pendingSubmissions->count() > 0)
       <div style="background:#fffbeb; border:1px solid #fef3c7; color:#92400e; padding:0.75rem 1rem; border-radius:8px; margin-bottom:1rem; font-size:0.88rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-        <span>⚠️ <strong>{{ $pendingSubmissions->count() }} pending attendance date(s)</strong> require entry or final submission.</span>
+        <span>⚠️ <strong>{{ $pendingSubmissions->count() }} pending attendance date(s)</strong> for {{ \Carbon\Carbon::parse(($selectedMonth ?? date('Y-m')) . '-01')->format('F Y') }} require entry or final submission.</span>
         <span style="font-size:0.8rem; color:#b45309;">Click "Open & Fill" to complete attendance</span>
       </div>
 
@@ -441,6 +450,9 @@ function switchAttendanceTab(tabName) {
     targetBtn.style.color = '#0f172a';
     targetBtn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
   }
+
+  const activeTabInput = document.getElementById('activeTabInput');
+  if (activeTabInput) activeTabInput.value = tabName;
 
   history.replaceState(null, null, '#' + tabName);
 }

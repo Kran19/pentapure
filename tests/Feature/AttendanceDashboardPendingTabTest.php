@@ -177,4 +177,76 @@ class AttendanceDashboardPendingTabTest extends TestCase
         $this->assertStringContainsString('>View<', preg_replace('/\s+/', '', $content));
         $this->assertStringNotContainsString('>Open<', preg_replace('/\s+/', '', $content));
     }
+
+    public function test_unsubmitted_dates_appear_in_pending_attendance_tab_date_wise(): void
+    {
+        $subAdmin = User::create([
+            'name'        => 'Sub Admin Attendance',
+            'email'       => 'subadmin_att_' . uniqid() . '@example.com',
+            'password'    => 'password123',
+            'role'        => 'SUB_ADMIN',
+            'status'      => 'ACTIVE',
+            'permissions' => ['view_attendance_dashboard', 'edit_attendance_daily'],
+        ]);
+        $session = ['auth_user' => $subAdmin->toArray()];
+
+        $dept = Department::create(['name' => 'FACTORY']);
+        Worker::create([
+            'name'          => 'Mahesh Patel',
+            'department_id' => $dept->id,
+            'role'          => 'Technician',
+            'shift_type'    => 'DAY',
+            'salary_type'   => 'DAILY',
+            'daily_salary'  => 600,
+            'status'        => 'ACTIVE',
+        ]);
+
+        // Submit attendance for 12-10-2026
+        AttendanceSubmission::create([
+            'attendance_date' => '2026-10-12',
+            'status'          => 'SUBMITTED',
+            'created_by'      => $subAdmin->id,
+            'submitted_by'    => $subAdmin->id,
+            'submitted_at'    => now(),
+        ]);
+
+        // Date 10-10-2026 and 11-10-2026 were NEVER submitted (no AttendanceSubmission row)
+        $response = $this->withSession($session)->get('/sub_admin/attendance/dashboard?month=2026-10');
+        $response->assertStatus(200);
+
+        $content = $response->getContent();
+
+        // 10th and 11th must appear in the pending list
+        $response->assertSee('10-10-2026');
+        $response->assertSee('11-10-2026');
+        $this->assertStringContainsString('/daily?date=2026-10-10', $content);
+        $this->assertStringContainsString('/daily?date=2026-10-11', $content);
+
+        // Date-wise ordering: 10-10-2026 must appear before 11-10-2026 in the pending table
+        $pos10 = strpos($content, '10-10-2026');
+        $pos11 = strpos($content, '11-10-2026');
+        $this->assertNotFalse($pos10);
+        $this->assertNotFalse($pos11);
+        $this->assertLessThan($pos11, $pos10, '10-10-2026 must appear before 11-10-2026 in date-wise order');
+
+        // Now submit attendance for 10-10-2026
+        AttendanceSubmission::create([
+            'attendance_date' => '2026-10-10',
+            'status'          => 'SUBMITTED',
+            'created_by'      => $subAdmin->id,
+            'submitted_by'    => $subAdmin->id,
+            'submitted_at'    => now(),
+        ]);
+
+        // Re-fetch dashboard: 10-10-2026 should be submitted, only 11-10-2026 remains pending
+        $responseAfter = $this->withSession($session)->get('/sub_admin/attendance/dashboard?month=2026-10');
+        $responseAfter->assertStatus(200);
+        $contentAfter = $responseAfter->getContent();
+
+        // Check Pending tab section only contains 11-10-2026 as pending
+        $pendingSection = substr($contentAfter, strpos($contentAfter, 'tab-content-pending'));
+        $pendingSection = substr($pendingSection, 0, strpos($pendingSection, 'tab-content-all'));
+        $this->assertStringContainsString('11-10-2026', $pendingSection);
+        $this->assertStringNotContainsString('10-10-2026', $pendingSection);
+    }
 }

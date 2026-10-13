@@ -129,10 +129,20 @@ class AttendanceController extends Controller
         $absentToday   = (clone $attBase)->where('status', 'ABSENT')->count();
         $totalOT       = (clone $attBase)->sum('overtime_hours');
 
+        $selectedMonth = $request->get('month', Carbon::today()->format('Y-m'));
+        try {
+            $monthCarbon = Carbon::createFromFormat('Y-m', $selectedMonth)->startOfMonth();
+        } catch (\Exception $e) {
+            $monthCarbon = Carbon::today()->startOfMonth();
+            $selectedMonth = $monthCarbon->format('Y-m');
+        }
+
+        $startOfMonth = $monthCarbon->copy()->startOfMonth();
+        $endOfMonth   = $monthCarbon->copy()->endOfMonth();
+
         // Fetch all pending attendance submissions (status != 'SUBMITTED')
         $pendingSubmissions = \App\Models\AttendanceSubmission::with(['createdBy', 'submittedBy', 'lastModifiedBy'])
             ->where('status', '!=', 'SUBMITTED')
-            ->orderBy('attendance_date', 'desc')
             ->get();
 
         // Check if any dates exist in attendances table that don't have an AttendanceSubmission
@@ -155,8 +165,44 @@ class AttendanceController extends Controller
             }
         }
 
-        // Re-sort pending submissions by date descending
-        $pendingSubmissions = $pendingSubmissions->sortByDesc(fn($s) => Carbon::parse($s->attendance_date)->toDateString())->values();
+        // Generate missing dates for the selected month (date-wise e.g. 1 to 30)
+        // If current month: check from 1st of month up to today (or end of month if viewing past month)
+        $checkUntilDate = null;
+        if ($monthCarbon->isCurrentMonth()) {
+            $checkUntilDate = min($endOfMonth, Carbon::today());
+        } elseif ($monthCarbon->isPast()) {
+            $checkUntilDate = $endOfMonth;
+        }
+
+        if ($activeWorkers > 0 && $checkUntilDate && $startOfMonth->lte($checkUntilDate)) {
+            $submittedDatesInRange = \App\Models\AttendanceSubmission::where('status', 'SUBMITTED')
+                ->whereBetween('attendance_date', [$startOfMonth->toDateString(), $checkUntilDate->toDateString()])
+                ->pluck('attendance_date')
+                ->map(fn($d) => Carbon::parse($d)->toDateString())
+                ->flip();
+
+            $curr = $startOfMonth->copy();
+            while ($curr->lte($checkUntilDate)) {
+                $currDateStr = $curr->toDateString();
+                if (!isset($submittedDatesInRange[$currDateStr])) {
+                    $alreadyPending = $pendingSubmissions->contains(function($s) use ($currDateStr) {
+                        return Carbon::parse($s->attendance_date)->toDateString() === $currDateStr;
+                    });
+
+                    if (!$alreadyPending) {
+                        $sub = new \App\Models\AttendanceSubmission([
+                            'attendance_date' => $curr->copy(),
+                            'status'          => 'PENDING',
+                        ]);
+                        $pendingSubmissions->push($sub);
+                    }
+                }
+                $curr->addDay();
+            }
+        }
+
+        // Sort pending submissions date-wise ascending (e.g. 1 to 30 order)
+        $pendingSubmissions = $pendingSubmissions->sortBy(fn($s) => Carbon::parse($s->attendance_date)->toDateString())->values();
 
         // Query attendance counts for pending dates to show progress
         $pendingDates = $pendingSubmissions->map(fn($s) => Carbon::parse($s->attendance_date)->toDateString())->unique();
@@ -167,14 +213,22 @@ class AttendanceController extends Controller
             ->keyBy(fn($item) => Carbon::parse($item->date)->toDateString());
 
         // All recent submissions (limit 50)
-        $allRecentSubmissions = \App\Models\AttendanceSubmission::with(['createdBy', 'submittedBy'])
+        $allRecentSubmissionsQuery = \App\Models\AttendanceSubmission::with(['createdBy', 'submittedBy']);
+        if ($request->has('month')) {
+            $allRecentSubmissionsQuery->whereBetween('attendance_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()]);
+        }
+        $allRecentSubmissions = $allRecentSubmissionsQuery
             ->orderBy('attendance_date', 'desc')
             ->limit(50)
             ->get();
 
         // Submitted submissions (limit 50)
-        $submittedSubmissions = \App\Models\AttendanceSubmission::with(['createdBy', 'submittedBy'])
-            ->where('status', 'SUBMITTED')
+        $submittedSubmissionsQuery = \App\Models\AttendanceSubmission::with(['createdBy', 'submittedBy'])
+            ->where('status', 'SUBMITTED');
+        if ($request->has('month')) {
+            $submittedSubmissionsQuery->whereBetween('attendance_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()]);
+        }
+        $submittedSubmissions = $submittedSubmissionsQuery
             ->orderBy('attendance_date', 'desc')
             ->limit(50)
             ->get();
@@ -196,6 +250,7 @@ class AttendanceController extends Controller
             'pendingSubmissions'      => $pendingSubmissions,
             'pendingAttendanceCounts' => $pendingAttendanceCounts,
             'submittedSubmissions'    => $submittedSubmissions,
+            'selectedMonth'           => $selectedMonth,
             'canEditAttendance'       => $this->canEditAttendance(),
             'layout'                  => $this->getLayout($request)
         ]);
