@@ -38,8 +38,10 @@
       </select>
 
       @php 
-        $canEditDaily = in_array($authUser['role'] ?? '', ['ADMIN', 'SUPER_ADMIN']) || (($authUser['role'] ?? '') === 'SUB_ADMIN' && empty($isReadOnly));
-        $isLocked = ($submission && $submission->status === 'SUBMITTED' && !$canEditDaily);
+        $isSuperAdmin = in_array(strtoupper($authUser['role'] ?? ''), ['ADMIN', 'SUPER_ADMIN']);
+        $canEditDaily = $isSuperAdmin || (($authUser['role'] ?? '') === 'SUB_ADMIN' && empty($isReadOnly));
+        $isSubmitted = ($submission && $submission->status === 'SUBMITTED');
+        $isLocked = ($isSubmitted && !$isSuperAdmin);
       @endphp
 
       @if($submission && in_array($submission->status, ['PARTIAL_SAVED', 'SUBMITTED']))
@@ -71,7 +73,7 @@
         @elseif($submission->status === 'PARTIAL_SAVED')
           <button class="btn" onclick="saveAllAttendance('partial')" style="width:auto; padding:0.4rem 1.2rem; background:#2ecc71; color:white;">Save Changes</button>
           <button class="btn" onclick="saveAllAttendance('final')" style="width:auto; padding:0.4rem 1.2rem; background:#e67e22; color:white;">Final Save</button>
-        @else
+        @elseif($isSuperAdmin)
           <button class="btn" onclick="saveAllAttendance('final')" style="width:auto; padding:0.4rem 1.5rem; background:#e67e22; color:white;">Final Save</button>
         @endif
       @endif

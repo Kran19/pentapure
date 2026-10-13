@@ -107,7 +107,11 @@ class AuthMiddleware
                 'admin_dashboard' => ['admin_dashboard', 'stock_manager_home'],
                 'sales_history' => ['sales_history'],
                 'dispatch_history' => ['dispatch_history'],
-                'dispatch_report' => ['dispatch_report'],
+                'attendance_dashboard' => ['attendance_dashboard', 'attendance_home', 'attendance'],
+                'attendance_daily' => ['attendance_daily', 'daily', 'attendance_entry'],
+                'attendance_departments' => ['attendance_departments', 'attendance_department', 'departments'],
+                'attendance_workers' => ['attendance_workers', 'attendance_worker', 'workers', 'team'],
+                'attendance_reports' => ['attendance_reports', 'attendance_history', 'reports', 'history'],
             ];
             $keysToCheck = $moduleEquivalents[$moduleKey] ?? [$moduleKey];
 
@@ -154,7 +158,7 @@ class AuthMiddleware
                 }
             }
 
-            // If user has assigned departments in attendance, grant view access to attendance modules ONLY if no granular permissions are configured
+            // If user has assigned departments in attendance, grant view access to attendance modules
             $hasAssignedDepts = false;
             foreach ($normalizedPerms as $np) {
                 if (is_numeric($np) && (int)$np > 0) {
@@ -162,7 +166,12 @@ class AuthMiddleware
                     break;
                 }
             }
-            if (!$hasAnyModulePerm && str_starts_with($moduleKey, 'attendance_') && $hasAssignedDepts) {
+            if (str_starts_with($moduleKey, 'attendance_') && $hasAssignedDepts) {
+                $hasView = true;
+            }
+
+            // If user has access to attendance dashboard, grant view access to attendance daily (as dashboard links to daily records)
+            if ($moduleKey === 'attendance_daily' && (in_array('view_attendance_dashboard', $normalizedPerms, true) || in_array('edit_attendance_dashboard', $normalizedPerms, true))) {
                 $hasView = true;
             }
 
@@ -237,10 +246,12 @@ class AuthMiddleware
         }
 
         // Check if $seg1 is a role or user slug prefix (e.g. admin, sub_admin, sub_admin2, cashier, etc.)
-        $isRoleSlug = preg_match('/^(admin|sub_admin|stock_manager|cashier|sales|dispatch|attendance|raw|semi|finished)\d*$/i', $seg1);
+        $isRoleSlug = preg_match('/^(admin|sub_admin|subadmin|stock_manager|stockmanager|cashier|sales|dispatch|attendance|raw|semi|finished)\d*$/i', $seg1);
 
         if ($isRoleSlug) {
             $prefix = preg_replace('/\d+$/', '', $seg1);
+            if ($prefix === 'subadmin') $prefix = 'sub_admin';
+            if ($prefix === 'stockmanager') $prefix = 'stock_manager';
             $section = $seg2;
             $action = $seg3;
             $subaction = $seg4;

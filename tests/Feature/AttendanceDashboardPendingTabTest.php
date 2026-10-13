@@ -130,9 +130,16 @@ class AttendanceDashboardPendingTabTest extends TestCase
         ]);
         $session = ['auth_user' => $subAdmin->toArray()];
 
-        $date = '2026-10-12';
+        $datePending = '2026-10-12';
         AttendanceSubmission::create([
-            'attendance_date' => $date,
+            'attendance_date' => $datePending,
+            'status'          => 'PARTIAL_SAVED',
+            'created_by'      => $subAdmin->id,
+        ]);
+
+        $dateSubmitted = '2026-10-11';
+        AttendanceSubmission::create([
+            'attendance_date' => $dateSubmitted,
             'status'          => 'SUBMITTED',
             'created_by'      => $subAdmin->id,
         ]);
@@ -142,10 +149,15 @@ class AttendanceDashboardPendingTabTest extends TestCase
 
         $content = $response->getContent();
         $response->assertSee('12-10-2026');
+        $response->assertSee('11-10-2026');
         $response->assertSee('SUBMITTED');
-        // When sub admin has edit permission, button must be 'Open'
+        // Pending date with edit permission must show 'Open'
         $this->assertStringContainsString('/sub_admin/attendance/daily?date=2026-10-12', $content);
         $this->assertStringContainsString('>Open<', preg_replace('/\s+/', '', $content));
+
+        // Submitted date must show 'View'
+        $this->assertStringContainsString('/sub_admin/attendance/daily?date=2026-10-11', $content);
+        $this->assertStringContainsString('>View<', preg_replace('/\s+/', '', $content));
     }
 
     public function test_sub_admin_with_view_only_permission_sees_view_button_on_dashboard(): void

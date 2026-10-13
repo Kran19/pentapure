@@ -220,18 +220,42 @@ class SubAdminViewEditTest extends TestCase
             ]
         ]);
 
+        // Create one SUBMITTED submission and one PARTIAL_SAVED / PENDING submission
+        $dateSubmitted = '2026-10-01';
+        $datePending   = '2026-10-02';
+        AttendanceSubmission::create(['attendance_date' => $dateSubmitted, 'status' => 'SUBMITTED']);
+        AttendanceSubmission::create(['attendance_date' => $datePending, 'status' => 'PARTIAL_SAVED']);
+
         $resp = $this->withSession(['auth_user' => $subAdmin->toArray()])
-            ->get('/sub_admin/attendance/dashboard');
+            ->get('/sub_admin/attendance/dashboard?month=2026-10');
         $resp->assertStatus(200);
         $content = $resp->getContent();
 
-        // 1. Dashboard must NOT show edit actions because dashboard itself is View-Only
+        // 1. Dashboard must NOT show + Add Worker because dashboard itself is View-Only
         $this->assertStringNotContainsString('+ Add Worker', $content);
-        $this->assertStringNotContainsString('Open & Fill', $content);
-        $this->assertStringNotContainsString("📝 Open Today's Attendance Sheet", $content);
 
-        // 2. Dashboard must show View actions instead
+        // 2. Pending attendance date shows "Open & Fill" or "Open" because user has edit_attendance_daily
+        $this->assertStringContainsString('Open & Fill', $content);
+
+        // 3. Submitted attendance date shows "View" (NOT Open)
         $this->assertStringContainsString('View', $content);
-        $this->assertStringContainsString('Click "View" to inspect attendance sheet', $content);
+
+        // 4. On the daily page for a SUBMITTED record: locked against edit / final save
+        $respDailySubmitted = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->get("/sub_admin/attendance/daily?date={$dateSubmitted}");
+        $respDailySubmitted->assertStatus(200);
+        $contentDailySubmitted = $respDailySubmitted->getContent();
+        $this->assertStringContainsString('This attendance record has been SUBMITTED and is locked', $contentDailySubmitted);
+        $this->assertStringNotContainsString('>Final Save</button>', $contentDailySubmitted);
+        $this->assertStringNotContainsString('>Save Changes</button>', $contentDailySubmitted);
+
+        // 5. On the daily page for a PENDING record: editable with Save and Final Save
+        $respDailyPending = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->get("/sub_admin/attendance/daily?date={$datePending}");
+        $respDailyPending->assertStatus(200);
+        $contentDailyPending = $respDailyPending->getContent();
+        $this->assertStringNotContainsString('This attendance record has been SUBMITTED and is locked', $contentDailyPending);
+        $this->assertStringContainsString('>Final Save</button>', $contentDailyPending);
+        $this->assertStringContainsString('>Save Changes</button>', $contentDailyPending);
     }
 }

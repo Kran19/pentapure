@@ -14,7 +14,7 @@ class SubAdminAttendanceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_sub_admin_with_edit_attendance_can_modify_submitted_attendance()
+    public function test_sub_admin_with_edit_attendance_cannot_modify_submitted_attendance_but_can_modify_pending()
     {
         $dept = Department::create(['name' => 'Production', 'is_active' => true]);
         $worker = Worker::create([
@@ -38,17 +38,16 @@ class SubAdminAttendanceTest extends TestCase
             'permissions' => ['view_attendance_daily', 'edit_attendance_daily']
         ]);
 
-        // Create a SUBMITTED submission
-        $date = '2026-10-10';
+        // 1. Create a SUBMITTED submission -> Sub-Admin cannot modify it
+        $dateSubmitted = '2026-10-10';
         AttendanceSubmission::create([
-            'attendance_date' => $date,
+            'attendance_date' => $dateSubmitted,
             'status' => 'SUBMITTED'
         ]);
 
-        // Attempt to save changes to the submitted attendance
-        $response = $this->withSession(['auth_user' => $subAdmin->toArray()])
+        $responseSubmitted = $this->withSession(['auth_user' => $subAdmin->toArray()])
             ->postJson('/sub_admin/attendance/daily', [
-                'date' => $date,
+                'date' => $dateSubmitted,
                 'save_mode' => 'partial',
                 'attendances' => [
                     [
@@ -63,8 +62,30 @@ class SubAdminAttendanceTest extends TestCase
                 ]
             ]);
 
-        $response->assertStatus(200);
-        $response->assertJson(['success' => true]);
+        $responseSubmitted->assertStatus(403);
+        $responseSubmitted->assertJson(['success' => false, 'message' => 'Attendance is locked and can only be modified by Admin.']);
+
+        // 2. Pending attendance -> Sub-Admin CAN modify it
+        $datePending = '2026-10-15';
+        $responsePending = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->postJson('/sub_admin/attendance/daily', [
+                'date' => $datePending,
+                'save_mode' => 'partial',
+                'attendances' => [
+                    [
+                        'worker_id' => $worker->id,
+                        'status' => 'PRESENT',
+                        'in_time' => '09:00',
+                        'out_time' => '18:00',
+                        'shift_type' => 'DAY',
+                        'ot_ut' => 'NONE',
+                        'ot_ut_hours' => 0
+                    ]
+                ]
+            ]);
+
+        $responsePending->assertStatus(200);
+        $responsePending->assertJson(['success' => true]);
     }
 
     public function test_sub_admin_with_view_only_cannot_modify_attendance()
@@ -256,6 +277,46 @@ class SubAdminAttendanceTest extends TestCase
         $content = $response->getContent();
         $this->assertStringContainsString('Assigned Dept', $content);
         $this->assertStringNotContainsString('Other Dept', $content);
+    }
+
+    public function test_sub_admin_with_view_attendance_daily_can_view_daily_page_without_403()
+    {
+        $dept = Department::create(['name' => 'View Dept', 'is_active' => true]);
+        $subAdmin = User::create([
+            'name' => 'Daily View Sub Admin',
+            'username' => 'subadmin_daily_view',
+            'phone' => '+91 9898000027',
+            'password' => Hash::make('password123'),
+            'role' => 'SUB_ADMIN',
+            'status' => 'ACTIVE',
+            'permissions' => ['view_attendance_daily']
+        ]);
+
+        $response = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->get('/sub_admin/attendance/daily?date=2026-10-13');
+
+        $response->assertStatus(200);
+        $this->assertTrue(view()->shared('isReadOnly'));
+    }
+
+    public function test_sub_admin_with_assigned_dept_and_dashboard_view_can_view_daily_page_without_403()
+    {
+        $dept = Department::create(['name' => 'Assigned Dept 2', 'is_active' => true]);
+        $subAdmin = User::create([
+            'name' => 'Dept Dashboard Sub Admin',
+            'username' => 'subadmin_dept_dash',
+            'phone' => '+91 9898000028',
+            'password' => Hash::make('password123'),
+            'role' => 'SUB_ADMIN',
+            'status' => 'ACTIVE',
+            'permissions' => [$dept->id, 'view_attendance_dashboard']
+        ]);
+
+        $response = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->get('/sub_admin/attendance/daily?date=2026-10-13');
+
+        $response->assertStatus(200);
+        $this->assertTrue(view()->shared('isReadOnly'));
     }
 }
 

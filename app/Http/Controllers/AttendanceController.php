@@ -402,6 +402,21 @@ class AttendanceController extends Controller
             $parsedDate = $date;
         }
 
+        $isSuperAdmin = in_array($user['role'] ?? '', ['ADMIN', 'SUPER_ADMIN']);
+        $existingSub = \App\Models\AttendanceSubmission::where(function ($q) use ($date, $parsedDate) {
+            $q->whereDate('attendance_date', $parsedDate)
+              ->orWhere('attendance_date', $parsedDate)
+              ->orWhere('attendance_date', $date)
+              ->orWhere('attendance_date', 'like', "{$parsedDate}%");
+        })->first();
+
+        if ($existingSub && $existingSub->status === 'SUBMITTED' && !$isSuperAdmin) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Attendance is locked and can only be modified or deleted by Admin.'], 403);
+            }
+            abort(403, 'Attendance is locked and can only be modified or deleted by Admin.');
+        }
+
         $allowedDeptIds = $this->getAllowedDeptIds();
         $punchesQuery = \App\Models\Attendance::where(function ($q) use ($date, $parsedDate) {
             $q->whereDate('date', $parsedDate)
@@ -821,7 +836,11 @@ class AttendanceController extends Controller
             return response()->json(['success' => true, 'message' => 'View ready']);
         }
 
-        $submission = \App\Models\AttendanceSubmission::where('attendance_date', $date)->first();
+        $submission = \App\Models\AttendanceSubmission::where(function ($q) use ($date) {
+            $q->whereDate('attendance_date', $date)
+              ->orWhere('attendance_date', $date)
+              ->orWhere('attendance_date', 'like', "{$date}%");
+        })->first();
 
         return view('attendance.daily', [
             'workers'           => $workers,
@@ -939,13 +958,13 @@ class AttendanceController extends Controller
             ]);
         }
 
-        $isAdmin = in_array($this->authUser()['role'] ?? '', ['ADMIN', 'SUPER_ADMIN']) || $this->canEditAttendance();
+        $isSuperAdmin = in_array($this->authUser()['role'] ?? '', ['ADMIN', 'SUPER_ADMIN']);
 
-        if ($submission->status === 'SUBMITTED' && !$isAdmin) {
+        if ($submission->status === 'SUBMITTED' && !$isSuperAdmin) {
             return response()->json(['success' => false, 'message' => 'Attendance is locked and can only be modified by Admin.'], 403);
         }
 
-        if ($saveMode === 'final' && !$isAdmin) {
+        if ($saveMode === 'final' && !$isSuperAdmin) {
             $exemptStatuses = ['ABSENT', 'HOLIDAY', 'SUNDAY', 'PAID LEAVE'];
             $missingWorkers = [];
 
@@ -1075,7 +1094,7 @@ class AttendanceController extends Controller
             }
         }
 
-        if ($isAdmin) {
+        if ($isSuperAdmin) {
             $submission->last_modified_by = auth()->id();
             $submission->last_modified_at = now();
         }
@@ -1089,7 +1108,11 @@ class AttendanceController extends Controller
     {
         $date = $request->date ?? Carbon::today()->toDateString();
         
-        $submission = \App\Models\AttendanceSubmission::where('attendance_date', $date)->first();
+        $submission = \App\Models\AttendanceSubmission::where(function ($q) use ($date) {
+            $q->whereDate('attendance_date', $date)
+              ->orWhere('attendance_date', $date)
+              ->orWhere('attendance_date', 'like', "{$date}%");
+        })->first();
         $status = $submission ? $submission->status : 'PENDING';
         
         $authUser = $this->authUser();

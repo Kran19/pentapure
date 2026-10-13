@@ -72,8 +72,8 @@
       ($userRole === 'ATTENDANCE' && !$hasGranular)
   );
 
-  // Each page is disconnected: Actions on the dashboard require the dashboard itself to have edit access
-  $userHasEditPermission = $dashboardCanEdit && !empty($canEditAttendance);
+  // Daily attendance actions strictly depend on canEditDaily
+  $userHasEditPermission = !empty($canEditDaily);
 @endphp
 
   <!-- Summary Cards -->
