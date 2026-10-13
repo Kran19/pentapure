@@ -82,25 +82,29 @@
     <div class="header">
         <table style="width: 100%; border-collapse: collapse; margin-top: 0; margin-bottom: 8px; border: none;">
             <tr>
-                <td style="width: 20%; text-align: left; vertical-align: middle; border: none; background: transparent; padding: 0;">
+                <td style="width: 25%; text-align: left; vertical-align: middle; border: none; background: transparent; padding: 0;">
                     @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
-                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 52px; height: 52px; object-fit: contain;">
+                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 80px; height: 80px; object-fit: contain;">
                     @endif
                 </td>
-                <td style="width: 60%; text-align: center; vertical-align: middle; border: none; background: transparent; padding: 0;">
+                <td style="width: 50%; text-align: center; vertical-align: middle; border: none; background: transparent; padding: 0;">
                     <div class="brand-title">PPF</div>
                 </td>
-                <td style="width: 20%; text-align: right; vertical-align: middle; border: none; background: transparent; padding: 0;">
-                    @if(extension_loaded('gd') && file_exists(public_path('logo.png')))
-                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('logo.png'))) }}" style="width: 52px; height: 52px; object-fit: contain;">
-                    @endif
+                <td style="width: 25%; text-align: right; vertical-align: middle; border: none; background: transparent; padding: 0;">
                 </td>
             </tr>
         </table>
-        <div class="subheader">
-            <div class="text-left">ATTENDANCE SHEET</div>
-            <div class="date-section">DATE: {{ \Carbon\Carbon::parse($date)->format('d-m-Y') }}</div>
-        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 6px; margin-bottom: 0; border: none;">
+            <tr>
+                <td style="width: 25%; text-align: left; vertical-align: middle; border: none; background: transparent; padding: 0;"></td>
+                <td style="width: 50%; text-align: center; vertical-align: middle; border: none; background: transparent; padding: 0; font-size: 14px; font-weight: 800; letter-spacing: 0.5px;">
+                    ATTENDANCE SHEET
+                </td>
+                <td style="width: 25%; text-align: right; vertical-align: middle; border: none; background: transparent; padding: 0; font-size: 11px; font-weight: bold;">
+                    DATE: {{ \Carbon\Carbon::parse($date)->format('d-m-Y') }}
+                </td>
+            </tr>
+        </table>
     </div>
 
     @foreach($grouped as $departmentName => $attendances)
