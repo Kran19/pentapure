@@ -120,9 +120,11 @@ class AdminController extends Controller
         return view('admin.dashboard', compact('pageData'));
     }
 
-    public function users()
+    public function users(Request $request)
     {
-        $users = User::with('parent')
+        $search = trim((string)$request->query('search', ''));
+
+        $query = User::with('parent')
             ->withCount([
                 'stocks',
                 'transactions',
@@ -133,9 +135,23 @@ class AdminController extends Controller
                 'purchaseOrders',
                 'attendanceSubmissions',
                 'subordinates'
-            ])
-            ->orderBy('role')
-            ->paginate(15);
+            ]);
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('username', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('role', 'like', "%{$search}%")
+                  ->orWhere('branch', 'like', "%{$search}%");
+            });
+        }
+
+        $users = $query->orderBy('role')
+            ->paginate(15)
+            ->withQueryString();
+
         $allCashiers = User::where('role', 'CASHIER')->orderBy('name')->get(['id', 'name', 'branch', 'status']);
         $departments = \App\Models\Department::orderBy('name')->get();
         $userBranches = User::whereNotNull('branch')->where('branch', '!=', '')->distinct()->pluck('branch')->toArray();
@@ -147,6 +163,7 @@ class AdminController extends Controller
             'cashiers' => $allCashiers,
             'departments' => $departments,
             'branches' => $branches,
+            'search' => $search,
         ]]);
     }
 

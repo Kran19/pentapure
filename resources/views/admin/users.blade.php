@@ -285,7 +285,37 @@
   </div>
 
   <!-- Users Table -->
-  <div class="card" style="padding:1.2rem;">
+  <div class="card" style="padding:1.2rem; overflow:hidden;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem; flex-wrap:wrap; gap:0.75rem;">
+      <form method="GET" action="{{ url()->current() }}" id="userSearchForm" style="display:flex; align-items:center; gap:0.5rem; flex:1; max-width:480px; min-width:260px; margin:0;">
+        <div style="position:relative; width:100%;">
+          <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:0.95rem; opacity:0.6; pointer-events:none;">🔍</span>
+          <input type="text" 
+                 id="userSearchInput" 
+                 name="search"
+                 value="{{ $pageData['search'] ?? request('search', '') }}"
+                 placeholder="Search by name, user ID, phone, email, role, branch..." 
+                 oninput="filterUsersTable()" 
+                 autocomplete="off"
+                 style="width:100%; padding:0.55rem 2.2rem 0.55rem 2.4rem; border-radius:8px; border:1px solid var(--border-soft, #cbd5e1); background:var(--input-bg, #ffffff); font-size:0.875rem; color:inherit; outline:none; transition:border-color 0.2s, box-shadow 0.2s;">
+          <button type="button" 
+                  id="userSearchClear" 
+                  onclick="clearUserSearch()" 
+                  style="{{ !empty($pageData['search'] ?? request('search', '')) ? 'display:inline-block;' : 'display:none;' }} position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:#9ca3af; font-size:1.1rem; cursor:pointer; padding:0 4px; line-height:1;" 
+                  title="Clear search">✕</button>
+        </div>
+      </form>
+      <div style="display:flex; align-items:center; gap:0.75rem;">
+        <span id="userCountBadge" style="font-size:0.82rem; font-weight:600; padding:5px 12px; border-radius:6px; background:rgba(59, 130, 246, 0.1); color:#3b82f6; border:1px solid rgba(59, 130, 246, 0.25);">
+          @if(!empty($pageData['search'] ?? request('search', '')))
+            Showing {{ $pageData['users']->total() }} match{{ $pageData['users']->total() === 1 ? '' : 'es' }}
+          @else
+            Total: {{ $pageData['users']->total() }} user{{ $pageData['users']->total() === 1 ? '' : 's' }}
+          @endif
+        </span>
+      </div>
+    </div>
+
     <div class="table-container">
       <table>
         <thead>
@@ -299,8 +329,14 @@
           </tr>
         </thead>
         <tbody>
-          @foreach($pageData['users'] as $user)
-          <tr>
+          @forelse($pageData['users'] as $user)
+          <tr class="user-table-row" 
+              data-name="{{ strtolower($user['name']) }}" 
+              data-username="{{ strtolower($user['username'] ?? '') }}" 
+              data-phone="{{ strtolower($user['phone'] ?? '') }}" 
+              data-email="{{ strtolower($user['email'] ?? '') }}" 
+              data-role="{{ strtolower($user['role'] ?? '') }}" 
+              data-branch="{{ strtolower($user['branch'] ?? '') }}">
             <td>{{ $loop->iteration }}</td>
             <td style="font-weight:600;">
               <div>{{ $user['name'] }}</div>
@@ -441,7 +477,24 @@
               </div>
             </td>
           </tr>
-          @endforeach
+          @empty
+          <tr>
+            <td colspan="6" style="text-align:center; padding:2.5rem; color:var(--text-muted);">
+              <div style="font-size:2rem; margin-bottom:0.5rem;">🔍</div>
+              <div style="font-size:1rem; font-weight:600; color:var(--text-main);">No users found</div>
+              @if(!empty($pageData['search'] ?? request('search', '')))
+                <div style="font-size:0.85rem; margin-top:0.25rem;">No user matched "<span style="font-weight:600;">{{ $pageData['search'] ?? request('search', '') }}</span>". <a href="{{ url()->current() }}" style="color:var(--primary, #f59e0b); font-weight:600; text-decoration:underline;">Clear search</a></div>
+              @endif
+            </td>
+          </tr>
+          @endforelse
+          <tr id="user-no-match-row" style="display:none;">
+            <td colspan="6" style="text-align:center; padding:2.5rem; color:var(--text-muted);">
+              <div style="font-size:2rem; margin-bottom:0.5rem;">🔍</div>
+              <div style="font-size:1rem; font-weight:600; color:var(--text-main);">No matching users found</div>
+              <div style="font-size:0.85rem; margin-top:0.25rem;">No user on this page matched "<span id="userSearchKeyword"></span>". Press Enter to search all pages or <button type="button" onclick="clearUserSearch()" style="background:none; border:none; color:var(--primary, #f59e0b); font-weight:600; cursor:pointer; text-decoration:underline; padding:0;">clear search</button>.</div>
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -1114,6 +1167,80 @@ function openRenameBranchModal(currentBranch = '') {
       });
     }
   });
+}
+
+function filterUsersTable() {
+  const input = document.getElementById('userSearchInput');
+  const clearBtn = document.getElementById('userSearchClear');
+  const badge = document.getElementById('userCountBadge');
+  const query = (input ? input.value : '').trim().toLowerCase();
+
+  if (clearBtn) {
+    clearBtn.style.display = query.length > 0 ? 'inline-block' : 'none';
+  }
+
+  const rows = document.querySelectorAll('.user-table-row');
+  let visibleCount = 0;
+  const noMatchRow = document.getElementById('user-no-match-row');
+
+  rows.forEach(row => {
+    if (!query) {
+      row.style.display = '';
+      visibleCount++;
+      return;
+    }
+    const name = row.getAttribute('data-name') || '';
+    const username = row.getAttribute('data-username') || '';
+    const phone = row.getAttribute('data-phone') || '';
+    const email = row.getAttribute('data-email') || '';
+    const role = row.getAttribute('data-role') || '';
+    const branch = row.getAttribute('data-branch') || '';
+    const fullText = (row.textContent || '').toLowerCase();
+
+    const matches = name.includes(query) ||
+                    username.includes(query) ||
+                    phone.includes(query) ||
+                    email.includes(query) ||
+                    role.includes(query) ||
+                    branch.includes(query) ||
+                    fullText.includes(query);
+
+    if (matches) {
+      row.style.display = '';
+      visibleCount++;
+    } else {
+      row.style.display = 'none';
+    }
+  });
+
+  if (noMatchRow) {
+    noMatchRow.style.display = (visibleCount === 0 && rows.length > 0) ? '' : 'none';
+    const keywordSpan = document.getElementById('userSearchKeyword');
+    if (keywordSpan) keywordSpan.textContent = query;
+  }
+
+  if (badge) {
+    if (!query) {
+      badge.textContent = `Total: ${rows.length} users`;
+    } else {
+      badge.textContent = `Showing ${visibleCount} of ${rows.length} users`;
+    }
+  }
+}
+
+function clearUserSearch() {
+  const input = document.getElementById('userSearchInput');
+  if (input) {
+    input.value = '';
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('search')) {
+      url.searchParams.delete('search');
+      window.location.href = url.pathname + (url.search ? url.search : '');
+      return;
+    }
+    filterUsersTable();
+    input.focus();
+  }
 }
 </script>
 @endsection
