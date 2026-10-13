@@ -381,5 +381,39 @@ class AttendanceDashboardPendingTabTest extends TestCase
         $this->assertStringContainsString('10-10-2026', $allSection);
         $this->assertStringContainsString('PENDING', $allSection);
     }
+
+    public function test_sub_admin_with_view_only_sees_view_button_in_all_records_tab(): void
+    {
+        $subAdmin = User::create([
+            'name'        => 'Sub Admin View Only All',
+            'email'       => 'subadmin_view_all_' . uniqid() . '@example.com',
+            'password'    => 'password123',
+            'role'        => 'SUB_ADMIN',
+            'status'      => 'ACTIVE',
+            'permissions' => ['view_attendance_dashboard', 'view_attendance_daily', 'edit_attendance_workers'],
+        ]);
+        $session = ['auth_user' => $subAdmin->toArray()];
+
+        $date = '2026-10-12';
+        AttendanceSubmission::create([
+            'attendance_date' => $date,
+            'status'          => 'SUBMITTED',
+            'created_by'      => $subAdmin->id,
+        ]);
+
+        $response = $this->withSession($session)->get('/sub_admin/attendance/dashboard#all');
+        $response->assertStatus(200);
+
+        $content = $response->getContent();
+
+        // Extract All Records section
+        $allSection = substr($content, strpos($content, 'id="tab-content-all"'));
+        $allSection = substr($allSection, 0, strpos($allSection, 'id="tab-content-submitted"'));
+
+        // When having only view permission, action must show 'View' button instead of 'Open'
+        $this->assertStringContainsString('>View<', preg_replace('/\s+/', '', $allSection));
+        $this->assertStringNotContainsString('>Open<', preg_replace('/\s+/', '', $allSection));
+    }
 }
+
 

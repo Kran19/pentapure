@@ -74,16 +74,25 @@ class AttendanceController extends Controller
                 $perms = [];
             }
             $normalized = array_map(fn($p) => strtolower(trim((string)$p)), $perms);
+
+            // Full manage permission
             if (in_array('can_manage', $normalized, true)) {
                 return true;
             }
-            if (in_array('edit_attendance_daily', $normalized, true) || in_array('attendance_daily', $normalized, true)) {
+
+            // Explicit edit permission on daily attendance
+            if (in_array('edit_attendance_daily', $normalized, true)) {
                 return true;
             }
-            foreach ($normalized as $p) {
-                if (str_starts_with($p, 'edit_attendance_')) {
-                    return true;
-                }
+
+            // If user has view permission on daily or dashboard without edit_attendance_daily, they are view-only
+            if (in_array('view_attendance_daily', $normalized, true) || in_array('view_attendance_dashboard', $normalized, true)) {
+                return false;
+            }
+
+            // Legacy permission without explicit view prefix
+            if (in_array('attendance_daily', $normalized, true)) {
+                return true;
             }
         }
 

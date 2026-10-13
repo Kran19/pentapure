@@ -41,12 +41,10 @@
   }
   $normPerms = array_map(fn($p) => strtolower(trim((string)$p)), $rawPerms);
 
-  $userHasEditPermission = in_array($userRole, ['ADMIN', 'SUPER_ADMIN']) ||
+  $userHasEditPermission = in_array($userRole, ['ADMIN', 'SUPER_ADMIN', 'ATTENDANCE']) ||
       in_array('can_manage', $normPerms, true) ||
       in_array('edit_attendance_daily', $normPerms, true) ||
-      in_array('edit_attendance_dashboard', $normPerms, true) ||
-      in_array('attendance_daily', $normPerms, true) ||
-      !empty($canEditAttendance);
+      (!empty($canEditAttendance));
 @endphp
 
   <!-- Summary Cards -->
@@ -137,7 +135,11 @@
       @if(isset($pendingSubmissions) && $pendingSubmissions->count() > 0)
       <div style="background:#fffbeb; border:1px solid #fef3c7; color:#92400e; padding:0.75rem 1rem; border-radius:8px; margin-bottom:1rem; font-size:0.88rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
         <span>⚠️ <strong>{{ $pendingSubmissions->count() }} pending attendance date(s)</strong> for {{ \Carbon\Carbon::parse(($selectedMonth ?? date('Y-m')) . '-01')->format('F Y') }} require entry or final submission.</span>
-        <span style="font-size:0.8rem; color:#b45309;">Click "Open & Fill" to complete attendance</span>
+        @if($userHasEditPermission)
+          <span style="font-size:0.8rem; color:#b45309;">Click "Open & Fill" to complete attendance</span>
+        @else
+          <span style="font-size:0.8rem; color:#b45309;">Click "View" to inspect attendance sheet</span>
+        @endif
       </div>
 
       <div style="overflow-x:auto;">
@@ -240,7 +242,7 @@
         <h4 style="margin:0 0 0.25rem; color:#0f172a;">All Attendance Up to Date!</h4>
         <p style="margin:0; color:#64748b; font-size:0.88rem;">There are no pending attendance dates requiring submission.</p>
         <a href="{{ $dailyUrl }}" class="btn" style="margin-top:1rem; display:inline-block; padding:0.5rem 1.2rem; font-size:0.88rem; width:auto;">
-          📝 Open Today's Attendance Sheet
+          {{ $userHasEditPermission ? "📝 Open Today's Attendance Sheet" : "👁️ View Today's Attendance Sheet" }}
         </a>
       </div>
       @endif
