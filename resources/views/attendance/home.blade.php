@@ -32,6 +32,20 @@
       ? (Route::has($roleSlug . '.attendance.reports') ? route($roleSlug . '.attendance.reports') : url($roleSlug . '/attendance/reports')) 
       : (Route::has($roleSlug . '.history') ? route($roleSlug . '.history') : url($roleSlug . '/history'));
 
+  $getDailyPdfUrl = function($targetDate) use ($isAdmin, $roleSlug) {
+      if ($isAdmin) {
+          $routeName = $roleSlug . '.attendance.daily.pdf';
+          return Route::has($routeName) 
+              ? route($routeName, ['date' => $targetDate]) 
+              : url($roleSlug . '/attendance/daily/pdf?date=' . $targetDate);
+      } else {
+          $routeName = $roleSlug . '.daily.pdf';
+          return Route::has($routeName) 
+              ? route($routeName, ['date' => $targetDate]) 
+              : url($roleSlug . '/daily/pdf?date=' . $targetDate);
+      }
+  };
+
   $rawPerms = session('auth_user.permissions') ?? [];
   if (is_string($rawPerms)) {
       $rawPerms = json_decode($rawPerms, true) ?? [];
@@ -230,8 +244,7 @@
                   @endif
                   @if($sub->status === 'PARTIAL_SAVED' && $totalEntered > 0)
                     @php
-                        $pdfRoute = $isAdmin ? ($roleSlug . '.attendance.daily.pdf') : ($roleSlug . '.daily.pdf');
-                        $dailyPdfUrl = Route::has($pdfRoute) ? route($pdfRoute, ['date' => $dateStr]) : url($roleSlug . '/attendance/daily/pdf?date=' . $dateStr);
+                        $dailyPdfUrl = $getDailyPdfUrl($dateStr);
                     @endphp
                     <a href="{{ $dailyPdfUrl }}" class="btn" style="padding:0.35rem 0.65rem; text-decoration:none; display:inline-block; background:#c0392b; color:white; font-size:0.85rem; border-radius:6px;" target="_blank" title="Download Draft PDF">
                       PDF ↓
@@ -305,8 +318,7 @@
                   </a>
                   @if(in_array($sub->status, ['SUBMITTED', 'PARTIAL_SAVED']))
                     @php
-                        $pdfRoute = $isAdmin ? ($roleSlug . '.attendance.daily.pdf') : ($roleSlug . '.daily.pdf');
-                        $dailyPdfUrl = Route::has($pdfRoute) ? route($pdfRoute, ['date' => $subDateStr]) : url($roleSlug . '/attendance/daily/pdf?date=' . $subDateStr);
+                        $dailyPdfUrl = $getDailyPdfUrl($subDateStr);
                     @endphp
                     <a href="{{ $dailyPdfUrl }}" class="btn" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; background:#c0392b; color:white; font-size:0.85rem; border-radius:6px;" target="_blank">
                       PDF ↓
@@ -366,8 +378,7 @@
                     {{ $userHasEditPermission ? 'Open' : 'View' }}
                   </a>
                   @php
-                      $pdfRoute = $isAdmin ? ($roleSlug . '.attendance.daily.pdf') : ($roleSlug . '.daily.pdf');
-                      $dailyPdfUrl = Route::has($pdfRoute) ? route($pdfRoute, ['date' => $subDateStr]) : url($roleSlug . '/attendance/daily/pdf?date=' . $subDateStr);
+                      $dailyPdfUrl = $getDailyPdfUrl($subDateStr);
                   @endphp
                   <a href="{{ $dailyPdfUrl }}" class="btn" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; background:#c0392b; color:white; font-size:0.85rem; border-radius:6px;" target="_blank">
                     PDF ↓

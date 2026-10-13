@@ -648,7 +648,7 @@ foreach ($roleSlugs['ATTENDANCE'] ?? [] as $slug) {
         Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name($slug.'.logout');
     });
 
-    Route::prefix($slug)->middleware('auth.role:ATTENDANCE,SUB_ADMIN,STOCK_MANAGER')->controller(AttendanceController::class)->group(function () use ($slug) {
+    Route::prefix($slug)->middleware('auth.role:ATTENDANCE,SUB_ADMIN,STOCK_MANAGER,ADMIN')->controller(AttendanceController::class)->group(function () use ($slug) {
 
     Route::get('/home',               'home')->name($slug.'.home');
     Route::get('/departments',        'departments')->name($slug.'.departments');
@@ -664,6 +664,7 @@ foreach ($roleSlugs['ATTENDANCE'] ?? [] as $slug) {
     Route::get('/daily',              'daily')->name($slug.'.daily');
     Route::post('/daily',             'storeDailyAttendance');
     Route::get('/daily/pdf',          'downloadDailyPdf')->name($slug.'.daily.pdf');
+    Route::get('/attendance/daily/pdf', 'downloadDailyPdf')->name($slug.'.attendance.daily.pdf');
     Route::match(['delete', 'post'], '/daily/delete', 'destroyAttendanceDate')->name($slug.'.daily.delete');
     Route::post('/clear',             'clearAttendanceData')->name($slug.'.clear');
     Route::get('/team',               'team')->name($slug.'.team');
@@ -722,4 +723,7 @@ Route::middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTE
     Route::get('/{user_slug}/dispatch/pdf/{id}', [HistoryPdfController::class, 'dispatchNotePdf']);
     Route::get('/pdf/{id}', [HistoryPdfController::class, 'dispatchNotePdf']);
     Route::get('/dispatch/pdf/{id}', [HistoryPdfController::class, 'dispatchNotePdf']);
+    Route::get('/attendance/attendance/daily/pdf', [\App\Http\Controllers\AttendanceController::class, 'downloadDailyPdf']);
+    Route::get('/attendance/daily/pdf', [\App\Http\Controllers\AttendanceController::class, 'downloadDailyPdf']);
+    Route::get('/{user_slug}/attendance/daily/pdf', [\App\Http\Controllers\AttendanceController::class, 'downloadDailyPdf']);
 });

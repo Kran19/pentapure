@@ -44,8 +44,16 @@
 
       @if($submission && in_array($submission->status, ['PARTIAL_SAVED', 'SUBMITTED']))
         @php
-            $slugPrefix = (request()->segment(1) === 'public' ? request()->segment(2) : request()->segment(1)) ?? 'admin';
-            $dailyPdfUrl = url($slugPrefix . '/attendance/daily/pdf?date=' . $date);
+            $seg = (request()->segment(1) === 'public' ? request()->segment(2) : request()->segment(1)) ?? 'admin';
+            $userRole = strtoupper(session('auth_user.role') ?? '');
+            $isAdminRole = in_array($userRole, ['ADMIN', 'SUB_ADMIN']) || str_starts_with((string)$seg, 'admin') || str_starts_with((string)$seg, 'sub_admin');
+            $pdfRoute = $isAdminRole ? ($seg . '.attendance.daily.pdf') : ($seg . '.daily.pdf');
+            if (Route::has($pdfRoute)) {
+                $dailyPdfUrl = route($pdfRoute, ['date' => $date]);
+            } else {
+                $pdfPath = $isAdminRole ? ($seg . '/attendance/daily/pdf') : ($seg . '/daily/pdf');
+                $dailyPdfUrl = url($pdfPath . '?date=' . $date);
+            }
         @endphp
         <a href="{{ $dailyPdfUrl }}" class="btn" style="width:auto; padding:0.4rem 1rem; background:#e67e22; color:white; text-decoration:none; display:inline-block; font-weight:600;" target="_blank">
           📄 Download Current Sheet
