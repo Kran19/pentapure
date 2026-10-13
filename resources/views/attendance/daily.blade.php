@@ -38,14 +38,16 @@
       </select>
 
       @php 
-        $isLocked = ($submission && $submission->status === 'SUBMITTED' && $authUser['role'] !== 'ADMIN');
+        $canEditDaily = in_array($authUser['role'] ?? '', ['ADMIN', 'SUPER_ADMIN']) || (($authUser['role'] ?? '') === 'SUB_ADMIN' && empty($isReadOnly));
+        $isLocked = ($submission && $submission->status === 'SUBMITTED' && !$canEditDaily);
       @endphp
 
       @if($submission && in_array($submission->status, ['PARTIAL_SAVED', 'SUBMITTED']))
         @php
-            $pdfRoute = $authUser['role'] === 'ADMIN' ? 'admin.attendance.daily.pdf' : 'attendance.daily.pdf';
+            $slugPrefix = (request()->segment(1) === 'public' ? request()->segment(2) : request()->segment(1)) ?? 'admin';
+            $dailyPdfUrl = url($slugPrefix . '/attendance/daily/pdf?date=' . $date);
         @endphp
-        <a href="{{ route($pdfRoute, ['date' => $date]) }}" class="btn" style="width:auto; padding:0.4rem 1rem; background:#e67e22; color:white; text-decoration:none; display:inline-block; font-weight:600;" target="_blank">
+        <a href="{{ $dailyPdfUrl }}" class="btn" style="width:auto; padding:0.4rem 1rem; background:#e67e22; color:white; text-decoration:none; display:inline-block; font-weight:600;" target="_blank">
           📄 Download Current Sheet
         </a>
       @endif
@@ -108,7 +110,7 @@
             $advance = ($att && $att->advance > 0) ? (float)$att->advance : '';
             $isFinished = $att ? ($att->is_finished ? true : false) : false;
             
-            $isAdmin = ($authUser['role'] === 'ADMIN');
+            $isAdmin = $canEditDaily;
             $disableInputs = $isLocked || !empty($isReadOnly); // Locked if SUBMITTED or read-only mode
             $isFixedSalary = in_array(strtoupper($w->salary_type ?? ''), ['FIXED_MONTHLY', 'FIX_MONTHLY', 'FIXED', 'FIXED_SALARY']);
             $rawSalType = strtoupper(trim((string)($w->salary_type ?? 'DAILY')));

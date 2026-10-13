@@ -8,7 +8,7 @@
   <script>
     window.csrfToken = '{{ csrf_token() }}';
     window.baseUrl = '{{ url('') }}';
-    window.userSlug = '{{ request()->segment(1) }}';
+    window.userSlug = '{{ (request()->segment(1) === 'public' ? request()->segment(2) : request()->segment(1)) ?? 'admin' }}';
     window.isReadOnly = {{ !empty($isReadOnly) ? 'true' : 'false' }};
   </script>
   <title>PPF Factory Operations - Admin</title>

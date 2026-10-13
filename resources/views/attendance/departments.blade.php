@@ -53,9 +53,11 @@
             <td><span class="badge badge-info">{{ $d->workers_count }}</span></td>
             <td>
               <span class="badge {{ $d->is_active ? 'badge-done' : 'badge-danger' }}"
-                style="cursor:pointer;"
+                style="{{ empty($isReadOnly) ? 'cursor:pointer;' : 'cursor:default; opacity:0.8;' }}"
+                @if(empty($isReadOnly))
                 onclick="toggleDeptStatus({{ $d->id }}, '{{ addslashes($d->name) }}', {{ $d->is_active ? 'false' : 'true' }})"
-                title="Click to toggle status">
+                title="Click to toggle status"
+                @endif>
                 {{ $d->is_active ? 'Active' : 'Inactive' }}
               </span>
             </td>

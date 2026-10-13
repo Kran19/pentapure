@@ -148,9 +148,11 @@
             </td>
             <td>
               <span class="badge {{ $w->status=='ACTIVE'?'badge-done':'badge-danger' }}"
-                style="cursor:pointer;"
+                style="{{ empty($isReadOnly) ? 'cursor:pointer;' : 'cursor:default; opacity:0.8;' }}"
+                @if(empty($isReadOnly))
                 onclick="toggleWorkerStatus({{ $w->id }}, '{{ addslashes($w->name) }}', '{{ $w->status }}')"
-                title="Click to toggle status">
+                title="Click to toggle status"
+                @endif>
                 {{ $w->status == 'ACTIVE' ? 'Active' : 'Inactive' }}
               </span>
             </td>
@@ -298,7 +300,8 @@ function closeWorkerForm() {
 
 document.getElementById('worker-form').onsubmit = function(e) {
   e.preventDefault();
-  fetch(window.location.href, {
+  const baseUrl = window.location.href.split('?')[0].replace(/\/$/, '');
+  fetch(baseUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
     body: JSON.stringify({

@@ -735,24 +735,28 @@ function adminEditUser(user) {
     try { perms = JSON.parse(perms) || []; } catch(e) { perms = []; }
   }
   const permsArr = Array.isArray(perms) ? perms : [];
-  const hasGranular = permsArr.some(p => typeof p === 'string' && (p.startsWith('view_') || p.startsWith('edit_')));
+  const normalizedPerms = permsArr.map(p => typeof p === 'string' ? p.toLowerCase().trim() : p);
+  const hasGranular = normalizedPerms.some(p => typeof p === 'string' && (p.startsWith('view_') || p.startsWith('edit_')));
 
   document.querySelectorAll('.perm-view-cb').forEach(cb => {
-    const modKey = cb.dataset.module;
-    const hasModPerm = permsArr.includes(cb.value) 
-      || permsArr.includes('view_' + modKey) 
-      || permsArr.includes('edit_' + modKey) 
-      || permsArr.includes('module_' + modKey)
-      || permsArr.includes(modKey)
-      || permsArr.includes('can_manage');
+    const modKey = (cb.dataset.module || '').toLowerCase().trim();
+    const val = (cb.value || '').toLowerCase().trim();
+    const hasModPerm = normalizedPerms.includes(val) 
+      || normalizedPerms.includes('view_' + modKey) 
+      || normalizedPerms.includes('edit_' + modKey) 
+      || normalizedPerms.includes('module_' + modKey)
+      || normalizedPerms.includes(modKey)
+      || normalizedPerms.includes('can_manage');
     cb.checked = hasModPerm;
   });
   document.querySelectorAll('.perm-edit-cb').forEach(cb => {
-    const modKey = cb.dataset.module;
-    const hasModEdit = permsArr.includes(cb.value) 
-      || permsArr.includes('edit_' + modKey) 
-      || permsArr.includes('edit_module_' + modKey)
-      || permsArr.includes('can_manage');
+    const modKey = (cb.dataset.module || '').toLowerCase().trim();
+    const val = (cb.value || '').toLowerCase().trim();
+    const hasModEdit = normalizedPerms.includes(val) 
+      || normalizedPerms.includes('edit_' + modKey) 
+      || normalizedPerms.includes('edit_module_' + modKey)
+      || (!hasGranular && (normalizedPerms.includes(modKey) || normalizedPerms.includes('module_' + modKey)))
+      || normalizedPerms.includes('can_manage');
     cb.checked = hasModEdit;
   });
 

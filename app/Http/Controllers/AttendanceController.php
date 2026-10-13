@@ -53,6 +53,43 @@ class AttendanceController extends Controller
         return [];
     }
 
+    public function canEditAttendance(): bool
+    {
+        $user = $this->authUser();
+        if (!$user) {
+            return false;
+        }
+
+        $role = $user['role'] ?? '';
+        if (in_array($role, ['ADMIN', 'SUPER_ADMIN'])) {
+            return true;
+        }
+
+        if ($role === 'SUB_ADMIN') {
+            $perms = $user['permissions'] ?? [];
+            if (is_string($perms)) {
+                $perms = json_decode($perms, true) ?? [];
+            }
+            if (!is_array($perms)) {
+                $perms = [];
+            }
+            $normalized = array_map(fn($p) => strtolower(trim((string)$p)), $perms);
+            if (in_array('can_manage', $normalized, true)) {
+                return true;
+            }
+            if (in_array('edit_attendance_daily', $normalized, true) || in_array('attendance_daily', $normalized, true)) {
+                return true;
+            }
+            foreach ($normalized as $p) {
+                if (str_starts_with($p, 'edit_attendance_')) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     public function team(Request $request)
     {
         $allowedDeptIds = $this->getAllowedDeptIds();
@@ -670,12 +707,21 @@ class AttendanceController extends Controller
         $saveMode = $request->save_mode;
         $std  = 9; // Standard shift hours
 
-        $submission = \App\Models\AttendanceSubmission::firstOrCreate(
-            ['attendance_date' => $date],
-            ['status' => 'PENDING', 'created_by' => $this->authUser()['id'] ?? null]
-        );
+        $submission = \App\Models\AttendanceSubmission::where(function ($q) use ($date) {
+            $q->whereDate('attendance_date', $date)
+              ->orWhere('attendance_date', $date)
+              ->orWhere('attendance_date', 'like', "{$date}%");
+        })->first();
 
-        $isAdmin = ($this->authUser()['role'] ?? '') === 'ADMIN';
+        if (!$submission) {
+            $submission = \App\Models\AttendanceSubmission::create([
+                'attendance_date' => $date,
+                'status' => 'PENDING',
+                'created_by' => $this->authUser()['id'] ?? null
+            ]);
+        }
+
+        $isAdmin = in_array($this->authUser()['role'] ?? '', ['ADMIN', 'SUPER_ADMIN']) || $this->canEditAttendance();
 
         if ($submission->status === 'SUBMITTED' && !$isAdmin) {
             return response()->json(['success' => false, 'message' => 'Attendance is locked and can only be modified by Admin.'], 403);

@@ -110,6 +110,15 @@ class AuthMiddleware
             ];
             $keysToCheck = $moduleEquivalents[$moduleKey] ?? [$moduleKey];
 
+            // Fallback flag for whether granular (view_/edit_) permissions are configured at all
+            $hasAnyModulePerm = false;
+            foreach ($normalizedPerms as $np) {
+                if (is_string($np) && (str_starts_with($np, 'view_') || str_starts_with($np, 'edit_'))) {
+                    $hasAnyModulePerm = true;
+                    break;
+                }
+            }
+
             // 1. Check Edit (Write) Access
             $hasEdit = false;
             if ($user['role'] === 'STOCK_MANAGER' || in_array('can_manage', $normalizedPerms, true)) {
@@ -118,7 +127,8 @@ class AuthMiddleware
                 foreach ($keysToCheck as $k) {
                     if (
                         in_array('edit_' . $k, $normalizedPerms, true) ||
-                        in_array('edit_module_' . $k, $normalizedPerms, true)
+                        in_array('edit_module_' . $k, $normalizedPerms, true) ||
+                        (!$hasAnyModulePerm && (in_array($k, $normalizedPerms, true) || in_array('module_' . $k, $normalizedPerms, true)))
                     ) {
                         $hasEdit = true;
                         break;
@@ -140,15 +150,6 @@ class AuthMiddleware
                         $hasView = true;
                         break;
                     }
-                }
-            }
-
-            // Fallback for role defaults only if no granular module permissions configured at all
-            $hasAnyModulePerm = false;
-            foreach ($normalizedPerms as $np) {
-                if (is_string($np) && (str_starts_with($np, 'view_') || str_starts_with($np, 'edit_'))) {
-                    $hasAnyModulePerm = true;
-                    break;
                 }
             }
 
