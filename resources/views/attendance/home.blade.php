@@ -11,7 +11,7 @@
 
   <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px;">
     <h2 style="margin:0;">📊 Attendance Dashboard</h2>
-    @if(empty($isReadOnly))
+    @if(empty($isReadOnly) && !empty($canEditWorkers))
     <button class="btn" onclick="openAddWorkerModal()" style="width:auto; padding:0.6rem 1.5rem;">+ Add Worker</button>
     @endif
   </div>
@@ -63,10 +63,17 @@
       }
   }
 
-  $userHasEditPermission = in_array($userRole, ['ADMIN', 'SUPER_ADMIN', 'ATTENDANCE']) ||
+  // Dashboard Edit access: If Dashboard is View-Only ($isReadOnly == true), dashboard MUST NEVER show edit actions
+  $dashboardCanEdit = empty($isReadOnly) && (
+      in_array($userRole, ['ADMIN', 'SUPER_ADMIN']) ||
       in_array('can_manage', $normPerms, true) ||
-      in_array('edit_attendance_daily', $normPerms, true) ||
-      (!$hasGranular && in_array('attendance_daily', $normPerms, true) && !empty($canEditAttendance));
+      in_array('edit_attendance_dashboard', $normPerms, true) ||
+      (!$hasGranular && in_array('attendance_dashboard', $normPerms, true)) ||
+      ($userRole === 'ATTENDANCE' && !$hasGranular)
+  );
+
+  // Each page is disconnected: Actions on the dashboard require the dashboard itself to have edit access
+  $userHasEditPermission = $dashboardCanEdit && !empty($canEditAttendance);
 @endphp
 
   <!-- Summary Cards -->
@@ -99,15 +106,28 @@
     </div>
   </div>
 
-  <!-- Quick Actions -->
+  <!-- Quick Actions (Only show pages the user has access to) -->
+  @php
+    $canViewDaily = in_array($userRole, ['ADMIN', 'SUPER_ADMIN']) || in_array('can_manage', $normPerms, true) || in_array('view_attendance_daily', $normPerms, true) || in_array('edit_attendance_daily', $normPerms, true) || (!$hasGranular && in_array('attendance_daily', $normPerms, true)) || ($userRole === 'ATTENDANCE' && !$hasGranular);
+    $canViewReports = in_array($userRole, ['ADMIN', 'SUPER_ADMIN']) || in_array('can_manage', $normPerms, true) || in_array('view_attendance_reports', $normPerms, true) || in_array('edit_attendance_reports', $normPerms, true) || (!$hasGranular && in_array('attendance_reports', $normPerms, true)) || ($userRole === 'ATTENDANCE' && !$hasGranular);
+    $canViewWorkers = in_array($userRole, ['ADMIN', 'SUPER_ADMIN']) || in_array('can_manage', $normPerms, true) || in_array('view_attendance_workers', $normPerms, true) || in_array('edit_attendance_workers', $normPerms, true) || (!$hasGranular && in_array('attendance_workers', $normPerms, true)) || ($userRole === 'ATTENDANCE' && !$hasGranular);
+  @endphp
+  @if($canViewDaily || $canViewReports || $canViewWorkers)
   <div class="card" style="margin-top:1.5rem; padding:1.5rem;">
     <h3 style="margin-top:0; margin-bottom:1rem;">⚡ Quick Actions</h3>
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:1rem;">
+      @if($canViewDaily)
       <a href="{{ $dailyUrl }}" class="btn btn-secondary" style="text-align:center; padding:1rem; border-radius:8px; text-decoration:none;">📝 Daily Punch Sheet</a>
+      @endif
+      @if($canViewReports)
       <a href="{{ $reportsUrl }}" class="btn btn-secondary" style="text-align:center; padding:1rem; border-radius:8px; text-decoration:none;">📊 Monthly Reports</a>
+      @endif
+      @if($canViewWorkers)
       <a href="{{ $workersUrl }}" class="btn btn-secondary" style="text-align:center; padding:1rem; border-radius:8px; text-decoration:none;">👥 Manage Workers</a>
+      @endif
     </div>
   </div>
+  @endif
 
   <!-- Attendance Records & Status with Tabs -->
   <div class="card" id="attendanceRecordsSection" style="margin-top:1.5rem; padding:1.5rem;">

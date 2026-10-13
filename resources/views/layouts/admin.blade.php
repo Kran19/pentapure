@@ -171,7 +171,14 @@
                 if (in_array($m, $perms) || in_array('view_' . $m, $perms) || in_array('edit_' . $m, $perms) || in_array('module_' . $m, $perms)) {
                     return true;
                 }
-                if (str_starts_with($m, 'attendance_')) {
+                $hasGranular = false;
+                foreach ($perms as $p) {
+                    if (is_string($p) && (str_starts_with($p, 'view_') || str_starts_with($p, 'edit_'))) {
+                        $hasGranular = true;
+                        break;
+                    }
+                }
+                if (!$hasGranular && str_starts_with($m, 'attendance_')) {
                     foreach ($perms as $p) {
                         if (is_numeric($p) && (int)$p > 0) return true;
                     }

@@ -300,6 +300,12 @@ class AttendanceController extends Controller
         }
         $departments = $departmentsQuery->get();
 
+        $canEditDashboard = $this->canEditModule('attendance_dashboard');
+        $canEditDaily     = $this->canEditModule('attendance_daily');
+        $canEditWorkers   = $this->canEditModule('attendance_workers');
+        $canEditDepts     = $this->canEditModule('attendance_departments');
+        $canEditReports   = $this->canEditModule('attendance_reports');
+
         return view('attendance.home', [
             'totalWorkers'            => $totalWorkers,
             'activeWorkers'           => $activeWorkers,
@@ -312,8 +318,13 @@ class AttendanceController extends Controller
             'pendingAttendanceCounts' => $pendingAttendanceCounts,
             'submittedSubmissions'    => $submittedSubmissions,
             'selectedMonth'           => $selectedMonth,
-            'canEditAttendance'       => $this->canEditModule('attendance_daily'),
-            'isReadOnly'              => !$this->canEditModule('attendance_dashboard'),
+            'canEditDashboard'        => $canEditDashboard,
+            'canEditAttendance'       => $canEditDaily,
+            'canEditDaily'            => $canEditDaily,
+            'canEditWorkers'          => $canEditWorkers,
+            'canEditDepartments'      => $canEditDepts,
+            'canEditReports'          => $canEditReports,
+            'isReadOnly'              => !$canEditDashboard,
             'authUser'                => $this->authUser(),
             'layout'                  => $this->getLayout($request)
         ]);

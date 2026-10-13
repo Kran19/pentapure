@@ -154,7 +154,7 @@ class AuthMiddleware
                 }
             }
 
-            // If user has assigned departments in attendance, grant view access to attendance modules
+            // If user has assigned departments in attendance, grant view access to attendance modules ONLY if no granular permissions are configured
             $hasAssignedDepts = false;
             foreach ($normalizedPerms as $np) {
                 if (is_numeric($np) && (int)$np > 0) {
@@ -162,7 +162,7 @@ class AuthMiddleware
                     break;
                 }
             }
-            if (str_starts_with($moduleKey, 'attendance_') && $hasAssignedDepts) {
+            if (!$hasAnyModulePerm && str_starts_with($moduleKey, 'attendance_') && $hasAssignedDepts) {
                 $hasView = true;
             }
 

@@ -190,4 +190,48 @@ class SubAdminViewEditTest extends TestCase
         $respPaidToggle->assertStatus(200);
         $respPaidToggle->assertJson(['success' => true, 'is_paid' => true]);
     }
+
+    public function test_subadmin_attendance_dashboard_view_only_is_strictly_disconnected()
+    {
+        $dept = Department::create(['name' => 'Packaging Dept', 'is_active' => true]);
+        $worker = Worker::create([
+            'name' => 'Packer Worker',
+            'department_id' => $dept->id,
+            'role' => 'Packer',
+            'shift_type' => 'DAY',
+            'salary_type' => 'DAILY',
+            'salary_amount' => 450,
+            'daily_salary' => 450,
+            'status' => 'ACTIVE'
+        ]);
+
+        // Subadmin has VIEW on dashboard, but EDIT on daily and workers
+        $subAdmin = User::create([
+            'name' => 'Sub Admin Mixed',
+            'username' => 'subadmin_mixed',
+            'phone' => '+91 9898000032',
+            'password' => Hash::make('password123'),
+            'role' => 'SUB_ADMIN',
+            'status' => 'ACTIVE',
+            'permissions' => [
+                'view_attendance_dashboard',
+                'edit_attendance_daily',
+                'edit_attendance_workers'
+            ]
+        ]);
+
+        $resp = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->get('/sub_admin/attendance/dashboard');
+        $resp->assertStatus(200);
+        $content = $resp->getContent();
+
+        // 1. Dashboard must NOT show edit actions because dashboard itself is View-Only
+        $this->assertStringNotContainsString('+ Add Worker', $content);
+        $this->assertStringNotContainsString('Open & Fill', $content);
+        $this->assertStringNotContainsString("📝 Open Today's Attendance Sheet", $content);
+
+        // 2. Dashboard must show View actions instead
+        $this->assertStringContainsString('View', $content);
+        $this->assertStringContainsString('Click "View" to inspect attendance sheet', $content);
+    }
 }
