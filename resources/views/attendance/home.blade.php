@@ -333,8 +333,12 @@
               </td>
               <td style="padding:0.75rem;">
                 <div style="display:flex; gap:5px; justify-content:center; align-items:center;">
-                  <a href="{{ $dailyUrl }}?date={{ $subDateStr }}" class="btn {{ (!$userHasEditPermission || $sub->status === 'SUBMITTED') ? 'btn-secondary' : '' }}" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; font-size:0.85rem; border-radius:6px;">
-                    {{ $userHasEditPermission ? 'Open' : 'View' }}
+                  @php
+                    $isSubmitted = ($sub->status === 'SUBMITTED');
+                    $canOpenForEdit = !$isSubmitted && $userHasEditPermission;
+                  @endphp
+                  <a href="{{ $dailyUrl }}?date={{ $subDateStr }}" class="btn {{ !$canOpenForEdit ? 'btn-secondary' : '' }}" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; font-size:0.85rem; border-radius:6px;">
+                    {{ $canOpenForEdit ? 'Open' : 'View' }}
                   </a>
                   @if(in_array($sub->status, ['SUBMITTED', 'PARTIAL_SAVED']))
                     @php
@@ -395,7 +399,7 @@
               <td style="padding:0.75rem;">
                 <div style="display:flex; gap:5px; justify-content:center; align-items:center;">
                   <a href="{{ $dailyUrl }}?date={{ $subDateStr }}" class="btn btn-secondary" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; font-size:0.85rem; border-radius:6px;">
-                    {{ $userHasEditPermission ? 'Open' : 'View' }}
+                    View
                   </a>
                   @php
                       $dailyPdfUrl = $getDailyPdfUrl($subDateStr);
