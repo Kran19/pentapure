@@ -768,11 +768,6 @@
                 </button>
               </div>
             @endif
-            @if(!empty($isReadOnly) && !$isDashboardPage)
-              <div style="margin-bottom:1rem; padding:0.75rem 1.2rem; background:#fffbe8; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:8px; color:#92400e; font-weight:600; display:flex; align-items:center; gap:8px; font-size:0.9rem; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
-                <span>🔒 <strong>View-Only Mode</strong>: You have read-only access to this page. Action buttons like Add, Edit, Delete, or Save are disabled.</span>
-              </div>
-            @endif
             @yield('content')
           </div>
         </div>

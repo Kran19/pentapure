@@ -418,10 +418,6 @@ html.dark-mode .info-preview-box .info-label {
       <button class="btn" onclick="app.submitOrder()" style="padding:1rem; font-size:1.1rem; margin-top:1rem;">
         {{ !empty($pageData['editOrder']) ? 'Update Sales Order' : 'Generate Sales Order' }}
       </button>
-      @else
-      <div style="margin-top:1rem; padding:0.75rem 1.2rem; background:#fffbe8; border:1px solid #fde68a; border-radius:8px; color:#92400e; font-weight:600; text-align:center;">
-        🔒 View-Only Mode: Creating and modifying sales orders is disabled.
-      </div>
       @endif
     </div>
   </div>

@@ -70,11 +70,7 @@
     </div>
   </div>
 
-  @if(!empty($isReadOnly))
-    <div style="background:#fffbe8; border:1px solid #fde68a; border-left:4px solid #f59e0b; color:#92400e; padding:1rem; border-radius:5px; margin-bottom:1rem; font-weight:bold;">
-      🔒 View-Only Mode: You have read-only access to Daily Attendance. Modifying or submitting attendance is disabled.
-    </div>
-  @elseif($isLocked)
+  @if($isLocked)
     <div style="background:#fce4e4; border:1px solid #fccacb; color:#c0392b; padding:1rem; border-radius:5px; margin-bottom:1rem; font-weight:bold;">
       🔒 This attendance record has been SUBMITTED and is locked. Only an Administrator can make changes.
     </div>
