@@ -672,17 +672,21 @@
               <a href="{{ url(request()->segment(1) . '/dispatch/download-lr/' . $d['id']) }}" download class="btn btn-sm" style="font-size:0.78rem; padding:0.45rem 0.8rem; background:#059669; color:#fff !important; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:6px;">
                 📥 Download LR
               </a>
+              @if(empty($isReadOnly))
               <button type="button" class="btn btn-sm btn-media-camera" style="font-size:0.78rem; padding:0.45rem 0.8rem;" onclick="document.getElementById('late-lr-cam-{{ $d['id'] }}').click()">📷 Camera</button>
               <button type="button" class="btn btn-sm btn-media-gallery" style="font-size:0.78rem; padding:0.45rem 0.8rem;" onclick="document.getElementById('late-lr-input-{{ $d['id'] }}').click()">📁 Change/Update This Order's LR</button>
+              @endif
             </div>
           </div>
         @else
           <div style="margin-bottom:1rem; padding:1.2rem; background:rgba(220,38,38,0.06); border:1px dashed rgba(220,38,38,0.3); border-radius:10px; text-align:center;">
             <div style="color:#ef4444; font-weight:700; font-size:0.88rem; margin-bottom:8px;">LR Copy Pending for Order #{{ strtoupper((string)$d['orderId']) }}</div>
+            @if(empty($isReadOnly))
             <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
               <button type="button" class="btn btn-sm btn-media-camera" style="font-size:0.82rem; padding:0.5rem 0.9rem;" onclick="document.getElementById('late-lr-cam-{{ $d['id'] }}').click()">📷 Camera</button>
               <button type="button" class="btn btn-sm btn-media-gallery" style="font-size:0.82rem; padding:0.5rem 0.9rem;" onclick="document.getElementById('late-lr-input-{{ $d['id'] }}').click()">📁 Upload This Order's LR Now</button>
             </div>
+            @endif
           </div>
         @endif
 

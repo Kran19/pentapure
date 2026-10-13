@@ -14,6 +14,13 @@ use Illuminate\Support\Facades\Route;
 
 // ── Root Redirect ──────────────────────────────────────────────────────────
 Route::get('/', fn () => redirect('/login'));
+Route::get('/sub_admin', fn () => redirect('/sub_admin/home'));
+Route::get('/admin', fn () => redirect('/admin/home'));
+Route::get('/stock_manager', fn () => redirect('/stock_manager/home'));
+Route::get('/dispatch', fn () => redirect('/dispatch/home'));
+Route::get('/sales', fn () => redirect('/sales/home'));
+Route::get('/cashier', fn () => redirect('/cashier/home'));
+Route::get('/attendance', fn () => redirect('/attendance/dashboard'));
 Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name('global.login');
 Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name('global.login.post');
 Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name('logout');
@@ -285,6 +292,7 @@ foreach ($roleSlugs['DISPATCH'] ?? [] as $slug) {
 
     Route::prefix($slug)->middleware('auth.role:DISPATCH,SUB_ADMIN,STOCK_MANAGER')->controller(DispatchController::class)->group(function () use ($slug) {
 
+    Route::get('/',         fn() => redirect("/{$slug}/home"));
     Route::get('/home',     'home')->name($slug.'.home');
     Route::get('/action',   'action')->name($slug.'.action');
     Route::post('/action',  'storeDispatch');
@@ -324,6 +332,7 @@ foreach ($roleSlugs['CASHIER'] ?? [] as $slug) {
 
     Route::prefix($slug)->middleware('auth.role:ADMIN,CASHIER,SUB_ADMIN,STOCK_MANAGER')->controller(CashierController::class)->group(function () use ($slug) {
 
+    Route::get('/',                    fn() => redirect("/{$slug}/home"));
     Route::get('/home',                'home')->name($slug.'.home');
     Route::get('/action',              'action')->name($slug.'.action');
     Route::post('/action',             'storeTransaction');
@@ -365,6 +374,7 @@ foreach ($roleSlugs['STOCK_MANAGER'] ?? [] as $slug) {
     });
 
     Route::prefix($slug)->middleware('auth.role:STOCK_MANAGER,SUB_ADMIN,ADMIN')->controller(\App\Http\Controllers\StockManagerController::class)->group(function () use ($slug) {
+        Route::get('/',            fn() => redirect("/{$slug}/home"));
         Route::get('/home',        'home')->name($slug.'.home');
         Route::get('/action',      'action')->name($slug.'.action');
         Route::post('/action',     'storeInward')->name($slug.'.action.store');
@@ -428,6 +438,7 @@ foreach ($adminSlugs as $slug) {
 
     Route::prefix($slug)->middleware('auth.role:ADMIN,SUB_ADMIN')->controller(AdminController::class)->group(function () use ($slug, $roleSlugs) {
 
+    Route::get('/',                   fn() => redirect("/{$slug}/home"));
     Route::get('/dashboard',          'dashboard')->name($slug.'.dashboard');
     $isSubAdminSlug = in_array($slug, $roleSlugs['SUB_ADMIN'] ?? []) || str_starts_with($slug, 'sub_admin');
     if ($isSubAdminSlug) {
@@ -650,6 +661,7 @@ foreach ($roleSlugs['ATTENDANCE'] ?? [] as $slug) {
 
     Route::prefix($slug)->middleware('auth.role:ATTENDANCE,SUB_ADMIN,STOCK_MANAGER,ADMIN')->controller(AttendanceController::class)->group(function () use ($slug) {
 
+    Route::get('/',                   fn() => redirect("/{$slug}/dashboard"));
     Route::get('/home',               'home')->name($slug.'.home');
     Route::get('/departments',        'departments')->name($slug.'.departments');
     Route::post('/departments',       'storeDepartment');

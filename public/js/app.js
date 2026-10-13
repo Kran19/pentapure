@@ -2466,6 +2466,9 @@ const app = {
   },
 
   handleLateLRUpload(event, logId, idx) {
+    if (window.isReadOnly) {
+      return this.toast('You have View-Only permission. Updating LR is disabled.', 'error');
+    }
     const file = event.target.files[0];
     if (!file) return;
 

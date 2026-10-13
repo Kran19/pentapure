@@ -137,10 +137,6 @@ class AuthController extends Controller
         $role = $role ?? (session('auth_user')['role'] ?? null);
         $slug = session('auth_user')['login_slug'] ?? strtolower($role ?? '');
 
-        if ($role === 'SUB_ADMIN') {
-            return redirect('/' . $slug . '/home');
-        }
-
         if (in_array($role, ['SUB_ADMIN', 'STOCK_MANAGER'])) {
             $perms = session('auth_user')['permissions'] ?? [];
             if (is_string($perms)) {
@@ -148,6 +144,18 @@ class AuthController extends Controller
             }
             if (!is_array($perms)) {
                 $perms = [];
+            }
+
+            // If user has assigned departments in attendance and no specific module perms, redirect to attendance dashboard
+            $hasAssignedDepts = false;
+            foreach ($perms as $p) {
+                if (is_numeric($p) && (int)$p > 0) {
+                    $hasAssignedDepts = true;
+                    break;
+                }
+            }
+            if ($hasAssignedDepts && empty(array_filter($perms, fn($p) => is_string($p) && (str_starts_with($p, 'view_') || str_starts_with($p, 'edit_'))))) {
+                return redirect('/' . $slug . '/attendance/dashboard');
             }
 
             $moduleEquivalents = [

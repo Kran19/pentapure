@@ -290,6 +290,7 @@
         <tr>
           <td style="border:2px solid #000; padding:6px 8px; text-align:center;">OTHER</td>
           <td colspan="3" style="border:2px solid #000; padding:6px 8px; text-align:center;">
+            @if(empty($isReadOnly))
             <div style="display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%;">
                 <span class="pencil-icon">✏️</span>
                 <input type="text" class="allowance-label-input" value="{{ ($adjustment?->other_allowance_label && !in_array($adjustment->other_allowance_label, ['PETROL / FOODS', 'OTHER'])) ? $adjustment->other_allowance_label : '' }}" 
@@ -299,8 +300,14 @@
                        style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:4px 12px; font-weight:bold; font-size:0.85rem; text-align:center; text-transform:uppercase; width:100%; max-width:320px; color:#0f172a; outline:none;"
                        title="Click to edit allowance label">
             </div>
+            @else
+            <span style="font-weight:bold; font-size:0.85rem; text-transform:uppercase;">
+                {{ ($adjustment?->other_allowance_label && !in_array($adjustment->other_allowance_label, ['PETROL / FOODS', 'OTHER'])) ? $adjustment->other_allowance_label : 'OTHER' }}
+            </span>
+            @endif
           </td>
           <td style="border:2px solid #000; padding:6px 8px; text-align:right;">
+            @if(empty($isReadOnly))
             <div style="display:inline-flex; align-items:center; justify-content:flex-end; gap:6px; width:100%;">
                 <span class="pencil-icon">✏️</span>
                 <input type="number" step="0.01" class="allowance-amount-input" value="{{ number_format($adjustment->petrol_food_amount, 2, '.', '') }}" 
@@ -309,6 +316,11 @@
                        style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:3px 10px; font-weight:bold; font-size:0.9rem; text-align:right; width:100px; color:#0f172a; outline:none;"
                        title="Click to edit allowance amount">
             </div>
+            @else
+            <span style="font-weight:bold; font-size:0.9rem;">
+                {{ number_format($adjustment->petrol_food_amount, 2) }}
+            </span>
+            @endif
           </td>
         </tr>
         <!-- Row 5 -->
@@ -351,6 +363,7 @@
   </div>
 </div>
 
+@if(empty($isReadOnly))
 <!-- Edit Adjustment Modal -->
 <div id="editAdjustmentModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5);">
     <div style="background-color:#fefefe; margin:10% auto; padding:20px; border:1px solid #888; width:90%; max-width:500px; border-radius:8px;">
@@ -384,6 +397,7 @@
         </form>
     </div>
 </div>
+@endif
 
 <script>
 function syncAllowanceLabel(val) {
@@ -425,6 +439,7 @@ function exportToExcel() {
 }
 
 function quickSaveAllowance(label, amount) {
+    if (window.isReadOnly) return;
     const postUrl = "{{ str_contains(request()->path(), 'admin') ? url(str_replace('reports', 'reports', request()->path()) . '/adjust') : url(request()->path() . '/adjust') }}";
     const formData = new FormData();
     formData.append('_token', '{{ csrf_token() }}');

@@ -212,4 +212,50 @@ class SubAdminAttendanceTest extends TestCase
         $response->assertJson(['success' => true]);
         $this->assertDatabaseHas('workers', ['name' => 'New Worker 1']);
     }
+
+    public function test_sub_admin_root_redirects_to_home()
+    {
+        $subAdmin = User::create([
+            'name' => 'Sub Admin Root',
+            'username' => 'subadmin_root',
+            'phone' => '+91 9898000025',
+            'password' => Hash::make('password123'),
+            'role' => 'SUB_ADMIN',
+            'status' => 'ACTIVE',
+            'permissions' => ['view_stock_manager_home', 'edit_stock_manager_home']
+        ]);
+
+        $response = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->get('/sub_admin');
+        $response->assertRedirect('/sub_admin/home');
+
+        $responseSlash = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->get('/sub_admin/');
+        $responseSlash->assertRedirect('/sub_admin/home');
+    }
+
+    public function test_sub_admin_with_assigned_departments_can_only_access_their_departments()
+    {
+        $dept1 = Department::create(['name' => 'Assigned Dept', 'is_active' => true]);
+        $dept2 = Department::create(['name' => 'Other Dept', 'is_active' => true]);
+
+        $subAdmin = User::create([
+            'name' => 'Assigned Dept Sub Admin',
+            'username' => 'subadmin_assigned',
+            'phone' => '+91 9898000026',
+            'password' => Hash::make('password123'),
+            'role' => 'SUB_ADMIN',
+            'status' => 'ACTIVE',
+            'permissions' => [$dept1->id]
+        ]);
+
+        $response = $this->withSession(['auth_user' => $subAdmin->toArray()])
+            ->get('/sub_admin/attendance/departments');
+
+        $response->assertStatus(200);
+        $content = $response->getContent();
+        $this->assertStringContainsString('Assigned Dept', $content);
+        $this->assertStringNotContainsString('Other Dept', $content);
+    }
 }
+

@@ -104,9 +104,9 @@ class AuthMiddleware
                 'cashier_categories' => ['cashier_categories', 'admin_categories'],
                 'stock_manager_home' => ['stock_manager_home', 'admin_dashboard'],
                 'admin_dashboard' => ['admin_dashboard', 'stock_manager_home'],
-                'sales_history' => ['sales_history', 'dispatch_history', 'dispatch_report'],
-                'dispatch_history' => ['dispatch_history', 'sales_history', 'dispatch_report'],
-                'dispatch_report' => ['dispatch_report', 'dispatch_history', 'sales_history'],
+                'sales_history' => ['sales_history'],
+                'dispatch_history' => ['dispatch_history'],
+                'dispatch_report' => ['dispatch_report'],
             ];
             $keysToCheck = $moduleEquivalents[$moduleKey] ?? [$moduleKey];
 
@@ -151,6 +151,18 @@ class AuthMiddleware
                         break;
                     }
                 }
+            }
+
+            // If user has assigned departments in attendance, grant view access to attendance modules
+            $hasAssignedDepts = false;
+            foreach ($normalizedPerms as $np) {
+                if (is_numeric($np) && (int)$np > 0) {
+                    $hasAssignedDepts = true;
+                    break;
+                }
+            }
+            if (str_starts_with($moduleKey, 'attendance_') && $hasAssignedDepts) {
+                $hasView = true;
             }
 
             if (!$hasAnyModulePerm && empty($normalizedPerms)) {
@@ -387,6 +399,13 @@ class AuthMiddleware
                 in_array($k, $normalizedPerms, true)
             ) {
                 return $targetUrl;
+            }
+        }
+
+        // If user has assigned departments, fallback to attendance dashboard
+        foreach ($normalizedPerms as $np) {
+            if (is_numeric($np) && (int)$np > 0) {
+                return $isSubAdmin ? '/' . $slug . '/attendance/dashboard' : '/attendance/dashboard';
             }
         }
 

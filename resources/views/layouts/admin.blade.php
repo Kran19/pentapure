@@ -164,6 +164,11 @@
                 if (in_array($m, $perms) || in_array('view_' . $m, $perms) || in_array('edit_' . $m, $perms) || in_array('module_' . $m, $perms)) {
                     return true;
                 }
+                if (str_starts_with($m, 'attendance_')) {
+                    foreach ($perms as $p) {
+                        if (is_numeric($p) && (int)$p > 0) return true;
+                    }
+                }
                 if ($role === 'STOCK_MANAGER' && str_starts_with($m, 'stock_manager_') && empty($perms)) return true;
                 return false;
             };
