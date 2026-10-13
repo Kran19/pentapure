@@ -245,7 +245,6 @@ class SubAdminViewEditTest extends TestCase
             ->get("/sub_admin/attendance/daily?date={$dateSubmitted}");
         $respDailySubmitted->assertStatus(200);
         $contentDailySubmitted = $respDailySubmitted->getContent();
-        $this->assertStringContainsString('This attendance record has been SUBMITTED and is locked', $contentDailySubmitted);
         $this->assertStringNotContainsString('>Final Save</button>', $contentDailySubmitted);
         $this->assertStringNotContainsString('>Save Changes</button>', $contentDailySubmitted);
 
@@ -254,7 +253,6 @@ class SubAdminViewEditTest extends TestCase
             ->get("/sub_admin/attendance/daily?date={$datePending}");
         $respDailyPending->assertStatus(200);
         $contentDailyPending = $respDailyPending->getContent();
-        $this->assertStringNotContainsString('This attendance record has been SUBMITTED and is locked', $contentDailyPending);
         $this->assertStringContainsString('>Final Save</button>', $contentDailyPending);
         $this->assertStringContainsString('>Save Changes</button>', $contentDailyPending);
     }

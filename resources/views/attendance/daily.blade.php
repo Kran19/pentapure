@@ -80,11 +80,6 @@
     </div>
   </div>
 
-  @if($isLocked)
-    <div style="background:#fce4e4; border:1px solid #fccacb; color:#c0392b; padding:1rem; border-radius:5px; margin-bottom:1rem; font-weight:bold;">
-      🔒 This attendance record has been SUBMITTED and is locked. Only an Administrator can make changes.
-    </div>
-  @endif
 
   <form id="bulk-attendance-form">
     @php

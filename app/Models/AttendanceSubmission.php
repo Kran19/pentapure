@@ -37,3 +37,4 @@ class AttendanceSubmission extends Model
         return $this->belongsTo(User::class, 'last_modified_by');
     }
 }
+
