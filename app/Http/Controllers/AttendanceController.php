@@ -90,6 +90,19 @@ class AttendanceController extends Controller
                 return false;
             }
 
+            // If user has ANY granular view_ or edit_ permissions configured,
+            // they must explicitly have edit_attendance_daily to edit attendance
+            $hasGranular = false;
+            foreach ($normalized as $p) {
+                if (is_string($p) && (str_starts_with($p, 'view_') || str_starts_with($p, 'edit_'))) {
+                    $hasGranular = true;
+                    break;
+                }
+            }
+            if ($hasGranular) {
+                return false;
+            }
+
             // Legacy permission without explicit view prefix
             if (in_array('attendance_daily', $normalized, true)) {
                 return true;

@@ -41,10 +41,18 @@
   }
   $normPerms = array_map(fn($p) => strtolower(trim((string)$p)), $rawPerms);
 
+  $hasGranular = false;
+  foreach ($normPerms as $p) {
+      if (is_string($p) && (str_starts_with($p, 'view_') || str_starts_with($p, 'edit_'))) {
+          $hasGranular = true;
+          break;
+      }
+  }
+
   $userHasEditPermission = in_array($userRole, ['ADMIN', 'SUPER_ADMIN', 'ATTENDANCE']) ||
       in_array('can_manage', $normPerms, true) ||
       in_array('edit_attendance_daily', $normPerms, true) ||
-      (!empty($canEditAttendance));
+      (!$hasGranular && in_array('attendance_daily', $normPerms, true) && !empty($canEditAttendance));
 @endphp
 
   <!-- Summary Cards -->
