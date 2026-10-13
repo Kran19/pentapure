@@ -212,25 +212,36 @@ class AttendanceController extends Controller
             ->get()
             ->keyBy(fn($item) => Carbon::parse($item->date)->toDateString());
 
-        // All recent submissions (limit 50)
+        // All submissions query (show all records, remove limit 50)
         $allRecentSubmissionsQuery = \App\Models\AttendanceSubmission::with(['createdBy', 'submittedBy']);
-        if ($request->has('month')) {
+        if ($request->filled('month')) {
             $allRecentSubmissionsQuery->whereBetween('attendance_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()]);
         }
         $allRecentSubmissions = $allRecentSubmissionsQuery
             ->orderBy('attendance_date', 'desc')
-            ->limit(50)
             ->get();
 
-        // Submitted submissions (limit 50)
+        // Also include any unlinked attendance dates that have actual punch records
+        foreach ($unlinkedAttendanceDates as $uDate) {
+            $uDateStr = Carbon::parse($uDate)->toDateString();
+            if (!$allRecentSubmissions->contains(fn($s) => Carbon::parse($s->attendance_date)->toDateString() === $uDateStr)) {
+                $sub = new \App\Models\AttendanceSubmission([
+                    'attendance_date' => Carbon::parse($uDate),
+                    'status'          => 'PARTIAL_SAVED',
+                ]);
+                $allRecentSubmissions->push($sub);
+            }
+        }
+        $allRecentSubmissions = $allRecentSubmissions->sortByDesc(fn($s) => Carbon::parse($s->attendance_date)->toDateString())->values();
+
+        // Submitted submissions (show all submitted records, remove limit 50)
         $submittedSubmissionsQuery = \App\Models\AttendanceSubmission::with(['createdBy', 'submittedBy'])
             ->where('status', 'SUBMITTED');
-        if ($request->has('month')) {
+        if ($request->filled('month')) {
             $submittedSubmissionsQuery->whereBetween('attendance_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()]);
         }
         $submittedSubmissions = $submittedSubmissionsQuery
             ->orderBy('attendance_date', 'desc')
-            ->limit(50)
             ->get();
             
         $departmentsQuery = Department::withCount('workers')->orderBy('name');

@@ -249,4 +249,69 @@ class AttendanceDashboardPendingTabTest extends TestCase
         $this->assertStringContainsString('11-10-2026', $pendingSection);
         $this->assertStringNotContainsString('10-10-2026', $pendingSection);
     }
+
+    public function test_attendance_dashboard_opens_all_records_tab_on_initial_open(): void
+    {
+        $admin = $this->createUser('ADMIN');
+        $sessionAdmin = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
+
+        $response = $this->withSession($sessionAdmin)->get('/admin/attendance/dashboard');
+        $response->assertStatus(200);
+
+        $content = $response->getContent();
+
+        // 1. All Records tab content is visible by default (no display:none)
+        $this->assertStringContainsString('<div id="tab-content-all" class="att-tab-pane">', $content);
+
+        // 2. Pending tab content is hidden by default (style="display:none;")
+        $this->assertStringContainsString('<div id="tab-content-pending" class="att-tab-pane" style="display:none;">', $content);
+
+        // 3. Active tab hidden input defaults to 'all'
+        $this->assertStringContainsString('id="activeTabInput" value="all"', $content);
+
+        // 4. All tab button is active (has white background and shadow)
+        $this->assertStringContainsString('id="tab-btn-all" class="att-tab-btn" onclick="switchAttendanceTab(\'all\')" style="display:flex; align-items:center; gap:6px; padding:0.45rem 0.9rem; border-radius:8px; border:none; font-weight:600; font-size:0.85rem; cursor:pointer; background:#ffffff; color:#0f172a; box-shadow:0 1px 3px rgba(0,0,0,0.1);', $content);
+
+        // 5. JS default falls back to 'all' tab
+        $this->assertStringContainsString("switchAttendanceTab('all');", $content);
+    }
+
+    public function test_attendance_dashboard_all_records_shows_all_records_without_limit(): void
+    {
+        $subAdmin = User::create([
+            'name'        => 'Sub Admin All',
+            'email'       => 'subadmin_all_' . uniqid() . '@example.com',
+            'password'    => 'password123',
+            'role'        => 'SUB_ADMIN',
+            'status'      => 'ACTIVE',
+            'permissions' => ['view_attendance_dashboard', 'edit_attendance_daily'],
+        ]);
+        $session = ['auth_user' => $subAdmin->toArray()];
+
+        // Create 55 attendance submissions to test exceeding previous 50 limit
+        $startDate = Carbon::parse('2026-08-01');
+        for ($i = 0; $i < 55; $i++) {
+            $currDate = $startDate->copy()->addDays($i)->toDateString();
+            AttendanceSubmission::create([
+                'attendance_date' => $currDate,
+                'status'          => $i % 2 === 0 ? 'SUBMITTED' : 'PARTIAL_SAVED',
+                'created_by'      => $subAdmin->id,
+            ]);
+        }
+
+        $response = $this->withSession($session)->get('/sub_admin/attendance/dashboard');
+        $response->assertStatus(200);
+
+        // Assert recentSubmissions view data contains all 55+ submissions (no 50 limit)
+        $allRecords = $response->viewData('recentSubmissions');
+        $this->assertGreaterThanOrEqual(55, $allRecords->count(), 'All Records tab must show all submissions without 50 limit');
+
+        $content = $response->getContent();
+
+        // Check earliest and latest dates from the 55 records are present
+        $firstDateFormatted = Carbon::parse('2026-08-01')->format('d-m-Y');
+        $lastDateFormatted  = Carbon::parse('2026-08-01')->addDays(54)->format('d-m-Y');
+        $this->assertStringContainsString($firstDateFormatted, $content);
+        $this->assertStringContainsString($lastDateFormatted, $content);
+    }
 }

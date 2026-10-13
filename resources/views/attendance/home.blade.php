@@ -104,9 +104,12 @@
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
         <!-- Month Filter -->
         <form method="GET" action="{{ url()->current() }}" id="monthFilterForm" style="display:inline-flex; align-items:center; gap:6px;">
-          <input type="hidden" name="tab" id="activeTabInput" value="{{ request('tab', 'pending') }}">
+          <input type="hidden" name="tab" id="activeTabInput" value="{{ request('tab', 'all') }}">
           <label style="font-weight:600; font-size:0.85rem; color:#475569;">Month:</label>
-          <input type="month" name="month" value="{{ $selectedMonth ?? date('Y-m') }}" onchange="this.form.submit()" onclick="if(typeof this.showPicker === 'function'){ try{ this.showPicker(); }catch(e){} }" style="padding:0.4rem 0.65rem; border-radius:8px; border:1px solid #cbd5e1; font-weight:600; font-size:0.85rem; cursor:pointer; background:#fff; color:#0f172a;">
+          <input type="month" name="month" value="{{ request('month', $selectedMonth ?? date('Y-m')) }}" onchange="this.form.submit()" onclick="if(typeof this.showPicker === 'function'){ try{ this.showPicker(); }catch(e){} }" style="padding:0.4rem 0.65rem; border-radius:8px; border:1px solid #cbd5e1; font-weight:600; font-size:0.85rem; cursor:pointer; background:#fff; color:#0f172a;">
+          @if(request()->filled('month'))
+            <a href="{{ url()->current() }}#all" style="font-size:0.8rem; color:#ef4444; text-decoration:none; font-weight:600; padding:0.2rem 0.5rem; background:#fee2e2; border-radius:6px;" title="Clear month filter to view all records">✕ Clear</a>
+          @endif
         </form>
 
         <!-- Navigation Tabs -->
@@ -116,7 +119,7 @@
             <span style="background:{{ $pendingSubmissions->count() > 0 ? '#ef4444' : '#10b981' }}; color:white; font-size:0.75rem; padding:1px 7px; border-radius:12px; font-weight:700;">{{ $pendingSubmissions->count() }}</span>
           </button>
 
-          <button type="button" id="tab-btn-all" class="att-tab-btn" onclick="switchAttendanceTab('all')" style="display:flex; align-items:center; gap:6px; padding:0.45rem 0.9rem; border-radius:8px; border:none; font-weight:600; font-size:0.85rem; cursor:pointer; background:transparent; color:#64748b; transition:all 0.2s;">
+          <button type="button" id="tab-btn-all" class="att-tab-btn" onclick="switchAttendanceTab('all')" style="display:flex; align-items:center; gap:6px; padding:0.45rem 0.9rem; border-radius:8px; border:none; font-weight:600; font-size:0.85rem; cursor:pointer; background:#ffffff; color:#0f172a; box-shadow:0 1px 3px rgba(0,0,0,0.1); transition:all 0.2s;">
             <span>📋 All Records</span>
             <span style="background:#e2e8f0; color:#334155; font-size:0.75rem; padding:1px 7px; border-radius:12px; font-weight:700;">{{ $recentSubmissions->count() }}</span>
           </button>
@@ -130,7 +133,7 @@
     </div>
 
     <!-- TAB 1: PENDING ATTENDANCE -->
-    <div id="tab-content-pending" class="att-tab-pane">
+    <div id="tab-content-pending" class="att-tab-pane" style="display:none;">
       @if(isset($pendingSubmissions) && $pendingSubmissions->count() > 0)
       <div style="background:#fffbeb; border:1px solid #fef3c7; color:#92400e; padding:0.75rem 1rem; border-radius:8px; margin-bottom:1rem; font-size:0.88rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
         <span>⚠️ <strong>{{ $pendingSubmissions->count() }} pending attendance date(s)</strong> for {{ \Carbon\Carbon::parse(($selectedMonth ?? date('Y-m')) . '-01')->format('F Y') }} require entry or final submission.</span>
@@ -244,7 +247,7 @@
     </div>
 
     <!-- TAB 2: ALL RECORDS -->
-    <div id="tab-content-all" class="att-tab-pane" style="display:none;">
+    <div id="tab-content-all" class="att-tab-pane">
       @if(isset($recentSubmissions) && $recentSubmissions->count() > 0)
       <div style="overflow-x:auto;">
         <table style="width:100%; border-collapse:collapse; text-align:left;">
@@ -260,9 +263,13 @@
           </thead>
           <tbody>
             @foreach($recentSubmissions as $sub)
+            @php
+              $subDate = \Carbon\Carbon::parse($sub->attendance_date);
+              $subDateStr = $subDate->format('Y-m-d');
+            @endphp
             <tr style="border-bottom:1px solid #f1f5f9;">
-              <td style="padding:0.75rem; font-weight:bold; color:#0f172a;">{{ $sub->attendance_date->format('d-m-Y') }}</td>
-              <td style="padding:0.75rem; color:#475569;">{{ $sub->attendance_date->format('l') }}</td>
+              <td style="padding:0.75rem; font-weight:bold; color:#0f172a;">{{ $subDate->format('d-m-Y') }}</td>
+              <td style="padding:0.75rem; color:#475569;">{{ $subDate->format('l') }}</td>
               <td style="padding:0.75rem;">
                 @if($sub->status === 'SUBMITTED')
                   <span style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; padding:4px 8px; border-radius:4px; font-size:0.8rem; font-weight:bold;">🔒 SUBMITTED</span>
@@ -276,20 +283,20 @@
               <td style="padding:0.75rem; color:#475569;">
                 @if($sub->submittedBy)
                   <span style="font-weight:600; color:#1e293b;">{{ $sub->submittedBy->name }}</span>
-                  <br><small style="color:#7f8c8d;">{{ $sub->submitted_at ? $sub->submitted_at->format('d-m-Y, H:i') : '' }}</small>
+                  <br><small style="color:#7f8c8d;">{{ $sub->submitted_at ? \Carbon\Carbon::parse($sub->submitted_at)->format('d-m-Y, H:i') : '' }}</small>
                 @else
                   —
                 @endif
               </td>
               <td style="padding:0.75rem;">
                 <div style="display:flex; gap:5px; justify-content:center; align-items:center;">
-                  <a href="{{ $dailyUrl }}?date={{ $sub->attendance_date->format('Y-m-d') }}" class="btn {{ (!$userHasEditPermission || $sub->status === 'SUBMITTED') ? 'btn-secondary' : '' }}" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; font-size:0.85rem; border-radius:6px;">
+                  <a href="{{ $dailyUrl }}?date={{ $subDateStr }}" class="btn {{ (!$userHasEditPermission || $sub->status === 'SUBMITTED') ? 'btn-secondary' : '' }}" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; font-size:0.85rem; border-radius:6px;">
                     {{ $userHasEditPermission ? 'Open' : 'View' }}
                   </a>
                   @if(in_array($sub->status, ['SUBMITTED', 'PARTIAL_SAVED']))
                     @php
                         $pdfRoute = $isAdmin ? ($roleSlug . '.attendance.daily.pdf') : ($roleSlug . '.daily.pdf');
-                        $dailyPdfUrl = Route::has($pdfRoute) ? route($pdfRoute, ['date' => $sub->attendance_date->format('Y-m-d')]) : url($roleSlug . '/attendance/daily/pdf?date=' . $sub->attendance_date->format('Y-m-d'));
+                        $dailyPdfUrl = Route::has($pdfRoute) ? route($pdfRoute, ['date' => $subDateStr]) : url($roleSlug . '/attendance/daily/pdf?date=' . $subDateStr);
                     @endphp
                     <a href="{{ $dailyPdfUrl }}" class="btn" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; background:#c0392b; color:white; font-size:0.85rem; border-radius:6px;" target="_blank">
                       PDF ↓
@@ -324,9 +331,13 @@
           </thead>
           <tbody>
             @foreach($submittedSubmissions as $sub)
+            @php
+              $subDate = \Carbon\Carbon::parse($sub->attendance_date);
+              $subDateStr = $subDate->format('Y-m-d');
+            @endphp
             <tr style="border-bottom:1px solid #f1f5f9;">
-              <td style="padding:0.75rem; font-weight:bold; color:#0f172a;">{{ $sub->attendance_date->format('d-m-Y') }}</td>
-              <td style="padding:0.75rem; color:#475569;">{{ $sub->attendance_date->format('l') }}</td>
+              <td style="padding:0.75rem; font-weight:bold; color:#0f172a;">{{ $subDate->format('d-m-Y') }}</td>
+              <td style="padding:0.75rem; color:#475569;">{{ $subDate->format('l') }}</td>
               <td style="padding:0.75rem;">
                 <span style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; padding:4px 8px; border-radius:4px; font-size:0.8rem; font-weight:bold;">🔒 SUBMITTED</span>
               </td>
@@ -334,19 +345,19 @@
               <td style="padding:0.75rem; color:#475569;">
                 @if($sub->submittedBy)
                   <span style="font-weight:600; color:#1e293b;">{{ $sub->submittedBy->name }}</span>
-                  <br><small style="color:#7f8c8d;">{{ $sub->submitted_at ? $sub->submitted_at->format('d-m-Y, H:i') : '' }}</small>
+                  <br><small style="color:#7f8c8d;">{{ $sub->submitted_at ? \Carbon\Carbon::parse($sub->submitted_at)->format('d-m-Y, H:i') : '' }}</small>
                 @else
                   —
                 @endif
               </td>
               <td style="padding:0.75rem;">
                 <div style="display:flex; gap:5px; justify-content:center; align-items:center;">
-                  <a href="{{ $dailyUrl }}?date={{ $sub->attendance_date->format('Y-m-d') }}" class="btn btn-secondary" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; font-size:0.85rem; border-radius:6px;">
+                  <a href="{{ $dailyUrl }}?date={{ $subDateStr }}" class="btn btn-secondary" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; font-size:0.85rem; border-radius:6px;">
                     {{ $userHasEditPermission ? 'Open' : 'View' }}
                   </a>
                   @php
                       $pdfRoute = $isAdmin ? ($roleSlug . '.attendance.daily.pdf') : ($roleSlug . '.daily.pdf');
-                      $dailyPdfUrl = Route::has($pdfRoute) ? route($pdfRoute, ['date' => $sub->attendance_date->format('Y-m-d')]) : url($roleSlug . '/attendance/daily/pdf?date=' . $sub->attendance_date->format('Y-m-d'));
+                      $dailyPdfUrl = Route::has($pdfRoute) ? route($pdfRoute, ['date' => $subDateStr]) : url($roleSlug . '/attendance/daily/pdf?date=' . $subDateStr);
                   @endphp
                   <a href="{{ $dailyPdfUrl }}" class="btn" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; background:#c0392b; color:white; font-size:0.85rem; border-radius:6px;" target="_blank">
                     PDF ↓
@@ -463,11 +474,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (['pending', 'all', 'submitted'].includes(tabParam)) {
     switchAttendanceTab(tabParam);
   } else {
-    @if(isset($pendingSubmissions) && $pendingSubmissions->count() > 0)
-      switchAttendanceTab('pending');
-    @else
-      switchAttendanceTab('all');
-    @endif
+    switchAttendanceTab('all');
   }
 });
 
