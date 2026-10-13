@@ -129,9 +129,54 @@ class AttendanceController extends Controller
         $absentToday   = (clone $attBase)->where('status', 'ABSENT')->count();
         $totalOT       = (clone $attBase)->sum('overtime_hours');
 
-        $recentSubmissions = \App\Models\AttendanceSubmission::with(['createdBy', 'submittedBy'])
+        // Fetch all pending attendance submissions (status != 'SUBMITTED')
+        $pendingSubmissions = \App\Models\AttendanceSubmission::with(['createdBy', 'submittedBy', 'lastModifiedBy'])
+            ->where('status', '!=', 'SUBMITTED')
             ->orderBy('attendance_date', 'desc')
-            ->limit(7)
+            ->get();
+
+        // Check if any dates exist in attendances table that don't have an AttendanceSubmission
+        $existingSubDates = \App\Models\AttendanceSubmission::pluck('attendance_date')
+            ->map(fn($d) => Carbon::parse($d)->toDateString())
+            ->toArray();
+        $unlinkedAttendanceDates = Attendance::select('date')
+            ->distinct()
+            ->whereNotIn('date', $existingSubDates)
+            ->pluck('date');
+
+        foreach ($unlinkedAttendanceDates as $uDate) {
+            $uDateStr = Carbon::parse($uDate)->toDateString();
+            if (!$pendingSubmissions->contains(fn($s) => Carbon::parse($s->attendance_date)->toDateString() === $uDateStr)) {
+                $sub = new \App\Models\AttendanceSubmission([
+                    'attendance_date' => Carbon::parse($uDate),
+                    'status'          => 'PARTIAL_SAVED',
+                ]);
+                $pendingSubmissions->push($sub);
+            }
+        }
+
+        // Re-sort pending submissions by date descending
+        $pendingSubmissions = $pendingSubmissions->sortByDesc(fn($s) => Carbon::parse($s->attendance_date)->toDateString())->values();
+
+        // Query attendance counts for pending dates to show progress
+        $pendingDates = $pendingSubmissions->map(fn($s) => Carbon::parse($s->attendance_date)->toDateString())->unique();
+        $pendingAttendanceCounts = Attendance::whereIn('date', $pendingDates)
+            ->selectRaw('date, count(*) as total, sum(case when status != "ABSENT" then 1 else 0 end) as present_count')
+            ->groupBy('date')
+            ->get()
+            ->keyBy(fn($item) => Carbon::parse($item->date)->toDateString());
+
+        // All recent submissions (limit 50)
+        $allRecentSubmissions = \App\Models\AttendanceSubmission::with(['createdBy', 'submittedBy'])
+            ->orderBy('attendance_date', 'desc')
+            ->limit(50)
+            ->get();
+
+        // Submitted submissions (limit 50)
+        $submittedSubmissions = \App\Models\AttendanceSubmission::with(['createdBy', 'submittedBy'])
+            ->where('status', 'SUBMITTED')
+            ->orderBy('attendance_date', 'desc')
+            ->limit(50)
             ->get();
             
         $departmentsQuery = Department::withCount('workers')->orderBy('name');
@@ -141,14 +186,18 @@ class AttendanceController extends Controller
         $departments = $departmentsQuery->get();
 
         return view('attendance.home', [
-            'totalWorkers'      => $totalWorkers,
-            'activeWorkers'     => $activeWorkers,
-            'presentToday'      => $presentToday,
-            'absentToday'       => $absentToday,
-            'totalOT'           => $totalOT,
-            'departments'       => $departments,
-            'recentSubmissions' => $recentSubmissions,
-            'layout'            => $this->getLayout($request)
+            'totalWorkers'            => $totalWorkers,
+            'activeWorkers'           => $activeWorkers,
+            'presentToday'            => $presentToday,
+            'absentToday'             => $absentToday,
+            'totalOT'                 => $totalOT,
+            'departments'             => $departments,
+            'recentSubmissions'       => $allRecentSubmissions,
+            'pendingSubmissions'      => $pendingSubmissions,
+            'pendingAttendanceCounts' => $pendingAttendanceCounts,
+            'submittedSubmissions'    => $submittedSubmissions,
+            'canEditAttendance'       => $this->canEditAttendance(),
+            'layout'                  => $this->getLayout($request)
         ]);
     }
 

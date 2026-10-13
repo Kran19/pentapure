@@ -754,8 +754,10 @@
           <div class="main-content" id="content-area">
             @php 
               $seg2 = request()->segment(2) ?? 'home';
+              $seg3 = request()->segment(3) ?? '';
+              $isDashboardPage = in_array($seg2, ['home', 'dashboard']) || in_array($seg3, ['home', 'dashboard']) || request()->is('*attendance/dashboard*');
             @endphp
-            @if(!in_array($seg2, ['home', 'dashboard']))
+            @if(!in_array($seg2, ['home', 'dashboard']) && !$isDashboardPage)
               <div style="margin-bottom: 1rem;">
                 <button onclick="history.back()" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:8px; padding:0.4rem 0.8rem; cursor:pointer; color:var(--text-main); display:inline-flex; align-items:center; gap:5px; transition:all 0.2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border-color)'">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -766,7 +768,7 @@
                 </button>
               </div>
             @endif
-            @if(!empty($isReadOnly))
+            @if(!empty($isReadOnly) && !$isDashboardPage)
               <div style="margin-bottom:1rem; padding:0.75rem 1.2rem; background:#fffbe8; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:8px; color:#92400e; font-weight:600; display:flex; align-items:center; gap:8px; font-size:0.9rem; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
                 <span>🔒 <strong>View-Only Mode</strong>: You have read-only access to this page. Action buttons like Add, Edit, Delete, or Save are disabled.</span>
               </div>

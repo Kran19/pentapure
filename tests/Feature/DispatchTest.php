@@ -989,4 +989,26 @@ class DispatchTest extends TestCase
         $this->assertStringContainsString("Prev. Dispatched:", $content2);
         $this->assertStringContainsString("200 kg", $content2);
     }
+
+    public function test_sub_admin_dispatch_history_does_not_contain_clear_dispatch_history_button(): void
+    {
+        $subAdmin = User::create([
+            'name'        => 'Sub Admin Dispatch',
+            'email'       => 'subadmin_dispatch_' . uniqid() . '@example.com',
+            'password'    => 'password123',
+            'role'        => 'SUB_ADMIN',
+            'status'      => 'ACTIVE',
+            'permissions' => ['dispatch_history'],
+        ]);
+        $session = ['auth_user' => $subAdmin->toArray()];
+
+        $resp = $this->withSession($session)->get('/sub_admin/dispatch/history');
+        $resp->assertStatus(200);
+        $this->assertStringNotContainsString('Clear All Dispatch History', $resp->getContent());
+
+        // Also verify sub_admin cannot POST to clear endpoint
+        $clearResp = $this->withSession($session)->post('/sub_admin/dispatch/history/clear');
+        $clearResp->assertStatus(403);
+    }
 }
+

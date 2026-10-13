@@ -335,6 +335,82 @@ class WorkerMukadamSalaryTypeTest extends TestCase
         $resWorkers->assertSee('PER LABOUR SALARY');
         $this->assertStringNotContainsString('<div style="font-size:0.65rem; opacity:0.7; color:var(--text-muted);">LABOUR_MUKADAM</div>', $resWorkers->getContent());
     }
+
+    public function test_daily_attendance_sheet_renders_labour_present_for_mukadam_and_status_for_others(): void
+    {
+        $admin = $this->createUser('ADMIN');
+        $sessionAdmin = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
+
+        $mukadamDept = Department::create(['name' => 'MUKADAM']);
+        $prodDept = Department::create(['name' => 'PRODUCTION']);
+
+        $mukadamWorker = Worker::create([
+            'name'          => 'Ahir Lalalbhai',
+            'department_id' => $mukadamDept->id,
+            'role'          => 'Mukadam',
+            'shift_type'    => 'DAY',
+            'salary_type'   => 'LABOUR_MUKADAM',
+            'daily_salary'  => 170,
+            'status'        => 'ACTIVE',
+        ]);
+
+        $prodWorker = Worker::create([
+            'name'          => 'Ramesh Patel',
+            'department_id' => $prodDept->id,
+            'role'          => 'Operator',
+            'shift_type'    => 'DAY',
+            'salary_type'   => 'DAILY',
+            'daily_salary'  => 500,
+            'status'        => 'ACTIVE',
+        ]);
+
+        $date = '2026-10-13';
+        \App\Models\Attendance::create([
+            'worker_id'   => $mukadamWorker->id,
+            'date'        => $date,
+            'status'      => 'PRESENT',
+            'num_workers' => 5,
+            'shift_type'  => 'DAY',
+        ]);
+
+        \App\Models\Attendance::create([
+            'worker_id'   => $prodWorker->id,
+            'date'        => $date,
+            'status'      => 'PRESENT',
+            'shift_type'  => 'DAY',
+        ]);
+
+        \App\Models\AttendanceSubmission::create([
+            'attendance_date' => $date,
+            'status'          => 'SUBMITTED',
+            'created_by'      => $admin->id,
+            'submitted_by'    => $admin->id,
+            'submitted_at'    => now(),
+        ]);
+
+        // Test downloading daily PDF
+        $resPdf = $this->withSession($sessionAdmin)->get("/admin/attendance/daily/pdf?date={$date}");
+        $resPdf->assertStatus(200);
+
+        // Test rendering view directly to inspect HTML content
+        $attendances = \App\Models\Attendance::with('worker.department')->where('date', $date)->get();
+        $grouped = $attendances->groupBy(function($item) {
+            return $item->worker->department->name ?? 'GENERAL';
+        })->sortKeys();
+
+        $renderedHtml = view('pdf.attendance_sheet', [
+            'date'        => $date,
+            'status'      => 'SUBMITTED',
+            'grouped'     => $grouped,
+            'companyName' => 'PPF',
+        ])->render();
+
+        $this->assertStringContainsString('LABOUR PRESENT', $renderedHtml);
+        $this->assertStringContainsString('STATUS', $renderedHtml);
+        $this->assertStringContainsString('Ahir Lalalbhai', $renderedHtml);
+        $this->assertStringContainsString('5', $renderedHtml);
+        $this->assertStringContainsString('Ramesh Patel', $renderedHtml);
+    }
 }
 
 

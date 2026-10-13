@@ -1,0 +1,180 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Attendance;
+use App\Models\AttendanceSubmission;
+use App\Models\Department;
+use App\Models\User;
+use App\Models\Worker;
+use Carbon\Carbon;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class AttendanceDashboardPendingTabTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function createUser(string $role): User
+    {
+        return User::create([
+            'name'     => "User {$role}",
+            'username' => strtolower($role) . '_' . uniqid(),
+            'email'    => strtolower($role) . '_' . uniqid() . '@example.com',
+            'password' => 'password123',
+            'role'     => $role,
+            'branch'   => 'Main Branch',
+            'status'   => 'ACTIVE',
+        ]);
+    }
+
+    public function test_attendance_dashboard_displays_pending_attendance_tab_and_card(): void
+    {
+        $admin = $this->createUser('ADMIN');
+        $sessionAdmin = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
+
+        $dept = Department::create(['name' => 'PRODUCTION']);
+        $worker = Worker::create([
+            'name'          => 'Karan Sharma',
+            'department_id' => $dept->id,
+            'role'          => 'Operator',
+            'shift_type'    => 'DAY',
+            'salary_type'   => 'DAILY',
+            'daily_salary'  => 500,
+            'status'        => 'ACTIVE',
+        ]);
+
+        $pendingDate1 = '2026-10-10';
+        $pendingDate2 = '2026-10-11';
+        $submittedDate = '2026-10-09';
+
+        // 1. Partial saved submission
+        AttendanceSubmission::create([
+            'attendance_date' => $pendingDate1,
+            'status'          => 'PARTIAL_SAVED',
+            'created_by'      => $admin->id,
+        ]);
+        Attendance::create([
+            'worker_id'   => $worker->id,
+            'date'        => $pendingDate1,
+            'status'      => 'PRESENT',
+            'shift_type'  => 'DAY',
+        ]);
+
+        // 2. Pending submission
+        AttendanceSubmission::create([
+            'attendance_date' => $pendingDate2,
+            'status'          => 'PENDING',
+            'created_by'      => $admin->id,
+        ]);
+
+        // 3. Submitted submission
+        AttendanceSubmission::create([
+            'attendance_date' => $submittedDate,
+            'status'          => 'SUBMITTED',
+            'created_by'      => $admin->id,
+            'submitted_by'    => $admin->id,
+            'submitted_at'    => now(),
+        ]);
+
+        $response = $this->withSession($sessionAdmin)->get('/admin/attendance/dashboard');
+        $response->assertStatus(200);
+
+        // Verify Pending Attendance summary card and tab navigation exist
+        $response->assertSee('Pending Attendance');
+        $response->assertSee('tab-btn-pending');
+        $response->assertSee('tab-btn-all');
+        $response->assertSee('tab-btn-submitted');
+        $response->assertSee('tab-content-pending');
+
+        // Verify pending dates are present in the view
+        $response->assertSee('10-10-2026');
+        $response->assertSee('11-10-2026');
+        $response->assertSee('PARTIAL SAVED');
+        $response->assertSee('PENDING');
+
+        // Verify Action button link to open/fill the daily sheet
+        $response->assertSee('/daily?date=2026-10-10');
+        $response->assertSee('/daily?date=2026-10-11');
+        $this->assertStringContainsString('Open & Fill', $response->getContent());
+    }
+
+    public function test_sub_admin_attendance_dashboard_does_not_show_view_only_banner(): void
+    {
+        $subAdmin = User::create([
+            'name'        => 'Sub Admin View Only',
+            'email'       => 'subadmin_view_' . uniqid() . '@example.com',
+            'password'    => 'password123',
+            'role'        => 'SUB_ADMIN',
+            'status'      => 'ACTIVE',
+            'permissions' => ['view_attendance_dashboard'],
+        ]);
+        $session = ['auth_user' => $subAdmin->toArray()];
+
+        $response = $this->withSession($session)->get('/sub_admin/attendance/dashboard');
+        $response->assertStatus(200);
+
+        // Verify the View-Only banner is NOT shown on the dashboard
+        $response->assertDontSee('View-Only Mode: You have read-only access to this page');
+    }
+
+    public function test_sub_admin_with_edit_permission_sees_open_button_on_dashboard(): void
+    {
+        $subAdmin = User::create([
+            'name'        => 'Sub Admin Edit',
+            'email'       => 'subadmin_edit_' . uniqid() . '@example.com',
+            'password'    => 'password123',
+            'role'        => 'SUB_ADMIN',
+            'status'      => 'ACTIVE',
+            'permissions' => ['view_attendance_dashboard', 'edit_attendance_daily'],
+        ]);
+        $session = ['auth_user' => $subAdmin->toArray()];
+
+        $date = '2026-10-12';
+        AttendanceSubmission::create([
+            'attendance_date' => $date,
+            'status'          => 'SUBMITTED',
+            'created_by'      => $subAdmin->id,
+        ]);
+
+        $response = $this->withSession($session)->get('/sub_admin/attendance/dashboard');
+        $response->assertStatus(200);
+
+        $content = $response->getContent();
+        $response->assertSee('12-10-2026');
+        $response->assertSee('SUBMITTED');
+        // When sub admin has edit permission, button must be 'Open'
+        $this->assertStringContainsString('/sub_admin/attendance/daily?date=2026-10-12', $content);
+        $this->assertStringContainsString('>Open<', preg_replace('/\s+/', '', $content));
+    }
+
+    public function test_sub_admin_with_view_only_permission_sees_view_button_on_dashboard(): void
+    {
+        $subAdmin = User::create([
+            'name'        => 'Sub Admin View Only',
+            'email'       => 'subadmin_view2_' . uniqid() . '@example.com',
+            'password'    => 'password123',
+            'role'        => 'SUB_ADMIN',
+            'status'      => 'ACTIVE',
+            'permissions' => ['view_attendance_dashboard', 'view_attendance_daily'],
+        ]);
+        $session = ['auth_user' => $subAdmin->toArray()];
+
+        $date = '2026-10-12';
+        AttendanceSubmission::create([
+            'attendance_date' => $date,
+            'status'          => 'SUBMITTED',
+            'created_by'      => $subAdmin->id,
+        ]);
+
+        $response = $this->withSession($session)->get('/sub_admin/attendance/dashboard');
+        $response->assertStatus(200);
+
+        $content = $response->getContent();
+        $response->assertSee('12-10-2026');
+        $response->assertSee('SUBMITTED');
+        // When sub admin has view-only permission, button must be 'View' and not 'Open'
+        $this->assertStringContainsString('>View<', preg_replace('/\s+/', '', $content));
+        $this->assertStringNotContainsString('>Open<', preg_replace('/\s+/', '', $content));
+    }
+}

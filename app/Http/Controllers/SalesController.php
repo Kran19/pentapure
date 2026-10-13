@@ -775,11 +775,11 @@ class SalesController extends Controller
     public function clearHistory(Request $request)
     {
         $user = $this->authUser();
-        if (!in_array($user['role'] ?? '', ['ADMIN', 'SUB_ADMIN'])) {
+        if (($user['role'] ?? '') !== 'ADMIN') {
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized. Only Admin can clear sales and dispatch data.'], 403);
             }
-            abort(403, 'Unauthorized.');
+            abort(403, 'Unauthorized. Only Admin can clear sales and dispatch data.');
         }
 
         try {

@@ -385,7 +385,7 @@
     </button>
     <button id="export-pdf-btn" class="btn btn-sm btn-secondary" style="width:auto; padding:0.5rem 1rem;"
       onclick="app.exportHistoryPdf(this, '{{ $pdfUrl }}')">📄 Export PDF</button>
-    @if(in_array(session('auth_user')['role'] ?? '', ['ADMIN', 'SUB_ADMIN']))
+    @if((session('auth_user')['role'] ?? '') === 'ADMIN' && !str_contains(request()->path(), 'sub_admin'))
       <button type="button" class="btn btn-sm" onclick="confirmClearDispatchHistory()" style="width:auto; padding:0.5rem 1rem; background:#dc2626; color:#fff; border:none; border-radius:6px; font-weight:700; cursor:pointer;" title="Permanently clear all dispatch logs and sales orders">
         🗑️ Clear All Dispatch History
       </button>

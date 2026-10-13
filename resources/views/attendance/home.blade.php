@@ -31,6 +31,22 @@
   $reportsUrl = $isAdmin 
       ? (Route::has($roleSlug . '.attendance.reports') ? route($roleSlug . '.attendance.reports') : url($roleSlug . '/attendance/reports')) 
       : (Route::has($roleSlug . '.history') ? route($roleSlug . '.history') : url($roleSlug . '/history'));
+
+  $rawPerms = session('auth_user.permissions') ?? [];
+  if (is_string($rawPerms)) {
+      $rawPerms = json_decode($rawPerms, true) ?? [];
+  }
+  if (!is_array($rawPerms)) {
+      $rawPerms = [];
+  }
+  $normPerms = array_map(fn($p) => strtolower(trim((string)$p)), $rawPerms);
+
+  $userHasEditPermission = in_array($userRole, ['ADMIN', 'SUPER_ADMIN']) ||
+      in_array('can_manage', $normPerms, true) ||
+      in_array('edit_attendance_daily', $normPerms, true) ||
+      in_array('edit_attendance_dashboard', $normPerms, true) ||
+      in_array('attendance_daily', $normPerms, true) ||
+      !empty($canEditAttendance);
 @endphp
 
   <!-- Summary Cards -->
@@ -46,6 +62,21 @@
       <div style="font-size:2.5rem; font-weight:bold; color:var(--info);">{{ number_format($totalOT, 1) }}</div>
       <div style="color:var(--text-muted); font-size:0.9rem; margin-top:0.5rem; font-weight:600;">Overtime (Hrs)</div>
     </div>
+
+    <!-- Pending Attendance Card -->
+    <div class="card" style="padding:1.5rem; text-align:center; cursor:pointer; border-top:4px solid {{ $pendingSubmissions->count() > 0 ? '#f59e0b' : '#10b981' }}; transition:transform 0.2s, box-shadow 0.2s;" onclick="switchAttendanceTab('pending'); document.getElementById('attendanceRecordsSection')?.scrollIntoView({behavior:'smooth'});" title="Click to view all pending attendance dates">
+      <div style="font-size:2.5rem; font-weight:bold; color:{{ $pendingSubmissions->count() > 0 ? '#d97706' : '#059669' }};">
+        {{ $pendingSubmissions->count() }}
+      </div>
+      <div style="color:var(--text-muted); font-size:0.9rem; margin-top:0.5rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:5px;">
+        <span>⏳ Pending Attendance</span>
+        @if($pendingSubmissions->count() > 0)
+          <span style="background:#fef3c7; color:#b45309; font-size:0.7rem; padding:1px 6px; border-radius:10px; font-weight:700;">Action Required</span>
+        @else
+          <span style="background:#dcfce7; color:#15803d; font-size:0.7rem; padding:1px 6px; border-radius:10px; font-weight:700;">Clear ✓</span>
+        @endif
+      </div>
+    </div>
   </div>
 
   <!-- Quick Actions -->
@@ -58,70 +89,270 @@
     </div>
   </div>
 
-  <!-- Recent Attendance Status -->
-  <div class="card" style="margin-top:1.5rem; padding:1.5rem;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
-      <h3 style="margin:0;">📅 Recent Attendance Status</h3>
+  <!-- Attendance Records & Status with Tabs -->
+  <div class="card" id="attendanceRecordsSection" style="margin-top:1.5rem; padding:1.5rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:12px;">
+      <div>
+        <h3 style="margin:0; font-size:1.25rem; display:flex; align-items:center; gap:8px;">
+          <span>📅</span> Attendance Records & Status
+        </h3>
+        <p style="margin:4px 0 0; color:var(--text-muted); font-size:0.85rem;">
+          Track daily punch submissions, pending dates, and completed registers
+        </p>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="attendance-tabs" style="display:inline-flex; background:#f1f5f9; padding:4px; border-radius:10px; border:1px solid #e2e8f0; gap:4px;">
+        <button type="button" id="tab-btn-pending" class="att-tab-btn" onclick="switchAttendanceTab('pending')" style="display:flex; align-items:center; gap:6px; padding:0.45rem 0.9rem; border-radius:8px; border:none; font-weight:600; font-size:0.85rem; cursor:pointer; background:transparent; color:#64748b; transition:all 0.2s;">
+          <span>⏳ Pending Attendance</span>
+          <span style="background:{{ $pendingSubmissions->count() > 0 ? '#ef4444' : '#10b981' }}; color:white; font-size:0.75rem; padding:1px 7px; border-radius:12px; font-weight:700;">{{ $pendingSubmissions->count() }}</span>
+        </button>
+
+        <button type="button" id="tab-btn-all" class="att-tab-btn" onclick="switchAttendanceTab('all')" style="display:flex; align-items:center; gap:6px; padding:0.45rem 0.9rem; border-radius:8px; border:none; font-weight:600; font-size:0.85rem; cursor:pointer; background:transparent; color:#64748b; transition:all 0.2s;">
+          <span>📋 All Records</span>
+          <span style="background:#e2e8f0; color:#334155; font-size:0.75rem; padding:1px 7px; border-radius:12px; font-weight:700;">{{ $recentSubmissions->count() }}</span>
+        </button>
+
+        <button type="button" id="tab-btn-submitted" class="att-tab-btn" onclick="switchAttendanceTab('submitted')" style="display:flex; align-items:center; gap:6px; padding:0.45rem 0.9rem; border-radius:8px; border:none; font-weight:600; font-size:0.85rem; cursor:pointer; background:transparent; color:#64748b; transition:all 0.2s;">
+          <span>🔒 Submitted</span>
+          <span style="background:#e2e8f0; color:#334155; font-size:0.75rem; padding:1px 7px; border-radius:12px; font-weight:700;">{{ $submittedSubmissions->count() }}</span>
+        </button>
+      </div>
     </div>
-    @if(isset($recentSubmissions) && $recentSubmissions->count() > 0)
-    <div style="overflow-x:auto;">
-      <table style="width:100%; border-collapse:collapse; text-align:left;">
-        <thead>
-          <tr style="border-bottom:2px solid #eee;">
-            <th style="padding:0.75rem;">Date</th>
-            <th style="padding:0.75rem;">Day</th>
-            <th style="padding:0.75rem;">Status</th>
-            <th style="padding:0.75rem;">Done By</th>
-            <th style="padding:0.75rem;">Submitted By</th>
-            <th style="padding:0.75rem; text-align:center;">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          @foreach($recentSubmissions as $sub)
-          <tr style="border-bottom:1px solid #eee;">
-            <td style="padding:0.75rem; font-weight:bold;">{{ $sub->attendance_date->format('d-m-Y') }}</td>
-            <td style="padding:0.75rem;">{{ $sub->attendance_date->format('l') }}</td>
-            <td style="padding:0.75rem;">
-              @if($sub->status === 'SUBMITTED')
-                <span style="background:#e74c3c; color:white; padding:4px 8px; border-radius:4px; font-size:0.8rem; font-weight:bold;">🔒 SUBMITTED</span>
-              @elseif($sub->status === 'PARTIAL_SAVED')
-                <span style="background:#f39c12; color:white; padding:4px 8px; border-radius:4px; font-size:0.8rem; font-weight:bold;">⏳ PARTIAL SAVED</span>
-              @else
-                <span style="background:#3498db; color:white; padding:4px 8px; border-radius:4px; font-size:0.8rem; font-weight:bold;">🕒 PENDING</span>
-              @endif
-            </td>
-            <td style="padding:0.75rem;">{{ $sub->createdBy->name ?? '—' }}</td>
-            <td style="padding:0.75rem;">
-              @if($sub->submittedBy)
-                {{ $sub->submittedBy->name }} <br><small style="color:#7f8c8d;">{{ $sub->submitted_at->format('d-m-Y, H:i') }}</small>
-              @else
-                —
-              @endif
-            </td>
-            <td style="padding:0.75rem;">
-              <div style="display:flex; gap:5px; justify-content:center; align-items:center;">
-                <a href="{{ $dailyUrl }}?date={{ $sub->attendance_date->format('Y-m-d') }}" class="btn {{ $sub->status === 'SUBMITTED' ? 'btn-secondary' : '' }}" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; font-size: 0.85rem;">
-                  {{ $sub->status === 'SUBMITTED' && $prefix !== 'admin' ? 'View' : 'Open' }}
-                </a>
-                @if(in_array($sub->status, ['SUBMITTED', 'PARTIAL_SAVED']))
+
+    <!-- TAB 1: PENDING ATTENDANCE -->
+    <div id="tab-content-pending" class="att-tab-pane">
+      @if(isset($pendingSubmissions) && $pendingSubmissions->count() > 0)
+      <div style="background:#fffbeb; border:1px solid #fef3c7; color:#92400e; padding:0.75rem 1rem; border-radius:8px; margin-bottom:1rem; font-size:0.88rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <span>⚠️ <strong>{{ $pendingSubmissions->count() }} pending attendance date(s)</strong> require entry or final submission.</span>
+        <span style="font-size:0.8rem; color:#b45309;">Click "Open & Fill" to complete attendance</span>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; text-align:left;">
+          <thead>
+            <tr style="border-bottom:2px solid #e2e8f0; background:#f8fafc;">
+              <th style="padding:0.75rem; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px; color:#475569;">Date</th>
+              <th style="padding:0.75rem; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px; color:#475569;">Day</th>
+              <th style="padding:0.75rem; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px; color:#475569;">Status</th>
+              <th style="padding:0.75rem; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px; color:#475569;">Attendance Progress</th>
+              <th style="padding:0.75rem; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px; color:#475569;">Initiated / Done By</th>
+              <th style="padding:0.75rem; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px; color:#475569; text-align:center;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach($pendingSubmissions as $sub)
+            @php
+              $dateObj = \Carbon\Carbon::parse($sub->attendance_date);
+              $dateStr = $dateObj->format('Y-m-d');
+              $counts = $pendingAttendanceCounts->get($dateStr);
+              $totalEntered = $counts->total ?? 0;
+              $presentCount = $counts->present_count ?? 0;
+              $isToday = $dateObj->isToday();
+            @endphp
+            <tr style="border-bottom:1px solid #f1f5f9; {{ $isToday ? 'background:#fefce8;' : '' }}">
+              <td style="padding:0.75rem; font-weight:bold; color:#0f172a;">
+                {{ $dateObj->format('d-m-Y') }}
+                @if($isToday)
+                  <span style="background:#fef08a; color:#854d0e; font-size:0.7rem; padding:2px 6px; border-radius:4px; margin-left:4px; font-weight:700;">TODAY</span>
+                @endif
+              </td>
+              <td style="padding:0.75rem; color:#475569; font-weight:500;">
+                {{ $dateObj->format('l') }}
+              </td>
+              <td style="padding:0.75rem;">
+                @if($sub->status === 'PARTIAL_SAVED')
+                  <span style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; padding:4px 9px; border-radius:6px; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+                    ⏳ PARTIAL SAVED
+                  </span>
+                @else
+                  <span style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; padding:4px 9px; border-radius:6px; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+                    🕒 PENDING
+                  </span>
+                @endif
+              </td>
+              <td style="padding:0.75rem;">
+                @if($totalEntered > 0)
+                  <div style="font-weight:600; color:#1e293b; font-size:0.88rem;">
+                    {{ $totalEntered }} / {{ $totalWorkers }} Workers Marked
+                  </div>
+                  <div style="font-size:0.75rem; color:#059669; font-weight:600;">
+                    ✓ {{ $presentCount }} Present
+                  </div>
+                @else
+                  <span style="color:#d97706; font-size:0.82rem; font-weight:600; display:inline-flex; align-items:center; gap:4px;">
+                    ⚠️ Attendance Not Entered
+                  </span>
+                @endif
+              </td>
+              <td style="padding:0.75rem; color:#475569; font-size:0.85rem;">
+                @if($sub->createdBy)
+                  <span style="font-weight:600; color:#1e293b;">{{ $sub->createdBy->name }}</span>
+                  @if($sub->updated_at)
+                    <br><small style="color:#94a3b8;">{{ $sub->updated_at->format('d-m-Y, H:i') }}</small>
+                  @endif
+                @else
+                  <span style="color:#94a3b8;">—</span>
+                @endif
+              </td>
+              <td style="padding:0.75rem; text-align:center;">
+                <div style="display:flex; gap:6px; justify-content:center; align-items:center;">
+                  @if($userHasEditPermission)
+                    <a href="{{ $dailyUrl }}?date={{ $dateStr }}" class="btn" style="padding:0.35rem 0.8rem; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-size:0.85rem; background:#0284c7; color:white; border-radius:6px; font-weight:600;">
+                      📝 Open & Fill
+                    </a>
+                  @else
+                    <a href="{{ $dailyUrl }}?date={{ $dateStr }}" class="btn btn-secondary" style="padding:0.35rem 0.8rem; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-size:0.85rem; border-radius:6px;">
+                      View
+                    </a>
+                  @endif
+                  @if($sub->status === 'PARTIAL_SAVED' && $totalEntered > 0)
+                    @php
+                        $pdfRoute = $isAdmin ? ($roleSlug . '.attendance.daily.pdf') : ($roleSlug . '.daily.pdf');
+                        $dailyPdfUrl = Route::has($pdfRoute) ? route($pdfRoute, ['date' => $dateStr]) : url($roleSlug . '/attendance/daily/pdf?date=' . $dateStr);
+                    @endphp
+                    <a href="{{ $dailyPdfUrl }}" class="btn" style="padding:0.35rem 0.65rem; text-decoration:none; display:inline-block; background:#c0392b; color:white; font-size:0.85rem; border-radius:6px;" target="_blank" title="Download Draft PDF">
+                      PDF ↓
+                    </a>
+                  @endif
+                </div>
+              </td>
+            </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+      @else
+      <div style="text-align:center; padding:3rem 1rem; background:#f8fafc; border-radius:8px; border:1px dashed #cbd5e1;">
+        <div style="font-size:2.5rem; margin-bottom:0.5rem;">🎉</div>
+        <h4 style="margin:0 0 0.25rem; color:#0f172a;">All Attendance Up to Date!</h4>
+        <p style="margin:0; color:#64748b; font-size:0.88rem;">There are no pending attendance dates requiring submission.</p>
+        <a href="{{ $dailyUrl }}" class="btn" style="margin-top:1rem; display:inline-block; padding:0.5rem 1.2rem; font-size:0.88rem; width:auto;">
+          📝 Open Today's Attendance Sheet
+        </a>
+      </div>
+      @endif
+    </div>
+
+    <!-- TAB 2: ALL RECORDS -->
+    <div id="tab-content-all" class="att-tab-pane" style="display:none;">
+      @if(isset($recentSubmissions) && $recentSubmissions->count() > 0)
+      <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; text-align:left;">
+          <thead>
+            <tr style="border-bottom:2px solid #e2e8f0; background:#f8fafc;">
+              <th style="padding:0.75rem; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px; color:#475569;">Date</th>
+              <th style="padding:0.75rem; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px; color:#475569;">Day</th>
+              <th style="padding:0.75rem; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px; color:#475569;">Status</th>
+              <th style="padding:0.75rem; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px; color:#475569;">Done By</th>
+              <th style="padding:0.75rem; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px; color:#475569;">Submitted By</th>
+              <th style="padding:0.75rem; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px; color:#475569; text-align:center;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach($recentSubmissions as $sub)
+            <tr style="border-bottom:1px solid #f1f5f9;">
+              <td style="padding:0.75rem; font-weight:bold; color:#0f172a;">{{ $sub->attendance_date->format('d-m-Y') }}</td>
+              <td style="padding:0.75rem; color:#475569;">{{ $sub->attendance_date->format('l') }}</td>
+              <td style="padding:0.75rem;">
+                @if($sub->status === 'SUBMITTED')
+                  <span style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; padding:4px 8px; border-radius:4px; font-size:0.8rem; font-weight:bold;">🔒 SUBMITTED</span>
+                @elseif($sub->status === 'PARTIAL_SAVED')
+                  <span style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; padding:4px 8px; border-radius:4px; font-size:0.8rem; font-weight:bold;">⏳ PARTIAL SAVED</span>
+                @else
+                  <span style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; padding:4px 8px; border-radius:4px; font-size:0.8rem; font-weight:bold;">🕒 PENDING</span>
+                @endif
+              </td>
+              <td style="padding:0.75rem; color:#475569;">{{ $sub->createdBy->name ?? '—' }}</td>
+              <td style="padding:0.75rem; color:#475569;">
+                @if($sub->submittedBy)
+                  <span style="font-weight:600; color:#1e293b;">{{ $sub->submittedBy->name }}</span>
+                  <br><small style="color:#7f8c8d;">{{ $sub->submitted_at ? $sub->submitted_at->format('d-m-Y, H:i') : '' }}</small>
+                @else
+                  —
+                @endif
+              </td>
+              <td style="padding:0.75rem;">
+                <div style="display:flex; gap:5px; justify-content:center; align-items:center;">
+                  <a href="{{ $dailyUrl }}?date={{ $sub->attendance_date->format('Y-m-d') }}" class="btn {{ (!$userHasEditPermission || $sub->status === 'SUBMITTED') ? 'btn-secondary' : '' }}" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; font-size:0.85rem; border-radius:6px;">
+                    {{ $userHasEditPermission ? 'Open' : 'View' }}
+                  </a>
+                  @if(in_array($sub->status, ['SUBMITTED', 'PARTIAL_SAVED']))
+                    @php
+                        $pdfRoute = $isAdmin ? ($roleSlug . '.attendance.daily.pdf') : ($roleSlug . '.daily.pdf');
+                        $dailyPdfUrl = Route::has($pdfRoute) ? route($pdfRoute, ['date' => $sub->attendance_date->format('Y-m-d')]) : url($roleSlug . '/attendance/daily/pdf?date=' . $sub->attendance_date->format('Y-m-d'));
+                    @endphp
+                    <a href="{{ $dailyPdfUrl }}" class="btn" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; background:#c0392b; color:white; font-size:0.85rem; border-radius:6px;" target="_blank">
+                      PDF ↓
+                    </a>
+                  @endif
+                </div>
+              </td>
+            </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+      @else
+      <p style="color:var(--text-muted); text-align:center; padding:2rem;">No recent attendance records found.</p>
+      @endif
+    </div>
+
+    <!-- TAB 3: SUBMITTED RECORDS -->
+    <div id="tab-content-submitted" class="att-tab-pane" style="display:none;">
+      @if(isset($submittedSubmissions) && $submittedSubmissions->count() > 0)
+      <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; text-align:left;">
+          <thead>
+            <tr style="border-bottom:2px solid #e2e8f0; background:#f8fafc;">
+              <th style="padding:0.75rem; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px; color:#475569;">Date</th>
+              <th style="padding:0.75rem; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px; color:#475569;">Day</th>
+              <th style="padding:0.75rem; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px; color:#475569;">Status</th>
+              <th style="padding:0.75rem; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px; color:#475569;">Done By</th>
+              <th style="padding:0.75rem; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px; color:#475569;">Submitted By</th>
+              <th style="padding:0.75rem; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px; color:#475569; text-align:center;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach($submittedSubmissions as $sub)
+            <tr style="border-bottom:1px solid #f1f5f9;">
+              <td style="padding:0.75rem; font-weight:bold; color:#0f172a;">{{ $sub->attendance_date->format('d-m-Y') }}</td>
+              <td style="padding:0.75rem; color:#475569;">{{ $sub->attendance_date->format('l') }}</td>
+              <td style="padding:0.75rem;">
+                <span style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; padding:4px 8px; border-radius:4px; font-size:0.8rem; font-weight:bold;">🔒 SUBMITTED</span>
+              </td>
+              <td style="padding:0.75rem; color:#475569;">{{ $sub->createdBy->name ?? '—' }}</td>
+              <td style="padding:0.75rem; color:#475569;">
+                @if($sub->submittedBy)
+                  <span style="font-weight:600; color:#1e293b;">{{ $sub->submittedBy->name }}</span>
+                  <br><small style="color:#7f8c8d;">{{ $sub->submitted_at ? $sub->submitted_at->format('d-m-Y, H:i') : '' }}</small>
+                @else
+                  —
+                @endif
+              </td>
+              <td style="padding:0.75rem;">
+                <div style="display:flex; gap:5px; justify-content:center; align-items:center;">
+                  <a href="{{ $dailyUrl }}?date={{ $sub->attendance_date->format('Y-m-d') }}" class="btn btn-secondary" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; font-size:0.85rem; border-radius:6px;">
+                    {{ $userHasEditPermission ? 'Open' : 'View' }}
+                  </a>
                   @php
                       $pdfRoute = $isAdmin ? ($roleSlug . '.attendance.daily.pdf') : ($roleSlug . '.daily.pdf');
                       $dailyPdfUrl = Route::has($pdfRoute) ? route($pdfRoute, ['date' => $sub->attendance_date->format('Y-m-d')]) : url($roleSlug . '/attendance/daily/pdf?date=' . $sub->attendance_date->format('Y-m-d'));
                   @endphp
-                  <a href="{{ $dailyPdfUrl }}" class="btn" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; background: #c0392b; color: white; font-size: 0.85rem;" target="_blank">
+                  <a href="{{ $dailyPdfUrl }}" class="btn" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; background:#c0392b; color:white; font-size:0.85rem; border-radius:6px;" target="_blank">
                     PDF ↓
                   </a>
-                @endif
-              </div>
-            </td>
-          </tr>
-          @endforeach
-        </tbody>
-      </table>
+                </div>
+              </td>
+            </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+      @else
+      <p style="color:var(--text-muted); text-align:center; padding:2rem;">No submitted records found.</p>
+      @endif
     </div>
-    @else
-    <p style="color:var(--text-muted);">No recent attendance records found.</p>
-    @endif
   </div>
 
 </div>
@@ -192,6 +423,41 @@
 
 <script>
 const csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+function switchAttendanceTab(tabName) {
+  document.querySelectorAll('.att-tab-pane').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.att-tab-btn').forEach(btn => {
+    btn.style.background = 'transparent';
+    btn.style.color = '#64748b';
+    btn.style.boxShadow = 'none';
+  });
+  
+  const targetPane = document.getElementById('tab-content-' + tabName);
+  if (targetPane) targetPane.style.display = 'block';
+
+  const targetBtn = document.getElementById('tab-btn-' + tabName);
+  if (targetBtn) {
+    targetBtn.style.background = '#ffffff';
+    targetBtn.style.color = '#0f172a';
+    targetBtn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+  }
+
+  history.replaceState(null, null, '#' + tabName);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const tabParam = urlParams.get('tab') || window.location.hash.replace('#', '');
+  if (['pending', 'all', 'submitted'].includes(tabParam)) {
+    switchAttendanceTab(tabParam);
+  } else {
+    @if(isset($pendingSubmissions) && $pendingSubmissions->count() > 0)
+      switchAttendanceTab('pending');
+    @else
+      switchAttendanceTab('all');
+    @endif
+  }
+});
 
 
 const defaultModalSalaryOptions = [

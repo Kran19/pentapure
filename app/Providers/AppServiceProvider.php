@@ -58,7 +58,7 @@ class AppServiceProvider extends ServiceProvider
             }
 
             try {
-                $pendingAttendanceCount = \App\Models\AttendanceSubmission::where('status', 'PENDING')->count();
+                $pendingAttendanceCount = \App\Models\AttendanceSubmission::whereIn('status', ['PENDING', 'PARTIAL_SAVED'])->count();
             } catch (\Throwable $e) {
                 $pendingAttendanceCount = 0;
             }

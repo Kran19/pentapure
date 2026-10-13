@@ -107,7 +107,7 @@
         <div class="category-title">{{ $departmentName }}</div>
         
         @php
-            $isMakadam = strtoupper($departmentName) === 'MAKADAM' || strtoupper($departmentName) === 'MUKADAM(LABOUR)' || strtoupper($departmentName) === 'MUKADAM (LABOUR)' || str_contains(strtoupper($departmentName), 'MUKADAM');
+            $isMakadam = strtoupper($departmentName) === 'MAKADAM' || strtoupper($departmentName) === 'MUKADAM(LABOUR)' || strtoupper($departmentName) === 'MUKADAM (LABOUR)' || str_contains(strtoupper($departmentName), 'MUKADAM') || $attendances->contains(fn($a) => ($a->worker->salary_type ?? '') === 'LABOUR_MUKADAM');
         @endphp
 
         <table>
@@ -115,9 +115,10 @@
                 <tr>
                     <th rowspan="2" style="width: 30px; vertical-align: middle;">S.R.NO</th>
                     <th rowspan="2" class="text-left" style="vertical-align: middle;">EMPLOYEE NAME</th>
-                    <th rowspan="2" style="width: 60px; vertical-align: middle;">STATUS</th>
                     @if($isMakadam)
-                        <th rowspan="2" style="width: 45px; vertical-align: middle;">LABOUR</th>
+                        <th rowspan="2" style="width: 75px; vertical-align: middle;">LABOUR PRESENT</th>
+                    @else
+                        <th rowspan="2" style="width: 60px; vertical-align: middle;">STATUS</th>
                     @endif
                     <th colspan="2">DAY SHIFT</th>
                     <th colspan="2">NIGHT SHIFT</th>
@@ -168,11 +169,14 @@
                     <tr>
                         <td>{{ $index + 1 }}</td>
                         <td class="text-left">{{ $att->worker->name ?? 'N/A' }}</td>
-                        <td style="color: {{ $statusText === 'ABSENT' ? '#d92d20' : '#027a48' }}; font-weight: bold;">
-                            {{ $statusText }}
-                        </td>
                         @if($isMakadam)
-                            <td>{{ $att->num_workers ?: '--' }}</td>
+                            <td style="font-weight: bold; color: {{ $statusText === 'ABSENT' && empty($att->num_workers) ? '#d92d20' : ($att->num_workers ? '#027a48' : '#101828') }};">
+                                {{ $att->num_workers ?: ($statusText === 'ABSENT' ? 'ABSENT' : '--') }}
+                            </td>
+                        @else
+                            <td style="color: {{ $statusText === 'ABSENT' ? '#d92d20' : '#027a48' }}; font-weight: bold;">
+                                {{ $statusText }}
+                            </td>
                         @endif
                         <td>{{ $dayIn }}</td>
                         <td>{{ $dayOut }}</td>
