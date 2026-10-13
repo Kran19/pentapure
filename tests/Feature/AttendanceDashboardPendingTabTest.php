@@ -314,4 +314,72 @@ class AttendanceDashboardPendingTabTest extends TestCase
         $this->assertStringContainsString($firstDateFormatted, $content);
         $this->assertStringContainsString($lastDateFormatted, $content);
     }
+
+    public function test_all_records_tab_shows_all_records_including_pending_dates(): void
+    {
+        $subAdmin = User::create([
+            'name'        => 'Sub Admin Complete View',
+            'email'       => 'subadmin_comp_' . uniqid() . '@example.com',
+            'password'    => 'password123',
+            'role'        => 'SUB_ADMIN',
+            'status'      => 'ACTIVE',
+            'permissions' => ['view_attendance_dashboard', 'edit_attendance_daily'],
+        ]);
+        $session = ['auth_user' => $subAdmin->toArray()];
+
+        $dept = Department::create(['name' => 'PACKAGING']);
+        Worker::create([
+            'name'          => 'Rahul Verma',
+            'department_id' => $dept->id,
+            'role'          => 'Packer',
+            'shift_type'    => 'DAY',
+            'salary_type'   => 'DAILY',
+            'daily_salary'  => 450,
+            'status'        => 'ACTIVE',
+        ]);
+
+        // Create 1 submitted record on 2026-10-12
+        AttendanceSubmission::create([
+            'attendance_date' => '2026-10-12',
+            'status'          => 'SUBMITTED',
+            'created_by'      => $subAdmin->id,
+            'submitted_by'    => $subAdmin->id,
+            'submitted_at'    => now(),
+        ]);
+
+        // Create 1 partial saved record on 2026-10-11
+        AttendanceSubmission::create([
+            'attendance_date' => '2026-10-11',
+            'status'          => 'PARTIAL_SAVED',
+            'created_by'      => $subAdmin->id,
+        ]);
+
+        // Dates 2026-10-01 to 2026-10-10 were never submitted (generated as PENDING)
+        $response = $this->withSession($session)->get('/sub_admin/attendance/dashboard?month=2026-10');
+        $response->assertStatus(200);
+
+        $allRecords = $response->viewData('recentSubmissions');
+
+        // All Records collection must contain SUBMITTED, PARTIAL_SAVED, and PENDING records
+        $this->assertTrue($allRecords->contains(fn($s) => Carbon::parse($s->attendance_date)->toDateString() === '2026-10-12' && $s->status === 'SUBMITTED'));
+        $this->assertTrue($allRecords->contains(fn($s) => Carbon::parse($s->attendance_date)->toDateString() === '2026-10-11' && $s->status === 'PARTIAL_SAVED'));
+        $this->assertTrue($allRecords->contains(fn($s) => Carbon::parse($s->attendance_date)->toDateString() === '2026-10-10' && $s->status === 'PENDING'));
+
+        $content = $response->getContent();
+
+        // Extract the All Records tab HTML section
+        $allSection = substr($content, strpos($content, 'id="tab-content-all"'));
+        $allSection = substr($allSection, 0, strpos($allSection, 'id="tab-content-submitted"'));
+
+        // All Records table must display SUBMITTED, PARTIAL_SAVED, and PENDING badges and dates
+        $this->assertStringContainsString('12-10-2026', $allSection);
+        $this->assertStringContainsString('SUBMITTED', $allSection);
+
+        $this->assertStringContainsString('11-10-2026', $allSection);
+        $this->assertStringContainsString('PARTIAL SAVED', $allSection);
+
+        $this->assertStringContainsString('10-10-2026', $allSection);
+        $this->assertStringContainsString('PENDING', $allSection);
+    }
 }
+

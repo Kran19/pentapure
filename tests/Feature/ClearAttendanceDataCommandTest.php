@@ -110,7 +110,7 @@ class ClearAttendanceDataCommandTest extends TestCase
             'department_id' => $dept->id,
             'salary_type' => 'DAILY',
             'salary_rate' => 450,
-            'status' => 'ACTIVE',
+            'status' => 'INACTIVE',
         ]);
 
         Attendance::create([

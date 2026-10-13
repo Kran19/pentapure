@@ -223,15 +223,33 @@ class AttendanceController extends Controller
 
         // Also include any unlinked attendance dates that have actual punch records
         foreach ($unlinkedAttendanceDates as $uDate) {
-            $uDateStr = Carbon::parse($uDate)->toDateString();
+            $uDateCarbon = Carbon::parse($uDate);
+            if ($request->filled('month') && ($uDateCarbon->lt($startOfMonth) || $uDateCarbon->gt($endOfMonth))) {
+                continue;
+            }
+            $uDateStr = $uDateCarbon->toDateString();
             if (!$allRecentSubmissions->contains(fn($s) => Carbon::parse($s->attendance_date)->toDateString() === $uDateStr)) {
                 $sub = new \App\Models\AttendanceSubmission([
-                    'attendance_date' => Carbon::parse($uDate),
+                    'attendance_date' => $uDateCarbon,
                     'status'          => 'PARTIAL_SAVED',
                 ]);
                 $allRecentSubmissions->push($sub);
             }
         }
+
+        // Include all pending submissions (unsubmitted/missing dates in month + pending records)
+        // so that the "All Records" tab truly contains ALL records (Submitted, Partial Saved, and Pending)
+        foreach ($pendingSubmissions as $pSub) {
+            $pDateCarbon = Carbon::parse($pSub->attendance_date);
+            if ($request->filled('month') && ($pDateCarbon->lt($startOfMonth) || $pDateCarbon->gt($endOfMonth))) {
+                continue;
+            }
+            $pDateStr = $pDateCarbon->toDateString();
+            if (!$allRecentSubmissions->contains(fn($s) => Carbon::parse($s->attendance_date)->toDateString() === $pDateStr)) {
+                $allRecentSubmissions->push($pSub);
+            }
+        }
+
         $allRecentSubmissions = $allRecentSubmissions->sortByDesc(fn($s) => Carbon::parse($s->attendance_date)->toDateString())->values();
 
         // Submitted submissions (show all submitted records, remove limit 50)
