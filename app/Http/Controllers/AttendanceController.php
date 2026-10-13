@@ -53,19 +53,19 @@ class AttendanceController extends Controller
         return [];
     }
 
-    public function canEditAttendance(): bool
+    public function canEditModule(string $moduleKey): bool
     {
         $user = $this->authUser();
         if (!$user) {
             return false;
         }
 
-        $role = $user['role'] ?? '';
+        $role = strtoupper($user['role'] ?? '');
         if (in_array($role, ['ADMIN', 'SUPER_ADMIN'])) {
             return true;
         }
 
-        if ($role === 'SUB_ADMIN') {
+        if ($role === 'SUB_ADMIN' || $role === 'ATTENDANCE') {
             $perms = $user['permissions'] ?? [];
             if (is_string($perms)) {
                 $perms = json_decode($perms, true) ?? [];
@@ -80,18 +80,18 @@ class AttendanceController extends Controller
                 return true;
             }
 
-            // Explicit edit permission on daily attendance
-            if (in_array('edit_attendance_daily', $normalized, true)) {
+            // Explicit edit permission for this module
+            if (in_array('edit_' . $moduleKey, $normalized, true) || in_array('edit_module_' . $moduleKey, $normalized, true)) {
                 return true;
             }
 
-            // If user has view permission on daily or dashboard without edit_attendance_daily, they are view-only
-            if (in_array('view_attendance_daily', $normalized, true) || in_array('view_attendance_dashboard', $normalized, true)) {
+            // Explicit view permission without edit means strictly view-only!
+            if (in_array('view_' . $moduleKey, $normalized, true) || in_array('view_module_' . $moduleKey, $normalized, true)) {
                 return false;
             }
 
             // If user has ANY granular view_ or edit_ permissions configured,
-            // they must explicitly have edit_attendance_daily to edit attendance
+            // they must explicitly have edit_* permission for this module
             $hasGranular = false;
             foreach ($normalized as $p) {
                 if (is_string($p) && (str_starts_with($p, 'view_') || str_starts_with($p, 'edit_'))) {
@@ -104,12 +104,22 @@ class AttendanceController extends Controller
             }
 
             // Legacy permission without explicit view prefix
-            if (in_array('attendance_daily', $normalized, true)) {
+            if (in_array($moduleKey, $normalized, true) || in_array('module_' . $moduleKey, $normalized, true)) {
+                return true;
+            }
+
+            // If ATTENDANCE role with no granular permissions configured, allow edit
+            if ($role === 'ATTENDANCE') {
                 return true;
             }
         }
 
         return false;
+    }
+
+    public function canEditAttendance(): bool
+    {
+        return $this->canEditModule('attendance_daily');
     }
 
     public function team(Request $request)
@@ -302,7 +312,9 @@ class AttendanceController extends Controller
             'pendingAttendanceCounts' => $pendingAttendanceCounts,
             'submittedSubmissions'    => $submittedSubmissions,
             'selectedMonth'           => $selectedMonth,
-            'canEditAttendance'       => $this->canEditAttendance(),
+            'canEditAttendance'       => $this->canEditModule('attendance_daily'),
+            'isReadOnly'              => !$this->canEditModule('attendance_dashboard'),
+            'authUser'                => $this->authUser(),
             'layout'                  => $this->getLayout($request)
         ]);
     }
@@ -356,6 +368,13 @@ class AttendanceController extends Controller
                 return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
             }
             abort(403);
+        }
+
+        if (!$this->canEditModule('attendance_daily')) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized. You have View-Only permissions for Daily Attendance.'], 403);
+            }
+            abort(403, 'Unauthorized. You have View-Only permissions for Daily Attendance.');
         }
 
         $date = $request->input('date');
@@ -435,12 +454,17 @@ class AttendanceController extends Controller
 
         return view('attendance.departments', [
             'departments' => $departments,
+            'isReadOnly'  => !$this->canEditModule('attendance_departments'),
             'layout'      => $this->getLayout($request)
         ]);
     }
 
     public function storeDepartment(Request $request)
     {
+        if (!$this->canEditModule('attendance_departments')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized. You have View-Only permissions for Departments.'], 403);
+        }
+
         $request->validate([
             'name'      => 'required|string|max:255',
             'is_active' => 'nullable',
@@ -475,6 +499,10 @@ class AttendanceController extends Controller
 
     public function toggleDepartmentStatus($id)
     {
+        if (!$this->canEditModule('attendance_departments')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized. You have View-Only permissions for Departments.'], 403);
+        }
+
         $allowedDeptIds = $this->getAllowedDeptIds();
         if (!empty($allowedDeptIds) && !in_array((int)$id, $allowedDeptIds, true)) {
             return response()->json(['success' => false, 'message' => 'Unauthorized department.'], 403);
@@ -498,6 +526,10 @@ class AttendanceController extends Controller
 
     public function destroyDepartment($id)
     {
+        if (!$this->canEditModule('attendance_departments')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized. You have View-Only permissions for Departments.'], 403);
+        }
+
         $allowedDeptIds = $this->getAllowedDeptIds();
         if (!empty($allowedDeptIds) && !in_array((int)$id, $allowedDeptIds, true)) {
             return response()->json(['success' => false, 'message' => 'Unauthorized department.'], 403);
@@ -576,6 +608,7 @@ class AttendanceController extends Controller
             'workers'     => $workers,
             'departments' => $departments,
             'search'      => $search,
+            'isReadOnly'  => !$this->canEditModule('attendance_workers'),
             'layout'      => $this->getLayout($request)
         ]);
     }
@@ -617,6 +650,10 @@ class AttendanceController extends Controller
 
     public function storeWorker(Request $request)
     {
+        if (!$this->canEditModule('attendance_workers')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized. You have View-Only permissions for Workers Master.'], 403);
+        }
+
         $request->validate([
             'name'          => 'required|string|max:255',
             'department_id' => 'required|exists:departments,id',
@@ -676,6 +713,10 @@ class AttendanceController extends Controller
 
     public function destroyWorker($id)
     {
+        if (!$this->canEditModule('attendance_workers')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized. You have View-Only permissions for Workers Master.'], 403);
+        }
+
         $worker = Worker::find($id);
         if (!$worker) {
             return response()->json(['success' => false, 'message' => 'Worker not found'], 404);
@@ -709,6 +750,10 @@ class AttendanceController extends Controller
 
     public function toggleWorkerStatus($id)
     {
+        if (!$this->canEditModule('attendance_workers')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized. You have View-Only permissions for Workers Master.'], 403);
+        }
+
         $worker = Worker::find($id);
         if (!$worker) {
             return response()->json(['success' => false, 'message' => 'Worker not found.'], 404);
@@ -768,12 +813,15 @@ class AttendanceController extends Controller
         $submission = \App\Models\AttendanceSubmission::where('attendance_date', $date)->first();
 
         return view('attendance.daily', [
-            'workers'     => $workers,
-            'departments' => $departments,
-            'date'        => $date,
-            'submission'  => $submission,
-            'layout'      => $this->getLayout($request),
-            'authUser'    => $this->authUser()
+            'workers'           => $workers,
+            'departments'       => $departments,
+            'date'              => $date,
+            'submission'        => $submission,
+            'isReadOnly'        => !$this->canEditModule('attendance_daily'),
+            'canEditAttendance' => $this->canEditModule('attendance_daily'),
+            'canEditDaily'      => $this->canEditModule('attendance_daily'),
+            'layout'            => $this->getLayout($request),
+            'authUser'          => $this->authUser()
         ]);
     }
 
@@ -830,6 +878,10 @@ class AttendanceController extends Controller
 
     public function storeDailyAttendance(Request $request)
     {
+        if (!$this->canEditModule('attendance_daily')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized. You have View-Only permissions for Daily Attendance.'], 403);
+        }
+
         $date = $request->input('date');
         $attendances = $request->input('attendances', []);
         
@@ -1139,12 +1191,17 @@ class AttendanceController extends Controller
             'reportData' => $reportData,
             'month'      => $month,
             'search'     => $search,
+            'isReadOnly' => !$this->canEditModule('attendance_reports'),
             'layout'     => $this->getLayout($request)
         ]);
     }
 
     public function togglePaymentStatus(Request $request, $id)
     {
+        if (!$this->canEditModule('attendance_reports')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized. You have View-Only permissions for Reports & Payroll.'], 403);
+        }
+
         $request->validate([
             'month' => 'required|date_format:Y-m',
             'is_paid' => 'required|boolean',
@@ -1192,12 +1249,17 @@ class AttendanceController extends Controller
     public function workerReport(Request $request, $id)
     {
         $data = $this->prepareWorkerReportData($request, $id);
+        $data['isReadOnly'] = !$this->canEditModule('attendance_reports');
         $data['layout'] = $this->getLayout($request);
         return view('attendance.worker_report', $data);
     }
 
     public function updateMonthlyAdjustment(Request $request, $id)
     {
+        if (!$this->canEditModule('attendance_reports')) {
+            abort(403, 'Unauthorized. You have View-Only permissions for Reports & Payroll.');
+        }
+
         $request->validate([
             'month' => 'required|date_format:Y-m',
             'petrol_food_amount' => 'nullable|numeric',

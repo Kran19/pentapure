@@ -140,6 +140,13 @@
             $perms = [];
           }
 
+          $activeSlug = (request()->segment(1) === 'public' ? request()->segment(2) : request()->segment(1)) ?: (session('auth_user.login_slug') ?? 'admin');
+          $pathSegments = explode('/', trim(request()->path(), '/'));
+          if (strtolower($pathSegments[0] ?? '') === 'public') {
+              array_shift($pathSegments);
+          }
+          $activeSeg2 = strtolower($pathSegments[1] ?? '');
+          $activeSeg3 = strtolower($pathSegments[2] ?? '');
         @endphp
         <div id="admin-sidebar" class="admin-sidebar">
           <div style="text-align:center;padding:1rem 1rem 0.5rem;">
@@ -531,13 +538,13 @@
               </div>
 
               @if($can('attendance_dashboard'))
-              <a href="{{ url(request()->segment(1) . '/attendance/dashboard') }}" class="nav-item {{ $subSeg2=='attendance' && ($subSeg3=='dashboard' || $subSeg3=='home' || $subSeg3=='') ? 'active' : '' }}">
+              <a href="{{ url($activeSlug . '/attendance/dashboard') }}" class="nav-item {{ $activeSeg2=='attendance' && ($activeSeg3=='dashboard' || $activeSeg3=='home' || $activeSeg3=='') ? 'active' : '' }}">
                 Attendance Dashboard
               </a>
               @endif
 
               @if($can('attendance_daily'))
-              <a href="{{ url(request()->segment(1) . '/attendance/daily') }}" class="nav-item {{ $subSeg2=='attendance' && $subSeg3=='daily' ? 'active' : '' }}">
+              <a href="{{ url($activeSlug . '/attendance/daily') }}" class="nav-item {{ $activeSeg2=='attendance' && $activeSeg3=='daily' ? 'active' : '' }}">
                 <span>Daily Attendance Entry</span>
                 @if(($sidebarPendingAttendanceCount ?? 0) > 0)
                   <span class="sidebar-badge badge-warning" title="{{ $sidebarPendingAttendanceCount }} pending submission(s)">{{ $sidebarPendingAttendanceCount }}</span>
@@ -546,19 +553,19 @@
               @endif
 
               @if($can('attendance_departments'))
-              <a href="{{ url(request()->segment(1) . '/attendance/departments') }}" class="nav-item {{ $subSeg2=='attendance' && $subSeg3=='departments' ? 'active' : '' }}">
+              <a href="{{ url($activeSlug . '/attendance/departments') }}" class="nav-item {{ $activeSeg2=='attendance' && $activeSeg3=='departments' ? 'active' : '' }}">
                 Departments Master
               </a>
               @endif
 
               @if($can('attendance_workers'))
-              <a href="{{ url(request()->segment(1) . '/attendance/workers') }}" class="nav-item {{ $subSeg2=='attendance' && $subSeg3=='workers' ? 'active' : '' }}">
+              <a href="{{ url($activeSlug . '/attendance/workers') }}" class="nav-item {{ $activeSeg2=='attendance' && $activeSeg3=='workers' ? 'active' : '' }}">
                 Workers Master
               </a>
               @endif
 
               @if($can('attendance_reports'))
-              <a href="{{ url(request()->segment(1) . '/attendance/reports') }}" class="nav-item {{ $subSeg2=='attendance' && in_array($subSeg3, ['reports', 'history']) ? 'active' : '' }}">
+              <a href="{{ url($activeSlug . '/attendance/reports') }}" class="nav-item {{ $activeSeg2=='attendance' && in_array($activeSeg3, ['reports', 'history']) ? 'active' : '' }}">
                 Reports &amp; Payroll
               </a>
               @endif
@@ -661,12 +668,12 @@
               </div>
               <div id="att-submenu" style="display:none; padding-left:1rem; border-left:2px solid var(--primary);">
                 @if($can('attendance_dashboard'))
-                <a href="{{ url(request()->segment(1) . '/attendance/dashboard') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='dashboard' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
+                <a href="{{ url($activeSlug . '/attendance/dashboard') }}" class="nav-item {{ $activeSeg2=='attendance' && ($activeSeg3=='dashboard' || $activeSeg3=='home' || $activeSeg3=='') ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
                   Dashboard
                 </a>
                 @endif
                 @if($can('attendance_daily'))
-                <a href="{{ url(request()->segment(1) . '/attendance/daily') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='daily' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
+                <a href="{{ url($activeSlug . '/attendance/daily') }}" class="nav-item {{ $activeSeg2=='attendance' && $activeSeg3=='daily' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
                   <span>Daily Entry</span>
                   @if(($sidebarPendingAttendanceCount ?? 0) > 0)
                     <span class="sidebar-badge badge-warning" title="{{ $sidebarPendingAttendanceCount }} pending submission(s)">{{ $sidebarPendingAttendanceCount }}</span>
@@ -674,17 +681,17 @@
                 </a>
                 @endif
                 @if($can('attendance_departments'))
-                <a href="{{ url(request()->segment(1) . '/attendance/departments') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='departments' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
+                <a href="{{ url($activeSlug . '/attendance/departments') }}" class="nav-item {{ $activeSeg2=='attendance' && $activeSeg3=='departments' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
                   Departments
                 </a>
                 @endif
                 @if($can('attendance_reports'))
-                <a href="{{ url(request()->segment(1) . '/attendance/reports') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='reports' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
+                <a href="{{ url($activeSlug . '/attendance/reports') }}" class="nav-item {{ $activeSeg2=='attendance' && in_array($activeSeg3, ['reports', 'history']) ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
                   Reports
                 </a>
                 @endif
                 @if($can('attendance_workers'))
-                <a href="{{ url(request()->segment(1) . '/attendance/workers') }}" class="nav-item {{ request()->segment(2)=='attendance' && request()->segment(3)=='workers' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
+                <a href="{{ url($activeSlug . '/attendance/workers') }}" class="nav-item {{ $activeSeg2=='attendance' && $activeSeg3=='workers' ? 'active' : '' }}" style="font-size:0.9rem; padding:0.6rem 1rem;">
                   Workers List
                 </a>
                 @endif

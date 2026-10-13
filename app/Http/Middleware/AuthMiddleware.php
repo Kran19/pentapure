@@ -31,8 +31,9 @@ class AuthMiddleware
             }
         }
 
-        if (!empty($roles) && !in_array($user['role'], $roles)) {
-            if (in_array($user['role'], ['SUB_ADMIN', 'STOCK_MANAGER'])) {
+        $userRoleUpper = strtoupper($user['role'] ?? '');
+        if (!empty($roles) && !in_array($userRoleUpper, array_map('strtoupper', $roles))) {
+            if (in_array($userRoleUpper, ['SUB_ADMIN', 'STOCK_MANAGER'])) {
                 // Allowed into middleware check for granular module evaluation below
             } else {
                 abort(403, 'Unauthorized. You do not have access to this section.');
@@ -40,7 +41,7 @@ class AuthMiddleware
         }
 
         // Granular permission check for SUB_ADMIN and STOCK_MANAGER
-        if (in_array($user['role'], ['SUB_ADMIN', 'STOCK_MANAGER'])) {
+        if (in_array($userRoleUpper, ['SUB_ADMIN', 'STOCK_MANAGER'])) {
             $pathLower = strtolower($request->path());
             $isExport = str_ends_with($pathLower, '/pdf')
                 || str_ends_with($pathLower, '/csv')
@@ -119,9 +120,9 @@ class AuthMiddleware
                 }
             }
 
-            // 1. Check Edit (Write) Access
+            // 1. Check Edit (Write) Access: requires explicit edit permission or can_manage
             $hasEdit = false;
-            if ($user['role'] === 'STOCK_MANAGER' || in_array('can_manage', $normalizedPerms, true)) {
+            if (in_array('can_manage', $normalizedPerms, true)) {
                 $hasEdit = true;
             } else {
                 foreach ($keysToCheck as $k) {
@@ -251,7 +252,7 @@ class AuthMiddleware
         }
 
         // 1. Attendance module
-        if ($section === 'attendance' || $prefix === 'attendance') {
+        if ($section === 'attendance' || $prefix === 'attendance' || in_array($section, ['attendance', 'departments', 'workers', 'daily', 'team', 'reports'])) {
             $attSub = ($section === 'attendance') ? $action : $section;
             if (in_array($attSub, ['dashboard', 'home', ''])) return 'attendance_dashboard';
             if (in_array($attSub, ['departments', 'department'])) return 'attendance_departments';

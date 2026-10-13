@@ -7,7 +7,8 @@
   <meta name="base-url" content="{{ url(request()->segment(1) . '/') }}">
   <script>
     window.baseUrl = '{{ url('') }}';
-    window.userSlug = '{{ request()->segment(1) }}';
+    window.userSlug = '{{ (request()->segment(1) === 'public' ? request()->segment(2) : request()->segment(1)) ?? 'attendance' }}';
+    window.isReadOnly = {{ !empty($isReadOnly) ? 'true' : 'false' }};
   </script>
   <link rel="icon" type="image/png" href="{{ asset('logo.png') }}?v={{ filemtime(public_path('logo.png')) }}">
   <link rel="shortcut icon" type="image/png" href="{{ asset('logo.png') }}?v={{ filemtime(public_path('logo.png')) }}">
@@ -16,7 +17,7 @@
   <link rel="stylesheet" href="{{ asset('css/tabulator-custom.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
-<body class="admin-mode attendance-mode">
+<body class="admin-mode attendance-mode {{ !empty($isReadOnly) ? 'is-read-only' : '' }}">
   <div id="toast-container"></div>
 
   <div class="app-container" id="app-root">
