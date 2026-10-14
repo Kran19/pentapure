@@ -18,8 +18,8 @@
 
 @php
   $seg = (request()->segment(1) === 'public' ? request()->segment(2) : request()->segment(1));
-  $userRole = strtoupper(session('auth_user.role') ?? '');
-  $isAdmin = in_array($userRole, ['ADMIN', 'SUB_ADMIN']) || str_starts_with((string)$seg, 'admin') || str_starts_with((string)$seg, 'sub_admin');
+  $userRole = strtoupper(session('auth_user')['role'] ?? (session('auth_user.role') ?? ''));
+  $isAdmin = in_array($userRole, ['ADMIN', 'SUPER_ADMIN', 'SUB_ADMIN']) || str_starts_with((string)$seg, 'admin') || str_starts_with((string)$seg, 'sub_admin');
   $roleSlug = $seg ?: ($isAdmin ? 'admin' : 'attendance');
   $prefix = $isAdmin ? 'admin' : 'attendance';
   $workersUrl = $isAdmin 
@@ -169,6 +169,12 @@
             <span style="background:#e2e8f0; color:#334155; font-size:0.75rem; padding:1px 7px; border-radius:12px; font-weight:700;">{{ $submittedSubmissions->count() }}</span>
           </button>
         </div>
+
+        @if(in_array($userRole, ['ADMIN', 'SUPER_ADMIN']))
+        <button type="button" class="btn btn-sm" onclick="confirmClearAttendance()" style="display:inline-flex; align-items:center; gap:6px; padding:0.45rem 0.9rem; background:#dc2626; color:#ffffff !important; border:none; border-radius:8px; font-weight:700; font-size:0.85rem; cursor:pointer; box-shadow:0 1px 3px rgba(220,38,38,0.25);" title="Permanently clear all attendance records and punch submissions">
+          🗑️ Clear All Attendance Records
+        </button>
+        @endif
       </div>
     </div>
 
@@ -348,6 +354,11 @@
                       PDF ↓
                     </a>
                   @endif
+                  @if(in_array($userRole, ['ADMIN', 'SUPER_ADMIN']))
+                    <button type="button" class="btn" onclick="deleteAttendanceDate('{{ $subDateStr }}')" style="padding:0.3rem 0.55rem; background:#dc2626; color:white; font-size:0.85rem; border-radius:6px; border:none; cursor:pointer;" title="Delete this date's attendance">
+                      🗑️
+                    </button>
+                  @endif
                 </div>
               </td>
             </tr>
@@ -407,6 +418,11 @@
                   <a href="{{ $dailyPdfUrl }}" class="btn" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; background:#c0392b; color:white; font-size:0.85rem; border-radius:6px;" target="_blank">
                     PDF ↓
                   </a>
+                  @if(in_array($userRole, ['ADMIN', 'SUPER_ADMIN']))
+                    <button type="button" class="btn" onclick="deleteAttendanceDate('{{ $subDateStr }}')" style="padding:0.3rem 0.55rem; background:#dc2626; color:white; font-size:0.85rem; border-radius:6px; border:none; cursor:pointer;" title="Delete this date's attendance">
+                      🗑️
+                    </button>
+                  @endif
                 </div>
               </td>
             </tr>

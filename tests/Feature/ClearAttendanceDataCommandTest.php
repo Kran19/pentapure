@@ -145,4 +145,110 @@ class ClearAttendanceDataCommandTest extends TestCase
         $responseAfter->assertDontSee('PARTIAL SAVED');
         $responseAfter->assertSee('No recent attendance records found.');
     }
+
+    public function test_migration_clears_attendance_test_data(): void
+    {
+        $dept = Department::create(['name' => 'PACKAGING', 'is_active' => true]);
+        $worker = Worker::create([
+            'name' => 'Test Worker',
+            'department_id' => $dept->id,
+            'salary_type' => 'DAILY',
+            'salary_rate' => 500,
+            'status' => 'INACTIVE',
+        ]);
+
+        Attendance::create([
+            'worker_id' => $worker->id,
+            'date' => '2026-10-01',
+            'status' => 'PRESENT',
+            'calculated_wage' => 500,
+        ]);
+
+        AttendanceSubmission::create([
+            'attendance_date' => '2026-10-01',
+            'status' => 'SUBMITTED',
+        ]);
+
+        WorkerMonthlyAdjustment::create([
+            'worker_id' => $worker->id,
+            'month' => '2026-10',
+            'advance' => 200,
+        ]);
+
+        $this->assertDatabaseCount('attendances', 1);
+        $this->assertDatabaseCount('attendance_submissions', 1);
+        $this->assertDatabaseCount('worker_monthly_adjustments', 1);
+
+        $migration = require database_path('migrations/2026_10_14_150000_clear_attendance_test_data.php');
+        $migration->up();
+
+        $this->assertDatabaseCount('attendances', 0);
+        $this->assertDatabaseCount('attendance_submissions', 0);
+        $this->assertDatabaseCount('worker_monthly_adjustments', 0);
+        $this->assertDatabaseCount('workers', 1);
+        $this->assertDatabaseCount('departments', 1);
+    }
+
+    public function test_admin_can_delete_single_attendance_date_via_web_route(): void
+    {
+        $admin = User::create([
+            'name'     => 'Attendance Admin 3',
+            'email'    => 'att_admin3_' . uniqid() . '@example.com',
+            'password' => 'secret123',
+            'role'     => 'ADMIN',
+            'status'   => 'ACTIVE',
+        ]);
+
+        $dept = Department::create(['name' => 'DISPATCH', 'is_active' => true]);
+        $worker = Worker::create([
+            'name'          => 'Vijay Worker',
+            'department_id' => $dept->id,
+            'salary_type'   => 'DAILY',
+            'salary_rate'   => 500,
+            'status'        => 'ACTIVE',
+        ]);
+
+        // Create punches and submission for 2026-10-12
+        Attendance::create([
+            'worker_id'       => $worker->id,
+            'date'            => '2026-10-12',
+            'status'          => 'PRESENT',
+            'calculated_wage' => 500,
+        ]);
+        AttendanceSubmission::create([
+            'attendance_date' => '2026-10-12',
+            'status'          => 'PARTIAL_SAVED',
+            'created_by'      => $admin->id,
+        ]);
+
+        // Create punches and submission for 2026-10-13 (which should remain intact)
+        Attendance::create([
+            'worker_id'       => $worker->id,
+            'date'            => '2026-10-13',
+            'status'          => 'PRESENT',
+            'calculated_wage' => 500,
+        ]);
+        AttendanceSubmission::create([
+            'attendance_date' => '2026-10-13',
+            'status'          => 'SUBMITTED',
+            'created_by'      => $admin->id,
+        ]);
+
+        $this->assertDatabaseCount('attendances', 2);
+        $this->assertDatabaseCount('attendance_submissions', 2);
+
+        $session = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
+
+        $deleteResponse = $this->withSession($session)->post('/admin/attendance/daily/delete', [
+            'date' => '2026-10-12',
+        ]);
+        $deleteResponse->assertRedirect();
+        $deleteResponse->assertSessionHas('success');
+
+        // Only 2026-10-12 was deleted, 2026-10-13 remains
+        $this->assertDatabaseCount('attendances', 1);
+        $this->assertDatabaseCount('attendance_submissions', 1);
+        $this->assertFalse(AttendanceSubmission::whereDate('attendance_date', '2026-10-12')->exists());
+        $this->assertTrue(AttendanceSubmission::whereDate('attendance_date', '2026-10-13')->exists());
+    }
 }
