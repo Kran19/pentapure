@@ -529,6 +529,102 @@ function switchAttendanceTab(tabName) {
   history.replaceState(null, null, '#' + tabName);
 }
 
+function confirmClearAttendance() {
+  const clearUrl = '{{ url(($isAdmin ? ($roleSlug ?: "admin") : "attendance") . "/attendance/clear") }}';
+  const csrfToken = '{{ csrf_token() }}';
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      title: 'Clear All Attendance Data?',
+      text: 'Are you sure you want to permanently clear all attendance records, daily submissions, and monthly adjustments? Worker profiles, departments, and users will remain 100% intact.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      confirmButtonText: 'Yes, Clear All',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({ title: 'Clearing...', text: 'Please wait...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = clearUrl;
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = '_token';
+        csrf.value = csrfToken;
+        form.appendChild(csrf);
+        document.body.appendChild(form);
+        form.submit();
+      }
+    });
+  } else {
+    if (confirm('Are you sure you want to permanently clear all attendance records, daily submissions, and monthly adjustments?')) {
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = clearUrl;
+      const csrf = document.createElement('input');
+      csrf.type = 'hidden';
+      csrf.name = '_token';
+      csrf.value = csrfToken;
+      form.appendChild(csrf);
+      document.body.appendChild(form);
+      form.submit();
+    }
+  }
+}
+
+function deleteAttendanceDate(targetDate) {
+  const deleteUrl = '{{ url(($isAdmin ? ($roleSlug ?: "admin") : "attendance") . "/attendance/daily/delete") }}';
+  const csrfToken = '{{ csrf_token() }}';
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      title: 'Delete Attendance Record?',
+      text: 'Are you sure you want to permanently delete all attendance punches and submission for date ' + targetDate + '?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      confirmButtonText: 'Yes, Delete',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({ title: 'Deleting...', text: 'Please wait...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = deleteUrl;
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = '_token';
+        csrf.value = csrfToken;
+        form.appendChild(csrf);
+        const dateInput = document.createElement('input');
+        dateInput.type = 'hidden';
+        dateInput.name = 'date';
+        dateInput.value = targetDate;
+        form.appendChild(dateInput);
+        document.body.appendChild(form);
+        form.submit();
+      }
+    });
+  } else {
+    if (confirm('Are you sure you want to permanently delete all attendance punches and submission for date ' + targetDate + '?')) {
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = deleteUrl;
+      const csrf = document.createElement('input');
+      csrf.type = 'hidden';
+      csrf.name = '_token';
+      csrf.value = csrfToken;
+      form.appendChild(csrf);
+      const dateInput = document.createElement('input');
+      dateInput.type = 'hidden';
+      dateInput.name = 'date';
+      dateInput.value = targetDate;
+      form.appendChild(dateInput);
+      document.body.appendChild(form);
+      form.submit();
+    }
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   const urlParams = new URLSearchParams(window.location.search);
   const tabParam = urlParams.get('tab') || window.location.hash.replace('#', '');
