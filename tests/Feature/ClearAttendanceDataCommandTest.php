@@ -189,6 +189,44 @@ class ClearAttendanceDataCommandTest extends TestCase
         $this->assertDatabaseCount('departments', 1);
     }
 
+    public function test_admin_dashboard_does_not_show_clear_all_attendance_button(): void
+    {
+        $admin = User::create([
+            'name'     => 'Attendance Admin 2',
+            'email'    => 'att_admin2_' . uniqid() . '@example.com',
+            'password' => 'secret123',
+            'role'     => 'ADMIN',
+            'status'   => 'ACTIVE',
+        ]);
+
+        $dept = Department::create(['name' => 'PACKAGING', 'is_active' => true]);
+        $worker = Worker::create([
+            'name'          => 'Kishan Worker',
+            'department_id' => $dept->id,
+            'salary_type'   => 'DAILY',
+            'salary_rate'   => 500,
+            'status'        => 'ACTIVE',
+        ]);
+
+        AttendanceSubmission::create([
+            'attendance_date' => '2026-10-12',
+            'status'          => 'SUBMITTED',
+            'created_by'      => $admin->id,
+        ]);
+
+        $session = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
+
+        $response = $this->withSession($session)->get('/admin/attendance/dashboard');
+        $response->assertStatus(200);
+
+        // Header must NOT contain Clear All Attendance Records button
+        $response->assertDontSee('Clear All Attendance Records');
+        $response->assertDontSee('confirmClearAttendance()');
+
+        // Rows must NOT contain delete button
+        $response->assertDontSee("deleteAttendanceDate('2026-10-12')");
+    }
+
     public function test_admin_can_delete_single_attendance_date_via_web_route(): void
     {
         $admin = User::create([

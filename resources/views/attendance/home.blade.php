@@ -18,8 +18,8 @@
 
 @php
   $seg = (request()->segment(1) === 'public' ? request()->segment(2) : request()->segment(1));
-  $userRole = strtoupper(session('auth_user')['role'] ?? (session('auth_user.role') ?? ''));
-  $isAdmin = in_array($userRole, ['ADMIN', 'SUPER_ADMIN', 'SUB_ADMIN']) || str_starts_with((string)$seg, 'admin') || str_starts_with((string)$seg, 'sub_admin');
+  $userRole = strtoupper(session('auth_user.role') ?? '');
+  $isAdmin = in_array($userRole, ['ADMIN', 'SUB_ADMIN']) || str_starts_with((string)$seg, 'admin') || str_starts_with((string)$seg, 'sub_admin');
   $roleSlug = $seg ?: ($isAdmin ? 'admin' : 'attendance');
   $prefix = $isAdmin ? 'admin' : 'attendance';
   $workersUrl = $isAdmin 
@@ -169,12 +169,6 @@
             <span style="background:#e2e8f0; color:#334155; font-size:0.75rem; padding:1px 7px; border-radius:12px; font-weight:700;">{{ $submittedSubmissions->count() }}</span>
           </button>
         </div>
-
-        @if(in_array($userRole, ['ADMIN', 'SUPER_ADMIN']))
-        <button type="button" class="btn btn-sm" onclick="confirmClearAttendance()" style="display:inline-flex; align-items:center; gap:6px; padding:0.45rem 0.9rem; background:#dc2626; color:#ffffff !important; border:none; border-radius:8px; font-weight:700; font-size:0.85rem; cursor:pointer; box-shadow:0 1px 3px rgba(220,38,38,0.25);" title="Permanently clear all attendance records and punch submissions">
-          🗑️ Clear All Attendance Records
-        </button>
-        @endif
       </div>
     </div>
 
@@ -354,11 +348,6 @@
                       PDF ↓
                     </a>
                   @endif
-                  @if(in_array($userRole, ['ADMIN', 'SUPER_ADMIN']))
-                    <button type="button" class="btn" onclick="deleteAttendanceDate('{{ $subDateStr }}')" style="padding:0.3rem 0.55rem; background:#dc2626; color:white; font-size:0.85rem; border-radius:6px; border:none; cursor:pointer;" title="Delete this date's attendance">
-                      🗑️
-                    </button>
-                  @endif
                 </div>
               </td>
             </tr>
@@ -418,11 +407,6 @@
                   <a href="{{ $dailyPdfUrl }}" class="btn" style="padding:0.3rem 0.6rem; text-decoration:none; display:inline-block; background:#c0392b; color:white; font-size:0.85rem; border-radius:6px;" target="_blank">
                     PDF ↓
                   </a>
-                  @if(in_array($userRole, ['ADMIN', 'SUPER_ADMIN']))
-                    <button type="button" class="btn" onclick="deleteAttendanceDate('{{ $subDateStr }}')" style="padding:0.3rem 0.55rem; background:#dc2626; color:white; font-size:0.85rem; border-radius:6px; border:none; cursor:pointer;" title="Delete this date's attendance">
-                      🗑️
-                    </button>
-                  @endif
                 </div>
               </td>
             </tr>
@@ -527,102 +511,6 @@ function switchAttendanceTab(tabName) {
   if (activeTabInput) activeTabInput.value = tabName;
 
   history.replaceState(null, null, '#' + tabName);
-}
-
-function confirmClearAttendance() {
-  const clearUrl = '{{ url(($isAdmin ? ($roleSlug ?: "admin") : "attendance") . "/attendance/clear") }}';
-  const csrfToken = '{{ csrf_token() }}';
-  if (typeof Swal !== 'undefined') {
-    Swal.fire({
-      title: 'Clear All Attendance Data?',
-      text: 'Are you sure you want to permanently clear all attendance records, daily submissions, and monthly adjustments? Worker profiles, departments, and users will remain 100% intact.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#dc2626',
-      confirmButtonText: 'Yes, Clear All',
-      cancelButtonText: 'Cancel'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        Swal.fire({ title: 'Clearing...', text: 'Please wait...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = clearUrl;
-        const csrf = document.createElement('input');
-        csrf.type = 'hidden';
-        csrf.name = '_token';
-        csrf.value = csrfToken;
-        form.appendChild(csrf);
-        document.body.appendChild(form);
-        form.submit();
-      }
-    });
-  } else {
-    if (confirm('Are you sure you want to permanently clear all attendance records, daily submissions, and monthly adjustments?')) {
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = clearUrl;
-      const csrf = document.createElement('input');
-      csrf.type = 'hidden';
-      csrf.name = '_token';
-      csrf.value = csrfToken;
-      form.appendChild(csrf);
-      document.body.appendChild(form);
-      form.submit();
-    }
-  }
-}
-
-function deleteAttendanceDate(targetDate) {
-  const deleteUrl = '{{ url(($isAdmin ? ($roleSlug ?: "admin") : "attendance") . "/attendance/daily/delete") }}';
-  const csrfToken = '{{ csrf_token() }}';
-  if (typeof Swal !== 'undefined') {
-    Swal.fire({
-      title: 'Delete Attendance Record?',
-      text: 'Are you sure you want to permanently delete all attendance punches and submission for date ' + targetDate + '?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#dc2626',
-      confirmButtonText: 'Yes, Delete',
-      cancelButtonText: 'Cancel'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        Swal.fire({ title: 'Deleting...', text: 'Please wait...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = deleteUrl;
-        const csrf = document.createElement('input');
-        csrf.type = 'hidden';
-        csrf.name = '_token';
-        csrf.value = csrfToken;
-        form.appendChild(csrf);
-        const dateInput = document.createElement('input');
-        dateInput.type = 'hidden';
-        dateInput.name = 'date';
-        dateInput.value = targetDate;
-        form.appendChild(dateInput);
-        document.body.appendChild(form);
-        form.submit();
-      }
-    });
-  } else {
-    if (confirm('Are you sure you want to permanently delete all attendance punches and submission for date ' + targetDate + '?')) {
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = deleteUrl;
-      const csrf = document.createElement('input');
-      csrf.type = 'hidden';
-      csrf.name = '_token';
-      csrf.value = csrfToken;
-      form.appendChild(csrf);
-      const dateInput = document.createElement('input');
-      dateInput.type = 'hidden';
-      dateInput.name = 'date';
-      dateInput.value = targetDate;
-      form.appendChild(dateInput);
-      document.body.appendChild(form);
-      form.submit();
-    }
-  }
 }
 
 document.addEventListener('DOMContentLoaded', function() {

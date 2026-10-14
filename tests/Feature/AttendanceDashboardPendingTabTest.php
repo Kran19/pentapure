@@ -372,10 +372,10 @@ class AttendanceDashboardPendingTabTest extends TestCase
 
         $allRecords = $response->viewData('recentSubmissions');
 
-        // All Records collection must contain SUBMITTED, PARTIAL_SAVED, and PENDING records
+        // All Records collection must contain SUBMITTED and PARTIAL_SAVED records, but NOT un-entered PENDING dates
         $this->assertTrue($allRecords->contains(fn($s) => Carbon::parse($s->attendance_date)->toDateString() === '2026-10-12' && $s->status === 'SUBMITTED'));
         $this->assertTrue($allRecords->contains(fn($s) => Carbon::parse($s->attendance_date)->toDateString() === '2026-10-11' && $s->status === 'PARTIAL_SAVED'));
-        $this->assertTrue($allRecords->contains(fn($s) => Carbon::parse($s->attendance_date)->toDateString() === '2026-10-10' && $s->status === 'PENDING'));
+        $this->assertFalse($allRecords->contains(fn($s) => Carbon::parse($s->attendance_date)->toDateString() === '2026-10-10' && $s->status === 'PENDING'));
 
         $content = $response->getContent();
 
@@ -383,15 +383,14 @@ class AttendanceDashboardPendingTabTest extends TestCase
         $allSection = substr($content, strpos($content, 'id="tab-content-all"'));
         $allSection = substr($allSection, 0, strpos($allSection, 'id="tab-content-submitted"'));
 
-        // All Records table must display SUBMITTED, PARTIAL_SAVED, and PENDING badges and dates
+        // All Records table must display SUBMITTED and PARTIAL_SAVED badges and dates, but not un-entered pending dates
         $this->assertStringContainsString('12-10-2026', $allSection);
         $this->assertStringContainsString('SUBMITTED', $allSection);
 
         $this->assertStringContainsString('11-10-2026', $allSection);
         $this->assertStringContainsString('PARTIAL SAVED', $allSection);
 
-        $this->assertStringContainsString('10-10-2026', $allSection);
-        $this->assertStringContainsString('PENDING', $allSection);
+        $this->assertStringNotContainsString('10-10-2026', $allSection);
     }
 
     public function test_sub_admin_with_view_only_sees_view_button_in_all_records_tab(): void

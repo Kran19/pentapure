@@ -269,19 +269,6 @@ class AttendanceController extends Controller
             }
         }
 
-        // Include all pending submissions (unsubmitted/missing dates in month + pending records)
-        // so that the "All Records" tab truly contains ALL records (Submitted, Partial Saved, and Pending)
-        foreach ($pendingSubmissions as $pSub) {
-            $pDateCarbon = Carbon::parse($pSub->attendance_date);
-            if ($request->filled('month') && ($pDateCarbon->lt($startOfMonth) || $pDateCarbon->gt($endOfMonth))) {
-                continue;
-            }
-            $pDateStr = $pDateCarbon->toDateString();
-            if (!$allRecentSubmissions->contains(fn($s) => Carbon::parse($s->attendance_date)->toDateString() === $pDateStr)) {
-                $allRecentSubmissions->push($pSub);
-            }
-        }
-
         $allRecentSubmissions = $allRecentSubmissions->sortByDesc(fn($s) => Carbon::parse($s->attendance_date)->toDateString())->values();
 
         // Submitted submissions (show all submitted records, remove limit 50)
