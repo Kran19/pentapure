@@ -222,7 +222,18 @@ class AttendanceDashboardPendingTabTest extends TestCase
             'submitted_at'    => now(),
         ]);
 
-        // Date 10-10-2026 and 11-10-2026 were NEVER submitted (no AttendanceSubmission row)
+        // Create partial saved pending submissions for 10-10-2026 and 11-10-2026
+        AttendanceSubmission::create([
+            'attendance_date' => '2026-10-10',
+            'status'          => 'PARTIAL_SAVED',
+            'created_by'      => $subAdmin->id,
+        ]);
+        AttendanceSubmission::create([
+            'attendance_date' => '2026-10-11',
+            'status'          => 'PARTIAL_SAVED',
+            'created_by'      => $subAdmin->id,
+        ]);
+
         $response = $this->withSession($session)->get('/sub_admin/attendance/dashboard?month=2026-10');
         $response->assertStatus(200);
 
@@ -242,12 +253,10 @@ class AttendanceDashboardPendingTabTest extends TestCase
         $this->assertLessThan($pos11, $pos10, '10-10-2026 must appear before 11-10-2026 in date-wise order');
 
         // Now submit attendance for 10-10-2026
-        AttendanceSubmission::create([
-            'attendance_date' => '2026-10-10',
-            'status'          => 'SUBMITTED',
-            'created_by'      => $subAdmin->id,
-            'submitted_by'    => $subAdmin->id,
-            'submitted_at'    => now(),
+        AttendanceSubmission::whereDate('attendance_date', '2026-10-10')->update([
+            'status'       => 'SUBMITTED',
+            'submitted_by' => $subAdmin->id,
+            'submitted_at' => now(),
         ]);
 
         // Re-fetch dashboard: 10-10-2026 should be submitted, only 11-10-2026 remains pending

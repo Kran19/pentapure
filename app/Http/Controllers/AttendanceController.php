@@ -173,18 +173,24 @@ class AttendanceController extends Controller
         $endOfMonth   = $monthCarbon->copy()->endOfMonth();
 
         // Fetch all pending attendance submissions (status != 'SUBMITTED')
-        $pendingSubmissions = \App\Models\AttendanceSubmission::with(['createdBy', 'submittedBy', 'lastModifiedBy'])
-            ->where('status', '!=', 'SUBMITTED')
-            ->get();
+        $pendingSubmissionsQuery = \App\Models\AttendanceSubmission::with(['createdBy', 'submittedBy', 'lastModifiedBy'])
+            ->where('status', '!=', 'SUBMITTED');
+        if ($request->filled('month')) {
+            $pendingSubmissionsQuery->whereBetween('attendance_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()]);
+        }
+        $pendingSubmissions = $pendingSubmissionsQuery->get();
 
         // Check if any dates exist in attendances table that don't have an AttendanceSubmission
         $existingSubDates = \App\Models\AttendanceSubmission::pluck('attendance_date')
             ->map(fn($d) => Carbon::parse($d)->toDateString())
             ->toArray();
-        $unlinkedAttendanceDates = Attendance::select('date')
+        $unlinkedAttendanceDatesQuery = Attendance::select('date')
             ->distinct()
-            ->whereNotIn('date', $existingSubDates)
-            ->pluck('date');
+            ->whereNotIn('date', $existingSubDates);
+        if ($request->filled('month')) {
+            $unlinkedAttendanceDatesQuery->whereBetween('date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()]);
+        }
+        $unlinkedAttendanceDates = $unlinkedAttendanceDatesQuery->pluck('date');
 
         foreach ($unlinkedAttendanceDates as $uDate) {
             $uDateStr = Carbon::parse($uDate)->toDateString();
@@ -194,42 +200,6 @@ class AttendanceController extends Controller
                     'status'          => 'PARTIAL_SAVED',
                 ]);
                 $pendingSubmissions->push($sub);
-            }
-        }
-
-        // Generate missing dates for the selected month (date-wise e.g. 1 to 30)
-        // If current month: check from 1st of month up to today (or end of month if viewing past month)
-        $checkUntilDate = null;
-        if ($monthCarbon->isCurrentMonth()) {
-            $checkUntilDate = min($endOfMonth, Carbon::today());
-        } elseif ($monthCarbon->isPast()) {
-            $checkUntilDate = $endOfMonth;
-        }
-
-        if ($activeWorkers > 0 && $checkUntilDate && $startOfMonth->lte($checkUntilDate)) {
-            $submittedDatesInRange = \App\Models\AttendanceSubmission::where('status', 'SUBMITTED')
-                ->whereBetween('attendance_date', [$startOfMonth->toDateString(), $checkUntilDate->toDateString()])
-                ->pluck('attendance_date')
-                ->map(fn($d) => Carbon::parse($d)->toDateString())
-                ->flip();
-
-            $curr = $startOfMonth->copy();
-            while ($curr->lte($checkUntilDate)) {
-                $currDateStr = $curr->toDateString();
-                if (!isset($submittedDatesInRange[$currDateStr])) {
-                    $alreadyPending = $pendingSubmissions->contains(function($s) use ($currDateStr) {
-                        return Carbon::parse($s->attendance_date)->toDateString() === $currDateStr;
-                    });
-
-                    if (!$alreadyPending) {
-                        $sub = new \App\Models\AttendanceSubmission([
-                            'attendance_date' => $curr->copy(),
-                            'status'          => 'PENDING',
-                        ]);
-                        $pendingSubmissions->push($sub);
-                    }
-                }
-                $curr->addDay();
             }
         }
 
