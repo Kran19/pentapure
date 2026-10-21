@@ -751,9 +751,14 @@ class CashierController extends Controller
             } else {
                 $runningBalance -= $tx->amount;
             }
+
+            $txDateObj = !empty($tx->date)
+                ? ($tx->date instanceof \DateTimeInterface ? $tx->date : \Carbon\Carbon::parse($tx->date))
+                : ($tx->created_at instanceof \DateTimeInterface ? $tx->created_at : ($tx->created_at ? \Carbon\Carbon::parse($tx->created_at) : now()));
+
             $rows[] = [
                 'id'          => $tx->id,
-                'date'        => $tx->date ?: $tx->created_at,
+                'date'        => $txDateObj,
                 'category'    => strtoupper((string)($tx->category ?? '')),
                 'note'        => strtoupper((string)($tx->note ?? '')),
                 'description' => strtoupper((string)($tx->description ?? '')),
@@ -782,16 +787,19 @@ class CashierController extends Controller
 
         $effectiveSite = ($selectedSite && $selectedSite !== 'all') ? $selectedSite : ($userBranch ?: 'ALL');
 
-        $formattedFromDate = $from ? $from->format('d-m-Y') : ($txs->first()?->date ? Carbon::parse($txs->first()->date)->format('d-m-Y') : ($txs->first()?->created_at?->format('d-m-Y') ?? ($to ? $to->format('d-m-Y') : now()->format('d-m-Y'))));
-        $formattedToDate   = $to   ? $to->format('d-m-Y')   : ($txs->last()?->date ? Carbon::parse($txs->last()->date)->format('d-m-Y') : ($txs->last()?->created_at?->format('d-m-Y') ?? now()->format('d-m-Y')));
+        $firstTxDate = $txs->first()?->date ? Carbon::parse($txs->first()->date) : ($txs->first()?->created_at ? Carbon::parse($txs->first()->created_at) : null);
+        $lastTxDate  = $txs->last()?->date  ? Carbon::parse($txs->last()->date)  : ($txs->last()?->created_at  ? Carbon::parse($txs->last()->created_at)  : null);
+
+        $formattedFromDate = $from ? $from->format('d-m-Y') : ($firstTxDate ? $firstTxDate->format('d-m-Y') : ($to ? $to->format('d-m-Y') : now()->format('d-m-Y')));
+        $formattedToDate   = $to   ? $to->format('d-m-Y')   : ($lastTxDate  ? $lastTxDate->format('d-m-Y')  : now()->format('d-m-Y'));
 
         $data = [
             'reportId'       => $userId * 100 + rand(1, 99),
             'generatedOn'    => strtoupper(now()->format('d-M-Y H:i:s')),
             'from'           => $from,
             'to'             => $to,
-            'fromDate'       => $from ? $from->format('Y-m-d') : ($txs->first()?->date ? Carbon::parse($txs->first()->date)->format('Y-m-d') : ($txs->first()?->created_at?->format('Y-m-d') ?? ($to ? $to->format('Y-m-d') : now()->format('Y-m-d')))),
-            'toDate'         => $to   ? $to->format('Y-m-d')   : ($txs->last()?->date ? Carbon::parse($txs->last()->date)->format('Y-m-d') : ($txs->last()?->created_at?->format('Y-m-d') ?? now()->format('Y-m-d'))),
+            'fromDate'       => $from ? $from->format('Y-m-d') : ($firstTxDate ? $firstTxDate->format('Y-m-d') : ($to ? $to->format('Y-m-d') : now()->format('Y-m-d'))),
+            'toDate'         => $to   ? $to->format('Y-m-d')   : ($lastTxDate  ? $lastTxDate->format('Y-m-d')  : now()->format('Y-m-d')),
             'cashierName'    => strtoupper((string)$cashierName),
             'cashierId'      => $userId,
             'accountName'    => 'FOODS AND SPICES',
@@ -838,10 +846,14 @@ class CashierController extends Controller
         // 2. Collect all bill pages in transaction sequence order
         $billPages = [];
         foreach ($rows as $row) {
+            $formattedTxDate = !empty($row['date'])
+                ? ($row['date'] instanceof \DateTimeInterface ? $row['date']->format('d-M-Y') : \Carbon\Carbon::parse($row['date'])->format('d-M-Y'))
+                : '—';
+
             foreach ($row['bills'] as $bill) {
                 $billPages[] = array_merge($bill, [
                     'tx_id'     => $row['id'],
-                    'tx_date'   => $row['date']->format('d-M-Y'),
+                    'tx_date'   => $formattedTxDate,
                     'tx_cat'    => ucwords(str_replace('_', ' ', $row['category'])),
                     'tx_amount' => ($row['type'] === 'OUT' ? '-' : '+') . '₹' . number_format($row['amount'], 2),
                     'tx_note'   => $row['note'] ?? '',
@@ -856,13 +868,22 @@ class CashierController extends Controller
             ]);
         }
 
-        // 3. Merge using FPDI
-        $merged = $this->mergePdfWithBills($mainPdfContent, $billPages);
+        // 3. Merge using FPDI with fallback
+        try {
+            $merged = $this->mergePdfWithBills($mainPdfContent, $billPages);
 
-        return response($merged, 200, [
-            'Content-Type'        => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-        ]);
+            return response($merged, 200, [
+                'Content-Type'        => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('PDF bill merging failed: ' . $e->getMessage(), ['exception' => $e]);
+            // Graceful fallback to statement PDF so download never crashes with 500
+            return response($mainPdfContent, 200, [
+                'Content-Type'        => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            ]);
+        }
     }
 
     // ── FPDI MERGER ────────────────────────────────────────────────────────
@@ -872,66 +893,109 @@ class CashierController extends Controller
         $tmpMain = tempnam(sys_get_temp_dir(), 'ppure_main_') . '.pdf';
         file_put_contents($tmpMain, $mainPdfContent);
 
-        // Use FPDI to merge
-        $fpdi = new \setasign\Fpdi\Fpdi();
-        $fpdi->SetAutoPageBreak(false);
+        $tempFilesToClean = [$tmpMain];
 
-        // Import all pages of the main PDF (Portrait A4: 210mm x 297mm)
-        $mainPageCount = $fpdi->setSourceFile($tmpMain);
-        for ($i = 1; $i <= $mainPageCount; $i++) {
-            $tpl = $fpdi->importPage($i);
-            $fpdi->AddPage('P', 'A4');
-            $fpdi->useTemplate($tpl, 0, 0, 210, 297);
-        }
+        try {
+            // Use FPDI to merge
+            $fpdi = new \setasign\Fpdi\Fpdi();
+            $fpdi->SetAutoPageBreak(false);
 
-        // Now add each bill as a new page
-        $billNum = 1;
-        foreach ($billPages as $bill) {
-            $absPath = $bill['absolute_path'];
-            if (!file_exists($absPath)) { $billNum++; continue; }
-
-            if ($bill['file_type'] === 'pdf') {
-                // Import each page of the bill PDF
-                try {
-                    $billPageCount = $fpdi->setSourceFile($absPath);
-                    for ($p = 1; $p <= $billPageCount; $p++) {
-                        $tpl = $fpdi->importPage($p);
-                        $fpdi->AddPage('P', 'A4');
-                        // Bill header
-                        $this->fpdiAddBillHeader($fpdi, $bill, $billNum, count($billPages));
-                        $fpdi->useTemplate($tpl, 5, 30, 200, 250);
-                    }
-                } catch (\Exception $e) {
-                    // Skip unreadable PDF
-                }
-            } else {
-                // Image bill
+            // Import all pages of the main PDF (Portrait A4: 210mm x 297mm)
+            $mainPageCount = $fpdi->setSourceFile($tmpMain);
+            for ($i = 1; $i <= $mainPageCount; $i++) {
+                $tpl = $fpdi->importPage($i);
                 $fpdi->AddPage('P', 'A4');
-                $this->fpdiAddBillHeader($fpdi, $bill, $billNum, count($billPages));
-                try {
-                    $ext = strtoupper(pathinfo($absPath, PATHINFO_EXTENSION));
-                    if ($ext === 'JPG') $ext = 'JPEG';
-                    // Calculate fit dimensions maintaining aspect ratio
-                    [$imgW, $imgH] = @getimagesize($absPath) ?: [210, 297];
-                    $maxW = 200;
-                    $maxH = 250;
-                    $ratio = min($maxW / $imgW, $maxH / $imgH);
-                    $drawW = $imgW * $ratio;
-                    $drawH = $imgH * $ratio;
-                    $x = (210 - $drawW) / 2;
-                    $fpdi->Image($absPath, $x, 35, $drawW, $drawH, $ext);
-                } catch (\Exception $e) {
-                    $fpdi->SetFont('Helvetica', '', 10);
-                    $fpdi->SetXY(10, 50);
-                    $fpdi->Cell(0, 10, 'Could not load image: ' . $bill['original_name']);
+                $fpdi->useTemplate($tpl, 0, 0, 210, 297);
+            }
+
+            // Now add each bill as a new page
+            $billNum = 1;
+            foreach ($billPages as $bill) {
+                $absPath = $bill['absolute_path'] ?? '';
+                if (empty($absPath) || !file_exists($absPath)) {
+                    $billNum++;
+                    continue;
+                }
+
+                if ($bill['file_type'] === 'pdf') {
+                    // Import each page of the bill PDF
+                    try {
+                        $billPageCount = $fpdi->setSourceFile($absPath);
+                        for ($p = 1; $p <= $billPageCount; $p++) {
+                            $tpl = $fpdi->importPage($p);
+                            $fpdi->AddPage('P', 'A4');
+                            // Bill header
+                            $this->fpdiAddBillHeader($fpdi, $bill, $billNum, count($billPages));
+                            $fpdi->useTemplate($tpl, 5, 30, 200, 250);
+                        }
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning("Could not import PDF bill ID " . ($bill['id'] ?? 'unknown') . ": " . $e->getMessage());
+                        try {
+                            $fpdi->AddPage('P', 'A4');
+                            $this->fpdiAddBillHeader($fpdi, $bill, $billNum, count($billPages));
+                            $fpdi->SetFont('Helvetica', '', 10);
+                            $fpdi->SetXY(15, 60);
+                            $fpdi->Cell(180, 10, 'Attachment could not be rendered: ' . ($bill['original_name'] ?? 'PDF Document'), 0, 1, 'L');
+                            $fpdi->SetFont('Helvetica', '', 8);
+                            $fpdi->SetXY(15, 70);
+                            $fpdi->SetTextColor(100, 100, 100);
+                            $fpdi->Cell(180, 8, 'Note: The PDF format or version is not supported for direct merging.', 0, 1, 'L');
+                            $fpdi->SetTextColor(0, 0, 0);
+                        } catch (\Throwable $ignored) {}
+                    }
+                } else {
+                    // Image bill
+                    $fpdi->AddPage('P', 'A4');
+                    $this->fpdiAddBillHeader($fpdi, $bill, $billNum, count($billPages));
+                    try {
+                        $ext = strtoupper(pathinfo($absPath, PATHINFO_EXTENSION));
+                        if ($ext === 'JPG') $ext = 'JPEG';
+
+                        // Convert WEBP/BMP/AVIF to temporary JPEG if GD is available
+                        if (in_array($ext, ['WEBP', 'BMP', 'AVIF']) && extension_loaded('gd')) {
+                            $imgData = @file_get_contents($absPath);
+                            if ($imgData) {
+                                $im = @imagecreatefromstring($imgData);
+                                if ($im) {
+                                    $tmpJpg = tempnam(sys_get_temp_dir(), 'ppure_bill_img_') . '.jpg';
+                                    imagejpeg($im, $tmpJpg, 90);
+                                    imagedestroy($im);
+                                    $tempFilesToClean[] = $tmpJpg;
+                                    $absPath = $tmpJpg;
+                                    $ext = 'JPEG';
+                                }
+                            }
+                        }
+
+                        // Calculate fit dimensions maintaining aspect ratio
+                        $size = @getimagesize($absPath);
+                        $imgW = ($size && $size[0] > 0) ? $size[0] : 210;
+                        $imgH = ($size && $size[1] > 0) ? $size[1] : 297;
+                        $maxW = 200;
+                        $maxH = 250;
+                        $ratio = min($maxW / $imgW, $maxH / $imgH);
+                        $drawW = $imgW * $ratio;
+                        $drawH = $imgH * $ratio;
+                        $x = (210 - $drawW) / 2;
+                        $fpdi->Image($absPath, $x, 35, $drawW, $drawH, $ext);
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning("Could not render image bill: " . $e->getMessage());
+                        $fpdi->SetFont('Helvetica', '', 10);
+                        $fpdi->SetXY(15, 60);
+                        $fpdi->Cell(180, 10, 'Could not load image: ' . ($bill['original_name'] ?? 'Bill attachment'));
+                    }
+                }
+                $billNum++;
+            }
+
+            return $fpdi->Output('', 'S');
+        } finally {
+            foreach ($tempFilesToClean as $tf) {
+                if (file_exists($tf)) {
+                    @unlink($tf);
                 }
             }
-            $billNum++;
         }
-
-        @unlink($tmpMain);
-
-        return $fpdi->Output('', 'S');
     }
 
     private function fpdiAddBillHeader(\setasign\Fpdi\Fpdi $fpdi, array $bill, int $num, int $total): void
