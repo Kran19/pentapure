@@ -56,7 +56,7 @@ input[type=number].no-spinners {
     <label style="color:#374151; font-weight:700;">Select Order</label>
     <select id="dispatch-order" onchange="app.onDispatchOrderSelect(this.value)" style="background:#ffffff; border:1.5px solid #d1d5db; color:#111827; padding:0.7rem; border-radius:8px; width:100%; font-weight:600;">
       <option value="" disabled selected>-- Select Order --</option>
-      @foreach($pageData['pendingOrders'] as $o)
+      @foreach(collect($pageData['pendingOrders'] ?? [])->filter(fn($o) => strtoupper(trim((string)($o['status'] ?? ''))) !== 'CANCELLED') as $o)
         <option value="{{ $o['id'] }}">#{{ strtoupper((string)$o['id']) }} - {{ $o['company']['name'] }}</option>
       @endforeach
     </select>

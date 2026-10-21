@@ -7,8 +7,8 @@
   $stockSubTab = request('stock_stage', 'all'); // 'all', 'raw', 'semi', 'finished', 'packaging'
   $dispatchFilter = request('dispatch_filter', 'all');
 
-  $pendingOrdersList = collect($pageData['pendingOrders'] ?? []);
-  $completedOrdersList = collect($pageData['completedOrders'] ?? []);
+  $pendingOrdersList = collect($pageData['pendingOrders'] ?? [])->filter(fn($o) => strtoupper(trim((string)($o['status'] ?? ''))) !== 'CANCELLED');
+  $completedOrdersList = collect($pageData['completedOrders'] ?? [])->filter(fn($o) => strtoupper(trim((string)($o['status'] ?? ''))) !== 'CANCELLED');
 
   if ($dispatchFilter === 'done') {
     $pendingOrdersList = collect([]);
@@ -25,6 +25,28 @@
     $pendingOrdersList = $pendingOrdersList->filter(fn($o) => (float)$o['dispatchedQty'] == 0);
     $completedOrdersList = collect([]);
   }
+
+  // Sort pending orders: Due Today on top!
+  $today = now()->timezone('Asia/Kolkata')->startOfDay();
+  $pendingOrdersList = $pendingOrdersList->sortBy(function($o) use ($today) {
+    $rawDueDate = $o['rawDueDate'] ?? (!empty($o['dueDate']) && $o['dueDate'] !== 'Not Specified' ? \Carbon\Carbon::parse($o['dueDate'], 'Asia/Kolkata')->format('Y-m-d') : null);
+    if ($rawDueDate) {
+      $dueObj = \Carbon\Carbon::parse($rawDueDate, 'Asia/Kolkata')->startOfDay();
+      $diffDays = (int) $today->diffInDays($dueObj, false);
+      if ($diffDays === 0) {
+        // Due today -> Top priority (Group 0)
+        return sprintf('0_%010d', 9999999999 - (int)($o['id'] ?? 0));
+      } elseif ($diffDays < 0) {
+        // Overdue -> Group 1 (most recent overdue first: 1 day overdue, 2 days overdue...)
+        return sprintf('1_%06d_%010d', abs($diffDays), 9999999999 - (int)($o['id'] ?? 0));
+      } else {
+        // Upcoming -> Group 2 (closest due date first: 1 day left, 2 days left...)
+        return sprintf('2_%06d_%010d', $diffDays, 9999999999 - (int)($o['id'] ?? 0));
+      }
+    }
+    // No due date -> Group 3
+    return sprintf('3_%010d', 9999999999 - (int)($o['id'] ?? 0));
+  })->values();
 
   // Stock items list with stage
   $rawList = collect($pageData['rawStock'] ?? [])->map(fn($s) => (object)array_merge((array)$s, ['stage' => 'RAW']));
@@ -219,8 +241,8 @@
         <select name="dispatch_filter" onchange="this.form.submit()" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:6px; border:1px solid rgba(255,255,255,0.2); background:#1f2937; color:#fff; cursor:pointer;">
           <option value="all" {{ $dispatchFilter === 'all' ? 'selected' : '' }}>All Scenarios</option>
           <option value="ready_dispatch" {{ $dispatchFilter === 'ready_dispatch' ? 'selected' : '' }}>Ready to Dispatch</option>
-          <option value="ready_partial" {{ in_array($dispatchFilter, ['ready_partial', 'partial_dispatch', 'partial_pending']) ? 'selected' : '' }}>Partial Dispatch</option>
-          <option value="not_ready" {{ in_array($dispatchFilter, ['not_ready', 'not_dispatch']) ? 'selected' : '' }}>Not Dispatch</option>
+          <option value="ready_partial" {{ in_array($dispatchFilter, ['ready_partial', 'partial_dispatch', 'partial_pending']) ? 'selected' : '' }}>Ready to Partial Dispatch</option>
+          <option value="not_ready" {{ in_array($dispatchFilter, ['not_ready', 'not_dispatch']) ? 'selected' : '' }}>Not Ready</option>
           <option value="done" {{ $dispatchFilter === 'done' ? 'selected' : '' }}>Fully Dispatched (Completed)</option>
         </select>
       </form>
@@ -245,7 +267,7 @@
             $readinessFg = '#ffffff';
             $progressColor = '#16a34a';
           } elseif ($readiness === 'READY_PARTIAL') {
-            $readinessLabel = 'PARTIAL DISPATCH';
+            $readinessLabel = 'READY TO PARTIAL DISPATCH';
             $readinessBg = '#f59e0b';
             $readinessFg = '#ffffff';
             $progressColor = '#f59e0b';
@@ -255,7 +277,7 @@
             $readinessFg = '#ffffff';
             $progressColor = '#16a34a';
           } else {
-            $readinessLabel = 'NOT DISPATCH';
+            $readinessLabel = 'NOT READY';
             $readinessBg = '#dc2626';
             $readinessFg = '#ffffff';
             $progressColor = '#dc2626';
@@ -271,28 +293,35 @@
             $statusBadgeFg = '#ffffff';
           }
 
-          $rawDueDate = $o['rawDueDate'] ?? (!empty($o['dueDate']) && $o['dueDate'] !== 'Not Specified' ? \Carbon\Carbon::parse($o['dueDate'])->format('Y-m-d') : null);
+          $rawDueDate = $o['rawDueDate'] ?? (!empty($o['dueDate']) && $o['dueDate'] !== 'Not Specified' ? \Carbon\Carbon::parse($o['dueDate'], 'Asia/Kolkata')->format('Y-m-d') : null);
           $dueDaysBadge = '';
+          $isDueToday = false;
           if ($rawDueDate) {
-              $diffDays = (int) now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($rawDueDate)->startOfDay(), false);
+              $diffDays = (int) now()->timezone('Asia/Kolkata')->startOfDay()->diffInDays(\Carbon\Carbon::parse($rawDueDate, 'Asia/Kolkata')->startOfDay(), false);
               if ($diffDays < 0) {
                   $days = abs($diffDays);
                   $dueDaysBadge = '<span class="due-days-badge overdue">' . $days . ' ' . ($days === 1 ? 'day' : 'days') . ' overdue</span>';
               } elseif ($diffDays === 0) {
+                  $isDueToday = true;
                   $dueDaysBadge = '<span class="due-days-badge today">Due today</span>';
               } else {
                   $dueDaysBadge = '<span class="due-days-badge upcoming">' . $diffDays . ' ' . ($diffDays === 1 ? 'day' : 'days') . ' left</span>';
               }
           }
         @endphp
-        <div class="card dispatch-order-card" style="border-left: 4px solid {{ $progressColor }}; background:#ffffff; box-shadow:0 2px 10px rgba(0,0,0,0.04); transition: transform 0.2s; margin-bottom: 0; padding:0; overflow:hidden; border-radius:12px; border:1px solid #e2e8f0;">
+        <div class="card dispatch-order-card" style="border-left: 4px solid {{ $progressColor }}; background:#ffffff; box-shadow:0 2px 10px rgba(0,0,0,0.04); transition: transform 0.2s; margin-bottom: 0; padding:0; overflow:hidden; border-radius:12px; border:1px solid #e2e8f0; {{ $isDueToday ? 'box-shadow: 0 4px 14px rgba(216, 138, 0, 0.15); border-color: rgba(216, 138, 0, 0.4);' : '' }}">
           <!-- Clickable Header Row -->
-          <div onclick="toggleHomeAccordion('home-acc-{{ $o['id'] }}', this)" style="cursor:pointer; padding:1.1rem; user-select:none;">
+          <div onclick="toggleHomeAccordion('home-acc-{{ $o['id'] }}', this)" style="cursor:pointer; padding:1.1rem; user-select:none; {{ $isDueToday ? 'background: linear-gradient(to right, rgba(254, 243, 199, 0.25), transparent);' : '' }}">
             <div class="flex-between mb-1" style="align-items:flex-start; gap:10px;">
               <div>
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                   <span style="font-weight:bold; font-size:1.1rem; color:var(--text-main, #111827);">Order #{{ strtoupper((string)$o['id']) }}</span>
                   <span class="badge" style="font-size:0.65rem; background:{{ $statusBadgeBg }}; color:{{ $statusBadgeFg }}; padding:3px 8px; border-radius:4px; font-weight:700;">{{ $statusBadgeLabel }}</span>
+                  @if($isDueToday)
+                    <span class="badge" style="font-size:0.68rem; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; padding:2px 8px; border-radius:4px; font-weight:800; display:inline-flex; align-items:center; gap:3px;">
+                      ⚡ DUE TODAY
+                    </span>
+                  @endif
                 </div>
                 
                 <!-- Expected Delivery Date & Sales Person Highlights -->
@@ -305,7 +334,7 @@
                 </div>
               </div>
               <div style="display:flex; align-items:center; gap:10px;">
-                <a class="btn btn-sm" href="{{ $dispatchActionUrl }}?order_id={{ $o['id'] }}" onclick="event.stopPropagation(); localStorage.setItem('auto_dispatch_id', '{{ $o['id'] }}');" style="width:auto; text-decoration:none; background:{{ $readinessBg }}; color:{{ $readinessFg }}; font-weight:700; padding:4px 12px; border-radius:6px; font-size:0.8rem; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+                <a class="btn btn-sm" href="{{ $dispatchActionUrl }}?order_id={{ $o['id'] }}" onclick="event.stopPropagation(); localStorage.setItem('auto_dispatch_id', '{{ $o['id'] }}');" style="width:auto; text-decoration:none; background:{{ $readinessBg }}; color:{{ $readinessFg }}; font-weight:700; padding:4px 12px; border-radius:6px; font-size:0.8rem; box-shadow:0 2px 4px rgba(0,0,0,0.1); white-space:nowrap;">
                   {{ $readinessLabel }}
                 </a>
                 <div class="acc-chevron" style="transition:transform 0.25s ease; color:var(--text-muted, #64748b); display:flex; align-items:center;">

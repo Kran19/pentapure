@@ -22,7 +22,7 @@
   $statusFilter = strtoupper(trim((string)request('status', 'ALL')));
   if (!$statusFilter || $statusFilter === '') $statusFilter = 'ALL';
 
-  $filtered = collect($pageData['dispatchLogs'] ?? []);
+  $filtered = collect($pageData['dispatchLogs'] ?? [])->filter(fn($d) => strtoupper(trim((string)($d['status'] ?? ''))) !== 'CANCELLED');
 
   // 1. Company Filter
   if ($companyId) {

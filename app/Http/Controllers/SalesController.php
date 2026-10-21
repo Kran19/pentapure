@@ -7,6 +7,11 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Transporter;
+use App\Models\DispatchLog;
+use App\Models\DispatchLogItem;
+use App\Models\DispatchItemLocation;
+use App\Models\Stock;
+use App\Http\Controllers\DispatchController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -117,12 +122,28 @@ class SalesController extends Controller
         $partialOrdersCount    = $partialList->count();
         $dispatchedOrdersCount = $dispatchedList->count();
 
-        $todayDate = now()->toDateString();
+        $todayDate = now()->timezone('Asia/Kolkata')->format('Y-m-d');
         $dueTodayList = $orders->filter(function($o) use ($todayDate) {
             if (!$o->due_date || $o->status === 'CANCELLED') return false;
-            return \Carbon\Carbon::parse($o->due_date)->toDateString() === $todayDate;
+            return \Carbon\Carbon::parse($o->due_date, 'Asia/Kolkata')->format('Y-m-d') === $todayDate;
         })->values();
         $dueTodayOrdersCount = $dueTodayList->count();
+
+        // Active open orders due today for sales/home dashboard
+        $dueTodayOpenOrders = $dueTodayList->filter(function($o) {
+            $ds = strtoupper(str_replace('_', ' ', $o->dispatch_status ?? ''));
+            return !in_array($ds, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'DISPATCHED']);
+        })->values();
+
+        $dueTodayPendingList = $dueTodayOpenOrders->filter(function($o) {
+            $ds = strtoupper(str_replace('_', ' ', $o->dispatch_status ?? ''));
+            return in_array($ds, ['PENDING', 'UNASSIGNED', 'OPEN']) || empty($o->dispatch_status);
+        })->values();
+
+        $dueTodayPartialList = $dueTodayOpenOrders->filter(function($o) {
+            $ds = strtoupper(str_replace('_', ' ', $o->dispatch_status ?? ''));
+            return in_array($ds, ['PARTIAL', 'PARTIAL PENDING', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED']);
+        })->values();
 
         $mapOrderFn = fn($o) => [
             'id'              => $o->id,
@@ -153,10 +174,10 @@ class SalesController extends Controller
         ];
 
         $pageData = [
-            'orders'             => $orders->map($mapOrderFn),
-            'pendingOrdersList'  => $pendingList->map($mapOrderFn),
-            'partialOrdersList'  => $partialList->map($mapOrderFn),
-            'dueTodayOrders'     => $dueTodayList->map($mapOrderFn),
+            'orders'             => $dueTodayOpenOrders->map($mapOrderFn),
+            'pendingOrdersList'  => $dueTodayPendingList->map($mapOrderFn),
+            'partialOrdersList'  => $dueTodayPartialList->map($mapOrderFn),
+            'dueTodayOrders'     => $dueTodayOpenOrders->map($mapOrderFn),
             'companies'          => Company::orderByDesc('id')->get()->map(fn($c)=>[
                 'id'=>$c->id,'name'=>strtoupper($c->name ?? ''),'gst'=>$c->gst,'address'=>$c->address,'pincode'=>$c->pincode,'contact'=>$c->contact,'date'=>$c->created_at->toISOString()
             ]),
@@ -765,6 +786,72 @@ class SalesController extends Controller
 
         $order->update(['status' => 'CANCELLED']);
         return response()->json(['success' => true, 'message' => 'Order cancelled successfully!']);
+    }
+
+    public function destroyOrder(Request $request, $id)
+    {
+        $order = Order::with(['items', 'dispatchLogs.dispatchItems'])->findOrFail($id);
+
+        DB::transaction(function () use ($order) {
+            // 1. Revert and clean up all dispatch logs, locations, and stock deductions
+            $dispatchLogs = DispatchLog::with('dispatchItems')->where('order_id', $order->id)->get();
+            foreach ($dispatchLogs as $log) {
+                $itemIds = $log->dispatchItems->pluck('id')->toArray();
+
+                // Collect stock IDs from dispatch item locations
+                $stockIdsFromLocations = DispatchItemLocation::whereIn(
+                    'dispatch_log_item_id', 
+                    $itemIds
+                )->pluck('stock_id')->toArray();
+
+                // Collect stock IDs created with round notes
+                $stockIdsFromNotes = Stock::where('notes', 'LIKE', "%round #{$log->id}%")
+                    ->orWhere('notes', 'LIKE', "%round #{$log->id})%")
+                    ->pluck('id')
+                    ->toArray();
+
+                $allStockIds = array_unique(array_filter(array_merge($stockIdsFromLocations, $stockIdsFromNotes)));
+                if (!empty($allStockIds)) {
+                    Stock::whereIn('id', $allStockIds)->delete();
+                }
+
+                // Delete physical LR files
+                foreach (DispatchController::getLrImagePaths($log) as $imgPath) {
+                    if ($imgPath && file_exists(public_path($imgPath))) {
+                        @unlink(public_path($imgPath));
+                    }
+                }
+
+                // Delete dispatch item locations
+                DispatchItemLocation::whereIn('dispatch_log_item_id', $itemIds)->delete();
+
+                // Delete dispatch log items
+                DispatchLogItem::where('dispatch_log_id', $log->id)->delete();
+
+                // Delete the dispatch log itself
+                $log->delete();
+            }
+
+            // Also clean up any stock deductions directly referencing this order
+            Stock::where('notes', 'LIKE', "%Order #{$order->id}%")
+                ->orWhere('notes', 'LIKE', "%order #{$order->id}%")
+                ->delete();
+
+            // 2. Delete all order items
+            $order->items()->delete();
+
+            // 3. Delete the order itself
+            $order->delete();
+        });
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Order #{$id} and all related records have been completely deleted."
+            ]);
+        }
+
+        return redirect()->back()->with('success', "Order #{$id} and all related records have been completely deleted.");
     }
 
     public function profile()

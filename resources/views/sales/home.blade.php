@@ -88,10 +88,27 @@
 </div>
 
 @php
-  $pendingList = collect($pageData['pendingOrdersList'] ?? []);
-  $partialList = collect($pageData['partialOrdersList'] ?? []);
-  $dueTodayList = collect($pageData['dueTodayOrders'] ?? []);
-  $allOpenList = $pendingList->concat($partialList);
+  $todayDate = now()->timezone('Asia/Kolkata')->format('Y-m-d');
+
+  $pendingList = collect($pageData['pendingOrdersList'] ?? [])->filter(function($o) use ($todayDate) {
+    if (($o['status'] ?? '') === 'CANCELLED') return false;
+    $rawDue = $o['rawDueDate'] ?? null;
+    return $rawDue && \Carbon\Carbon::parse($rawDue, 'Asia/Kolkata')->format('Y-m-d') === $todayDate;
+  })->values();
+
+  $partialList = collect($pageData['partialOrdersList'] ?? [])->filter(function($o) use ($todayDate) {
+    if (($o['status'] ?? '') === 'CANCELLED') return false;
+    $rawDue = $o['rawDueDate'] ?? null;
+    return $rawDue && \Carbon\Carbon::parse($rawDue, 'Asia/Kolkata')->format('Y-m-d') === $todayDate;
+  })->values();
+
+  $dueTodayList = collect($pageData['dueTodayOrders'] ?? [])->filter(function($o) use ($todayDate) {
+    if (($o['status'] ?? '') === 'CANCELLED') return false;
+    $rawDue = $o['rawDueDate'] ?? null;
+    return $rawDue && \Carbon\Carbon::parse($rawDue, 'Asia/Kolkata')->format('Y-m-d') === $todayDate;
+  })->values();
+
+  $allOpenList = $pendingList->concat($partialList)->unique('id')->values();
 
   $initialTab = request('tab', 'all');
   if (!in_array($initialTab, ['all', 'pending', 'partial', 'due_today'])) {
@@ -104,9 +121,9 @@
   <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--glass-border, rgba(255,255,255,0.06));">
     <div style="display:flex; align-items:center; gap:8px;">
       <h3 style="margin:0; font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:8px;">
-        <span>📦 Active Sales Orders</span>
+        <span>📦 Orders Due Today</span>
       </h3>
-      <span style="font-size:0.82rem; color:var(--text-muted);">(Pending &amp; Partial Orders)</span>
+      <span style="font-size:0.82rem; color:var(--text-muted);">(Showing orders due today: <strong>{{ \Carbon\Carbon::now('Asia/Kolkata')->format('d-m-Y') }}</strong>)</span>
     </div>
     <div>
       <a class="btn btn-sm btn-secondary" href="{{ url(request()->segment(1) . '/history') }}" style="width:auto; text-decoration:none; font-size:0.82rem; padding:0.4rem 0.9rem;">
@@ -142,8 +159,13 @@
     @empty
       <div class="empty-tab-state">
         <div style="font-size:1.4rem; margin-bottom:4px;">✨</div>
-        <div style="font-weight:600; font-size:0.95rem; color:var(--text-main);">No open orders</div>
-        <div style="font-size:0.82rem; margin-top:3px;">All sales orders are currently dispatched or closed!</div>
+        <div style="font-weight:600; font-size:0.95rem; color:var(--text-main);">No open orders due today</div>
+        <div style="font-size:0.82rem; margin-top:3px;">All scheduled orders for today ({{ \Carbon\Carbon::now('Asia/Kolkata')->format('d-m-Y') }}) are up to date!</div>
+        <div style="margin-top:8px;">
+          <a href="{{ url(request()->segment(1) . '/history') }}" style="font-size:0.82rem; color:var(--primary, #D88A00); font-weight:600; text-decoration:none;">
+            View other orders in Sales History &rarr;
+          </a>
+        </div>
       </div>
     @endforelse
   </div>
@@ -155,8 +177,13 @@
     @empty
       <div class="empty-tab-state">
         <div style="font-size:1.4rem; margin-bottom:4px;">✨</div>
-        <div style="font-weight:600; font-size:0.95rem; color:var(--text-main);">No pending orders</div>
-        <div style="font-size:0.82rem; margin-top:3px;">There are no unassigned orders waiting for dispatch!</div>
+        <div style="font-weight:600; font-size:0.95rem; color:var(--text-main);">No pending orders due today</div>
+        <div style="font-size:0.82rem; margin-top:3px;">There are no unassigned orders due today!</div>
+        <div style="margin-top:8px;">
+          <a href="{{ url(request()->segment(1) . '/history?status=PENDING') }}" style="font-size:0.82rem; color:var(--primary, #D88A00); font-weight:600; text-decoration:none;">
+            View all pending orders in History &rarr;
+          </a>
+        </div>
       </div>
     @endforelse
   </div>
@@ -168,8 +195,13 @@
     @empty
       <div class="empty-tab-state">
         <div style="font-size:1.4rem; margin-bottom:4px;">📦</div>
-        <div style="font-weight:600; font-size:0.95rem; color:var(--text-main);">No partial orders</div>
-        <div style="font-size:0.82rem; margin-top:3px;">There are no orders in partially dispatched state!</div>
+        <div style="font-weight:600; font-size:0.95rem; color:var(--text-main);">No partial orders due today</div>
+        <div style="font-size:0.82rem; margin-top:3px;">There are no partially dispatched orders due today!</div>
+        <div style="margin-top:8px;">
+          <a href="{{ url(request()->segment(1) . '/history?status=PARTIAL') }}" style="font-size:0.82rem; color:var(--primary, #D88A00); font-weight:600; text-decoration:none;">
+            View all partial orders in History &rarr;
+          </a>
+        </div>
       </div>
     @endforelse
   </div>
@@ -183,6 +215,11 @@
         <div style="font-size:1.4rem; margin-bottom:4px;">✨</div>
         <div style="font-weight:600; font-size:0.95rem; color:var(--text-main);">No orders due today</div>
         <div style="font-size:0.82rem; margin-top:3px;">All scheduled orders are up to date!</div>
+        <div style="margin-top:8px;">
+          <a href="{{ url(request()->segment(1) . '/history') }}" style="font-size:0.82rem; color:var(--primary, #D88A00); font-weight:600; text-decoration:none;">
+            View all orders in Sales History &rarr;
+          </a>
+        </div>
       </div>
     @endforelse
   </div>

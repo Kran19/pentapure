@@ -18,7 +18,8 @@
 
   $dueDaysBadge = '';
   if (!empty($dOrder['rawDueDate'])) {
-    $diffDays = (int) now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($dOrder['rawDueDate'])->startOfDay(), false);
+    $todayKolkata = now()->timezone('Asia/Kolkata')->startOfDay();
+    $diffDays = (int) $todayKolkata->diffInDays(\Carbon\Carbon::parse($dOrder['rawDueDate'], 'Asia/Kolkata')->startOfDay(), false);
     if ($diffDays < 0) {
       $days = abs($diffDays);
       $dueDaysBadge = '<span style="font-size:0.72rem; padding:2px 7px; border-radius:4px; font-weight:700; background:#fef2f2; border:1px solid #fecaca; color:#dc2626; margin-left:6px;">' . $days . ' ' . ($days === 1 ? 'day' : 'days') . ' overdue</span>';

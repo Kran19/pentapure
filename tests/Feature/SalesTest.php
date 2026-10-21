@@ -537,7 +537,9 @@ namespace Tests\Feature;
                 'role' => 'SALES',
             ]];
 
-            // 1. Create a Pending Order
+            $today = now()->timezone('Asia/Kolkata')->format('Y-m-d');
+
+            // 1. Create a Pending Order Due Today
             $pendingOrder = Order::create([
                 'created_by'      => $this->salesUser->id,
                 'company_id'      => $this->company->id,
@@ -545,7 +547,7 @@ namespace Tests\Feature;
                 'total'           => 5000,
                 'status'          => 'OPEN',
                 'dispatch_status' => 'PENDING',
-                'due_date'        => now()->addDays(5)->toDateString(),
+                'due_date'        => $today,
             ]);
             OrderItem::create([
                 'order_id'       => $pendingOrder->id,
@@ -558,7 +560,7 @@ namespace Tests\Feature;
                 'amount'         => 5000,
             ]);
 
-            // 2. Create a Partial Order
+            // 2. Create a Partial Order Due Today
             $partialOrder = Order::create([
                 'created_by'      => $this->salesUser->id,
                 'company_id'      => $this->company->id,
@@ -566,7 +568,7 @@ namespace Tests\Feature;
                 'total'           => 8000,
                 'status'          => 'OPEN',
                 'dispatch_status' => 'PARTIAL',
-                'due_date'        => now()->toDateString(), // Due today
+                'due_date'        => $today,
             ]);
             $partialItem = OrderItem::create([
                 'order_id'       => $partialOrder->id,
@@ -590,7 +592,28 @@ namespace Tests\Feature;
                 'quantity'        => 30,
             ]);
 
-            $res = $this->withSession($session)->get('/sales/home');
+            // 3. Create a Future Order (NOT due today, must be excluded from sales/home)
+            $futureOrder = Order::create([
+                'created_by'      => $this->salesUser->id,
+                'company_id'      => $this->company->id,
+                'transporter_id'  => $this->transporter->id,
+                'total'           => 3000,
+                'status'          => 'OPEN',
+                'dispatch_status' => 'PENDING',
+                'due_date'        => now()->timezone('Asia/Kolkata')->addDays(5)->format('Y-m-d'),
+            ]);
+            OrderItem::create([
+                'order_id'       => $futureOrder->id,
+                'product_id'     => $this->product->id,
+                'grade'          => 'A',
+                'quantity'       => 30,
+                'dispatched_qty' => 0,
+                'rate'           => 100,
+                'price'          => 100,
+                'amount'         => 3000,
+            ]);
+
+            $res = $this->withSession($session)->get('/sales/home?tab=all');
             $res->assertStatus(200);
 
             // Verify KPI Stat Cards
@@ -605,12 +628,125 @@ namespace Tests\Feature;
             $res->assertSee('📦 Partial');
             $res->assertSee('📅 Due Today');
 
-            // Verify both pending and partial order contents are present
+            // Verify both pending and partial orders due today are present
             $content = $res->getContent();
-            $this->assertStringContainsString('#' . $pendingOrder->id, $content);
-            $this->assertStringContainsString('#' . $partialOrder->id, $content);
+            $this->assertStringContainsString('#' . $pendingOrder->id . '</span>', $content);
+            $this->assertStringContainsString('#' . $partialOrder->id . '</span>', $content);
+            // Verify future order (not due today) is excluded from sales/home
+            $this->assertStringNotContainsString('#' . $futureOrder->id . '</span>', $content);
             $this->assertStringContainsString('Disp: 30 kg', $content);
             $this->assertStringContainsString('Rem: 50 kg', $content);
+
+            // Verify the future order is still accessible in sales history
+            $histRes = $this->withSession($session)->get('/sales/history');
+            $histRes->assertStatus(200);
+            $this->assertStringContainsString('#' . $futureOrder->id, $histRes->getContent());
+        }
+
+        public function test_sales_history_displays_delete_order_button(): void
+        {
+            $order = Order::create([
+                'created_by'      => $this->salesUser->id,
+                'company_id'      => $this->company->id,
+                'transporter_id'  => $this->transporter->id,
+                'total'           => 4000,
+                'status'          => 'OPEN',
+                'dispatch_status' => 'PENDING',
+                'due_date'        => now()->toDateString(),
+            ]);
+
+            OrderItem::create([
+                'order_id'       => $order->id,
+                'product_id'     => $this->product->id,
+                'grade'          => 'A',
+                'quantity'       => 40,
+                'dispatched_qty' => 0,
+                'price'          => 100,
+            ]);
+
+            $session = ['auth_user' => [
+                'id'   => $this->salesUser->id,
+                'name' => $this->salesUser->name,
+                'role' => 'SALES',
+            ]];
+
+            $res = $this->withSession($session)->get('/sales/history');
+            $res->assertStatus(200);
+            $res->assertSee('🗑️ Delete Order');
+            $res->assertSee('app.deleteSalesOrder(' . $order->id . ')', false);
+        }
+
+        public function test_delete_sales_order_removes_order_dispatch_logs_and_stock_records(): void
+        {
+            // 1. Create order and item
+            $order = Order::create([
+                'created_by'      => $this->salesUser->id,
+                'company_id'      => $this->company->id,
+                'transporter_id'  => $this->transporter->id,
+                'total'           => 6000,
+                'status'          => 'OPEN',
+                'dispatch_status' => 'PARTIAL',
+                'due_date'        => now()->toDateString(),
+            ]);
+
+            $item = OrderItem::create([
+                'order_id'       => $order->id,
+                'product_id'     => $this->product->id,
+                'grade'          => 'A',
+                'quantity'       => 60,
+                'dispatched_qty' => 20,
+                'price'          => 100,
+            ]);
+
+            // 2. Create dispatch log & dispatch item
+            $dispatchLog = DispatchLog::create([
+                'order_id'       => $order->id,
+                'user_id'        => $this->salesUser->id,
+                'transporter_id' => $this->transporter->id,
+            ]);
+
+            $logItem = \App\Models\DispatchLogItem::create([
+                'dispatch_log_id' => $dispatchLog->id,
+                'order_item_id'   => $item->id,
+                'quantity'        => 20,
+            ]);
+
+            // 3. Create stock deduction record referencing round #$dispatchLog->id
+            $location = \App\Models\Location::firstOrCreate(['name' => 'Main Warehouse']);
+            $stock = \App\Models\Stock::create([
+                'product_id'       => $this->product->id,
+                'user_id'          => $this->salesUser->id,
+                'location_id'      => $location->id,
+                'stage'            => 'FINISHED',
+                'grade'            => 'A',
+                'quantity'         => 20,
+                'transaction_type' => 'OUT',
+                'notes'            => "Dispatched: Order #{$order->id} (Partial round #{$dispatchLog->id})",
+            ]);
+
+            $session = ['auth_user' => [
+                'id'   => $this->salesUser->id,
+                'name' => $this->salesUser->name,
+                'role' => 'SALES',
+            ]];
+
+            // 4. Delete the order via DELETE route
+            $response = $this->withSession($session)
+                ->deleteJson("/sales/order/{$order->id}");
+
+            $response->assertStatus(200);
+            $response->assertJson(['success' => true]);
+
+            // 5. Verify order is deleted
+            $this->assertNull(Order::find($order->id));
+            $this->assertEquals(0, OrderItem::where('order_id', $order->id)->count());
+
+            // 6. Verify dispatch log and log items are deleted
+            $this->assertNull(DispatchLog::find($dispatchLog->id));
+            $this->assertEquals(0, \App\Models\DispatchLogItem::where('dispatch_log_id', $dispatchLog->id)->count());
+
+            // 7. Verify stock deduction record was cleaned up
+            $this->assertNull(\App\Models\Stock::find($stock->id));
         }
     }
 

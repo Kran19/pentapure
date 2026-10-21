@@ -3648,6 +3648,68 @@ const app = {
     });
   },
 
+  deleteSalesOrder(id) {
+    const token = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const doDelete = () => {
+      const currentSlug = this.getCurrentSlug('sales');
+      const deleteUrl = `${this.getBaseUrl()}/${currentSlug}/order/${id}/delete`;
+
+      fetch(deleteUrl, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': token,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ _token: token, _method: 'DELETE' })
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          if (typeof Swal !== 'undefined') {
+            Swal.fire({ icon: 'success', title: 'Deleted', text: d.message, timer: 1500, showConfirmButton: false });
+          } else {
+            alert(d.message);
+          }
+          setTimeout(() => location.reload(), 800);
+        } else {
+          if (typeof Swal !== 'undefined') {
+            Swal.fire('Error', d.message || 'Could not delete order.', 'error');
+          } else {
+            alert(d.message || 'Could not delete order.');
+          }
+        }
+      })
+      .catch(err => {
+        if (typeof Swal !== 'undefined') {
+          Swal.fire('Error', 'Network error: ' + err.message, 'error');
+        } else {
+          alert('Network error: ' + err.message);
+        }
+      });
+    };
+
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({
+        title: 'Delete Order Completely?',
+        text: `Are you sure you want to permanently delete Order #${id}? This will completely remove the order, its items, and any related dispatch data from both Sales and Dispatch!`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete Order',
+        cancelButtonText: 'No, Keep Order',
+        confirmButtonColor: '#dc2626'
+      }).then(result => {
+        if (result.isConfirmed) {
+          doDelete();
+        }
+      });
+    } else {
+      if (confirm(`Are you sure you want to permanently delete Order #${id}? This will completely remove the order from Sales and Dispatch!`)) {
+        doDelete();
+      }
+    }
+  },
+
   openSalesCompanyDrawer(idx) {
     const c = window._historyLogs[idx];
     if(!c) return;

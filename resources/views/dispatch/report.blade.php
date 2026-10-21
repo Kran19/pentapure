@@ -10,7 +10,7 @@
   $statusFilter = strtoupper(trim((string)request('status', 'ALL')));
   if (!$statusFilter || $statusFilter === '') $statusFilter = 'ALL';
 
-  $filtered = collect($pageData['orders'] ?? []);
+  $filtered = collect($pageData['orders'] ?? [])->filter(fn($o) => strtoupper(trim((string)($o['status'] ?? ''))) !== 'CANCELLED');
 
   // 1. Company Filter
   if ($companyId) {
@@ -114,23 +114,40 @@
     });
   }
 
-  // 5. Step-by-Step Priority Sorting: PENDING (1) -> PARTIAL PENDING (2) -> PARTIAL DISPATCH (3) -> FULLY DISPATCHED (4)
-  $filtered = $filtered->sortBy(function($d) {
+  // 5. Step-by-Step Priority Sorting: Due Today (0) -> Overdue (1) -> Upcoming (2) -> Active No Due Date (3) -> Done (4) -> Cancelled (5)
+  $today = now()->timezone('Asia/Kolkata')->startOfDay();
+  $filtered = $filtered->sortBy(function($d) use ($today) {
     $st = strtoupper(trim(str_replace('_', ' ', (string)($d['dispatchStatus'] ?? $d['status'] ?? ''))));
-    $priority = 99;
-    if (in_array($st, ['PENDING', 'OPEN', 'UNASSIGNED'])) {
-      $priority = 1;
-    } elseif ($st === 'PARTIAL PENDING') {
-      $priority = 2;
-    } elseif (in_array($st, ['PARTIAL', 'PARTIAL DISPATCH'])) {
-      $priority = 3;
-    } elseif (in_array($st, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED'])) {
-      $priority = 4;
-    } elseif ($st === 'CANCELLED') {
-      $priority = 5;
+    $isDone = in_array($st, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED', 'FULLY_DISPATCHED']) ||
+              ((float)($d['totalQty'] ?? 0) > 0 && (float)($d['remainingQty'] ?? 0) <= 0);
+
+    $rawDueDate = $d['rawDueDate'] ?? (!empty($d['dueDate']) && $d['dueDate'] !== 'Not Specified' ? \Carbon\Carbon::parse($d['dueDate'], 'Asia/Kolkata')->format('Y-m-d') : null);
+    $diffDays = null;
+    if ($rawDueDate) {
+      $dueObj = \Carbon\Carbon::parse($rawDueDate, 'Asia/Kolkata')->startOfDay();
+      $diffDays = (int) $today->diffInDays($dueObj, false);
     }
-    return sprintf('%02d_%012d', $priority, 999999999999 - strtotime($d['date']));
-  });
+
+    if (!$isDone && $diffDays !== null && $diffDays === 0) {
+      // Due today -> Top priority (Group 0)
+      return sprintf('0_%010d', 9999999999 - (int)($d['id'] ?? 0));
+    } elseif (!$isDone && $diffDays !== null && $diffDays < 0) {
+      // Overdue -> Group 1 (most recent overdue first: 1 day overdue, 2 days overdue...)
+      return sprintf('1_%06d_%010d', abs($diffDays), 9999999999 - (int)($d['id'] ?? 0));
+    } elseif (!$isDone && $diffDays !== null && $diffDays > 0) {
+      // Upcoming -> Group 2 (closest due date first: 1 day left, 2 days left...)
+      return sprintf('2_%06d_%010d', $diffDays, 9999999999 - (int)($d['id'] ?? 0));
+    } elseif (!$isDone) {
+      // Active with no due date -> Group 3
+      return sprintf('3_%010d', 9999999999 - (int)($d['id'] ?? 0));
+    } elseif ($isDone) {
+      // Completed -> Group 4
+      return sprintf('4_%012d_%010d', 999999999999 - strtotime($d['date']), 9999999999 - (int)($d['id'] ?? 0));
+    } else {
+      // Cancelled -> Group 5
+      return sprintf('5_%012d_%010d', 999999999999 - strtotime($d['date']), 9999999999 - (int)($d['id'] ?? 0));
+    }
+  })->values();
 
   $page = request('page', 1);
   $perPage = 15;
@@ -411,17 +428,19 @@ html.dark-mode .highlight-expected-delivery,
       }
 
       $dueDate = !empty($d['dueDate']) && $d['dueDate'] !== 'N/A' && $d['dueDate'] !== '—' && $d['dueDate'] !== 'Not Specified' ? $d['dueDate'] : null;
-      $rawDueDate = $d['rawDueDate'] ?? ($dueDate ? \Carbon\Carbon::parse($dueDate)->format('Y-m-d') : null);
+      $rawDueDate = $d['rawDueDate'] ?? ($dueDate ? \Carbon\Carbon::parse($dueDate, 'Asia/Kolkata')->format('Y-m-d') : null);
       $diffDays = null;
       $dueDaysBadge = '';
+      $isDueToday = false;
       if ($rawDueDate) {
           $isDone = in_array($rawSt, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED', 'FULLY_DISPATCHED']);
           if (!$isDone) {
-              $diffDays = (int) now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($rawDueDate)->startOfDay(), false);
+              $diffDays = (int) now()->timezone('Asia/Kolkata')->startOfDay()->diffInDays(\Carbon\Carbon::parse($rawDueDate, 'Asia/Kolkata')->startOfDay(), false);
               if ($diffDays < 0) {
                   $days = abs($diffDays);
                   $dueDaysBadge = '<span class="due-days-badge overdue">' . $days . ' ' . ($days === 1 ? 'day' : 'days') . ' overdue</span>';
               } elseif ($diffDays === 0) {
+                  $isDueToday = true;
                   $dueDaysBadge = '<span class="due-days-badge today">Due today</span>';
               } else {
                   $dueDaysBadge = '<span class="due-days-badge upcoming">' . $diffDays . ' ' . ($diffDays === 1 ? 'day' : 'days') . ' left</span>';
@@ -431,12 +450,17 @@ html.dark-mode .highlight-expected-delivery,
           }
       }
     @endphp
-    <div class="card dispatch-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--border-soft, #e5e7eb); background:var(--bg-card, #ffffff); box-shadow:0 1px 3px rgba(0,0,0,0.04); transition:all 0.2s ease;">
+    <div class="card dispatch-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--border-soft, #e5e7eb); background:var(--bg-card, #ffffff); box-shadow:0 1px 3px rgba(0,0,0,0.04); transition:all 0.2s ease; {{ $isDueToday ? 'box-shadow: 0 4px 14px rgba(216, 138, 0, 0.15); border-color: rgba(216, 138, 0, 0.4);' : '' }}">
       <!-- Clickable Header Row -->
-      <div onclick="toggleReportAccordion('rep-acc-{{ $d['id'] }}', this)" style="cursor:pointer; padding:1.1rem; display:flex; justify-content:space-between; align-items:center; user-select:none;">
+      <div onclick="toggleReportAccordion('rep-acc-{{ $d['id'] }}', this)" style="cursor:pointer; padding:1.1rem; display:flex; justify-content:space-between; align-items:center; user-select:none; {{ $isDueToday ? 'background: linear-gradient(to right, rgba(254, 243, 199, 0.25), transparent);' : '' }}">
         <div style="flex:1; padding-right:15px;">
-          <div style="font-weight:600; font-size:1rem; color:var(--text-main); line-height:1.3;">
-            Order #{{ strtoupper((string)($d['orderId'] ?? $d['id'])) }} - {{ $d['companyName'] ?? 'N/A' }}
+          <div style="font-weight:600; font-size:1rem; color:var(--text-main); line-height:1.3; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span>Order #{{ strtoupper((string)($d['orderId'] ?? $d['id'])) }} - {{ $d['companyName'] ?? 'N/A' }}</span>
+            @if($isDueToday)
+              <span class="badge" style="font-size:0.68rem; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; padding:2px 8px; border-radius:4px; font-weight:800; display:inline-flex; align-items:center; gap:3px;">
+                ⚡ DUE TODAY
+              </span>
+            @endif
           </div>
           <div style="margin-top:6px; font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
             {!! $statusBadge !!}

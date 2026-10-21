@@ -424,10 +424,13 @@
             </a>
           @endif
           @if($canCancel)
-            <button class="btn btn-sm" onclick="app.cancelSalesOrder({{ $item['id'] }})" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#ef4444; display:inline-flex; align-items:center; gap:5px;">
+            <button class="btn btn-sm" onclick="app.cancelSalesOrder({{ $item['id'] }})" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#ef4444; display:inline-flex; align-items:center; gap:5px; cursor:pointer;">
               🚫 Cancel Order
             </button>
           @endif
+          <button class="btn btn-sm" onclick="app.deleteSalesOrder({{ $item['id'] }})" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; background:rgba(220,38,38,0.12); border:1px solid rgba(220,38,38,0.35); color:#dc2626; display:inline-flex; align-items:center; gap:5px; font-weight:700; cursor:pointer; border-radius:6px;" title="Permanently delete this order from Sales and Dispatch">
+            🗑️ Delete Order
+          </button>
           <a class="btn btn-sm btn-secondary" href="{{ url((request()->segment(1) === 'sales' ? 'sales' : request()->segment(1) . '/sales') . '/order/pdf/' . $item['id']) }}" target="_blank" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
             📄 Download PDF
           </a>
@@ -498,5 +501,69 @@
     document.body.appendChild(form);
     form.submit();
   }
+
+  window.app = window.app || {};
+  app.deleteSalesOrder = function(id) {
+    const token = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+    const doDelete = () => {
+      const seg1 = '{{ request()->segment(1) }}';
+      const basePrefix = (seg1 === 'sales') ? '/sales' : '/' + seg1 + '/sales';
+      const deleteUrl = basePrefix + '/order/' + id + '/delete';
+
+      fetch(deleteUrl, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': token,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ _token: token, _method: 'DELETE' })
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          if (typeof Swal !== 'undefined') {
+            Swal.fire({ icon: 'success', title: 'Deleted', text: d.message, timer: 1500, showConfirmButton: false });
+          } else {
+            alert(d.message);
+          }
+          setTimeout(() => location.reload(), 800);
+        } else {
+          if (typeof Swal !== 'undefined') {
+            Swal.fire('Error', d.message || 'Could not delete order.', 'error');
+          } else {
+            alert(d.message || 'Could not delete order.');
+          }
+        }
+      })
+      .catch(err => {
+        if (typeof Swal !== 'undefined') {
+          Swal.fire('Error', 'Network error: ' + err.message, 'error');
+        } else {
+          alert('Network error: ' + err.message);
+        }
+      });
+    };
+
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({
+        title: 'Delete Order Completely?',
+        text: `Are you sure you want to permanently delete Order #${id}? This will completely delete the order from Sales, Dispatch, and all related records!`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete Order',
+        cancelButtonText: 'No, Keep Order',
+        confirmButtonColor: '#dc2626'
+      }).then(result => {
+        if (result.isConfirmed) {
+          doDelete();
+        }
+      });
+    } else {
+      if (confirm(`Are you sure you want to permanently delete Order #${id}? This will completely delete the order from Sales, Dispatch, and all related records!`)) {
+        doDelete();
+      }
+    }
+  };
 </script>
 @endsection

@@ -92,6 +92,17 @@
   color: #ffffff;
 }
 
+.status-tab-btn.active-cancelled {
+  background: #dc2626;
+  color: #ffffff !important;
+  font-weight: 700;
+}
+.status-tab-btn.active-cancelled .tab-badge {
+  background: rgba(0, 0, 0, 0.22);
+  border-color: transparent;
+  color: #ffffff;
+}
+
 @media (max-width: 720px) {
   .dispatch-item-badges {
     grid-template-columns: repeat(3, 1fr) !important;
@@ -272,6 +283,11 @@ html.dark-mode .highlight-expected-delivery,
            class="status-tab-btn {{ in_array($currentStatus, ['FULLY_DISPATCH', 'FULLY_DISPATCHED', 'DONE']) ? 'active-done' : '' }}" title="Filter Fully Dispatched Orders">
           FULLY DISPATCHED <span class="tab-badge">{{ $pageData['statusCounts']['FULLY_DISPATCH'] ?? 0 }}</span>
         </a>
+        <!-- Cancelled -->
+        <a href="{{ request()->fullUrlWithQuery(['status' => 'CANCELLED', 'page' => 1]) }}"
+           class="status-tab-btn {{ $currentStatus === 'CANCELLED' ? 'active-cancelled' : '' }}" title="Filter Cancelled Orders">
+          CANCELLED <span class="tab-badge">{{ $pageData['statusCounts']['CANCELLED'] ?? 0 }}</span>
+        </a>
       </div>
 
       <div style="font-size:0.85rem; color:var(--text-muted); font-weight:600;">
@@ -291,13 +307,16 @@ html.dark-mode .highlight-expected-delivery,
         @php
           $orderDate = $order->date ? \Carbon\Carbon::parse($order->date) : $order->created_at;
           $rawSt = strtoupper(trim((string)($order->dispatch_status ?? $order->status ?? 'PENDING')));
+          $isCancelled = strtoupper(trim((string)($order->status ?? ''))) === 'CANCELLED';
           
           $totalOrderQty = (float) $order->items->sum('quantity');
           $totalDispatchedQty = (float) $order->items->sum('dispatched_qty');
           $totalRemainingQty = max(0, $totalOrderQty - $totalDispatchedQty);
 
           $statusBadge = '';
-          if (in_array($rawSt, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED', 'FULLY_DISPATCHED']) || ($totalOrderQty > 0 && $totalRemainingQty <= 0)) {
+          if ($isCancelled) {
+            $statusBadge = '<span class="badge" style="font-size:0.72rem; background:#dc2626; color:#ffffff !important; padding:3px 9px; border-radius:5px; font-weight:700; letter-spacing:0.3px;">CANCELLED</span>';
+          } elseif (in_array($rawSt, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED', 'FULLY_DISPATCHED']) || ($totalOrderQty > 0 && $totalRemainingQty <= 0)) {
             $statusBadge = '<span class="badge" style="font-size:0.72rem; background:#16a34a; color:#ffffff !important; padding:3px 9px; border-radius:5px; font-weight:700; letter-spacing:0.3px;">FULLY DISPATCHED</span>';
           } elseif (in_array($rawSt, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIAL PENDING', 'PARTIAL_PENDING', 'PARTIAL_DISPATCH', 'PARTIALLY DISPATCHED']) || ($totalDispatchedQty > 0 && $totalRemainingQty > 0)) {
             $statusBadge = '<span class="badge" style="font-size:0.72rem; background:#f59e0b; color:#ffffff !important; padding:3px 9px; border-radius:5px; font-weight:700; letter-spacing:0.3px;">PARTIAL</span>';
@@ -316,7 +335,9 @@ html.dark-mode .highlight-expected-delivery,
           $isOrderDone = in_array($rawSt, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED', 'FULLY_DISPATCHED']) || ($totalOrderQty > 0 && $totalRemainingQty <= 0);
 
           if ($order->due_date) {
-              if (!$isOrderDone) {
+              if ($isCancelled) {
+                  $dueDaysBadge = '<span class="due-days-badge" style="background:#fef2f2; border:1px solid #fecaca; color:#dc2626 !important;">Cancelled</span>';
+              } elseif (!$isOrderDone) {
                   $diffDays = (int) now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($order->due_date)->startOfDay(), false);
                   if ($diffDays < 0) {
                       $days = abs($diffDays);
@@ -332,12 +353,17 @@ html.dark-mode .highlight-expected-delivery,
           }
         @endphp
 
-        <div class="card dispatch-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--border-soft, #e5e7eb); background:var(--bg-card, #ffffff); box-shadow:0 1px 3px rgba(0,0,0,0.04); transition:all 0.2s ease;">
+        <div class="card dispatch-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid {{ $isCancelled ? '#fca5a5' : 'var(--border-soft, #e5e7eb)' }}; background:{{ $isCancelled ? '#fffafb' : 'var(--bg-card, #ffffff)' }}; {{ $isCancelled ? 'border-left: 4px solid #dc2626;' : '' }} box-shadow:0 1px 3px rgba(0,0,0,0.04); transition:all 0.2s ease;">
           <!-- Clickable Header Row -->
           <div onclick="toggleReportAccordion('act-acc-{{ $order->id }}', this)" style="cursor:pointer; padding:1.1rem; display:flex; justify-content:space-between; align-items:center; user-select:none;">
             <div style="flex:1; padding-right:15px;">
-              <div style="font-weight:600; font-size:1rem; color:var(--text-main); line-height:1.3;">
-                ORDER #{{ $order->id }} - {{ $companyName }}
+              <div style="font-weight:600; font-size:1rem; color:var(--text-main); line-height:1.3; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span>ORDER #{{ $order->id }} - {{ $companyName }}</span>
+                @if($isCancelled)
+                  <span class="badge" style="font-size:0.72rem; background:#dc2626; color:#ffffff !important; padding:2px 8px; border-radius:4px; font-weight:700; letter-spacing:0.3px; display:inline-flex; align-items:center; gap:4px;">
+                    CANCELLED
+                  </span>
+                @endif
               </div>
               <div style="margin-top:6px; font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
                 <span>SALES BY: <strong style="color:var(--text-main, #111827);">{{ $salesPerson }}</strong></span>
@@ -364,7 +390,20 @@ html.dark-mode .highlight-expected-delivery,
 
           <!-- Expandable Details Dropdown / Collapsible -->
           <div id="act-acc-{{ $order->id }}" class="act-accordion-content" style="display:none; padding:1.2rem; border-top:1px solid #f3f4f6; background:#ffffff;">
+            @if($isCancelled)
+              <div style="margin-bottom:1rem; padding:8px 12px; background:#fef2f2; border:1px solid #fecaca; border-radius:6px; color:#dc2626; font-size:0.85rem; font-weight:700; display:flex; align-items:center; gap:8px;">
+                <span>⚠️ This order was cancelled in Sales.</span>
+              </div>
+            @endif
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:1rem; margin-bottom:1rem;">
+              <div>
+                <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Order Status</div>
+                @if($isCancelled)
+                  <span class="badge" style="font-size:0.72rem; background:#dc2626; color:#ffffff !important; padding:2px 8px; border-radius:4px; font-weight:700;">CANCELLED</span>
+                @else
+                  <span style="font-weight:700; font-size:0.85rem; color:#16a34a;">ACTIVE ({{ $order->status ?: 'OPEN' }})</span>
+                @endif
+              </div>
               <div>
                 <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Order ID</div>
                 <div style="display:flex; align-items:center; gap:8px;">

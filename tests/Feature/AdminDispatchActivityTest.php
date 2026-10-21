@@ -189,5 +189,48 @@ class AdminDispatchActivityTest extends TestCase
         $res->assertSee('EXPECTED DELIVERY DATE:');
         $res->assertSee('15-10-2026');
     }
+
+    public function test_admin_dispatch_activity_displays_cancelled_badge_and_filters_cancelled_orders(): void
+    {
+        $admin = $this->createAdmin();
+        $session = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
+
+        $company = Company::create(['name' => 'Delta Exports']);
+
+        $activeOrder = Order::create([
+            'created_by' => $admin->id,
+            'company_id' => $company->id,
+            'total' => 1200.00,
+            'status' => 'APPROVED',
+            'dispatch_status' => 'PENDING',
+        ]);
+
+        $cancelledOrder = Order::create([
+            'created_by' => $admin->id,
+            'company_id' => $company->id,
+            'total' => 3400.00,
+            'status' => 'CANCELLED',
+            'dispatch_status' => 'PENDING',
+        ]);
+
+        // 1. ALL view shows both orders and displays CANCELLED badge on the cancelled order
+        $resAll = $this->withSession($session)->get('/admin/dispatch-activity');
+        $resAll->assertStatus(200);
+        $resAll->assertSee('ORDER #' . $activeOrder->id . ' - DELTA EXPORTS');
+        $resAll->assertSee('ORDER #' . $cancelledOrder->id . ' - DELTA EXPORTS');
+        $resAll->assertSee('CANCELLED');
+
+        // 2. Filter status=CANCELLED only shows the cancelled order
+        $resCancelled = $this->withSession($session)->get('/admin/dispatch-activity?status=CANCELLED');
+        $resCancelled->assertStatus(200);
+        $resCancelled->assertSee('ORDER #' . $cancelledOrder->id . ' - DELTA EXPORTS');
+        $resCancelled->assertDontSee('ORDER #' . $activeOrder->id . ' - DELTA EXPORTS');
+
+        // 3. Filter status=PENDING excludes the cancelled order
+        $resPending = $this->withSession($session)->get('/admin/dispatch-activity?status=PENDING');
+        $resPending->assertStatus(200);
+        $resPending->assertSee('ORDER #' . $activeOrder->id . ' - DELTA EXPORTS');
+        $resPending->assertDontSee('ORDER #' . $cancelledOrder->id . ' - DELTA EXPORTS');
+    }
 }
 

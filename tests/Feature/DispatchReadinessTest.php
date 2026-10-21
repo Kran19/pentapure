@@ -88,7 +88,7 @@ class DispatchReadinessTest extends TestCase
         $content = $response->getContent();
 
         $this->assertStringContainsString("Order #{$order->id}", $content);
-        $this->assertStringContainsString('NOT DISPATCH', $content);
+        $this->assertStringContainsString('NOT READY', $content);
         $this->assertStringContainsString('STOCK:', $content);
         $this->assertStringContainsString('0 kg', $content);
         $this->assertStringContainsString('/sub_admin/dispatch/action', $content);
@@ -135,7 +135,7 @@ class DispatchReadinessTest extends TestCase
         $content = $response->getContent();
 
         $this->assertStringContainsString("Order #{$order->id}", $content);
-        $this->assertStringContainsString('PARTIAL DISPATCH', $content);
+        $this->assertStringContainsString('READY TO PARTIAL DISPATCH', $content);
         $this->assertStringContainsString('40 kg', $content);
     }
 
@@ -225,7 +225,7 @@ class DispatchReadinessTest extends TestCase
         $content = $response->getContent();
 
         $this->assertStringNotContainsString('READY TO DISPATCH', $content);
-        $this->assertStringContainsString('NOT DISPATCH', $content);
+        $this->assertStringContainsString('NOT READY', $content);
     }
 
     public function test_different_grade_does_not_satisfy_specific_grade_order(): void
@@ -270,7 +270,7 @@ class DispatchReadinessTest extends TestCase
         $content = $response->getContent();
 
         $this->assertStringNotContainsString('READY TO DISPATCH', $content);
-        $this->assertStringContainsString('NOT DISPATCH', $content);
+        $this->assertStringContainsString('NOT READY', $content);
     }
 
     public function test_dispatch_filters_work_with_scenarios(): void
@@ -332,8 +332,8 @@ class DispatchReadinessTest extends TestCase
             'role' => 'SUB_ADMIN',
         ]];
 
-        // Filter: not_dispatch
-        $respNotDispatch = $this->withSession($session)->get('/sub_admin/dispatch/home?dispatch_filter=not_dispatch');
+        // Filter: not_ready & not_dispatch
+        $respNotDispatch = $this->withSession($session)->get('/sub_admin/dispatch/home?dispatch_filter=not_ready');
         $respNotDispatch->assertStatus(200);
         $respNotDispatchContent = $respNotDispatch->getContent();
         $this->assertStringContainsString("Order #{$order2->id}", $respNotDispatchContent);
@@ -396,6 +396,311 @@ class DispatchReadinessTest extends TestCase
         $actionContent = $actionResp->getContent();
         $this->assertStringContainsString("order_id", $actionContent);
         $this->assertStringContainsString("window.currentPendingOrders", $actionContent);
+    }
+
+    public function test_orders_due_today_are_displayed_on_top(): void
+    {
+        $todayStr = now()->timezone('Asia/Kolkata')->toDateString();
+        $upcomingStr = now()->timezone('Asia/Kolkata')->addDays(5)->toDateString();
+        $overdueStr = now()->timezone('Asia/Kolkata')->subDays(2)->toDateString();
+
+        // 1. Order due in 5 days (Upcoming)
+        $orderUpcoming = Order::create([
+            'created_by'      => $this->subAdminUser->id,
+            'company_id'      => $this->company->id,
+            'transporter_id'  => $this->transporter->id,
+            'total'           => 1000,
+            'status'          => 'OPEN',
+            'dispatch_status' => 'PENDING',
+            'due_date'        => $upcomingStr,
+            'created_at'      => now()->subMinutes(10),
+        ]);
+        OrderItem::create([
+            'order_id'       => $orderUpcoming->id,
+            'product_id'     => $this->productPipe->id,
+            'grade'          => 'NONE',
+            'quantity'       => 10,
+            'price'          => 50,
+            'dispatched_qty' => 0,
+        ]);
+
+        // 2. Order without due date
+        $orderNoDueDate = Order::create([
+            'created_by'      => $this->subAdminUser->id,
+            'company_id'      => $this->company->id,
+            'transporter_id'  => $this->transporter->id,
+            'total'           => 2000,
+            'status'          => 'OPEN',
+            'dispatch_status' => 'PENDING',
+            'due_date'        => null,
+            'created_at'      => now()->subMinutes(5),
+        ]);
+        OrderItem::create([
+            'order_id'       => $orderNoDueDate->id,
+            'product_id'     => $this->productPipe->id,
+            'grade'          => 'NONE',
+            'quantity'       => 20,
+            'price'          => 50,
+            'dispatched_qty' => 0,
+        ]);
+
+        // 3. Order DUE TODAY (must be at the top!)
+        $orderDueToday = Order::create([
+            'created_by'      => $this->subAdminUser->id,
+            'company_id'      => $this->company->id,
+            'transporter_id'  => $this->transporter->id,
+            'total'           => 3000,
+            'status'          => 'OPEN',
+            'dispatch_status' => 'PENDING',
+            'due_date'        => $todayStr,
+            'created_at'      => now()->subDays(2),
+        ]);
+        OrderItem::create([
+            'order_id'       => $orderDueToday->id,
+            'product_id'     => $this->productPipe->id,
+            'grade'          => 'NONE',
+            'quantity'       => 30,
+            'price'          => 50,
+            'dispatched_qty' => 0,
+        ]);
+
+        // 4. Order Overdue (due 2 days ago)
+        $orderOverdue = Order::create([
+            'created_by'      => $this->subAdminUser->id,
+            'company_id'      => $this->company->id,
+            'transporter_id'  => $this->transporter->id,
+            'total'           => 4000,
+            'status'          => 'OPEN',
+            'dispatch_status' => 'PENDING',
+            'due_date'        => $overdueStr,
+            'created_at'      => now()->subDays(4),
+        ]);
+        OrderItem::create([
+            'order_id'       => $orderOverdue->id,
+            'product_id'     => $this->productPipe->id,
+            'grade'          => 'NONE',
+            'quantity'       => 40,
+            'price'          => 50,
+            'dispatched_qty' => 0,
+        ]);
+
+        $session = ['auth_user' => [
+            'id'   => $this->subAdminUser->id,
+            'name' => $this->subAdminUser->name,
+            'role' => 'SUB_ADMIN',
+        ]];
+
+        $response = $this->withSession($session)->get('/sub_admin/dispatch/home');
+        $response->assertStatus(200);
+        $content = $response->getContent();
+
+        // Must display the DUE TODAY highlight
+        $this->assertStringContainsString('⚡ DUE TODAY', $content);
+        $this->assertStringContainsString('Due today', $content);
+
+        // Verify Order Due Today appears before the other orders in the HTML
+        $posDueToday = strpos($content, "Order #{$orderDueToday->id}");
+        $posOverdue  = strpos($content, "Order #{$orderOverdue->id}");
+        $posUpcoming = strpos($content, "Order #{$orderUpcoming->id}");
+        $posNoDue    = strpos($content, "Order #{$orderNoDueDate->id}");
+
+        $this->assertNotFalse($posDueToday);
+        $this->assertNotFalse($posOverdue);
+        $this->assertNotFalse($posUpcoming);
+        $this->assertNotFalse($posNoDue);
+
+        // Due today MUST appear before overdue, upcoming, and no-due-date orders!
+        $this->assertLessThan($posOverdue, $posDueToday, 'Order Due Today should appear before Overdue order');
+        $this->assertLessThan($posUpcoming, $posDueToday, 'Order Due Today should appear before Upcoming order');
+        $this->assertLessThan($posNoDue, $posDueToday, 'Order Due Today should appear before order without due date');
+    }
+
+    public function test_dispatch_report_displays_orders_due_today_on_top(): void
+    {
+        $todayStr = now()->timezone('Asia/Kolkata')->toDateString();
+        $upcomingStr = now()->timezone('Asia/Kolkata')->addDays(3)->toDateString();
+        $overdueStr = now()->timezone('Asia/Kolkata')->subDays(3)->toDateString();
+
+        // 1. Upcoming order
+        $orderUpcoming = Order::create([
+            'created_by'      => $this->subAdminUser->id,
+            'company_id'      => $this->company->id,
+            'transporter_id'  => $this->transporter->id,
+            'total'           => 1000,
+            'status'          => 'OPEN',
+            'dispatch_status' => 'PENDING',
+            'due_date'        => $upcomingStr,
+            'created_at'      => now()->subMinutes(10),
+        ]);
+        OrderItem::create([
+            'order_id'       => $orderUpcoming->id,
+            'product_id'     => $this->productPipe->id,
+            'grade'          => 'NONE',
+            'quantity'       => 10,
+            'price'          => 50,
+            'dispatched_qty' => 0,
+        ]);
+
+        // 2. Overdue order
+        $orderOverdue = Order::create([
+            'created_by'      => $this->subAdminUser->id,
+            'company_id'      => $this->company->id,
+            'transporter_id'  => $this->transporter->id,
+            'total'           => 2000,
+            'status'          => 'OPEN',
+            'dispatch_status' => 'PENDING',
+            'due_date'        => $overdueStr,
+            'created_at'      => now()->subDays(5),
+        ]);
+        OrderItem::create([
+            'order_id'       => $orderOverdue->id,
+            'product_id'     => $this->productPipe->id,
+            'grade'          => 'NONE',
+            'quantity'       => 20,
+            'price'          => 50,
+            'dispatched_qty' => 0,
+        ]);
+
+        // 3. Due Today order (must be at the top)
+        $orderDueToday = Order::create([
+            'created_by'      => $this->subAdminUser->id,
+            'company_id'      => $this->company->id,
+            'transporter_id'  => $this->transporter->id,
+            'total'           => 3000,
+            'status'          => 'OPEN',
+            'dispatch_status' => 'PENDING',
+            'due_date'        => $todayStr,
+            'created_at'      => now()->subDays(1),
+        ]);
+        OrderItem::create([
+            'order_id'       => $orderDueToday->id,
+            'product_id'     => $this->productPipe->id,
+            'grade'          => 'NONE',
+            'quantity'       => 30,
+            'price'          => 50,
+            'dispatched_qty' => 0,
+        ]);
+
+        $this->subAdminUser->update([
+            'permissions' => ['view_dispatch_home', 'edit_dispatch_home', 'view_dispatch_action', 'edit_dispatch_action', 'view_dispatch_report', 'module_dispatch'],
+        ]);
+
+        $session = ['auth_user' => [
+            'id'   => $this->subAdminUser->id,
+            'name' => $this->subAdminUser->name,
+            'role' => 'SUB_ADMIN',
+            'permissions' => ['view_dispatch_home', 'edit_dispatch_home', 'view_dispatch_action', 'edit_dispatch_action', 'view_dispatch_report', 'module_dispatch'],
+        ]];
+
+        $response = $this->withSession($session)->get('/sub_admin/dispatch/report');
+        $response->assertStatus(200);
+        $content = $response->getContent();
+
+        // Must display the DUE TODAY highlight
+        $this->assertStringContainsString('⚡ DUE TODAY', $content);
+        $this->assertStringContainsString('Due today', $content);
+
+        // Verify Order Due Today appears before the other orders in the HTML
+        $posDueToday = strpos($content, "Order #{$orderDueToday->id}");
+        $posOverdue  = strpos($content, "Order #{$orderOverdue->id}");
+        $posUpcoming = strpos($content, "Order #{$orderUpcoming->id}");
+
+        $this->assertNotFalse($posDueToday);
+        $this->assertNotFalse($posOverdue);
+        $this->assertNotFalse($posUpcoming);
+
+        // Due today MUST appear before overdue and upcoming orders!
+        $this->assertLessThan($posOverdue, $posDueToday, 'Order Due Today should appear before Overdue order in report');
+        $this->assertLessThan($posUpcoming, $posDueToday, 'Order Due Today should appear before Upcoming order in report');
+    }
+
+    public function test_cancelled_orders_do_not_appear_in_dispatch(): void
+    {
+        // 1. Active Order
+        $activeOrder = Order::create([
+            'created_by'      => $this->subAdminUser->id,
+            'company_id'      => $this->company->id,
+            'transporter_id'  => $this->transporter->id,
+            'total'           => 1000,
+            'status'          => 'OPEN',
+            'dispatch_status' => 'PENDING',
+            'created_at'      => now(),
+        ]);
+        $activeItem = OrderItem::create([
+            'order_id'       => $activeOrder->id,
+            'product_id'     => $this->productPipe->id,
+            'grade'          => 'NONE',
+            'quantity'       => 10,
+            'price'          => 50,
+            'dispatched_qty' => 0,
+        ]);
+
+        // 2. Cancelled Order
+        $cancelledOrder = Order::create([
+            'created_by'      => $this->subAdminUser->id,
+            'company_id'      => $this->company->id,
+            'transporter_id'  => $this->transporter->id,
+            'total'           => 2000,
+            'status'          => 'CANCELLED',
+            'dispatch_status' => 'PENDING',
+            'created_at'      => now(),
+        ]);
+        $cancelledItem = OrderItem::create([
+            'order_id'       => $cancelledOrder->id,
+            'product_id'     => $this->productPipe->id,
+            'grade'          => 'NONE',
+            'quantity'       => 20,
+            'price'          => 50,
+            'dispatched_qty' => 0,
+        ]);
+
+        $this->subAdminUser->update([
+            'permissions' => ['view_dispatch_home', 'edit_dispatch_home', 'view_dispatch_action', 'edit_dispatch_action', 'view_dispatch_report', 'module_dispatch'],
+        ]);
+
+        $session = ['auth_user' => [
+            'id'   => $this->subAdminUser->id,
+            'name' => $this->subAdminUser->name,
+            'role' => 'SUB_ADMIN',
+            'permissions' => ['view_dispatch_home', 'edit_dispatch_home', 'view_dispatch_action', 'edit_dispatch_action', 'view_dispatch_report', 'module_dispatch'],
+        ]];
+
+        // Test 1: Dispatch Home
+        $responseHome = $this->withSession($session)->get('/sub_admin/dispatch/home');
+        $responseHome->assertStatus(200);
+        $contentHome = $responseHome->getContent();
+        $this->assertStringContainsString("Order #{$activeOrder->id}", $contentHome);
+        $this->assertStringNotContainsString("Order #{$cancelledOrder->id}", $contentHome);
+
+        // Test 2: Dispatch Action page (Dropdown)
+        $responseAction = $this->withSession($session)->get('/sub_admin/dispatch/action');
+        $responseAction->assertStatus(200);
+        $contentAction = $responseAction->getContent();
+        $this->assertStringContainsString("value=\"{$activeOrder->id}\"", $contentAction);
+        $this->assertStringNotContainsString("value=\"{$cancelledOrder->id}\"", $contentAction);
+
+        // Test 3: Dispatch Report page
+        $responseReport = $this->withSession($session)->get('/sub_admin/dispatch/report');
+        $responseReport->assertStatus(200);
+        $contentReport = $responseReport->getContent();
+        $this->assertStringContainsString("Order #{$activeOrder->id}", $contentReport);
+        $this->assertStringNotContainsString("Order #{$cancelledOrder->id}", $contentReport);
+
+        // Test 4: Order details endpoint rejects cancelled order with 404
+        $responseDetails = $this->withSession($session)->get("/dispatch/order-details/{$cancelledOrder->id}");
+        $responseDetails->assertStatus(404);
+
+        // Test 5: storeDispatch rejects cancelled order with 422
+        $responseStore = $this->withSession($session)->post('/sub_admin/dispatch/action', [
+            'order_id' => $cancelledOrder->id,
+            'items'    => [
+                [
+                    'order_item_id' => $cancelledItem->id,
+                    'quantity'      => 5,
+                ]
+            ]
+        ]);
+        $responseStore->assertStatus(422);
     }
 }
 

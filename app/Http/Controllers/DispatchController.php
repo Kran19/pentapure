@@ -22,9 +22,20 @@ class DispatchController extends Controller
                 $q->whereNotIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY DISPATCHED'])
                   ->orWhereNull('dispatch_status');
             })
+            ->where(function($q) {
+                $q->where('status', '!=', 'CANCELLED')
+                  ->orWhereNull('status');
+            })
             ->orderByDesc('created_at')
             ->get();
-        $completed = Order::with(['company', 'transporter', 'creator', 'items.product'])->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY DISPATCHED'])->orderByDesc('created_at')->get();
+        $completed = Order::with(['company', 'transporter', 'creator', 'items.product'])
+            ->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY DISPATCHED'])
+            ->where(function($q) {
+                $q->where('status', '!=', 'CANCELLED')
+                  ->orWhereNull('status');
+            })
+            ->orderByDesc('created_at')
+            ->get();
 
         $rawStock = DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
@@ -75,84 +86,102 @@ class DispatchController extends Controller
             $stockMap[$key] = ($stockMap[$key] ?? 0) + (float)$ls->net_qty;
         }
 
+        $today = now()->timezone('Asia/Kolkata')->startOfDay();
+        $pendingMapped = $pending->map(function($o) use ($stockMap) {
+            $items = $o->items->map(function($i) use ($stockMap) {
+                $needed = max(0, (float)$i->quantity - (float)$i->dispatched_qty);
+                $rawType = strtoupper(trim((string)($i->product?->type ?? 'FINISHED')));
+                $itemStage = ($rawType === 'FG') ? 'FINISHED' : (($rawType === 'PKG') ? 'PACKAGING' : ($rawType ?: 'FINISHED'));
+
+                $rawGrade = trim((string)$i->grade);
+                $itemGrade = (!empty($rawGrade) && strtoupper($rawGrade) !== 'NONE' && strtoupper($rawGrade) !== 'N/A') ? strtoupper($rawGrade) : 'NONE';
+
+                $key = $i->product_id . '_' . $itemStage . '_' . $itemGrade;
+                $avail = max(0, (float)($stockMap[$key] ?? 0));
+                return [
+                    'id'            => $i->id,
+                    'productId'     => $i->product_id,
+                    'rawProductName'=> $i->product?->name ?? 'Unknown',
+                    'productName'   => $i->product?->name ?? 'Unknown',
+                    'formattedName' => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
+                    'productType'   => $i->product?->type,
+                    'quantity'      => (float) $i->quantity,
+                    'dispatchedQty' => (float) $i->dispatched_qty,
+                    'remainingQty'  => $needed,
+                    'availStock'    => $avail,
+                    'grade'         => $i->grade,
+                ];
+            });
+
+            $remainingItems = $items->filter(fn($i) => $i['remainingQty'] > 0);
+            $totalRemainingItems = $remainingItems->count();
+            $orderTotalQty = (float) $items->sum('quantity');
+
+            $fullCount = 0;
+            $partialCount = 0;
+
+            foreach ($remainingItems as $ri) {
+                if ($ri['availStock'] >= $ri['remainingQty']) {
+                    $fullCount++;
+                    $partialCount++;
+                } elseif ($ri['availStock'] > 0) {
+                    $partialCount++;
+                }
+            }
+
+            if ($orderTotalQty <= 0) {
+                $readiness = 'NOT_READY';
+            } elseif ($totalRemainingItems == 0) {
+                $readiness = 'DONE';
+            } elseif ($fullCount === $totalRemainingItems) {
+                $readiness = 'READY_DISPATCH';
+            } elseif ($partialCount > 0) {
+                $readiness = 'READY_PARTIAL';
+            } else {
+                $readiness = 'NOT_READY';
+            }
+
+            return [
+                'id'           => $o->id,
+                'companyId'    => $o->company_id,
+                'companyName'  => $o->company?->name,
+                'transportId'  => $o->transporter_id,
+                'transporterName' => $o->transporter?->name,
+                'salesPerson'  => $o->creator?->name ?? 'N/A',
+                'total'        => $o->total,
+                'date'         => $o->created_at ? $o->created_at->toISOString() : ($o->date ? \Carbon\Carbon::parse($o->date)->toISOString() : now()->toISOString()),
+                'dueDate'      => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
+                'rawDueDate'   => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('Y-m-d') : null,
+                'totalQty'     => $o->items->sum('quantity'),
+                'dispatchedQty'=> $o->items->sum('dispatched_qty'),
+                'dispatchStatus' => $o->dispatch_status,
+                'status'       => $o->status,
+                'readiness'    => $readiness,
+                'notes'        => $o->notes,
+                'items'        => $items,
+            ];
+        })->sortBy(function($o) use ($today) {
+            $rawDueDate = $o['rawDueDate'] ?? null;
+            if ($rawDueDate) {
+                $dueObj = \Carbon\Carbon::parse($rawDueDate, 'Asia/Kolkata')->startOfDay();
+                $diffDays = (int) $today->diffInDays($dueObj, false);
+                if ($diffDays === 0) {
+                    return sprintf('0_%010d', 9999999999 - (int)($o['id'] ?? 0));
+                } elseif ($diffDays < 0) {
+                    return sprintf('1_%06d_%010d', abs($diffDays), 9999999999 - (int)($o['id'] ?? 0));
+                } else {
+                    return sprintf('2_%06d_%010d', $diffDays, 9999999999 - (int)($o['id'] ?? 0));
+                }
+            }
+            return sprintf('3_%010d', 9999999999 - (int)($o['id'] ?? 0));
+        })->values();
+
         $pageData = [
             'rawStock'        => $rawStock,
             'semiStock'       => $semiStock,
             'finishedStock'   => $finishedStock,
             'packagingStock'  => $packagingStock,
-            'pendingOrders'   => $pending->map(function($o) use ($stockMap) {
-                $items = $o->items->map(function($i) use ($stockMap) {
-                    $needed = max(0, (float)$i->quantity - (float)$i->dispatched_qty);
-                    $rawType = strtoupper(trim((string)($i->product?->type ?? 'FINISHED')));
-                    $itemStage = ($rawType === 'FG') ? 'FINISHED' : (($rawType === 'PKG') ? 'PACKAGING' : ($rawType ?: 'FINISHED'));
-
-                    $rawGrade = trim((string)$i->grade);
-                    $itemGrade = (!empty($rawGrade) && strtoupper($rawGrade) !== 'NONE' && strtoupper($rawGrade) !== 'N/A') ? strtoupper($rawGrade) : 'NONE';
-
-                    $key = $i->product_id . '_' . $itemStage . '_' . $itemGrade;
-                    $avail = max(0, (float)($stockMap[$key] ?? 0));
-                    return [
-                        'id'            => $i->id,
-                        'productId'     => $i->product_id,
-                        'rawProductName'=> $i->product?->name ?? 'Unknown',
-                        'productName'   => $i->product?->name ?? 'Unknown',
-                        'formattedName' => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
-                        'productType'   => $i->product?->type,
-                        'quantity'      => (float) $i->quantity,
-                        'dispatchedQty' => (float) $i->dispatched_qty,
-                        'remainingQty'  => $needed,
-                        'availStock'    => $avail,
-                        'grade'         => $i->grade,
-                    ];
-                });
-
-                $remainingItems = $items->filter(fn($i) => $i['remainingQty'] > 0);
-                $totalRemainingItems = $remainingItems->count();
-                $orderTotalQty = (float) $items->sum('quantity');
-
-                $fullCount = 0;
-                $partialCount = 0;
-
-                foreach ($remainingItems as $ri) {
-                    if ($ri['availStock'] >= $ri['remainingQty']) {
-                        $fullCount++;
-                        $partialCount++;
-                    } elseif ($ri['availStock'] > 0) {
-                        $partialCount++;
-                    }
-                }
-
-                if ($orderTotalQty <= 0) {
-                    $readiness = 'NOT_READY';
-                } elseif ($totalRemainingItems == 0) {
-                    $readiness = 'DONE';
-                } elseif ($fullCount === $totalRemainingItems) {
-                    $readiness = 'READY_DISPATCH';
-                } elseif ($partialCount > 0) {
-                    $readiness = 'READY_PARTIAL';
-                } else {
-                    $readiness = 'NOT_READY';
-                }
-
-                return [
-                    'id'           => $o->id,
-                    'companyId'    => $o->company_id,
-                    'companyName'  => $o->company?->name,
-                    'transportId'  => $o->transporter_id,
-                    'transporterName' => $o->transporter?->name,
-                    'salesPerson'  => $o->creator?->name ?? 'N/A',
-                    'total'        => $o->total,
-                    'date'         => $o->created_at ? $o->created_at->toISOString() : ($o->date ? \Carbon\Carbon::parse($o->date)->toISOString() : now()->toISOString()),
-                    'dueDate'      => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
-                    'rawDueDate'   => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('Y-m-d') : null,
-                    'totalQty'     => $o->items->sum('quantity'),
-                    'dispatchedQty'=> $o->items->sum('dispatched_qty'),
-                    'dispatchStatus' => $o->dispatch_status,
-                    'readiness'    => $readiness,
-                    'notes'        => $o->notes,
-                    'items'        => $items,
-                ];
-            }),
+            'pendingOrders'   => $pendingMapped,
             'completedOrders' => $completed->map(fn($o) => [
                 'id'           => $o->id,
                 'companyId'    => $o->company_id,
@@ -164,6 +193,7 @@ class DispatchController extends Controller
                 'date'         => $o->created_at ? $o->created_at->toISOString() : ($o->date ? \Carbon\Carbon::parse($o->date)->toISOString() : now()->toISOString()),
                 'dueDate'      => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
                 'rawDueDate'   => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('Y-m-d') : null,
+                'status'       => $o->status,
                 'notes'        => $o->notes,
                 'items'        => $o->items->map(fn($i) => [
                     'id'            => $i->id,
@@ -192,6 +222,10 @@ class DispatchController extends Controller
                 $q->whereNotIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY DISPATCHED'])
                   ->orWhereNull('dispatch_status');
             })
+            ->where(function($q) {
+                $q->where('status', '!=', 'CANCELLED')
+                  ->orWhereNull('status');
+            })
             ->orderByDesc('created_at')
             ->get();
 
@@ -201,9 +235,26 @@ class DispatchController extends Controller
             }
         }
 
+        $today = now()->timezone('Asia/Kolkata')->startOfDay();
+        $pendingOrders = $pendingOrders->sortBy(function($o) use ($today) {
+            if ($o->due_date) {
+                $dueObj = \Carbon\Carbon::parse($o->due_date, 'Asia/Kolkata')->startOfDay();
+                $diffDays = (int) $today->diffInDays($dueObj, false);
+                if ($diffDays === 0) {
+                    return sprintf('0_%010d', 9999999999 - (int)$o->id);
+                } elseif ($diffDays < 0) {
+                    return sprintf('1_%06d_%010d', abs($diffDays), 9999999999 - (int)$o->id);
+                } else {
+                    return sprintf('2_%06d_%010d', $diffDays, 9999999999 - (int)$o->id);
+                }
+            }
+            return sprintf('3_%010d', 9999999999 - (int)$o->id);
+        })->values();
+
         $pageData = [
             'pendingOrders' => $pendingOrders->map(fn($o)=>[
                 'id'          => $o->id,
+                'status'      => $o->status,
                 'notes'       => $o->notes,
                 'salesPerson' => $o->creator?->name ?? 'N/A',
                 'company'     => [
@@ -243,8 +294,8 @@ class DispatchController extends Controller
     public function getOrderDetails($id)
     {
         $order = Order::with(['company', 'transporter', 'items.product', 'creator'])->find($id);
-        if (!$order) {
-            return response()->json(['success' => false, 'message' => 'Order not found'], 404);
+        if (!$order || $order->status === 'CANCELLED') {
+            return response()->json(['success' => false, 'message' => 'Order is cancelled or not found.'], 404);
         }
 
         foreach ($order->items as $item) {
@@ -331,8 +382,8 @@ class DispatchController extends Controller
             /** @var Order $order */
             $order = Order::with('items.product')->where('id', $request->order_id)->lockForUpdate()->first();
 
-            if (!$order || $order->dispatch_status === 'DONE') {
-                $response = response()->json(['success' => false, 'message' => 'Order already fully dispatched or invalid.'], 422);
+            if (!$order || $order->dispatch_status === 'DONE' || $order->status === 'CANCELLED') {
+                $response = response()->json(['success' => false, 'message' => 'Cannot dispatch: Order is cancelled, already fully dispatched, or invalid.'], 422);
                 return;
             }
 
@@ -1033,7 +1084,10 @@ class DispatchController extends Controller
             'dispatchItems.orderItem.product'
         ])
             ->whereHas('order', function($q) {
-                $q->where('status', '!=', 'CANCELLED');
+                $q->where(function($sq) {
+                    $sq->where('status', '!=', 'CANCELLED')
+                       ->orWhereNull('status');
+                });
             })
             ->orderByDesc('created_at')
             ->get();
@@ -1175,7 +1229,10 @@ class DispatchController extends Controller
     public function report()
     {
         $orders = Order::with(['company', 'transporter', 'items.product', 'dispatchLogs', 'creator'])
-            ->where('status', '!=', 'CANCELLED')
+            ->where(function($q) {
+                $q->where('status', '!=', 'CANCELLED')
+                  ->orWhereNull('status');
+            })
             ->orderByDesc('created_at')
             ->get();
 
@@ -1229,13 +1286,47 @@ class DispatchController extends Controller
             ]);
         }
 
+        $today = now()->timezone('Asia/Kolkata')->startOfDay();
+        $sortedOrders = $reportOrders->sortBy(function($d) use ($today) {
+            $st = strtoupper(trim(str_replace('_', ' ', (string)($d['dispatchStatus'] ?? $d['status'] ?? ''))));
+            $isDone = in_array($st, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED', 'FULLY_DISPATCHED']) ||
+                      ((float)($d['totalQty'] ?? 0) > 0 && (float)($d['remainingQty'] ?? 0) <= 0);
+
+            $rawDueDate = $d['rawDueDate'] ?? null;
+            $diffDays = null;
+            if ($rawDueDate) {
+                $dueObj = \Carbon\Carbon::parse($rawDueDate, 'Asia/Kolkata')->startOfDay();
+                $diffDays = (int) $today->diffInDays($dueObj, false);
+            }
+
+            if (!$isDone && $diffDays !== null && $diffDays === 0) {
+                // DUE TODAY -> TOP (Group 0)
+                return sprintf('0_%010d', 9999999999 - (int)($d['id'] ?? 0));
+            } elseif (!$isDone && $diffDays !== null && $diffDays < 0) {
+                // OVERDUE -> Group 1 (most recent overdue first: 1 day overdue, 2 days overdue...)
+                return sprintf('1_%06d_%010d', abs($diffDays), 9999999999 - (int)($d['id'] ?? 0));
+            } elseif (!$isDone && $diffDays !== null && $diffDays > 0) {
+                // UPCOMING -> Group 2 (closest due date first: 1 day left, 2 days left...)
+                return sprintf('2_%06d_%010d', $diffDays, 9999999999 - (int)($d['id'] ?? 0));
+            } elseif (!$isDone) {
+                // NO DUE DATE -> Group 3
+                return sprintf('3_%010d', 9999999999 - (int)($d['id'] ?? 0));
+            } elseif ($isDone) {
+                // COMPLETED -> Group 4
+                return sprintf('4_%012d_%010d', 999999999999 - strtotime($d['date']), 9999999999 - (int)($d['id'] ?? 0));
+            } else {
+                // CANCELLED -> Group 5
+                return sprintf('5_%012d_%010d', 999999999999 - strtotime($d['date']), 9999999999 - (int)($d['id'] ?? 0));
+            }
+        })->values();
+
         $companies = Company::orderBy('name')->get()->map(fn($c) => [
             'id'   => $c->id,
             'name' => strtoupper($c->name ?? '')
         ]);
 
         $pageData = [
-            'orders'    => $reportOrders,
+            'orders'    => $sortedOrders,
             'companies' => $companies,
         ];
         return view('dispatch.report', compact('pageData'));

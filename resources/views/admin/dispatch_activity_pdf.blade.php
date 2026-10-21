@@ -16,6 +16,7 @@
         .badge-done { background: #d4edda; color: #155724; }
         .badge-pending { background: #fff3cd; color: #856404; }
         .badge-partial { background: #e2e3e5; color: #383d41; }
+        .badge-cancelled { background: #f8d7da; color: #721c24; }
         .footer { margin-top: 30px; font-size: 10px; color: #888; text-align: center; }
         .items-list { margin: 0; padding-left: 15px; }
     </style>
@@ -74,8 +75,11 @@
                 @foreach($dateOrders as $order)
                 @php
                     $orderDate = $order->date ? \Carbon\Carbon::parse($order->date) : $order->created_at;
+                    $isCancelled = strtoupper(trim((string)($order->status ?? ''))) === 'CANCELLED';
                     $label = 'Pending';
-                    if (in_array($order->dispatch_status, ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED'])) {
+                    if ($isCancelled) {
+                        $label = 'Cancelled';
+                    } elseif (in_array($order->dispatch_status, ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED'])) {
                         $label = 'Fully Dispatch';
                     } elseif (in_array($order->dispatch_status, ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING'])) {
                         $label = 'Partial';
@@ -84,7 +88,12 @@
                     }
                 @endphp
                 <tr>
-                    <td><strong>#{{ $order->id }}</strong></td>
+                    <td>
+                        <strong>#{{ $order->id }}</strong>
+                        @if($isCancelled)
+                            <br><span class="badge badge-cancelled" style="font-size:8px;">CANCELLED</span>
+                        @endif
+                    </td>
                     <td>
                         {{ $orderDate ? $orderDate->format('d M Y, h:i A') : '—' }}
                         @if($order->due_date)
@@ -129,7 +138,13 @@
                             <div style="font-size:10px; font-style:italic; margin-top:5px; color:#666;">Note: {{ $order->notes }}</div>
                         @endif
                     </td>
-                    <td>{{ $label }}</td>
+                    <td>
+                        @if($isCancelled)
+                            <span class="badge badge-cancelled">Cancelled</span>
+                        @else
+                            {{ $label }}
+                        @endif
+                    </td>
                     <td>
                         @if($order->dispatchLog)
                             <div>Transporter: {{ $order->transporter?->name ?? 'N/A' }}</div>

@@ -2286,10 +2286,11 @@ class AdminController extends Controller
     public function dispatchActivity(Request $request)
     {
         $statusPriority = "CASE 
+            WHEN orders.status = 'CANCELLED' THEN 4
             WHEN TRIM(COALESCE(orders.dispatch_status, '')) IN ('', 'PENDING', 'OPEN', 'UNASSIGNED') THEN 1
             WHEN orders.dispatch_status IN ('PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED') THEN 2
             WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN 3
-            ELSE 4
+            ELSE 5
         END";
 
         $dueCol = Schema::hasColumn('orders', 'due_date') ? 'orders.due_date' : 'orders.date';
@@ -2378,6 +2379,8 @@ class AdminController extends Controller
             'PENDING' => (clone $countQuery)->where(function($q) {
                 $q->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED'])
                   ->orWhereNull('dispatch_status');
+            })->where(function($q) {
+                $q->where('status', '!=', 'CANCELLED')->orWhereNull('status');
             })->count(),
             'PARTIAL' => (clone $countQuery)->where(function($q) {
                 $q->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED'])
@@ -2385,16 +2388,26 @@ class AdminController extends Controller
                       $sub->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED'])
                           ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) > 1');
                   });
+            })->where(function($q) {
+                $q->where('status', '!=', 'CANCELLED')->orWhereNull('status');
             })->count(),
-            'FULLY_DISPATCH' => (clone $countQuery)->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED'])->count(),
+            'FULLY_DISPATCH' => (clone $countQuery)->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED'])
+                ->where(function($q) {
+                    $q->where('status', '!=', 'CANCELLED')->orWhereNull('status');
+                })->count(),
+            'CANCELLED' => (clone $countQuery)->where('status', 'CANCELLED')->count(),
         ];
 
         $status = strtoupper(trim((string)$request->status));
         if ($status && $status !== 'ALL') {
-            if ($status === 'PENDING') {
+            if ($status === 'CANCELLED') {
+                $query->where('orders.status', 'CANCELLED');
+            } elseif ($status === 'PENDING') {
                 $query->where(function($q) {
                     $q->whereIn('dispatch_status', ['PENDING', 'OPEN', 'UNASSIGNED'])
                       ->orWhereNull('dispatch_status');
+                })->where(function($q) {
+                    $q->where('orders.status', '!=', 'CANCELLED')->orWhereNull('orders.status');
                 });
             } elseif ($status === 'PARTIAL') {
                 $query->where(function($q) {
@@ -2403,14 +2416,25 @@ class AdminController extends Controller
                           $sub->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED'])
                               ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) > 1');
                       });
+                })->where(function($q) {
+                    $q->where('orders.status', '!=', 'CANCELLED')->orWhereNull('orders.status');
                 });
             } elseif ($status === 'PARTIAL_PENDING') {
-                $query->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING']);
+                $query->whereIn('dispatch_status', ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING'])
+                      ->where(function($q) {
+                          $q->where('orders.status', '!=', 'CANCELLED')->orWhereNull('orders.status');
+                      });
             } elseif ($status === 'PARTIAL_DISPATCH') {
                 $query->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED'])
-                      ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) > 1');
+                      ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) > 1')
+                      ->where(function($q) {
+                          $q->where('orders.status', '!=', 'CANCELLED')->orWhereNull('orders.status');
+                      });
             } elseif ($status === 'FULLY_DISPATCH' || $status === 'FULLY_DISPATCHED') {
-                $query->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED']);
+                $query->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED'])
+                      ->where(function($q) {
+                          $q->where('orders.status', '!=', 'CANCELLED')->orWhereNull('orders.status');
+                      });
             }
         }
 

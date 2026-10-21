@@ -119,6 +119,10 @@ Route::middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CA
     Route::post('/stock/clear', [\App\Http\Controllers\AdminController::class, 'clearStock']);
     Route::post('/stock_manager/history/clear', [\App\Http\Controllers\StockManagerController::class, 'clearHistory']);
     Route::delete('/stock_manager/history/{id}', [\App\Http\Controllers\StockManagerController::class, 'destroyHistory']);
+    Route::delete('/sales/order/{id}', [\App\Http\Controllers\SalesController::class, 'destroyOrder']);
+    Route::post('/sales/order/{id}/delete', [\App\Http\Controllers\SalesController::class, 'destroyOrder']);
+    Route::delete('/order/{id}', [\App\Http\Controllers\SalesController::class, 'destroyOrder']);
+    Route::post('/order/{id}/delete', [\App\Http\Controllers\SalesController::class, 'destroyOrder']);
 });
 Route::prefix('{user_slug}')->middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTENDANCE,STOCK_MANAGER')->group(function() {
     Route::match(['get', 'post'], '/logout', [\App\Http\Controllers\AuthController::class, 'logout']);
@@ -257,6 +261,10 @@ foreach ($roleSlugs['SALES'] ?? [] as $slug) {
     Route::post('/sales/order',  'storeOrder');
     Route::post('/order/{id}',   'updateOrder');
     Route::post('/order/{id}/cancel', 'cancelOrder');
+    Route::delete('/order/{id}', 'destroyOrder');
+    Route::post('/order/{id}/delete', 'destroyOrder');
+    Route::delete('/sales/order/{id}', 'destroyOrder');
+    Route::post('/sales/order/{id}/delete', 'destroyOrder');
     Route::post('/company',      'storeCompany');
     Route::post('/sales/company', 'storeCompany');
     Route::post('/company/{id}', 'updateCompany');
@@ -550,6 +558,13 @@ foreach ($adminSlugs as $slug) {
     Route::get('/sales/action',          [SalesController::class, 'action'])->name($slug.'.sales.action');
     Route::post('/sales/action',         [SalesController::class, 'storeOrder']);
     Route::post('/sales/order',          [SalesController::class, 'storeOrder']);
+    Route::post('/sales/order/{id}',     [SalesController::class, 'updateOrder']);
+    Route::post('/sales/order/{id}/cancel', [SalesController::class, 'cancelOrder']);
+    Route::post('/order/{id}/cancel',    [SalesController::class, 'cancelOrder']);
+    Route::delete('/sales/order/{id}',   [SalesController::class, 'destroyOrder']);
+    Route::post('/sales/order/{id}/delete', [SalesController::class, 'destroyOrder']);
+    Route::delete('/order/{id}',         [SalesController::class, 'destroyOrder']);
+    Route::post('/order/{id}/delete',    [SalesController::class, 'destroyOrder']);
     Route::post('/sales/company',        [SalesController::class, 'storeCompany']);
     Route::post('/sales/company/{id}',   [SalesController::class, 'updateCompany']);
     Route::delete('/sales/company/{id}', [SalesController::class, 'destroyCompany']);
