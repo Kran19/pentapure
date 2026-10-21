@@ -2285,19 +2285,28 @@ class AdminController extends Controller
     // ── DISPATCH ACTIVITY ───────────────────────────────────────────────────
     public function dispatchActivity(Request $request)
     {
-        $statusPriority = "CASE 
-            WHEN orders.status = 'CANCELLED' THEN 4
-            WHEN TRIM(COALESCE(orders.dispatch_status, '')) IN ('', 'PENDING', 'OPEN', 'UNASSIGNED') THEN 1
-            WHEN orders.dispatch_status IN ('PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED') THEN 2
-            WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN 3
-            ELSE 5
-        END";
-
         $dueCol = Schema::hasColumn('orders', 'due_date') ? 'orders.due_date' : 'orders.date';
+        $hasDueCheck = Schema::hasColumn('orders', 'due_date')
+            ? "orders.due_date IS NOT NULL AND orders.due_date != ''"
+            : "0 = 1";
+
+        $statusPriority = "CASE 
+            WHEN orders.status = 'CANCELLED' THEN 6
+            WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN 5
+            WHEN {$hasDueCheck} THEN (
+                CASE 
+                    WHEN TRIM(COALESCE(orders.dispatch_status, '')) IN ('', 'PENDING', 'OPEN', 'UNASSIGNED') THEN 1
+                    ELSE 2
+                END
+            )
+            WHEN TRIM(COALESCE(orders.dispatch_status, '')) IN ('', 'PENDING', 'OPEN', 'UNASSIGNED') THEN 3
+            ELSE 4
+        END";
 
         $pendingDueSort = "CASE 
             WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN '9999-12-31'
-            ELSE COALESCE({$dueCol}, orders.date, orders.created_at)
+            WHEN {$hasDueCheck} THEN {$dueCol}
+            ELSE '9999-12-30'
         END";
 
         $completedDateSort = "CASE 

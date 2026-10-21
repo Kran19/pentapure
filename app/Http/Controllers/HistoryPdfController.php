@@ -655,18 +655,28 @@ class HistoryPdfController extends Controller
             });
         }
 
+        $dueCol = \Illuminate\Support\Facades\Schema::hasColumn('orders', 'due_date') ? 'orders.due_date' : 'orders.date';
+        $hasDueCheck = \Illuminate\Support\Facades\Schema::hasColumn('orders', 'due_date')
+            ? "orders.due_date IS NOT NULL AND orders.due_date != ''"
+            : "0 = 1";
+
         $statusPriority = "CASE 
-            WHEN TRIM(COALESCE(orders.dispatch_status, '')) IN ('', 'PENDING', 'OPEN', 'UNASSIGNED') THEN 1
-            WHEN orders.dispatch_status IN ('PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED') THEN 2
-            WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN 3
+            WHEN orders.status = 'CANCELLED' THEN 6
+            WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN 5
+            WHEN {$hasDueCheck} THEN (
+                CASE 
+                    WHEN TRIM(COALESCE(orders.dispatch_status, '')) IN ('', 'PENDING', 'OPEN', 'UNASSIGNED') THEN 1
+                    ELSE 2
+                END
+            )
+            WHEN TRIM(COALESCE(orders.dispatch_status, '')) IN ('', 'PENDING', 'OPEN', 'UNASSIGNED') THEN 3
             ELSE 4
         END";
 
-        $dueCol = \Illuminate\Support\Facades\Schema::hasColumn('orders', 'due_date') ? 'orders.due_date' : 'orders.date';
-
         $pendingDueSort = "CASE 
             WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN '9999-12-31'
-            ELSE COALESCE({$dueCol}, orders.date, orders.created_at)
+            WHEN {$hasDueCheck} THEN {$dueCol}
+            ELSE '9999-12-30'
         END";
 
         $completedDateSort = "CASE 

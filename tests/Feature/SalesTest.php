@@ -748,6 +748,50 @@ namespace Tests\Feature;
             // 7. Verify stock deduction record was cleaned up
             $this->assertNull(\App\Models\Stock::find($stock->id));
         }
+
+        public function test_order_can_be_deleted_via_delete_method_on_delete_suffix_route(): void
+        {
+            $order = Order::create([
+                'created_by' => $this->salesUser->id,
+                'company_id' => $this->company->id,
+                'total'      => 500,
+                'status'     => 'APPROVED',
+                'date'       => now()->toDateString(),
+            ]);
+
+            $session = ['auth_user' => [
+                'id'   => $this->salesUser->id,
+                'name' => $this->salesUser->name,
+                'role' => 'SALES',
+            ]];
+
+            // Call /sales/order/{id}/delete with DELETE method
+            $response = $this->withSession($session)
+                ->deleteJson("/sales/order/{$order->id}/delete");
+
+            $response->assertStatus(200);
+            $response->assertJson(['success' => true]);
+            $this->assertNull(Order::find($order->id));
+
+            // Also test POST with _method = DELETE on /sales/order/{id}/delete
+            $order2 = Order::create([
+                'created_by' => $this->salesUser->id,
+                'company_id' => $this->company->id,
+                'total'      => 600,
+                'status'     => 'APPROVED',
+                'date'       => now()->toDateString(),
+            ]);
+
+            $response2 = $this->withSession($session)
+                ->postJson("/sales/order/{$order2->id}/delete", [
+                    '_method' => 'DELETE',
+                ]);
+
+            $response2->assertStatus(200);
+            $response2->assertJson(['success' => true]);
+            $this->assertNull(Order::find($order2->id));
+        }
     }
+
 
 
