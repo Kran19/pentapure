@@ -16,6 +16,7 @@
   <link rel="shortcut icon" type="image/png" href="{{ asset('logo.png') }}?v={{ filemtime(public_path('logo.png')) }}">
   <link rel="apple-touch-icon" href="{{ asset('logo.png') }}?v={{ filemtime(public_path('logo.png')) }}">
   <link rel="stylesheet" href="{{ asset('css/style.css') }}?v={{ filemtime(public_path('css/style.css')) }}">
+  <script src="{{ asset('js/admin-sidebar.js') }}?v={{ filemtime(public_path('js/admin-sidebar.js')) }}" defer></script>
   <link rel="stylesheet" href="{{ asset('css/tabulator-custom.css') }}">
   <!-- Cropper.js -->
   <link rel="stylesheet" href="{{ asset('vendor/cropperjs/cropper.min.css') }}">
@@ -62,8 +63,8 @@
     <div id="main-app" style="width:100%;height:100%;display:flex;flex-direction:column;">
       <div id="admin-panel" class="admin-layout-wrapper">
 
-        <div id="admin-hamburger" class="admin-hamburger"
-          onclick="document.getElementById('admin-sidebar').classList.add('mobile-open')">
+        <div id="admin-hamburger" class="admin-hamburger" role="button" tabindex="0" aria-label="Open menu"
+          aria-controls="admin-sidebar" aria-expanded="false" onclick="openAdminSidebar()">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -157,8 +158,8 @@
             border-bottom:1px solid var(--glass-border);display:flex;justify-content:space-between;align-items:center;">
             <div>{{ ($role === 'STOCK_MANAGER') ? 'Stock' : 'Admin' }}<span style="color:var(--primary-light)">{{ ($role === 'STOCK_MANAGER') ? 'Manager' : 'Panel' }}</span></div>
             <svg class="admin-close-btn" width="24" height="24" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2"
-              onclick="document.getElementById('admin-sidebar').classList.remove('mobile-open')">
+              stroke="currentColor" stroke-width="2" role="button" aria-label="Close menu"
+              onclick="closeAdminSidebar()">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
