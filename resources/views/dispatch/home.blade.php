@@ -16,10 +16,10 @@
     $pendingOrdersList = $pendingOrdersList->filter(fn($o) => ($o['readiness'] ?? '') === 'READY_DISPATCH');
     $completedOrdersList = collect([]);
   } elseif (in_array($dispatchFilter, ['ready_partial', 'partial_dispatch', 'partial_pending'])) {
-    $pendingOrdersList = $pendingOrdersList->filter(fn($o) => ($o['readiness'] ?? '') === 'READY_PARTIAL');
+    $pendingOrdersList = $pendingOrdersList->filter(fn($o) => in_array($o['readiness'] ?? '', ['READY_PARTIAL', 'PARTIAL_DISPATCH']));
     $completedOrdersList = collect([]);
-  } elseif ($dispatchFilter === 'not_ready') {
-    $pendingOrdersList = $pendingOrdersList->filter(fn($o) => ($o['readiness'] ?? '') === 'NOT_READY');
+  } elseif (in_array($dispatchFilter, ['not_ready', 'not_dispatch'])) {
+    $pendingOrdersList = $pendingOrdersList->filter(fn($o) => in_array($o['readiness'] ?? '', ['NOT_READY', 'NOT_DISPATCH']));
     $completedOrdersList = collect([]);
   } elseif ($dispatchFilter === 'pending') {
     $pendingOrdersList = $pendingOrdersList->filter(fn($o) => (float)$o['dispatchedQty'] == 0);
@@ -167,7 +167,19 @@
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
   <h2 style="margin:0;">Dispatches Dashboard</h2>
   <div>
-    <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action') }}" style="width:auto; padding:0.5rem 1rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
+    @php
+      $rawPath = trim(request()->path(), '/');
+      if (str_starts_with($rawPath, 'public/')) {
+        $rawPath = substr($rawPath, 7);
+      }
+      $pathSegments = explode('/', $rawPath);
+      $roleSlug = $pathSegments[0] ?? 'dispatch';
+      $dispatchActionBase = str_starts_with($roleSlug, 'dispatch') 
+        ? $roleSlug . '/action' 
+        : $roleSlug . '/dispatch/action';
+      $dispatchActionUrl = url($dispatchActionBase);
+    @endphp
+    <a class="btn btn-sm" href="{{ $dispatchActionUrl }}" style="width:auto; padding:0.5rem 1rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
       <span>🚀</span> <span>Create Dispatch</span>
     </a>
   </div>
@@ -207,8 +219,8 @@
         <select name="dispatch_filter" onchange="this.form.submit()" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:6px; border:1px solid rgba(255,255,255,0.2); background:#1f2937; color:#fff; cursor:pointer;">
           <option value="all" {{ $dispatchFilter === 'all' ? 'selected' : '' }}>All Scenarios</option>
           <option value="ready_dispatch" {{ $dispatchFilter === 'ready_dispatch' ? 'selected' : '' }}>Ready to Dispatch</option>
-          <option value="ready_partial" {{ in_array($dispatchFilter, ['ready_partial', 'partial_dispatch', 'partial_pending']) ? 'selected' : '' }}>Ready to Partial Dispatch</option>
-          <option value="not_ready" {{ $dispatchFilter === 'not_ready' ? 'selected' : '' }}>Not Ready</option>
+          <option value="ready_partial" {{ in_array($dispatchFilter, ['ready_partial', 'partial_dispatch', 'partial_pending']) ? 'selected' : '' }}>Partial Dispatch</option>
+          <option value="not_ready" {{ in_array($dispatchFilter, ['not_ready', 'not_dispatch']) ? 'selected' : '' }}>Not Dispatch</option>
           <option value="done" {{ $dispatchFilter === 'done' ? 'selected' : '' }}>Fully Dispatched (Completed)</option>
         </select>
       </form>
@@ -233,12 +245,17 @@
             $readinessFg = '#ffffff';
             $progressColor = '#16a34a';
           } elseif ($readiness === 'READY_PARTIAL') {
-            $readinessLabel = 'READY TO PARTIAL DISPATCH';
+            $readinessLabel = 'PARTIAL DISPATCH';
             $readinessBg = '#f59e0b';
             $readinessFg = '#ffffff';
             $progressColor = '#f59e0b';
+          } elseif ($readiness === 'DONE') {
+            $readinessLabel = 'COMPLETED';
+            $readinessBg = '#16a34a';
+            $readinessFg = '#ffffff';
+            $progressColor = '#16a34a';
           } else {
-            $readinessLabel = 'NOT READY';
+            $readinessLabel = 'NOT DISPATCH';
             $readinessBg = '#dc2626';
             $readinessFg = '#ffffff';
             $progressColor = '#dc2626';
@@ -288,7 +305,7 @@
                 </div>
               </div>
               <div style="display:flex; align-items:center; gap:10px;">
-                <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action') }}" onclick="event.stopPropagation(); localStorage.setItem('auto_dispatch_id', '{{ $o['id'] }}');" style="width:auto; text-decoration:none; background:{{ $readinessBg }}; color:{{ $readinessFg }}; font-weight:700; padding:4px 12px; border-radius:6px; font-size:0.8rem;">
+                <a class="btn btn-sm" href="{{ $dispatchActionUrl }}?order_id={{ $o['id'] }}" onclick="event.stopPropagation(); localStorage.setItem('auto_dispatch_id', '{{ $o['id'] }}');" style="width:auto; text-decoration:none; background:{{ $readinessBg }}; color:{{ $readinessFg }}; font-weight:700; padding:4px 12px; border-radius:6px; font-size:0.8rem; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
                   {{ $readinessLabel }}
                 </a>
                 <div class="acc-chevron" style="transition:transform 0.25s ease; color:var(--text-muted, #64748b); display:flex; align-items:center;">
@@ -368,7 +385,23 @@
                       @endif
                       <span style="color:var(--text-muted, #64748b); font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
                     </div>
-                    <div class="dispatch-item-badges" style="display:grid; grid-template-columns:135px 145px 145px; gap:8px; align-items:center; flex-shrink:0;">
+                    @php
+                      $avail = (float)($item['availStock'] ?? 0);
+                      if ($avail >= $rem && $rem > 0) {
+                        $stockBadgeBg = 'rgba(22,163,74,0.12)';
+                        $stockBadgeBorder = 'rgba(22,163,74,0.3)';
+                        $stockBadgeColor = '#16a34a';
+                      } elseif ($avail > 0) {
+                        $stockBadgeBg = 'rgba(245,158,11,0.12)';
+                        $stockBadgeBorder = 'rgba(245,158,11,0.3)';
+                        $stockBadgeColor = '#d97706';
+                      } else {
+                        $stockBadgeBg = 'rgba(239,68,68,0.12)';
+                        $stockBadgeBorder = 'rgba(239,68,68,0.3)';
+                        $stockBadgeColor = '#dc2626';
+                      }
+                    @endphp
+                    <div class="dispatch-item-badges" style="display:grid; grid-template-columns:120px 125px 125px 125px; gap:8px; align-items:center; flex-shrink:0;">
                       <span style="background:#f1f5f9; padding:4px 8px; border-radius:6px; border:1px solid #e2e8f0; font-weight:600; color:#1e293b; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
                         <span style="color:#64748b; font-size:0.72rem; font-weight:700;">ORDER:</span>
                         <strong style="color:var(--primary, #D88A00);">{{ $fmtQty($tot) }}</strong>
@@ -381,6 +414,10 @@
                         <span style="font-size:0.72rem;">PENDING:</span>
                         <strong>{{ $fmtQty($rem) }}</strong>
                       </span>
+                      <span style="background:{{ $stockBadgeBg }}; padding:4px 8px; border-radius:6px; border:1px solid {{ $stockBadgeBorder }}; font-weight:700; color:{{ $stockBadgeColor }}; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                        <span style="font-size:0.72rem;">STOCK:</span>
+                        <strong>{{ $fmtQty($avail) }}</strong>
+                      </span>
                     </div>
                   </div>
                 @endforeach
@@ -390,7 +427,7 @@
             @endif
 
             <div style="display:flex; gap:10px; margin-top:12px; justify-content:flex-end;">
-              <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action') }}" onclick="localStorage.setItem('auto_dispatch_id', '{{ $o['id'] }}');" style="width:auto; padding:0.4rem 1rem; font-size:0.8rem; text-decoration:none;">
+              <a class="btn btn-sm" href="{{ $dispatchActionUrl }}?order_id={{ $o['id'] }}" onclick="localStorage.setItem('auto_dispatch_id', '{{ $o['id'] }}');" style="width:auto; padding:0.4rem 1rem; font-size:0.8rem; text-decoration:none;">
                 📦 Open in Dispatch Action &rarr;
               </a>
             </div>

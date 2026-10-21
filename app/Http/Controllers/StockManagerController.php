@@ -68,7 +68,7 @@ class StockManagerController extends Controller
     public function action()
     {
         $user = $this->authUser();
-        $products = Product::with('grades')->where('is_active', true)->orderBy('sort_order')->get();
+        $products = Product::with('grades')->where('is_active', true)->orderBy('name', 'asc')->get();
         $liveStock = $this->getAllLiveStock();
         $locations = Location::orderBy('name')->pluck('name')->toArray();
         if (empty($locations)) {
@@ -283,11 +283,12 @@ class StockManagerController extends Controller
             ")
             ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) >= 0")
             ->orderBy('stocks.stage')
-            ->orderBy('products.sort_order')
+            ->orderBy('products.name', 'asc')
+            ->orderBy('stocks.grade', 'asc')
             ->get();
 
-        $allProducts = Product::with('grades')->orderBy('type')
-            ->orderBy('sort_order')
+        $allProducts = Product::with('grades')
+            ->orderBy('name', 'asc')
             ->get();
 
         $stockLogsByKey = Stock::with(['user:id,name', 'product:id,name,unit'])

@@ -88,20 +88,44 @@
     }
   }
 
-  // Compute running balance for all filtered transactions in chronological order (oldest to newest)
-  $chronoFiltered = $filtered->sortBy('date')->values();
-  $runningBal = 0;
+  // Build running balance map from pre-computed authoritative balances
   $balMap = [];
-  foreach ($chronoFiltered as $item) {
-    if (($item['type'] ?? 'OUT') === 'IN') {
-      $runningBal += (float)($item['amount'] ?? 0);
-    } else {
-      $runningBal -= (float)($item['amount'] ?? 0);
+  foreach ($sourceData as $item) {
+    if (isset($item['balance']) && $item['balance'] !== null) {
+      $balMap[$item['id']] = (float)$item['balance'];
     }
-    $balMap[$item['id']] = $runningBal;
   }
 
-  $filtered = $filtered->sortByDesc('date');
+  // Fallback if balance wasn't pre-populated: compute strictly in chronological order with ID tie-breaker
+  if (empty($balMap)) {
+    $chronoAll = collect($sourceData)->sort(function($a, $b) {
+      $tA = strtotime($a['date']);
+      $tB = strtotime($b['date']);
+      if ($tA === $tB) {
+        return ($a['id'] ?? 0) <=> ($b['id'] ?? 0);
+      }
+      return $tA <=> $tB;
+    })->values();
+    $runningBal = 0.0;
+    foreach ($chronoAll as $item) {
+      if (($item['type'] ?? 'OUT') === 'IN') {
+        $runningBal += (float)($item['amount'] ?? 0);
+      } else {
+        $runningBal -= (float)($item['amount'] ?? 0);
+      }
+      $balMap[$item['id']] = $runningBal;
+    }
+  }
+
+  // Sort filtered transactions newest first with ID tie-breaker
+  $filtered = $filtered->sort(function($a, $b) {
+    $tA = strtotime($a['date']);
+    $tB = strtotime($b['date']);
+    if ($tA === $tB) {
+      return ($b['id'] ?? 0) <=> ($a['id'] ?? 0);
+    }
+    return $tB <=> $tA;
+  })->values();
 
   $page = request('page', 1);
   $perPage = 50;
@@ -274,7 +298,7 @@
             <td style="padding:12px; font-weight:bold; color:{{ $t['type'] === 'IN' ? '#16a34a' : '#dc2626' }}; text-align:right; white-space:nowrap;">
               {{ $t['type'] === 'IN' ? '+' : '-' }}₹{{ number_format($t['amount'], 2) }}
             </td>
-            @php $cBal = $balMap[$t['id']] ?? 0; @endphp
+            @php $cBal = $balMap[$t['id']] ?? ($t['balance'] ?? 0); @endphp
             <td style="padding:12px; font-weight:bold; color:{{ $cBal >= 0 ? '#16a34a' : '#dc2626' }}; text-align:right; white-space:nowrap;">
               ₹{{ number_format($cBal, 2) }}
             </td>
@@ -535,19 +559,55 @@
       });
     }
 
-    // Compute running balance per item (in chronological order)
-    const chronoFiltered = [...filtered].sort((a, b) => new Date(a.date) - new Date(b.date));
-    let runningBal = 0;
+    // Compute running balance per item
     const balanceMap = {};
-    chronoFiltered.forEach(item => {
-      const amt = Number(item.amount) || 0;
-      if (item.type === 'IN') runningBal += amt;
-      else runningBal -= amt;
-      balanceMap[item.id] = runningBal;
-    });
 
-    // Sort by date desc
-    filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+    if (tabVal === 'team' && selectedMember && selectedMember !== 'all') {
+      // Recompute specifically for selected team member in chronological order with ID tie-breaker
+      const memberTxs = source.filter(t => String(t.user_id) === String(selectedMember) || (t.cashier_name && t.cashier_name.toLowerCase() === selectedMember.toLowerCase()));
+      const chronoMember = [...memberTxs].sort((a, b) => {
+        const diff = new Date(a.date) - new Date(b.date);
+        if (diff !== 0) return diff;
+        return Number(a.id) - Number(b.id);
+      });
+      let mRunning = 0;
+      chronoMember.forEach(item => {
+        const amt = Number(item.amount) || 0;
+        if (item.type === 'IN') mRunning += amt;
+        else mRunning -= amt;
+        balanceMap[item.id] = mRunning;
+      });
+    } else {
+      // Use authoritative pre-computed balance from server
+      source.forEach(item => {
+        if (item.balance !== undefined && item.balance !== null) {
+          balanceMap[item.id] = Number(item.balance);
+        }
+      });
+
+      // Fallback if needed
+      if (Object.keys(balanceMap).length === 0) {
+        const chronoAll = [...source].sort((a, b) => {
+          const diff = new Date(a.date) - new Date(b.date);
+          if (diff !== 0) return diff;
+          return Number(a.id) - Number(b.id);
+        });
+        let r = 0;
+        chronoAll.forEach(item => {
+          const amt = Number(item.amount) || 0;
+          if (item.type === 'IN') r += amt;
+          else r -= amt;
+          balanceMap[item.id] = r;
+        });
+      }
+    }
+
+    // Sort by date desc with ID tie-breaker
+    filtered.sort((a, b) => {
+      const diff = new Date(b.date) - new Date(a.date);
+      if (diff !== 0) return diff;
+      return Number(b.id) - Number(a.id);
+    });
 
     // Update KPI summary cards
     let totalIn = 0;
@@ -600,7 +660,7 @@
 
       const typeBadge = `<span style="display:inline-block; min-width:55px; text-align:center; padding:4px 8px; border-radius:4px; font-weight:bold; background: #d3d3d3de; color:${t.type === 'IN' ? '#2ecc71' : 'red'};">${t.type}</span>`;
 
-      const rowBal = balanceMap[t.id] || 0;
+      const rowBal = balanceMap[t.id] !== undefined ? balanceMap[t.id] : (Number(t.balance) || 0);
       const rowBalFormatted = '₹' + Number(rowBal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const rowBalColor = rowBal >= 0 ? '#16a34a' : '#dc2626';
 

@@ -139,14 +139,17 @@ input[type=number].no-spinners {
       window.app.removeDispatchLR(true);
     }
     
-    // Check for auto-select from localStorage (redirected from home page click)
-    const autoId = localStorage.getItem('auto_dispatch_id');
+    // Check for auto-select from URL param or localStorage (redirected from home page click)
+    const urlParams = new URLSearchParams(window.location.search);
+    const autoId = urlParams.get('order_id') || localStorage.getItem('auto_dispatch_id');
     if (autoId) {
       localStorage.removeItem('auto_dispatch_id');
       const select = document.getElementById('dispatch-order');
       if (select) {
         select.value = autoId;
-        app.onDispatchOrderSelect(autoId);
+        if (window.app && typeof window.app.onDispatchOrderSelect === 'function') {
+          window.app.onDispatchOrderSelect(autoId);
+        }
       }
     }
   });

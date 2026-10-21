@@ -59,18 +59,20 @@ class DispatchController extends Controller
             ->get();
 
         $liveStocks = DB::table('stocks')
-            ->selectRaw("product_id, grade, SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as net_qty")
-            ->groupBy('product_id', 'grade')
+            ->selectRaw("product_id, stage, grade, SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as net_qty")
+            ->groupBy('product_id', 'stage', 'grade')
             ->get();
 
         $stockMap = [];
         foreach ($liveStocks as $ls) {
-            $g = $ls->grade ?: 'NONE';
-            $key = $ls->product_id . '_' . $g;
-            $stockMap[$key] = ($stockMap[$key] ?? 0) + max(0, (float)$ls->net_qty);
+            $rawStage = strtoupper(trim((string)$ls->stage));
+            $normStage = ($rawStage === 'FG') ? 'FINISHED' : (($rawStage === 'PKG') ? 'PACKAGING' : ($rawStage ?: 'FINISHED'));
 
-            $allKey = $ls->product_id . '_ALL';
-            $stockMap[$allKey] = ($stockMap[$allKey] ?? 0) + max(0, (float)$ls->net_qty);
+            $rawGrade = trim((string)$ls->grade);
+            $normGrade = (!empty($rawGrade) && strtoupper($rawGrade) !== 'NONE' && strtoupper($rawGrade) !== 'N/A') ? strtoupper($rawGrade) : 'NONE';
+
+            $key = $ls->product_id . '_' . $normStage . '_' . $normGrade;
+            $stockMap[$key] = ($stockMap[$key] ?? 0) + (float)$ls->net_qty;
         }
 
         $pageData = [
@@ -81,9 +83,14 @@ class DispatchController extends Controller
             'pendingOrders'   => $pending->map(function($o) use ($stockMap) {
                 $items = $o->items->map(function($i) use ($stockMap) {
                     $needed = max(0, (float)$i->quantity - (float)$i->dispatched_qty);
-                    $g = $i->grade ?: 'NONE';
-                    $key = $i->product_id . '_' . $g;
-                    $avail = $stockMap[$key] ?? $stockMap[$i->product_id . '_ALL'] ?? 0;
+                    $rawType = strtoupper(trim((string)($i->product?->type ?? 'FINISHED')));
+                    $itemStage = ($rawType === 'FG') ? 'FINISHED' : (($rawType === 'PKG') ? 'PACKAGING' : ($rawType ?: 'FINISHED'));
+
+                    $rawGrade = trim((string)$i->grade);
+                    $itemGrade = (!empty($rawGrade) && strtoupper($rawGrade) !== 'NONE' && strtoupper($rawGrade) !== 'N/A') ? strtoupper($rawGrade) : 'NONE';
+
+                    $key = $i->product_id . '_' . $itemStage . '_' . $itemGrade;
+                    $avail = max(0, (float)($stockMap[$key] ?? 0));
                     return [
                         'id'            => $i->id,
                         'productId'     => $i->product_id,
@@ -101,6 +108,7 @@ class DispatchController extends Controller
 
                 $remainingItems = $items->filter(fn($i) => $i['remainingQty'] > 0);
                 $totalRemainingItems = $remainingItems->count();
+                $orderTotalQty = (float) $items->sum('quantity');
 
                 $fullCount = 0;
                 $partialCount = 0;
@@ -114,7 +122,9 @@ class DispatchController extends Controller
                     }
                 }
 
-                if ($totalRemainingItems == 0) {
+                if ($orderTotalQty <= 0) {
+                    $readiness = 'NOT_READY';
+                } elseif ($totalRemainingItems == 0) {
                     $readiness = 'DONE';
                 } elseif ($fullCount === $totalRemainingItems) {
                     $readiness = 'READY_DISPATCH';

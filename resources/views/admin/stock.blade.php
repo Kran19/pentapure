@@ -17,36 +17,20 @@
 @php
   $typeFilter = request('type') ? strtoupper(request('type')) : null;
 
-  $sortStockByLow = function($collection) {
+  $sortStockAlphabetical = function($collection) {
       return $collection->sort(function($a, $b) {
-          $hasQtyA = (float) ($a->quantity ?? 0) > 0;
-          $alertA = (float) ($a->alert_limit ?? 0);
-          $isLowA = $alertA > 0 && (float) ($a->quantity ?? 0) <= $alertA;
-          $prioA = ($isLowA && $hasQtyA) ? 0 : ($isLowA ? 1 : 2);
-
-          $hasQtyB = (float) ($b->quantity ?? 0) > 0;
-          $alertB = (float) ($b->alert_limit ?? 0);
-          $isLowB = $alertB > 0 && (float) ($b->quantity ?? 0) <= $alertB;
-          $prioB = ($isLowB && $hasQtyB) ? 0 : ($isLowB ? 1 : 2);
-
-          if ($prioA !== $prioB) {
-              return $prioA <=> $prioB;
+          $cmp = strcasecmp(trim($a->name ?? ''), trim($b->name ?? ''));
+          if ($cmp !== 0) {
+              return $cmp;
           }
-
-          $sortA = isset($a->sort_order) ? (int)$a->sort_order : 9999;
-          $sortB = isset($b->sort_order) ? (int)$b->sort_order : 9999;
-          if ($sortA !== $sortB) {
-              return $sortA <=> $sortB;
-          }
-
-          return strcasecmp($a->name ?? '', $b->name ?? '');
+          return strcasecmp(trim($a->grade ?? ''), trim($b->grade ?? ''));
       })->values();
   };
 
-  $rawItems       = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'RAW'));
-  $semiItems      = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'SEMI'));
-  $finishedItems  = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'FINISHED'));
-  $packagingItems = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'PACKAGING'));
+  $rawItems       = $sortStockAlphabetical(collect($pageData['allStock'])->where('stage', 'RAW'));
+  $semiItems      = $sortStockAlphabetical(collect($pageData['allStock'])->where('stage', 'SEMI'));
+  $finishedItems  = $sortStockAlphabetical(collect($pageData['allStock'])->where('stage', 'FINISHED'));
+  $packagingItems = $sortStockAlphabetical(collect($pageData['allStock'])->where('stage', 'PACKAGING'));
   $adminAllGrades = \App\Models\Grade::orderBy('id')->get();
 @endphp
 
@@ -1143,7 +1127,7 @@
       @if($rawLowCount > 0)
         <div class="stock-low-alert-banner">
           <span class="alert-icon">⚠</span>
-          <span><strong>{{ $rawLowCount }}</strong> Low Stock Ranked on Top</span>
+          <span><strong>{{ $rawLowCount }}</strong> Low Stock Alert</span>
         </div>
       @endif
     </div>
@@ -1231,7 +1215,7 @@
       @if($semiLowCount > 0)
         <div class="stock-low-alert-banner">
           <span class="alert-icon">⚠</span>
-          <span><strong>{{ $semiLowCount }}</strong> Low Stock Ranked on Top</span>
+          <span><strong>{{ $semiLowCount }}</strong> Low Stock Alert</span>
         </div>
       @endif
     </div>
@@ -1319,7 +1303,7 @@
       @if($finishedLowCount > 0)
         <div class="stock-low-alert-banner">
           <span class="alert-icon">⚠</span>
-          <span><strong>{{ $finishedLowCount }}</strong> Low Stock Ranked on Top</span>
+          <span><strong>{{ $finishedLowCount }}</strong> Low Stock Alert</span>
         </div>
       @endif
     </div>
@@ -1407,7 +1391,7 @@
       @if($packagingLowCount > 0)
         <div class="stock-low-alert-banner">
           <span class="alert-icon">⚠</span>
-          <span><strong>{{ $packagingLowCount }}</strong> Low Stock Ranked on Top</span>
+          <span><strong>{{ $packagingLowCount }}</strong> Low Stock Alert</span>
         </div>
       @endif
     </div>
@@ -1596,6 +1580,7 @@ function adminAddStock() {
         } else {
           filteredProducts = adminStockProducts.filter(p => (p.type === targetStage || (targetStage === 'FINISHED' && p.type === 'FG')) && p.is_active);
         }
+        filteredProducts.sort((a, b) => (a.name || '').trim().localeCompare((b.name || '').trim(), undefined, { sensitivity: 'base' }));
         
         productSelect.innerHTML = filteredProducts.map(p => {
           let t = (p.type === 'FINISHED' || p.type === 'FG') ? 'FG' : p.type;
@@ -2293,23 +2278,11 @@ function updateStockTables(stockData) {
 
     const items = grouped[stage];
     
-    // Sort items so low stock always appears at the top
+    // Sort items alphabetically A to Z by product name then grade
     items.sort((a, b) => {
-      const limitA = parseFloat(a.alert_limit) || 0;
-      const qtyA = parseFloat(a.quantity) || 0;
-      const hasQtyA = qtyA > 0;
-      const isLowA = (limitA > 0 && qtyA <= limitA && hasQtyA) ? 0 : ((limitA > 0 && qtyA <= limitA) ? 1 : 2);
-
-      const limitB = parseFloat(b.alert_limit) || 0;
-      const qtyB = parseFloat(b.quantity) || 0;
-      const hasQtyB = qtyB > 0;
-      const isLowB = (limitB > 0 && qtyB <= limitB && hasQtyB) ? 0 : ((limitB > 0 && qtyB <= limitB) ? 1 : 2);
-
-      if (isLowA !== isLowB) return isLowA - isLowB;
-      const sortA = a.sort_order !== undefined ? parseInt(a.sort_order) : 9999;
-      const sortB = b.sort_order !== undefined ? parseInt(b.sort_order) : 9999;
-      if (sortA !== sortB) return sortA - sortB;
-      return (a.name || '').localeCompare(b.name || '');
+      const nameCmp = (a.name || '').trim().localeCompare((b.name || '').trim(), undefined, { sensitivity: 'base' });
+      if (nameCmp !== 0) return nameCmp;
+      return (a.grade || '').trim().localeCompare((b.grade || '').trim(), undefined, { sensitivity: 'base' });
     });
 
     if (items.length === 0) {
@@ -3033,6 +3006,7 @@ window.onBsStageChange = function(element) {
   } else {
     filteredProducts = adminStockProducts.filter(p => (p.type === targetStage || (targetStage === 'FINISHED' && p.type === 'FG')) && p.is_active);
   }
+  filteredProducts.sort((a, b) => (a.name || '').trim().localeCompare((b.name || '').trim(), undefined, { sensitivity: 'base' }));
   
   if (window.jQuery && $.fn.select2 && $(productSelect).hasClass('select2-hidden-accessible')) {
     try {

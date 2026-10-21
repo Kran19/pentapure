@@ -42,13 +42,12 @@
                 return $prioA <=> $prioB;
             }
 
-            $sortA = isset($a->sort_order) ? (int)$a->sort_order : 9999;
-            $sortB = isset($b->sort_order) ? (int)$b->sort_order : 9999;
-            if ($sortA !== $sortB) {
-                return $sortA <=> $sortB;
+            $cmp = strcasecmp(trim($a->name ?? ''), trim($b->name ?? ''));
+            if ($cmp !== 0) {
+                return $cmp;
             }
 
-            return strcasecmp($a->name ?? '', $b->name ?? '');
+            return strcasecmp(trim($a->grade ?? ''), trim($b->grade ?? ''));
         })->values();
     };
 
@@ -710,6 +709,7 @@ function adminAddStock() {
         const productSelect = document.getElementById('add-stock-product');
         const targetType = (stage === 'FG' ? 'FINISHED' : stage);
         const filteredProducts = adminStockProducts.filter(p => (p.type === targetType || (targetType === 'FINISHED' && p.type === 'FG')) && p.is_active);
+        filteredProducts.sort((a, b) => (a.name || '').trim().localeCompare((b.name || '').trim(), undefined, { sensitivity: 'base' }));
         
         productSelect.innerHTML = filteredProducts.map(p => {
           let t = stage.toLowerCase() === 'finished' ? 'fg' : stage.toLowerCase();
@@ -1250,10 +1250,9 @@ function updateStockTables(stockData) {
       const isLowB = (limitB > 0 && qtyB <= limitB) ? 0 : 1;
 
       if (isLowA !== isLowB) return isLowA - isLowB;
-      const sortA = a.sort_order !== undefined ? parseInt(a.sort_order) : 9999;
-      const sortB = b.sort_order !== undefined ? parseInt(b.sort_order) : 9999;
-      if (sortA !== sortB) return sortA - sortB;
-      return (a.name || '').localeCompare(b.name || '');
+      const nameCmp = (a.name || '').trim().localeCompare((b.name || '').trim(), undefined, { sensitivity: 'base' });
+      if (nameCmp !== 0) return nameCmp;
+      return (a.grade || '').trim().localeCompare((b.grade || '').trim(), undefined, { sensitivity: 'base' });
     });
 
     if (items.length === 0) {
@@ -1865,6 +1864,7 @@ window.onBsStageChange = function(element) {
   
   const targetType = stage; // 'RAW', 'SEMI', or 'FINISHED'
   const filteredProducts = adminStockProducts.filter(p => p.type === targetType && p.is_active);
+  filteredProducts.sort((a, b) => (a.name || '').trim().localeCompare((b.name || '').trim(), undefined, { sensitivity: 'base' }));
   
   // Empty the select and add a blank option for the placeholder
   $(productSelect).empty();

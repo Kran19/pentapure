@@ -450,25 +450,25 @@ class AdminController extends Controller
 
         $rawProducts = Product::with('grades')
             ->where('type', 'RAW')
-            ->orderBy('sort_order')
+            ->orderBy('name', 'asc')
             ->get()
             ->map($attachData);
             
         $semiProducts = Product::with('grades')
             ->where('type', 'SEMI')
-            ->orderBy('sort_order')
+            ->orderBy('name', 'asc')
             ->get()
             ->map($attachData);
 
         $finishedProducts = Product::with('grades')
             ->where('type', 'FINISHED')
-            ->orderBy('sort_order')
+            ->orderBy('name', 'asc')
             ->get()
             ->map($attachData);
 
         $packagingProducts = Product::with('grades')
             ->where('type', 'PACKAGING')
-            ->orderBy('sort_order')
+            ->orderBy('name', 'asc')
             ->get()
             ->map($attachData);
             
@@ -487,12 +487,12 @@ class AdminController extends Controller
     public function productsPdf()
     {
         $rawProducts = Product::where('type', 'RAW')
-            ->orderBy('sort_order')
+            ->orderBy('name', 'asc')
             ->get();
             
         $semiProducts = Product::with('grades')
             ->where('type', 'SEMI')
-            ->orderBy('sort_order')
+            ->orderBy('name', 'asc')
             ->get();
 
         $semiProducts->transform(function($p) {
@@ -502,7 +502,7 @@ class AdminController extends Controller
 
         $finishedProducts = Product::with('grades')
             ->where('type', 'FINISHED')
-            ->orderBy('sort_order')
+            ->orderBy('name', 'asc')
             ->get();
             
         $finishedProducts->transform(function($p) {
@@ -512,7 +512,7 @@ class AdminController extends Controller
 
         $packagingProducts = Product::with('grades')
             ->where('type', 'PACKAGING')
-            ->orderBy('sort_order')
+            ->orderBy('name', 'asc')
             ->get();
             
         $packagingProducts->transform(function($p) {
@@ -807,11 +807,12 @@ class AdminController extends Controller
             ")
             ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) >= 0")
             ->orderBy('stocks.stage')
-            ->orderBy('products.sort_order')
+            ->orderBy('products.name', 'asc')
+            ->orderBy('stocks.grade', 'asc')
             ->get();
 
-        $allProducts = Product::with('grades')->orderBy('type')
-            ->orderBy('sort_order')
+        $allProducts = Product::with('grades')
+            ->orderBy('name', 'asc')
             ->get();
 
         $stockLogsByKey = Stock::with(['user:id,name', 'product:id,name,unit'])
@@ -946,7 +947,8 @@ class AdminController extends Controller
             ")
             ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
             ->orderBy('stocks.stage')
-            ->orderBy('products.sort_order')
+            ->orderBy('products.name', 'asc')
+            ->orderBy('stocks.grade', 'asc')
             ->get();
 
         // Bulk query for all location breakdowns in a single SQL call
@@ -1112,8 +1114,8 @@ class AdminController extends Controller
             ")
             ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
             ->orderBy('stocks.stage')
-            ->orderBy('products.sort_order')
-            ->orderBy('products.name')
+            ->orderBy('products.name', 'asc')
+            ->orderBy('stocks.grade', 'asc')
             ->get();
 
         // Bulk query for all location breakdowns in a single SQL call
@@ -1379,7 +1381,8 @@ class AdminController extends Controller
             ")
             ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) >= 0")
             ->orderBy('stocks.stage')
-            ->orderBy('products.sort_order')
+            ->orderBy('products.name', 'asc')
+            ->orderBy('stocks.grade', 'asc')
             ->get();
 
         // Fetch location mappings from DB

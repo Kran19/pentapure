@@ -425,12 +425,23 @@ class CashierController extends Controller
         } else {
             $txQuery->where('user_id', $user['id']);
         }
-        $txs = $txQuery->orderByRaw('COALESCE(date, created_at) DESC')->orderByDesc('id')->get();
+        // Fetch transactions in strictly chronological order to accurately compute running balance
+        $txs = $txQuery->orderByRaw('COALESCE(date, created_at) ASC')->orderBy('id', 'asc')->get();
+
+        $running = 0.0;
+        foreach ($txs as $tx) {
+            if ($tx->type === 'IN') {
+                $running += (float)$tx->amount;
+            } else {
+                $running -= (float)$tx->amount;
+            }
+            $tx->running_balance = $running;
+        }
 
         $summary = [
-            'totalIn'  => $txs->where('type', 'IN')->sum('amount'),
-            'totalOut' => $txs->where('type', 'OUT')->sum('amount'),
-            'balance'  => $txs->where('type', 'IN')->sum('amount') - $txs->where('type', 'OUT')->sum('amount'),
+            'totalIn'  => (float)$txs->where('type', 'IN')->sum('amount'),
+            'totalOut' => (float)$txs->where('type', 'OUT')->sum('amount'),
+            'balance'  => (float)($txs->where('type', 'IN')->sum('amount') - $txs->where('type', 'OUT')->sum('amount')),
         ];
 
         $isAdmin = in_array($user['role'] ?? '', ['ADMIN', 'SUB_ADMIN']);
@@ -493,14 +504,25 @@ class CashierController extends Controller
                           $uq->where('status', 'ACTIVE');
                       });
                 })
-                ->orderByDesc('created_at')
+                ->orderByRaw('COALESCE(date, created_at) ASC')
+                ->orderBy('id', 'asc')
                 ->get();
+
+            $teamRunning = 0.0;
+            foreach ($teamTxs as $ttx) {
+                if ($ttx->type === 'IN') {
+                    $teamRunning += (float)$ttx->amount;
+                } else {
+                    $teamRunning -= (float)$ttx->amount;
+                }
+                $ttx->running_balance = $teamRunning;
+            }
         }
             
         $teamSummary = [
-            'totalIn'  => $teamTxs->where('type', 'IN')->sum('amount'),
-            'totalOut' => $teamTxs->where('type', 'OUT')->sum('amount'),
-            'balance'  => $teamTxs->where('type', 'IN')->sum('amount') - $teamTxs->where('type', 'OUT')->sum('amount'),
+            'totalIn'  => (float)$teamTxs->where('type', 'IN')->sum('amount'),
+            'totalOut' => (float)$teamTxs->where('type', 'OUT')->sum('amount'),
+            'balance'  => (float)($teamTxs->where('type', 'IN')->sum('amount') - $teamTxs->where('type', 'OUT')->sum('amount')),
         ];
 
         // Day Wise Balance
@@ -547,10 +569,14 @@ class CashierController extends Controller
             $allSites = collect(array_merge($userBranches, $txSites))->filter()->unique()->sort()->values()->toArray();
         }
 
+        // Reverse strictly to newest first for display
+        $txsDesc = $txs->reverse()->values();
+        $teamTxsDesc = $teamTxs->reverse()->values();
+
         $pageData = [
-            'transactions' => $txs->map(fn($t) => $this->txToArray($t))->values()->toArray(),
+            'transactions' => $txsDesc->map(fn($t) => $this->txToArray($t))->values()->toArray(),
             'summary'      => $summary,
-            'teamTransactions' => $teamTxs->map(fn($t) => array_merge($this->txToArray($t), ['cashier_name' => strtoupper($t->user?->name ?? 'Unknown')]))->values()->toArray(),
+            'teamTransactions' => $teamTxsDesc->map(fn($t) => array_merge($this->txToArray($t), ['cashier_name' => strtoupper($t->user?->name ?? 'Unknown')]))->values()->toArray(),
             'teamSummary'  => $teamSummary,
             'teamMembers'  => $teamMembers,
             'dailyData'    => $dailyData,
@@ -1055,6 +1081,7 @@ class CashierController extends Controller
             'cashier_name' => strtoupper($t->user?->name ?? ($this->authUser()['name'] ?? 'Unknown')),
             'type'         => $t->type,
             'amount'       => $t->amount,
+            'balance'      => isset($t->running_balance) ? (float)$t->running_balance : null,
             'category'     => $t->category,
             'note'         => $t->note,
             'reference'    => $t->reference,
