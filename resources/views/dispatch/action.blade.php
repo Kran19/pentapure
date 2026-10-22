@@ -54,7 +54,7 @@ input[type=number].no-spinners {
   
   <div class="form-group" style="margin-bottom:1.5rem;">
     <label style="color:#374151; font-weight:700;">Select Order</label>
-    <select id="dispatch-order" onchange="app.onDispatchOrderSelect(this.value)" style="background:#ffffff; border:1.5px solid #d1d5db; color:#111827; padding:0.7rem; border-radius:8px; width:100%; font-weight:600;">
+    <select id="dispatch-order" onchange="(window.app || app).onDispatchOrderSelect(this.value)" style="background:#ffffff; border:1.5px solid #d1d5db; color:#111827; padding:0.7rem; border-radius:8px; width:100%; font-weight:600;">
       <option value="" disabled selected>-- Select Order --</option>
       @foreach(collect($pageData['pendingOrders'] ?? [])->filter(fn($o) => strtoupper(trim((string)($o['status'] ?? ''))) !== 'CANCELLED') as $o)
         <option value="{{ $o['id'] }}">#{{ strtoupper((string)$o['id']) }} - {{ $o['company']['name'] }}</option>
@@ -133,10 +133,40 @@ input[type=number].no-spinners {
 </div>
 
 <script>
+  window.currentPendingOrders = @json($pageData['pendingOrders'] ?? []);
+
+  function triggerAutoSelect(autoId) {
+    if (!autoId) return;
+    const select = document.getElementById('dispatch-order');
+    if (select) {
+      select.value = autoId;
+    }
+    
+    const callHandler = () => {
+      const appObj = window.app || (typeof app !== 'undefined' ? app : null);
+      if (appObj && typeof appObj.onDispatchOrderSelect === 'function') {
+        appObj.onDispatchOrderSelect(autoId);
+        return true;
+      }
+      return false;
+    };
+
+    if (!callHandler()) {
+      let attempts = 0;
+      const timer = setInterval(() => {
+        attempts++;
+        if (callHandler() || attempts > 30) {
+          clearInterval(timer);
+        }
+      }, 50);
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
-    window.currentPendingOrders = @json($pageData['pendingOrders']);
-    if (window.app && typeof window.app.removeDispatchLR === 'function') {
-      window.app.removeDispatchLR(true);
+    window.currentPendingOrders = @json($pageData['pendingOrders'] ?? []);
+    const appObj = window.app || (typeof app !== 'undefined' ? app : null);
+    if (appObj && typeof appObj.removeDispatchLR === 'function') {
+      appObj.removeDispatchLR(true);
     }
     
     // Check for auto-select from URL param or localStorage (redirected from home page click)
@@ -144,13 +174,7 @@ input[type=number].no-spinners {
     const autoId = urlParams.get('order_id') || localStorage.getItem('auto_dispatch_id');
     if (autoId) {
       localStorage.removeItem('auto_dispatch_id');
-      const select = document.getElementById('dispatch-order');
-      if (select) {
-        select.value = autoId;
-        if (window.app && typeof window.app.onDispatchOrderSelect === 'function') {
-          window.app.onDispatchOrderSelect(autoId);
-        }
-      }
+      triggerAutoSelect(autoId);
     }
   });
 

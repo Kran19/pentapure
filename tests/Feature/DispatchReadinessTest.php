@@ -702,5 +702,86 @@ class DispatchReadinessTest extends TestCase
         ]);
         $responseStore->assertStatus(422);
     }
+
+    public function test_partial_dispatch_order_action_page_and_details(): void
+    {
+        $session = ['auth_user' => [
+            'id'   => $this->subAdminUser->id,
+            'name' => $this->subAdminUser->name,
+            'role' => 'SUB_ADMIN',
+        ]];
+
+        $order = Order::create([
+            'created_by'      => $this->subAdminUser->id,
+            'company_id'      => $this->company->id,
+            'transporter_id'  => $this->transporter->id,
+            'total'           => 3000,
+            'status'          => 'CONFIRMED',
+            'dispatch_status' => 'PARTIAL PENDING',
+            'due_date'        => now()->timezone('Asia/Kolkata')->addDays(2)->toDateString(),
+        ]);
+
+        $item1 = OrderItem::create([
+            'order_id'       => $order->id,
+            'product_id'     => $this->productPipe->id,
+            'grade'          => 'PREMIUM',
+            'quantity'       => 10,
+            'dispatched_qty' => 4,
+            'price'          => 100,
+        ]);
+
+        $productFitting = Product::create([
+            'name'      => 'PVC Fitting 90mm',
+            'type'      => 'FINISHED',
+            'unit'      => 'kg',
+            'is_active' => true,
+        ]);
+
+        $item2 = OrderItem::create([
+            'order_id'       => $order->id,
+            'product_id'     => $productFitting->id,
+            'grade'          => 'NONE',
+            'quantity'       => 20,
+            'dispatched_qty' => 0,
+            'price'          => 100,
+        ]);
+
+        $log = \App\Models\DispatchLog::create([
+            'user_id'        => $this->subAdminUser->id,
+            'order_id'       => $order->id,
+            'transporter_id' => $this->transporter->id,
+        ]);
+        \App\Models\DispatchLogItem::create([
+            'dispatch_log_id' => $log->id,
+            'order_item_id'   => $item1->id,
+            'quantity'        => 4,
+        ]);
+        \App\Models\DispatchLogItem::create([
+            'dispatch_log_id' => $log->id,
+            'order_item_id'   => $item2->id,
+            'quantity'        => 5,
+        ]);
+
+        // Action page with query parameter
+        $resp = $this->withSession($session)->get("/sub_admin/dispatch/action?order_id={$order->id}");
+        $resp->assertStatus(200);
+        $content = $resp->getContent();
+
+        $this->assertStringContainsString("value=\"{$order->id}\"", $content);
+        $this->assertStringContainsString("triggerAutoSelect", $content);
+        $this->assertStringContainsString("\"remainingQty\":6", $content);
+        $this->assertStringContainsString("\"remainingQty\":15", $content);
+
+        // Order details endpoint
+        $detailsResp = $this->withSession($session)->get("/sub_admin/dispatch/order-details/{$order->id}");
+        $detailsResp->assertStatus(200);
+        $detailsData = $detailsResp->json();
+
+        $this->assertTrue($detailsData['success']);
+        $this->assertEquals($order->id, $detailsData['order']['id']);
+        $this->assertEquals(6, $detailsData['order']['items'][0]['remainingQty']);
+        $this->assertEquals(15, $detailsData['order']['items'][1]['remainingQty']);
+    }
 }
+
 

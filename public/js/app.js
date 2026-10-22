@@ -2069,232 +2069,267 @@ const app = {
   },
 
   onDispatchOrderSelect(id) {
-    // Clear previous order's LR preview, files, vehicle, and driver contact
-    this.removeDispatchLR(true);
-    const vehicleInp = document.getElementById('dispatch-vehicle-no') || document.getElementById('dispatch-vehicle');
-    if (vehicleInp) vehicleInp.value = '';
-    const contactInp = document.getElementById('dispatch-contact');
-    if (contactInp) contactInp.value = '';
-    const lrNoInp = document.getElementById('dispatch-lr-no');
-    if (lrNoInp) lrNoInp.value = '';
+    if (!id) return;
+    try {
+      this.removeDispatchLR(true);
+      const vehicleInp = document.getElementById('dispatch-vehicle-no') || document.getElementById('dispatch-vehicle');
+      if (vehicleInp) vehicleInp.value = '';
+      const contactInp = document.getElementById('dispatch-contact');
+      if (contactInp) contactInp.value = '';
+      const lrNoInp = document.getElementById('dispatch-lr-no');
+      if (lrNoInp) lrNoInp.value = '';
 
-    const orders = window.currentPendingOrders || [];
-    const o = orders.find(x => x.id == id);
-    const div = document.getElementById('order-preview');
-    if(o) {
-      window.currentDispatchOrderItems = o.items;
-      div.style.display = 'block';
-      div.classList.add('animation-fadeIn');
+      const rawOrders = window.currentPendingOrders || [];
+      const orders = Array.isArray(rawOrders) ? rawOrders : Object.values(rawOrders);
+      let o = orders.find(x => String(x.id) === String(id));
+      const div = document.getElementById('order-preview');
       const detailsDiv = document.getElementById('dispatch-details');
-      if(detailsDiv) detailsDiv.style.display = 'block';
-      
-      const validItems = (o.items || []).filter(i => {
-        const remaining = i.remainingQty ?? (i.quantity - (i.dispatchedQty || 0));
-        return remaining > 0;
-      });
 
-      const itemRows = validItems.map((i, idx) => {
-        const remaining = i.remainingQty ?? (i.quantity - (i.dispatchedQty || 0));
-        const alreadyDispatched = i.dispatchedQty || 0;
+      const renderOrderData = (orderData) => {
+        if (!orderData) return;
+        window.currentDispatchOrderItems = orderData.items || [];
+        if (div) {
+          div.style.display = 'block';
+          div.classList.add('animation-fadeIn');
+        }
+        if (detailsDiv) detailsDiv.style.display = 'block';
 
-        const baseName = (i.rawProductName || i.productName || 'Unknown')
-          .replace(/\s+(PURE|PREMIUM|COMMERCIAL|NONE|\b[A-Za-z0-9_-]+\b)\s*\((fg|raw|semi)\)$/i, '')
-          .replace(/\s*\((fg|raw|semi)\)$/i, '')
-          .trim();
-        const displayGrade = (i.grade && i.grade !== 'NONE' && i.grade !== 'N/A') ? i.grade : '';
-        const displayType = (i.productType === 'FINISHED') ? 'FG' : (i.productType ? i.productType.toUpperCase() : 'N/A');
+        const validItems = (orderData.items || []).filter(i => {
+          const remaining = i.remainingQty ?? (i.quantity - (i.dispatchedQty || 0));
+          return remaining > 0;
+        });
 
-        const isLast = idx === validItems.length - 1;
-        const hrDivider = (!isLast && validItems.length > 1) 
-          ? `<div style="height:2px; background:linear-gradient(90deg, rgba(216,138,0,0.15) 0%, rgba(216,138,0,0.7) 50%, rgba(216,138,0,0.15) 100%); margin:18px 0;"></div>` 
-          : '';
+        const itemRows = validItems.map((i, idx) => {
+          const remaining = i.remainingQty ?? (i.quantity - (i.dispatchedQty || 0));
+          const alreadyDispatched = i.dispatchedQty || 0;
 
-        return `
-        <div style="display:flex; flex-direction:column; gap:8px; padding:12px 0;">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-            <span style="font-weight:700; font-size:0.95rem; color:#111827;">
-              ${baseName} ${displayGrade ? `<strong style="font-weight:800; color:var(--primary, #D88A00);">${displayGrade}</strong> ` : ''}(${displayType})
-            </span>
-            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-              <span style="background:#fef3c7; border:1px solid #fde68a; color:#b45309; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.8rem;">
-                Total Order Qty: <span style="color:#111827;">${i.quantity} kg</span>
+          const baseName = (i.rawProductName || i.productName || 'Unknown')
+            .replace(/\s+(PURE|PREMIUM|COMMERCIAL|NONE|\b[A-Za-z0-9_-]+\b)\s*\((fg|raw|semi)\)$/i, '')
+            .replace(/\s*\((fg|raw|semi)\)$/i, '')
+            .trim();
+          const displayGrade = (i.grade && i.grade !== 'NONE' && i.grade !== 'N/A') ? i.grade : '';
+          const displayType = (i.productType === 'FINISHED') ? 'FG' : (i.productType ? String(i.productType).toUpperCase() : 'N/A');
+
+          const isLast = idx === validItems.length - 1;
+          const hrDivider = (!isLast && validItems.length > 1) 
+            ? `<div style="height:2px; background:linear-gradient(90deg, rgba(216,138,0,0.15) 0%, rgba(216,138,0,0.7) 50%, rgba(216,138,0,0.15) 100%); margin:18px 0;"></div>` 
+            : '';
+
+          return `
+          <div style="display:flex; flex-direction:column; gap:8px; padding:12px 0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <span style="font-weight:700; font-size:0.95rem; color:#111827;">
+                ${baseName} ${displayGrade ? `<strong style="font-weight:800; color:var(--primary, #D88A00);">${displayGrade}</strong> ` : ''}(${displayType})
               </span>
-              <span id="pending-badge-${i.id}" style="background:#fee2e2; border:1px solid #fecaca; color:#b91c1c; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.8rem;">
-                Pending Order: <span style="color:#111827;">${remaining} kg</span>
-              </span>
-            </div>
-          </div>
-          
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; align-items:end; margin-top:6px;">
-            <div id="loc-splits-${i.id}" data-item-id="${i.id}" data-max="${remaining}">
-              <div style="font-size:0.75rem; color:#64748b;">⏳ Loading stock locations...</div>
-            </div>
-            <div>
-              <label style="font-size:0.75rem; font-weight:700; color:#475467; text-transform:uppercase; display:block; margin-bottom:4px;">Dispatch Qty *</label>
-              <input type="number" class="dispatch-item-qty no-spinners" data-item-id="${i.id}" data-max="${remaining}" 
-                     value="" placeholder="Enter quantity..." max="${remaining}" min="0.001" step="0.001"
-                     style="width:100%; padding:0.65rem 0.75rem; font-size:0.95rem; font-weight:bold; color:#16a34a; background:#ffffff; border:1.5px solid #cbd5e1; border-radius:8px; box-sizing:border-box;">
-            </div>
-          </div>
-        </div>
-        ${hrDivider}
-      `;}).join('');
-      
-      div.innerHTML = `
-        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:20px; box-shadow:0 4px 15px rgba(0,0,0,0.04);">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1.5px solid #e2e8f0; padding-bottom:10px;">
-            <h3 style="margin:0; color:var(--primary, #D88A00); font-size:1.3rem; letter-spacing:1px; font-weight:800;">ORDER #${String(o.id).toUpperCase()}</h3>
-            <span class="badge badge-pending" style="padding:4px 12px; font-size:0.75rem;">READY FOR DISPATCH</span>
-          </div>
-          
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:25px; margin-bottom:20px;">
-            <div>
-              <div style="display:flex; align-items:center; gap:8px; color:#64748b; font-size:0.7rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                Customer Details
+              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <span style="background:#fef3c7; border:1px solid #fde68a; color:#b45309; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.8rem;">
+                  Total Order Qty: <span style="color:#111827;">${i.quantity} kg</span>
+                </span>
+                <span id="pending-badge-${i.id}" style="background:#fee2e2; border:1px solid #fecaca; color:#b91c1c; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.8rem;">
+                  Pending Order: <span style="color:#111827;">${remaining} kg</span>
+                </span>
               </div>
-              <div style="font-size:1.1rem; font-weight:800; margin-bottom:4px; color:#111827;">${o.company.name}</div>
-              <div style="color:#16a34a; font-size:0.85rem; font-weight:600; margin-bottom:4px;">${o.company.contact}</div>
-              <div style="font-size:0.8rem; color:#64748b; line-height:1.4;">${o.company.address}</div>
-              <div style="margin-top:6px; font-size:0.75rem; font-family:monospace; background:#f1f5f9; color:#1e293b; padding:2px 6px; display:inline-block; border-radius:4px; border:1px solid #e2e8f0;">GST: ${o.company.gst}</div>
             </div>
             
-            <div>
-              <div style="display:flex; align-items:center; gap:8px; color:#64748b; font-size:0.7rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-                Transport Info
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; align-items:end; margin-top:6px;">
+              <div id="loc-splits-${i.id}" data-item-id="${i.id}" data-max="${remaining}">
+                <div style="font-size:0.75rem; color:#64748b;">⏳ Loading stock locations...</div>
               </div>
-              <div style="font-size:1.1rem; font-weight:800; margin-bottom:4px; color:#111827;">${o.transporter.name}</div>
-              <div style="color:#16a34a; font-size:0.85rem; font-weight:600; margin-bottom:4px;">${o.transporter.contact}</div>
-              <div style="font-size:0.8rem; background:rgba(216,138,0,0.1); color:var(--primary, #D88A00); padding:4px 8px; border-radius:4px; display:inline-block; font-weight:bold;">Vehicles: ${o.transporter.vehicles || 'N/A'}</div>
+              <div>
+                <label style="font-size:0.75rem; font-weight:700; color:#475467; text-transform:uppercase; display:block; margin-bottom:4px;">Dispatch Qty *</label>
+                <input type="number" class="dispatch-item-qty no-spinners" data-item-id="${i.id}" data-max="${remaining}" 
+                       value="" placeholder="Enter quantity..." max="${remaining}" min="0.001" step="0.001"
+                       style="width:100%; padding:0.65rem 0.75rem; font-size:0.95rem; font-weight:bold; color:#16a34a; background:#ffffff; border:1.5px solid #cbd5e1; border-radius:8px; box-sizing:border-box;">
+              </div>
             </div>
           </div>
+          ${hrDivider}
+        `;}).join('');
 
-          ${o.notes ? `
-          <div style="margin-bottom:20px; background:#fffbeb; border:1.5px dashed #fde68a; border-radius:8px; padding:15px; border-left:4px solid var(--primary, #D88A00);">
-            <div style="display:flex; align-items:center; gap:8px; color:#92400e; font-size:0.75rem; text-transform:uppercase; margin-bottom:6px; font-weight:bold;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-              Notes & Special Instructions (Sales)
+        const company = orderData.company || {};
+        const transporter = orderData.transporter || {};
+
+        if (div) {
+          div.innerHTML = `
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:20px; box-shadow:0 4px 15px rgba(0,0,0,0.04);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1.5px solid #e2e8f0; padding-bottom:10px;">
+                <h3 style="margin:0; color:var(--primary, #D88A00); font-size:1.3rem; letter-spacing:1px; font-weight:800;">ORDER #${String(orderData.id).toUpperCase()}</h3>
+                <span class="badge badge-pending" style="padding:4px 12px; font-size:0.75rem;">${validItems.length === 0 ? 'FULLY DISPATCHED' : 'READY FOR DISPATCH'}</span>
+              </div>
+              
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:25px; margin-bottom:20px;">
+                <div>
+                  <div style="display:flex; align-items:center; gap:8px; color:#64748b; font-size:0.7rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    Customer Details
+                  </div>
+                  <div style="font-size:1.1rem; font-weight:800; margin-bottom:4px; color:#111827;">${company.name || 'Customer'}</div>
+                  <div style="color:#16a34a; font-size:0.85rem; font-weight:600; margin-bottom:4px;">${company.contact || '—'}</div>
+                  <div style="font-size:0.8rem; color:#64748b; line-height:1.4;">${company.address || '—'}</div>
+                  <div style="margin-top:6px; font-size:0.75rem; font-family:monospace; background:#f1f5f9; color:#1e293b; padding:2px 6px; display:inline-block; border-radius:4px; border:1px solid #e2e8f0;">GST: ${company.gst || '—'}</div>
+                </div>
+                
+                <div>
+                  <div style="display:flex; align-items:center; gap:8px; color:#64748b; font-size:0.7rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                    Transport Info
+                  </div>
+                  <div style="font-size:1.1rem; font-weight:800; margin-bottom:4px; color:#111827;">${transporter.name || 'No Transporter Assigned'}</div>
+                  <div style="color:#16a34a; font-size:0.85rem; font-weight:600; margin-bottom:4px;">${transporter.contact || '—'}</div>
+                  <div style="font-size:0.8rem; background:rgba(216,138,0,0.1); color:var(--primary, #D88A00); padding:4px 8px; border-radius:4px; display:inline-block; font-weight:bold;">Vehicles: ${transporter.vehicles || 'N/A'}</div>
+                </div>
+              </div>
+
+              ${orderData.notes ? `
+              <div style="margin-bottom:20px; background:#fffbeb; border:1.5px dashed #fde68a; border-radius:8px; padding:15px; border-left:4px solid var(--primary, #D88A00);">
+                <div style="display:flex; align-items:center; gap:8px; color:#92400e; font-size:0.75rem; text-transform:uppercase; margin-bottom:6px; font-weight:bold;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                  Notes & Special Instructions (Sales)
+                </div>
+                <div style="font-size:0.95rem; color:#92400e; line-height:1.5; font-style:italic; word-break:break-word; overflow-wrap:anywhere; white-space:pre-wrap;">"${orderData.notes}"</div>
+              </div>
+              ` : ''}
+
+              <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:8px; padding:15px; border-left:4px solid var(--primary, #D88A00); box-shadow:0 1px 4px rgba(0,0,0,0.02);">
+                <div style="display:flex; align-items:center; gap:8px; color:#64748b; font-size:0.7rem; text-transform:uppercase; margin-bottom:10px; font-weight:bold;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                  Items to Dispatch (Edit quantities for partial dispatch)
+                </div>
+                ${itemRows || '<div class="text-center py-2" style="color:#16a34a; font-weight:700;">✅ All items for this order have already been dispatched!</div>'}
+              </div>
             </div>
-            <div style="font-size:0.95rem; color:#92400e; line-height:1.5; font-style:italic; word-break:break-word; overflow-wrap:anywhere; white-space:pre-wrap;">"${o.notes}"</div>
-          </div>
-          ` : ''}
+          `;
+        }
 
-          <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:8px; padding:15px; border-left:4px solid var(--primary, #D88A00); box-shadow:0 1px 4px rgba(0,0,0,0.02);">
-            <div style="display:flex; align-items:center; gap:8px; color:#64748b; font-size:0.7rem; text-transform:uppercase; margin-bottom:10px; font-weight:bold;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-              Items to Dispatch (Edit quantities for partial dispatch)
-            </div>
-            ${itemRows || '<div class="text-center py-1">All items already dispatched</div>'}
-          </div>
-        </div>
-      `;
+        // Fetch location stocks splits dynamically for valid items
+        (orderData.items || []).forEach(i => {
+          const remaining = i.remainingQty ?? (i.quantity - (i.dispatchedQty || 0));
+          if (remaining <= 0) return;
+          
+          const stage = i.productType || 'FINISHED';
+          const grade = i.grade ? encodeURIComponent(i.grade) : 'NONE';
+          fetch(`/api/stock/locations?product_id=${i.productId}&stage=${stage}&grade=${grade}`)
+            .then(r => r.json())
+            .then(data => {
+              const container = document.getElementById(`loc-splits-${i.id}`);
+              if (!container) return;
+              
+              if (data.success && data.breakdown && data.breakdown.length > 0) {
+                window[`locData_${i.id}`] = data.breakdown;
+                const hasAnyStock = data.breakdown.some(loc => loc.quantity > 0);
+                
+                let dropdownItemsHtml = '';
+                data.breakdown.forEach(loc => {
+                  const locName = loc.name;
+                  const avail = loc.quantity || 0;
+                  dropdownItemsHtml += `
+                    <li style="margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:#111827; gap:8px;">
+                      <span style="padding-left:0.2rem; font-weight:600; color:#111827;">${locName.toUpperCase()} (AVAIL: ${avail} KG)</span>
+                      <input type="number" min="0" step="0.001" class="form-control form-control-sm inner-qty-input no-spinners" 
+                             data-loc="${locName}" data-avail="${avail}" data-item-id="${i.id}" data-max-remaining="${remaining}"
+                             oninput="app.recalcDispatchLocationDropdownTotals(${i.id}, ${remaining})" 
+                             style="width: 75px; text-align:center; padding: 0.2rem; height:1.8rem; font-size:0.8rem; border:1px solid #d1d5db; border-radius:4px; background:#ffffff; color:#111827; font-weight:700;" value="0">
+                    </li>
+                  `;
+                });
 
-      // Live background sync to guarantee real-time pending quantities from server
-      const syncUrl = window.location.pathname.replace(/\/action.*$/, '') + '/order-details/' + id;
-      fetch(syncUrl)
-        .then(r => {
-          if (!r.ok || !(r.headers.get('content-type') || '').includes('application/json')) return null;
-          return r.json();
-        })
-        .then(data => {
-          if (data && data.success && data.order && Array.isArray(data.order.items)) {
-            data.order.items.forEach(freshItem => {
-              const freshRem = freshItem.remainingQty;
-              const badge = document.getElementById(`pending-badge-${freshItem.id}`);
-              if (badge) {
-                badge.innerHTML = `Pending Order: <span style="color:#fff;">${freshRem} kg</span>`;
+                container.innerHTML = `
+                  <div>
+                    <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted, #9ca3af); text-transform:uppercase; display:block; margin-bottom:4px;">STORAGE LOCATION *</label>
+                    <div class="custom-location-dropdown" id="dispatch-custom-location-dropdown-${i.id}">
+                      <button type="button" onclick="app.toggleDispatchLocationDropdown(this)" style="width:100%; text-align:left; display:flex; justify-content:space-between; align-items:center; background:#ffffff; border:1px solid #d1d5db; padding:0.65rem 0.75rem; font-size:0.88rem; font-weight:600; color:#111827; border-radius:8px; cursor:pointer;">
+                        <span class="loc-dropdown-text">Select Storage Location</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                      </button>
+                      <ul class="dropdown-menu shadow" style="display:none; position:absolute; top:100%; left:0; z-index:1000; width:100%; max-height:260px; overflow-y:auto; background:#ffffff; border:1px solid #d1d5db; border-radius:8px; list-style:none; margin-top:0.25rem; padding:0.5rem; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+                        ${dropdownItemsHtml}
+                      </ul>
+                    </div>
+                    ${!hasAnyStock ? `
+                      <div style="margin-top:6px; padding:6px; background:rgba(239,68,68,0.1); color:#f87171; border-radius:6px; font-size:0.75rem; text-align:center;">
+                        ⚠️ No stock currently available in any location!
+                      </div>
+                    ` : ''}
+                  </div>
+                `;
+              } else {
+                container.innerHTML = `
+                  <div style="margin-top:8px; padding:8px; background:rgba(239,68,68,0.1); color:#f87171; border-radius:6px; font-size:0.8rem; text-align:center;">
+                    ⚠️ No stock found in any location for this product & grade!
+                  </div>
+                `;
               }
-              const splitC = document.getElementById(`loc-splits-${freshItem.id}`);
-              if (splitC) splitC.dataset.max = freshRem;
-              const directInp = document.querySelector(`.dispatch-item-qty[data-item-id="${freshItem.id}"]`);
-              if (directInp) {
-                directInp.dataset.max = freshRem;
-                directInp.max = freshRem;
-                if (Number(directInp.value) > freshRem) {
-                  directInp.value = freshRem > 0 ? freshRem : '';
-                }
-              }
-              const cachedItem = (o.items || []).find(ci => ci.id == freshItem.id);
-              if (cachedItem) {
-                cachedItem.remainingQty = freshRem;
-                cachedItem.dispatchedQty = freshItem.dispatchedQty;
+            })
+            .catch(() => {
+              const container = document.getElementById(`loc-splits-${i.id}`);
+              if (container) {
+                container.innerHTML = `
+                  <div style="margin-top:8px; padding:8px; background:rgba(239,68,68,0.1); color:#f87171; border-radius:6px; font-size:0.8rem; text-align:center;">
+                    ⚠️ Failed to load stock locations.
+                  </div>
+                `;
               }
             });
-          }
-        })
-        .catch(() => {});
+        });
+      };
 
-      // Fetch location stocks splits dynamically
-      o.items.forEach(i => {
-        const remaining = i.remainingQty ?? (i.quantity - (i.dispatchedQty || 0));
-        if (remaining <= 0) return;
-        
-        fetch(`/api/stock/locations?product_id=${i.productId}&stage=${i.productType}&grade=${encodeURIComponent(i.grade)}`)
-          .then(r => r.json())
+      const syncUrl = window.location.pathname.replace(/\/action.*$/, '') + '/order-details/' + id;
+
+      if (o) {
+        renderOrderData(o);
+        // Live background sync to guarantee real-time pending quantities from server
+        fetch(syncUrl)
+          .then(r => (r.ok && (r.headers.get('content-type') || '').includes('application/json')) ? r.json() : null)
           .then(data => {
-            const container = document.getElementById(`loc-splits-${i.id}`);
-            if (!container) return;
-            
-            if (data.success && data.breakdown && data.breakdown.length > 0) {
-              window[`locData_${i.id}`] = data.breakdown;
-              const hasAnyStock = data.breakdown.some(loc => loc.quantity > 0);
-              
-              let dropdownItemsHtml = '';
-              data.breakdown.forEach(loc => {
-                const locName = loc.name;
-                const avail = loc.quantity || 0;
-                dropdownItemsHtml += `
-                  <li style="margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:#111827; gap:8px;">
-                    <span style="padding-left:0.2rem; font-weight:600; color:#111827;">${locName.toUpperCase()} (AVAIL: ${avail} KG)</span>
-                    <input type="number" min="0" step="0.001" class="form-control form-control-sm inner-qty-input no-spinners" 
-                           data-loc="${locName}" data-avail="${avail}" data-item-id="${i.id}" data-max-remaining="${remaining}"
-                           oninput="app.recalcDispatchLocationDropdownTotals(${i.id}, ${remaining})" 
-                           style="width: 75px; text-align:center; padding: 0.2rem; height:1.8rem; font-size:0.8rem; border:1px solid #d1d5db; border-radius:4px; background:#ffffff; color:#111827; font-weight:700;" value="0">
-                  </li>
-                `;
+            if (data && data.success && data.order && Array.isArray(data.order.items)) {
+              data.order.items.forEach(freshItem => {
+                const freshRem = freshItem.remainingQty;
+                const badge = document.getElementById(`pending-badge-${freshItem.id}`);
+                if (badge) {
+                  badge.innerHTML = `Pending Order: <span style="color:#111827;">${freshRem} kg</span>`;
+                }
+                const splitC = document.getElementById(`loc-splits-${freshItem.id}`);
+                if (splitC) splitC.dataset.max = freshRem;
+                const directInp = document.querySelector(`.dispatch-item-qty[data-item-id="${freshItem.id}"]`);
+                if (directInp) {
+                  directInp.dataset.max = freshRem;
+                  directInp.max = freshRem;
+                  if (Number(directInp.value) > freshRem) {
+                    directInp.value = freshRem > 0 ? freshRem : '';
+                  }
+                }
+                const cachedItem = (o.items || []).find(ci => ci.id == freshItem.id);
+                if (cachedItem) {
+                  cachedItem.remainingQty = freshRem;
+                  cachedItem.dispatchedQty = freshItem.dispatchedQty;
+                }
               });
-
-              container.innerHTML = `
-                <div>
-                  <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted, #9ca3af); text-transform:uppercase; display:block; margin-bottom:4px;">STORAGE LOCATION *</label>
-                  <div class="custom-location-dropdown" id="dispatch-custom-location-dropdown-${i.id}">
-                    <button type="button" onclick="app.toggleDispatchLocationDropdown(this)" style="width:100%; text-align:left; display:flex; justify-content:space-between; align-items:center; background:#ffffff; border:1px solid #d1d5db; padding:0.65rem 0.75rem; font-size:0.88rem; font-weight:600; color:#111827; border-radius:8px; cursor:pointer;">
-                      <span class="loc-dropdown-text">Select Storage Location</span>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </button>
-                    <ul class="dropdown-menu shadow" style="display:none; position:absolute; top:100%; left:0; z-index:1000; width:100%; max-height:260px; overflow-y:auto; background:#ffffff; border:1px solid #d1d5db; border-radius:8px; list-style:none; margin-top:0.25rem; padding:0.5rem; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
-                      ${dropdownItemsHtml}
-                    </ul>
-                  </div>
-                  ${!hasAnyStock ? `
-                    <div style="margin-top:6px; padding:6px; background:rgba(239,68,68,0.1); color:#f87171; border-radius:6px; font-size:0.75rem; text-align:center;">
-                      ⚠️ No stock currently available in any location!
-                    </div>
-                  ` : ''}
-                </div>
-              `;
-            } else {
-              container.innerHTML = `
-                <div style="margin-top:8px; padding:8px; background:rgba(239,68,68,0.1); color:#f87171; border-radius:6px; font-size:0.8rem; text-align:center;">
-                  ⚠️ No stock found in any location for this product & grade!
-                </div>
-              `;
+            }
+          })
+          .catch(() => {});
+      } else {
+        // Fallback: order wasn't found in currentPendingOrders array, fetch directly from server!
+        if (div) {
+          div.style.display = 'block';
+          div.innerHTML = `<div style="text-align:center; padding:1.5rem; color:#64748b;">⏳ Fetching order #${id} details...</div>`;
+        }
+        fetch(syncUrl)
+          .then(r => (r.ok && (r.headers.get('content-type') || '').includes('application/json')) ? r.json() : null)
+          .then(data => {
+            if (data && data.success && data.order) {
+              renderOrderData(data.order);
+            } else if (div) {
+              div.innerHTML = `<div style="text-align:center; padding:1.5rem; color:#ef4444; font-weight:700;">⚠️ Order #${id} not found or cancelled.</div>`;
             }
           })
           .catch(err => {
-            const container = document.getElementById(`loc-splits-${i.id}`);
-            if (container) {
-              container.innerHTML = `
-                <div style="margin-top:8px; padding:8px; background:rgba(239,68,68,0.1); color:#f87171; border-radius:6px; font-size:0.8rem; text-align:center;">
-                  ⚠️ Failed to load stock locations.
-                </div>
-              `;
+            if (div) {
+              div.innerHTML = `<div style="text-align:center; padding:1.5rem; color:#ef4444; font-weight:700;">⚠️ Failed to load order #${id}.</div>`;
             }
           });
-      });
-    } else {
-      div.style.display = 'none';
+      }
+    } catch (err) {
+      console.error('Error in onDispatchOrderSelect:', err);
     }
   },
 
@@ -4287,6 +4322,8 @@ window.downloadPdfAsync = async function(url, data = {}, btnElement = null) {
   }
 };
 
+window.app = app;
+
 // Global Page Navigation Loader Overlay
 window.showPageLoader = function() {
   let loader = document.getElementById('global-page-loader');
@@ -4378,3 +4415,5 @@ document.addEventListener('click', (e) => {
 window.onload = () => {
   setTimeout(() => app.init(), 10);
 };
+
+window.app = app;

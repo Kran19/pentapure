@@ -217,9 +217,11 @@ class DispatchController extends Controller
 
     public function action()
     {
+        $targetOrderId = request('order_id');
+
         $pendingOrders = Order::with(['company', 'transporter', 'items.product', 'creator'])
             ->where(function($q) {
-                $q->whereNotIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY DISPATCHED'])
+                $q->whereNotIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'FULLY_DISPATCHED'])
                   ->orWhereNull('dispatch_status');
             })
             ->where(function($q) {
@@ -228,6 +230,14 @@ class DispatchController extends Controller
             })
             ->orderByDesc('created_at')
             ->get();
+
+        // If a specific order was requested via URL, ensure it is present in pendingOrders
+        if ($targetOrderId && !$pendingOrders->contains('id', (int)$targetOrderId)) {
+            $targetOrder = Order::with(['company', 'transporter', 'items.product', 'creator'])->find($targetOrderId);
+            if ($targetOrder && strtoupper((string)$targetOrder->status) !== 'CANCELLED') {
+                $pendingOrders->prepend($targetOrder);
+            }
+        }
 
         foreach ($pendingOrders as $po) {
             foreach ($po->items as $pi) {
@@ -280,8 +290,8 @@ class DispatchController extends Controller
                     'dispatchedQty' => (float) $i->dispatched_qty,
                     'remainingQty'  => $i->remainingQty(),
                     'grade'         => $i->grade,
-                ])
-            ])
+                ])->values()
+            ])->values()
         ];
 
         return response()
@@ -291,8 +301,9 @@ class DispatchController extends Controller
             ->header('Expires', '0');
     }
 
-    public function getOrderDetails($id)
+    public function getOrderDetails($param1, $param2 = null)
     {
+        $id = request()->route('id') ?? (($param2 !== null && !is_object($param2)) ? $param2 : $param1);
         $order = Order::with(['company', 'transporter', 'items.product', 'creator'])->find($id);
         if (!$order || $order->status === 'CANCELLED') {
             return response()->json(['success' => false, 'message' => 'Order is cancelled or not found.'], 404);
