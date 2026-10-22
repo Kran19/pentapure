@@ -41,7 +41,7 @@ class AdminStockBulkAddTest extends TestCase
         Location::firstOrCreate(['name' => 'Main Warehouse']);
     }
 
-    public function test_admin_stock_page_has_add_stock_entry_without_storage_location_field(): void
+    public function test_admin_stock_page_has_storage_location_dropdown_with_quantity_inputs(): void
     {
         $response = $this->withSession([
             'auth_user' => $this->adminUser->toArray(),
@@ -52,21 +52,23 @@ class AdminStockBulkAddTest extends TestCase
 
         // Must show Add Stock Entry card
         $this->assertStringContainsString('📦 Add Stock Entry', $content);
+        $this->assertStringContainsString('bs-col-location', $content);
         $this->assertStringContainsString('bs-col-qty', $content);
         $this->assertStringContainsString('bs-loc-qty', $content);
 
-        // Inside the stock form card, Storage Location field must NOT be shown
+        // Inside the stock form card, Storage Location field and per-location quantity inputs must be shown
         $cardStart = strpos($content, 'id="stock-form-card"');
         $this->assertNotFalse($cardStart);
         $cardEnd = strpos($content, 'id="btn-save-stock-card"', $cardStart);
         $this->assertNotFalse($cardEnd);
         $cardSnippet = substr($content, $cardStart, $cardEnd - $cardStart);
 
+        $this->assertStringContainsString('Storage Location *', $cardSnippet);
+        $this->assertStringContainsString('custom-location-dropdown', $cardSnippet);
+        $this->assertStringContainsString('custom-location-menu', $cardSnippet);
+        $this->assertStringContainsString('loc-qty-input', $cardSnippet);
+        $this->assertStringContainsString('Warehouse A', $cardSnippet);
         $this->assertStringContainsString('Qty *', $cardSnippet);
-        $this->assertStringNotContainsString('Storage Location *', $cardSnippet);
-        $this->assertStringNotContainsString('bs-col-location', $cardSnippet);
-        $this->assertStringNotContainsString('bs-location', $cardSnippet);
-        $this->assertStringNotContainsString('custom-location-dropdown', $cardSnippet);
     }
 
     public function test_bulk_add_stock_with_selected_location(): void
@@ -150,6 +152,14 @@ class AdminStockBulkAddTest extends TestCase
         $this->assertStringContainsString('AC ROOM', $content);
         $this->assertStringContainsString('COLD STORAGE', $content);
         $this->assertStringNotContainsString('"Main Warehouse"', $content);
+
+        $cardStart = strpos($content, 'id="stock-form-card"');
+        $cardEnd = strpos($content, 'id="btn-save-stock-card"', $cardStart);
+        $cardSnippet = substr($content, $cardStart, $cardEnd - $cardStart);
+
+        $this->assertStringContainsString('AC ROOM', $cardSnippet);
+        $this->assertStringContainsString('COLD STORAGE', $cardSnippet);
+        $this->assertStringNotContainsString('Main Warehouse', $cardSnippet);
     }
 
     public function test_admin_stock_page_provides_master_locations_in_javascript(): void

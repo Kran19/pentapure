@@ -132,6 +132,34 @@
                 </select>
             </div>
 
+            <div class="form-group bs-col-location" style="position:relative;">
+                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280; display:block;">Storage Location *</label>
+                <div class="custom-location-dropdown" style="width: 100%; position: relative;">
+                    <button class="btn custom-location-btn" type="button" onclick="event.stopPropagation(); window.toggleLocDropdown(this);" style="width:100%; text-align:left; display:flex; justify-content:space-between; align-items:center; background:#ffffff !important; border:1px solid #d1d5db !important; border-radius:6px; height:1.8rem; padding: 0.1rem 0.5rem; font-size:0.8rem; font-weight:600; color:#111827 !important; cursor:pointer; transition: all 0.15s ease;">
+                        <span class="loc-dropdown-text" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">📍 Select Locations</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-left:4px;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div class="dropdown-menu shadow custom-location-menu" style="display:none; position:absolute; top:calc(100% + 3px); left:0; z-index:1050; min-width: 250px; max-height:240px; overflow-y:auto; background:#ffffff !important; border:1px solid #d1d5db; border-radius:8px; padding:0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+                        <div style="font-size:0.7rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px; padding:0.2rem 0.3rem 0.4rem; border-bottom:1px solid #f3f4f6; margin-bottom:0.4rem; display:flex; justify-content:space-between;">
+                            <span>Location Name</span>
+                            <span>Qty</span>
+                        </div>
+                        @php $allMasterLocs = \App\Models\Location::orderBy('name')->get(); @endphp
+                        @forelse($allMasterLocs as $loc)
+                        <div class="loc-item-row" style="margin-bottom:0.35rem; display:flex; justify-content:space-between; align-items:center; gap:0.5rem; padding:0.25rem 0.35rem; border-radius:6px; transition: background 0.15s ease;">
+                            <span class="loc-name-text" style="font-size:0.78rem; font-weight:600; color:#1f2937; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ $loc->name }}">{{ strtoupper($loc->name) }}</span>
+                            <input type="number" min="0" step="0.001" class="form-control form-control-sm loc-qty-input no-spinners" data-loc="{{ $loc->name }}" placeholder="0.00" style="width: 75px; text-align:center; padding: 0.1rem 0.3rem; height:1.6rem; font-size:0.8rem; font-weight:600; border:1px solid #d1d5db; border-radius:4px; background:#ffffff !important; color:#111827 !important;" value="">
+                        </div>
+                        @empty
+                        <div style="padding:0.4rem; font-size:0.8rem; color:#6b7280; text-align:center;">
+                            No locations configured.<br>
+                            <a href="{{ url('/admin/locations') }}" target="_blank" style="color:#f59e0b; font-weight:600;">+ Add Locations</a>
+                        </div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+
             <div class="form-group bs-col-qty">
                 <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280; display:block;">Qty *</label>
                 <input type="number" min="0.001" step="0.001" class="form-control form-control-sm bs-loc-qty no-spinners" placeholder="0.00" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem; font-weight:600; width:100%; border:1px solid #d1d5db; border-radius:6px; background:#fff; color:#111827;">
@@ -453,8 +481,8 @@
     /* Responsive Bulk Stock Fields Grid */
     .bulk-stock-fields {
       display: grid;
-      grid-template-columns: 120px 85px minmax(200px, 2.5fr) minmax(95px, 1.2fr) 75px 75px minmax(95px, 1fr) auto;
-      grid-template-areas: "date stage product qty minqty rate note actions";
+      grid-template-columns: 115px 85px minmax(180px, 2fr) minmax(160px, 1.4fr) 85px 70px 70px minmax(90px, 1fr) auto;
+      grid-template-areas: "date stage product location qty minqty rate note actions";
       gap: 0.5rem;
       align-items: flex-end;
       width: 100%;
@@ -469,6 +497,7 @@
     .bs-col-date     { grid-area: date; }
     .bs-col-stage    { grid-area: stage; }
     .bs-col-product  { grid-area: product; min-width: 0 !important; }
+    .bs-col-location { grid-area: location; min-width: 0 !important; }
     .bs-col-qty      { grid-area: qty; min-width: 0 !important; }
     .bs-col-minqty   { grid-area: minqty; }
     .bs-col-rate     { grid-area: rate; }
@@ -479,13 +508,35 @@
       position: relative;
     }
 
+    /* Custom Location Dropdown & Hover Styles - High Contrast & Clean */
+    .custom-location-btn:hover {
+      border-color: #f59e0b !important;
+      background-color: #fffbeb !important;
+      color: #111827 !important;
+    }
+    .custom-location-menu .loc-item-row:hover {
+      background-color: #fffbeb !important;
+    }
+    .custom-location-menu .loc-item-row:hover .loc-name-text {
+      color: #b45309 !important;
+      font-weight: 700 !important;
+    }
+    .custom-location-menu input.loc-qty-input:hover,
+    .custom-location-menu input.loc-qty-input:focus {
+      border-color: #f59e0b !important;
+      background-color: #ffffff !important;
+      color: #111827 !important;
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2) !important;
+      outline: none !important;
+    }
+
     /* Tablet & Smaller Desktop Screens (<= 1280px) */
     @media (max-width: 1280px) and (min-width: 641px) {
       .bulk-stock-fields {
-        grid-template-columns: 130px 100px 1fr 1fr 85px 85px 1fr auto;
+        grid-template-columns: 120px 95px 1fr 1fr 85px 80px 80px 1fr auto;
         grid-template-areas:
-          "date stage product product product product product product"
-          "qty qty minqty rate note note note actions";
+          "date stage product product product product product product product"
+          "location location location qty minqty rate note note actions";
         gap: 0.65rem 0.5rem;
       }
     }
@@ -497,7 +548,7 @@
         grid-template-areas:
           "date stage"
           "product product"
-          "qty qty"
+          "location qty"
           "minqty rate"
           "note note"
           "actions actions";
@@ -3172,10 +3223,28 @@ window.adminSaveBulkStock = function() {
     const alertLimit = parseFloat(row.querySelector('.bs-min-qty').value);
     const rate = parseFloat(row.querySelector('.bs-rate') ? row.querySelector('.bs-rate').value : NaN);
     const note = row.querySelector('.bs-note').value.trim();
-    const fallbackLocName = (window.adminMasterLocations && window.adminMasterLocations.length > 0) ? window.adminMasterLocations[0].name : '';
-    const qtyVal = parseFloat(row.querySelector('.bs-loc-qty')?.value) || 0;
+    const locInputs = row.querySelectorAll('.loc-qty-input');
+    const locations = [];
+    let sumLocQty = 0;
+    locInputs.forEach(input => {
+      const q = parseFloat(input.value) || 0;
+      if (q > 0) {
+        locations.push({ name: input.getAttribute('data-loc'), qty: q });
+        sumLocQty += q;
+      }
+    });
+    
+    let qtyVal = parseFloat(row.querySelector('.bs-loc-qty')?.value) || 0;
+    if (sumLocQty > 0) {
+      qtyVal = sumLocQty;
+    }
     
     if (productId && qtyVal > 0) {
+      const fallbackLocName = (window.adminMasterLocations && window.adminMasterLocations.length > 0) ? window.adminMasterLocations[0].name : '';
+      const finalLocs = locations.length > 0 
+        ? locations 
+        : (fallbackLocName ? [{ name: fallbackLocName, qty: qtyVal }] : []);
+
       items.push({
         product_id: productId,
         stage: stage,
@@ -3185,7 +3254,7 @@ window.adminSaveBulkStock = function() {
         rate: isNaN(rate) ? null : rate,
         note: note,
         quantity: qtyVal,
-        locations: fallbackLocName ? [{ name: fallbackLocName, qty: qtyVal }] : []
+        locations: finalLocs
       });
     } else {
       hasError = true;
@@ -3219,6 +3288,9 @@ window.adminSaveBulkStock = function() {
     if (data.success) {
       // 1. Reset form (but don't hide it)
       document.querySelectorAll('.bs-loc-qty').forEach(inp => inp.value = '');
+      document.querySelectorAll('.loc-qty-input').forEach(inp => inp.value = '');
+      document.querySelectorAll('.loc-dropdown-text').forEach(t => t.textContent = '📍 Select Locations');
+      document.querySelectorAll('.custom-location-menu').forEach(m => m.style.display = 'none');
 
       // 2. Immediate live stock fetch
       fetchLiveStock();
@@ -3250,6 +3322,58 @@ window.adminSaveBulkStock = function() {
     btn.textContent = 'Save Stock';
   });
 };
+
+window.toggleLocDropdown = function(btn) {
+  const menu = btn.nextElementSibling;
+  const isShown = menu && menu.style.display === 'block';
+  document.querySelectorAll('.custom-location-menu').forEach(m => m.style.display = 'none');
+  if (menu && !isShown) {
+    menu.style.display = 'block';
+  }
+};
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.custom-location-dropdown')) {
+    document.querySelectorAll('.custom-location-menu').forEach(menu => {
+      menu.style.display = 'none';
+    });
+  }
+});
+
+document.addEventListener('input', function(e) {
+  if (e.target.classList.contains('loc-qty-input')) {
+    const row = e.target.closest('.bulk-stock-row');
+    if (!row) return;
+    
+    const inputs = row.querySelectorAll('.loc-qty-input');
+    let total = 0;
+    let selectedLocs = [];
+    
+    inputs.forEach(input => {
+      const val = parseFloat(input.value) || 0;
+      if (val > 0) {
+        total += val;
+        selectedLocs.push(input.getAttribute('data-loc'));
+      }
+    });
+    
+    const totalInput = row.querySelector('.bs-loc-qty');
+    if (totalInput) {
+      totalInput.value = total > 0 ? (Number.isInteger(total) ? total : total.toFixed(3).replace(/\.?0+$/, '')) : '';
+    }
+    
+    const btnText = row.querySelector('.loc-dropdown-text');
+    if (btnText) {
+      if (selectedLocs.length === 0) {
+        btnText.textContent = '📍 Select Locations';
+      } else if (selectedLocs.length === 1) {
+        btnText.textContent = `${selectedLocs[0]} (${total})`;
+      } else {
+        btnText.textContent = `${selectedLocs.length} Locs (${total})`;
+      }
+    }
+  }
+});
 
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize the single form on load
@@ -3285,6 +3409,12 @@ function addStockRow() {
     newRow.querySelectorAll('input').forEach(inp => {
         if (inp.type === 'number' || inp.type === 'text') inp.value = '';
     });
+    newRow.querySelectorAll('.loc-qty-input').forEach(inp => inp.value = '');
+    const dropdownText = newRow.querySelector('.loc-dropdown-text');
+    if (dropdownText) dropdownText.textContent = '📍 Select Locations';
+    const locMenu = newRow.querySelector('.custom-location-menu');
+    if (locMenu) locMenu.style.display = 'none';
+    
     // Set date of new row to previous row's date or today
     const prevDate = firstRow.querySelector('.bs-date')?.value || '{{ date('Y-m-d') }}';
     const dateInput = newRow.querySelector('.bs-date');
