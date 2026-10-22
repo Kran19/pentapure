@@ -201,11 +201,11 @@ class SalesController extends Controller
 
     public function action(Request $request)
     {
-        $companies = Company::orderByDesc('id')->get()->map(fn($c)=>[
-            'id'=>$c->id,'name'=>strtoupper($c->name ?? ''),'gst'=>$c->gst,'address'=>$c->address,'pincode'=>$c->pincode,'contact'=>$c->contact,'date'=>$c->created_at->toISOString()
+        $companies = Company::withCount('orders')->orderByDesc('id')->get()->map(fn($c)=>[
+            'id'=>$c->id,'name'=>strtoupper($c->name ?? ''),'gst'=>$c->gst,'address'=>$c->address,'pincode'=>$c->pincode,'contact'=>$c->contact,'date'=>$c->created_at ? $c->created_at->toISOString() : now()->toISOString(),'orders_count'=>(int)$c->orders_count,'is_used'=>($c->orders_count > 0)
         ]);
-        $transportCompanies = Transporter::orderByDesc('id')->get()->map(fn($t)=>[
-            'id'=>$t->id,'name'=>strtoupper($t->name ?? ''),'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
+        $transportCompanies = Transporter::withCount(['orders', 'dispatchLogs'])->orderByDesc('id')->get()->map(fn($t)=>[
+            'id'=>$t->id,'name'=>strtoupper($t->name ?? ''),'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at ? $t->created_at->toISOString() : now()->toISOString(),'orders_count'=>(int)$t->orders_count,'dispatch_logs_count'=>(int)$t->dispatch_logs_count,'is_used'=>(($t->orders_count + $t->dispatch_logs_count) > 0)
         ]);
         $products = Product::active()->with('grades')->orderBy('name')->get(['id', 'name', 'unit', 'type'])->map(fn($p) => [
             'id' => $p->id, 'name' => strtoupper($p->name ?? ''), 'unit' => $p->unit, 'type' => $p->type,
@@ -438,7 +438,7 @@ class SalesController extends Controller
         if ($company->orders()->exists()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cannot delete company "' . $company->name . '" because it has associated sales orders.'
+                'message' => 'Cannot delete company "' . $company->name . '" because it is linked to existing orders or dispatch records. Only edit is allowed.'
             ], 422);
         }
 
@@ -452,7 +452,7 @@ class SalesController extends Controller
         if ($transporter->orders()->exists() || $transporter->dispatchLogs()->exists()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cannot delete transporter "' . $transporter->name . '" because it has associated sales orders or dispatch logs.'
+                'message' => 'Cannot delete transporter "' . $transporter->name . '" because it is linked to existing orders or dispatch records. Only edit is allowed.'
             ], 422);
         }
 

@@ -788,6 +788,67 @@ namespace Tests\Feature;
             $response2->assertJson(['success' => true]);
             $this->assertNull(Order::find($order2->id));
         }
+
+        public function test_company_and_transporter_deletion_is_prevented_when_used_in_orders_or_dispatches(): void
+        {
+            $session = ['auth_user' => [
+                'id'   => $this->salesUser->id,
+                'name' => $this->salesUser->name,
+                'role' => 'SALES',
+            ]];
+
+            // 1. Create an order using $this->company and $this->transporter
+            $order = Order::create([
+                'created_by'     => $this->salesUser->id,
+                'company_id'     => $this->company->id,
+                'transporter_id' => $this->transporter->id,
+                'total'          => 1500,
+                'status'         => 'PENDING',
+                'date'           => now()->toDateString(),
+            ]);
+
+            // Attempt to delete company -> should be rejected with 422
+            $respCompany = $this->withSession($session)->deleteJson("/sales/company/{$this->company->id}");
+            $respCompany->assertStatus(422);
+            $respCompany->assertJson(['success' => false]);
+            $this->assertNotNull(Company::find($this->company->id));
+
+            // Attempt to delete transporter -> should be rejected with 422
+            $respTrans = $this->withSession($session)->deleteJson("/sales/transport/{$this->transporter->id}");
+            $respTrans->assertStatus(422);
+            $respTrans->assertJson(['success' => false]);
+            $this->assertNotNull(Transporter::find($this->transporter->id));
+
+            // Verify action view marks both as is_used = true and renders disabled delete buttons
+            $actionResp = $this->withSession($session)->get("/sales/action");
+            $actionResp->assertStatus(200);
+            $actionResp->assertSee('IN USE');
+            $actionResp->assertSee('disabled', false);
+
+            // 2. Unused company and transporter should be deletable
+            $freeCompany = Company::create([
+                'name' => 'UNUSED COMPANY PVT LTD',
+                'gst' => '00BBBBB0000B1Z0',
+                'contact' => '+91 9876543299',
+                'address' => '456 Free St',
+            ]);
+
+            $freeTrans = Transporter::create([
+                'name' => 'UNUSED FREIGHT SERVICES',
+                'gst' => 'N/A',
+                'contact' => '+91 9123456799',
+            ]);
+
+            $delFreeComp = $this->withSession($session)->deleteJson("/sales/company/{$freeCompany->id}");
+            $delFreeComp->assertStatus(200);
+            $delFreeComp->assertJson(['success' => true]);
+            $this->assertNull(Company::find($freeCompany->id));
+
+            $delFreeTrans = $this->withSession($session)->deleteJson("/sales/transport/{$freeTrans->id}");
+            $delFreeTrans->assertStatus(200);
+            $delFreeTrans->assertJson(['success' => true]);
+            $this->assertNull(Transporter::find($freeTrans->id));
+        }
     }
 
 

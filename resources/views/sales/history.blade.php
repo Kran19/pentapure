@@ -23,7 +23,6 @@
   $dueFilter = request('due', '');
 
   $todayFormatted = now()->format('d-m-Y');
-  $dueTodayTotal = collect($pageData['orders'] ?? [])->filter(fn($o) => ($o['dueDate'] ?? '') === $todayFormatted)->count();
 
   $timeline = collect($pageData['orders'] ?? [])->map(fn($o) => array_merge($o, ['_type' => 'ORDER']));
 
@@ -53,7 +52,7 @@
       if ($statusFilter === 'PARTIAL' || $statusFilter === 'PARTIAL_PENDING' || $statusFilter === 'PARTIAL_DISPATCH') {
         return ($oStatus !== 'CANCELLED') && in_array($dStatus, ['PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL_PENDING', 'PARTIAL PENDING']);
       }
-      if ($statusFilter === 'DONE') {
+      if ($statusFilter === 'DONE' || in_array($statusFilter, ['FULLY_DISPATCHED', 'FULLY DISPATCHED', 'FULLY_DISPATCH', 'FULLY DISPATCH'])) {
         return ($oStatus !== 'CANCELLED') && ($dStatus === 'DONE' || $dStatus === 'COMPLETED' || $dStatus === 'FULLY DISPATCHED' || $dStatus === 'DISPATCHED');
       }
       return $dStatus === $statusFilter;
@@ -132,7 +131,7 @@
 <!-- Quick Filter Buttons -->
 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:0.8rem;">
   <a href="{{ request()->fullUrlWithQuery(['due' => null, 'status' => null, 'page' => 1]) }}" 
-     style="padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; {{ empty($dueFilter) && empty($statusFilter) ? 'background:var(--primary, #D88A00); color:#fff;' : 'background:rgba(255,255,255,0.06); border:1px solid var(--border-soft, rgba(0,0,0,0.1)); color:var(--text-main);' }}">
+     style="padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; {{ empty($statusFilter) ? 'background:var(--primary, #D88A00); color:#fff;' : 'background:rgba(255,255,255,0.06); border:1px solid var(--border-soft, rgba(0,0,0,0.1)); color:var(--text-main);' }}">
     All Orders
   </a>
   <a href="{{ request()->fullUrlWithQuery(['status' => 'PENDING', 'due' => null, 'page' => 1]) }}" 
@@ -143,15 +142,10 @@
      style="padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; {{ $statusFilter === 'PARTIAL' ? 'background:#f59e0b; color:#fff;' : 'background:rgba(255,255,255,0.06); border:1px solid var(--border-soft, rgba(0,0,0,0.1)); color:var(--text-main);' }}">
     📦 Partial
   </a>
-  <a href="{{ request()->fullUrlWithQuery(['due' => 'today', 'status' => null, 'page' => 1]) }}" 
-     style="padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; {{ $dueFilter === 'today' ? 'background:var(--primary, #D88A00); color:#fff;' : 'background:rgba(255,255,255,0.06); border:1px solid var(--border-soft, rgba(0,0,0,0.1)); color:var(--text-main);' }}">
-    📅 Due Today ({{ $dueTodayTotal }})
+  <a href="{{ request()->fullUrlWithQuery(['status' => 'DONE', 'due' => null, 'page' => 1]) }}" 
+     style="padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; {{ in_array($statusFilter, ['DONE', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'FULLY_DISPATCH', 'FULLY DISPATCH']) ? 'background:#16a34a; color:#fff;' : 'background:rgba(255,255,255,0.06); border:1px solid var(--border-soft, rgba(0,0,0,0.1)); color:var(--text-main);' }}">
+    ✅ Fully Dispatched
   </a>
-  @if($dueFilter === 'today')
-    <span style="font-size:0.82rem; color:var(--text-muted); margin-left:4px;">
-      (Showing orders due today: <strong>{{ $todayFormatted }}</strong>)
-    </span>
-  @endif
 </div>
 
 <form method="GET" action="" style="margin-bottom:1.2rem; display:flex; flex-direction:column; gap:10px;">
@@ -188,7 +182,7 @@
         <option value="">ALL STATUS</option>
         <option value="PENDING" {{ $statusFilter === 'PENDING' ? 'selected' : '' }}>PENDING</option>
         <option value="PARTIAL" {{ $statusFilter === 'PARTIAL' || $statusFilter === 'PARTIAL_PENDING' || $statusFilter === 'PARTIAL_DISPATCH' ? 'selected' : '' }}>PARTIAL</option>
-        <option value="DONE" {{ $statusFilter === 'DONE' ? 'selected' : '' }}>FULLY DISPATCHED</option>
+        <option value="DONE" {{ in_array($statusFilter, ['DONE', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'FULLY_DISPATCH', 'FULLY DISPATCH']) ? 'selected' : '' }}>FULLY DISPATCHED</option>
         <option value="CANCELLED" {{ $statusFilter === 'CANCELLED' ? 'selected' : '' }}>CANCELLED</option>
       </select>
     </div>

@@ -30,8 +30,9 @@
     }
   }
 @endphp
-<div style="padding:1rem; border-radius:10px; border:1px solid var(--glass-border, rgba(255,255,255,0.08)); background:var(--card-bg, rgba(255,255,255,0.02)); transition:background 0.2s ease;">
-  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+<div class="sales-order-card" style="padding:1rem; border-radius:10px; border:1px solid var(--glass-border, rgba(255,255,255,0.08)); background:var(--card-bg, rgba(255,255,255,0.02)); transition:background 0.2s ease;">
+  <!-- Header Row (Clickable) -->
+  <div class="sales-card-header" onclick="toggleSalesOrderDetails('order-details-{{ $dOrder['id'] }}', this)" style="cursor:pointer; display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; user-select:none;">
     <div style="flex:1; min-width:240px;">
       <div style="font-weight:700; font-size:1.05rem; color:var(--text-main); display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
         <span>#{{ strtoupper((string)$dOrder['id']) }}</span>
@@ -49,59 +50,68 @@
       </div>
     </div>
 
-    <div style="display:flex; align-items:center; gap:12px; text-align:right;">
+    <div style="display:flex; align-items:center; gap:10px; text-align:right; flex-wrap:wrap; justify-content:flex-end;">
       <span class="badge" style="{{ $badgeStyle }} font-size:0.75rem; padding:4px 10px; border-radius:10px; font-weight:700;">
         {{ $statusText }}
       </span>
       <div style="font-weight:800; color:var(--primary, #D88A00); font-size:1.15rem; white-space:nowrap;">
         ₹{{ number_format($dOrder['total'] ?? 0, 2) }}
       </div>
+      <button type="button" class="btn btn-sm btn-order-dropdown" onclick="event.stopPropagation(); toggleSalesOrderDetails('order-details-{{ $dOrder['id'] }}', this.closest('.sales-card-header'))" style="width:auto; padding:0.35rem 0.75rem; font-size:0.78rem; font-weight:700; border-radius:6px; background:rgba(216, 138, 0, 0.1); color:var(--primary, #D88A00) !important; border:1px solid rgba(216, 138, 0, 0.35); display:inline-flex; align-items:center; gap:5px; cursor:pointer; transition:all 0.2s ease;">
+        <span class="dropdown-label">View Detail</span>
+        <svg class="dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform 0.25s ease;">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
     </div>
   </div>
 
-  <!-- Product items breakdown -->
-  @if(!empty($dOrder['products']) && count($dOrder['products']) > 0)
-    <div style="margin-top:0.85rem; padding-top:0.75rem; border-top:1px dashed var(--glass-border, rgba(255,255,255,0.08));">
-      <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600; margin-bottom:6px;">Items:</div>
-      <div style="display:flex; flex-wrap:wrap; gap:8px;">
-        @foreach($dOrder['products'] as $prod)
-          @php
-            $totQ = (float)($prod['quantity'] ?? 0);
-            $dispQ = (float)($prod['dispatchedQty'] ?? 0);
-            $remQ = (float)($prod['remainingQty'] ?? max(0, $totQ - $dispQ));
-            $fmtQ = fn($v) => (floor($v) == $v ? number_format($v, 0) : number_format($v, 2)) . ' kg';
-          @endphp
-          <span style="font-size:0.82rem; padding:4px 10px; background:rgba(0,0,0,0.03); border:1px solid var(--border-soft, rgba(0,0,0,0.08)); border-radius:6px; color:var(--text-main);">
-            <strong>{{ $prod['productName'] ?? 'Item' }}</strong>
-            @if(!empty($prod['grade'])) ({{ $prod['grade'] }}) @endif
-            — Total: <span style="font-weight:700; color:var(--primary, #D88A00);">{{ $fmtQ($totQ) }}</span>
-            @if($dispQ > 0)
-              | <span style="color:#16a34a; font-weight:700;">Disp: {{ $fmtQ($dispQ) }}</span>
-              | <span style="color:#dc2626; font-weight:700;">Rem: {{ $fmtQ($remQ) }}</span>
-            @endif
-          </span>
-        @endforeach
+  <!-- Collapsible Dropdown Details Drawer -->
+  <div id="order-details-{{ $dOrder['id'] }}" class="order-details-drawer" style="display:none; margin-top:0.85rem; padding-top:0.85rem; border-top:1px dashed var(--glass-border, rgba(255,255,255,0.08));">
+    <!-- Product items breakdown -->
+    @if(!empty($dOrder['products']) && count($dOrder['products']) > 0)
+      <div>
+        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600; margin-bottom:6px;">Items to Dispatch:</div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+          @foreach($dOrder['products'] as $prod)
+            @php
+              $totQ = (float)($prod['quantity'] ?? 0);
+              $dispQ = (float)($prod['dispatchedQty'] ?? 0);
+              $remQ = (float)($prod['remainingQty'] ?? max(0, $totQ - $dispQ));
+              $fmtQ = fn($v) => (floor($v) == $v ? number_format($v, 0) : number_format($v, 2)) . ' kg';
+            @endphp
+            <span style="font-size:0.82rem; padding:4px 10px; background:rgba(0,0,0,0.03); border:1px solid var(--border-soft, rgba(0,0,0,0.08)); border-radius:6px; color:var(--text-main);">
+              <strong>{{ $prod['productName'] ?? 'Item' }}</strong>
+              @if(!empty($prod['grade'])) ({{ $prod['grade'] }}) @endif
+              — Total: <span style="font-weight:700; color:var(--primary, #D88A00);">{{ $fmtQ($totQ) }}</span>
+              @if($dispQ > 0)
+                | <span style="color:#16a34a; font-weight:700;">Disp: {{ $fmtQ($dispQ) }}</span>
+                | <span style="color:#dc2626; font-weight:700;">Rem: {{ $fmtQ($remQ) }}</span>
+              @endif
+            </span>
+          @endforeach
+        </div>
       </div>
-    </div>
-  @endif
-
-  @if(!empty($dOrder['notes']))
-    <div style="margin-top:0.6rem; font-size:0.82rem; color:var(--text-muted); font-style:italic;">
-      Note: {{ $dOrder['notes'] }}
-    </div>
-  @endif
-
-  <div style="display:flex; gap:8px; margin-top:0.85rem; justify-content:flex-end; flex-wrap:wrap;">
-    @if($canEdit)
-      <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action?edit=' . $dOrder['id']) }}" style="width:auto; padding:0.35rem 0.8rem; font-size:0.75rem; background:var(--warning, #FFA500); color:#000; font-weight:600; text-decoration:none; border-radius:6px;">
-        ✏️ Edit Order
-      </a>
     @endif
-    <a class="btn btn-sm btn-secondary" href="{{ url((request()->segment(1) === 'sales' ? 'sales' : request()->segment(1) . '/sales') . '/order/pdf/' . $dOrder['id']) }}" target="_blank" style="width:auto; padding:0.35rem 0.8rem; font-size:0.75rem; text-decoration:none; border-radius:6px;">
-      📄 Order PDF
-    </a>
-    <a class="btn btn-sm btn-secondary" href="{{ url(request()->segment(1) . '/history?q=' . $dOrder['id']) }}" style="width:auto; padding:0.35rem 0.8rem; font-size:0.75rem; text-decoration:none; border-radius:6px;">
-      🔍 History Details
-    </a>
+
+    @if(!empty($dOrder['notes']))
+      <div style="margin-top:0.75rem; font-size:0.82rem; color:var(--text-muted); font-style:italic; background:rgba(0,0,0,0.02); padding:6px 10px; border-radius:6px; border-left:3px solid var(--primary, #D88A00);">
+        <strong>Note:</strong> {{ $dOrder['notes'] }}
+      </div>
+    @endif
+
+    <div style="display:flex; gap:8px; margin-top:0.85rem; justify-content:flex-end; flex-wrap:wrap;">
+      @if($canEdit)
+        <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action?edit=' . $dOrder['id']) }}" onclick="event.stopPropagation()" style="width:auto; padding:0.35rem 0.8rem; font-size:0.75rem; background:var(--warning, #FFA500); color:#000; font-weight:600; text-decoration:none; border-radius:6px;">
+          ✏️ Edit Order
+        </a>
+      @endif
+      <a class="btn btn-sm btn-secondary" href="{{ url((request()->segment(1) === 'sales' ? 'sales' : request()->segment(1) . '/sales') . '/order/pdf/' . $dOrder['id']) }}" target="_blank" onclick="event.stopPropagation()" style="width:auto; padding:0.35rem 0.8rem; font-size:0.75rem; text-decoration:none; border-radius:6px;">
+        📄 Order PDF
+      </a>
+      <a class="btn btn-sm btn-secondary" href="{{ url(request()->segment(1) . '/history?q=' . $dOrder['id']) }}" onclick="event.stopPropagation()" style="width:auto; padding:0.35rem 0.8rem; font-size:0.75rem; text-decoration:none; border-radius:6px;">
+        🔍 History Details
+      </a>
+    </div>
   </div>
 </div>

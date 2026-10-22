@@ -118,4 +118,26 @@
     <a class="btn btn-secondary" style="text-align:center; text-decoration:none;" href="{{ url(request()->segment(1) . '/history') }}">View History</a>
   </div>
 </div>
+
+<script>
+function toggleSalesOrderDetails(id, headerEl) {
+  const content = document.getElementById(id);
+  if (!content) return;
+  const isHidden = content.style.display === 'none' || !content.style.display;
+  const card = headerEl ? headerEl.closest('.sales-order-card') : document.getElementById(id).closest('.sales-order-card');
+  const chevron = card ? card.querySelector('.dropdown-chevron') : null;
+  const label = card ? card.querySelector('.dropdown-label') : null;
+  
+  if (isHidden) {
+    content.style.display = 'block';
+    if (chevron) chevron.style.transform = 'rotate(180deg)';
+    if (label) label.textContent = 'Hide Detail';
+  } else {
+    content.style.display = 'none';
+    if (chevron) chevron.style.transform = 'rotate(0deg)';
+    if (label) label.textContent = 'View Detail';
+  }
+}
+window.toggleSalesOrderDetails = toggleSalesOrderDetails;
+</script>
 @endsection

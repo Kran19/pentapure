@@ -452,9 +452,17 @@ html.dark-mode .info-preview-box .info-label {
           </thead>
           <tbody id="action-companies-tbody">
             @forelse($pageData['companies'] as $idx => $comp)
+              @php
+                $isCompUsed = !empty($comp['is_used']);
+              @endphp
               <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
                 <td style="padding:8px 6px; color:var(--text-muted);">{{ $idx + 1 }}</td>
-                <td class="action-comp-name" style="padding:8px 6px; font-weight:600; color:var(--text-main);">{{ $comp['name'] }}</td>
+                <td class="action-comp-name" style="padding:8px 6px; font-weight:600; color:var(--text-main);">
+                  {{ $comp['name'] }}
+                  @if($isCompUsed)
+                    <span style="font-size:0.68rem; font-weight:700; background:rgba(216, 138, 0, 0.12); color:var(--primary, #D88A00); border:1px solid rgba(216, 138, 0, 0.3); border-radius:4px; padding:1px 5px; margin-left:4px;" title="Linked to existing orders or dispatches">IN USE</span>
+                  @endif
+                </td>
                 <td style="padding:8px 6px; font-family:monospace; color:var(--primary-light, #f59e0b);">{{ $comp['gst'] ?: 'N/A' }}</td>
                 <td style="padding:8px 6px;">{{ $comp['pincode'] ?: '—' }}</td>
                 <td style="padding:8px 6px;">{{ $comp['contact'] ?: '—' }}</td>
@@ -462,12 +470,18 @@ html.dark-mode .info-preview-box .info-label {
                 <td style="padding:8px 6px; text-align:center;">
                   @if(empty($isReadOnly))
                   <div style="display:flex; justify-content:center; gap:6px;">
-                    <button type="button" class="btn btn-sm" onclick="openCompanyModal({{ json_encode($comp) }})" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; background:var(--warning, #FFA500); color:#000; font-weight:600; border:none; border-radius:4px; cursor:pointer;">
+                    <button type="button" class="btn btn-sm" onclick="openCompanyModal({{ json_encode($comp) }})" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; background:var(--warning, #FFA500); color:#000; font-weight:600; border:none; border-radius:4px; cursor:pointer;" title="Edit company details">
                       ✏️ Edit
                     </button>
-                    <button type="button" class="btn btn-sm btn-danger" onclick="deleteCompany({{ $comp['id'] }}, '{{ addslashes($comp['name']) }}')" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; font-weight:600; border:none; border-radius:4px; cursor:pointer;">
-                      🗑️ Delete
-                    </button>
+                    @if($isCompUsed)
+                      <button type="button" class="btn btn-sm" disabled style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; font-weight:600; border:1px solid rgba(255,255,255,0.1); border-radius:4px; background:rgba(255,255,255,0.06); color:var(--text-muted, #94a3b8); cursor:not-allowed; opacity:0.6;" title="Cannot delete: this company is linked to existing orders/dispatches (Only Edit allowed)">
+                        🗑️ Delete
+                      </button>
+                    @else
+                      <button type="button" class="btn btn-sm btn-danger" onclick="deleteCompany({{ $comp['id'] }}, '{{ addslashes($comp['name']) }}')" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; font-weight:600; border:none; border-radius:4px; cursor:pointer;" title="Delete company">
+                        🗑️ Delete
+                      </button>
+                    @endif
                   </div>
                   @else
                     <span style="font-size:0.8rem; color:var(--text-muted);">View Only</span>
@@ -514,21 +528,35 @@ html.dark-mode .info-preview-box .info-label {
           </thead>
           <tbody id="action-transporters-tbody">
             @forelse($pageData['transportCompanies'] as $idx => $trans)
+              @php
+                $isTransUsed = !empty($trans['is_used']);
+              @endphp
               <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
                 <td style="padding:8px 6px; color:var(--text-muted);">{{ $idx + 1 }}</td>
-                <td class="action-trans-name" style="padding:8px 6px; font-weight:600; color:var(--text-main);">{{ $trans['name'] }}</td>
+                <td class="action-trans-name" style="padding:8px 6px; font-weight:600; color:var(--text-main);">
+                  {{ $trans['name'] }}
+                  @if($isTransUsed)
+                    <span style="font-size:0.68rem; font-weight:700; background:rgba(216, 138, 0, 0.12); color:var(--primary, #D88A00); border:1px solid rgba(216, 138, 0, 0.3); border-radius:4px; padding:1px 5px; margin-left:4px;" title="Linked to existing orders or dispatches">IN USE</span>
+                  @endif
+                </td>
                 <td style="padding:8px 6px; font-family:monospace; color:var(--primary-light, #f59e0b);">{{ $trans['gst'] ?: 'N/A' }}</td>
                 <td style="padding:8px 6px;">{{ $trans['contact'] ?: '—' }}</td>
                 <td style="padding:8px 6px;">{{ $trans['vehicles'] ?: '—' }}</td>
                 <td style="padding:8px 6px; text-align:center;">
                   @if(empty($isReadOnly))
                   <div style="display:flex; justify-content:center; gap:6px;">
-                    <button type="button" class="btn btn-sm" onclick="app.editTransporterPrompt({{ json_encode($trans) }})" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; background:var(--warning, #FFA500); color:#000; font-weight:600; border:none; border-radius:4px; cursor:pointer;">
+                    <button type="button" class="btn btn-sm" onclick="app.editTransporterPrompt({{ json_encode($trans) }})" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; background:var(--warning, #FFA500); color:#000; font-weight:600; border:none; border-radius:4px; cursor:pointer;" title="Edit transporter details">
                       ✏️ Edit
                     </button>
-                    <button type="button" class="btn btn-sm btn-danger" onclick="deleteTransporter({{ $trans['id'] }}, '{{ addslashes($trans['name']) }}')" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; font-weight:600; border:none; border-radius:4px; cursor:pointer;">
-                      🗑️ Delete
-                    </button>
+                    @if($isTransUsed)
+                      <button type="button" class="btn btn-sm" disabled style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; font-weight:600; border:1px solid rgba(255,255,255,0.1); border-radius:4px; background:rgba(255,255,255,0.06); color:var(--text-muted, #94a3b8); cursor:not-allowed; opacity:0.6;" title="Cannot delete: this transporter is linked to existing orders/dispatches (Only Edit allowed)">
+                        🗑️ Delete
+                      </button>
+                    @else
+                      <button type="button" class="btn btn-sm btn-danger" onclick="deleteTransporter({{ $trans['id'] }}, '{{ addslashes($trans['name']) }}')" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; font-weight:600; border:none; border-radius:4px; cursor:pointer;" title="Delete transporter">
+                        🗑️ Delete
+                      </button>
+                    @endif
                   </div>
                   @else
                     <span style="font-size:0.8rem; color:var(--text-muted);">View Only</span>
@@ -725,14 +753,21 @@ html.dark-mode .info-preview-box .info-label {
           'X-CSRF-TOKEN': window.csrfToken || csrfToken
         }
       })
-      .then(r => r.json())
-      .then(d => {
-        if (d.success) {
+      .then(async r => {
+        const d = await r.json().catch(() => ({}));
+        if (r.ok && d.success) {
           app.toast(d.message || 'Company deleted!');
           sessionStorage.setItem('activeSalesTab', 'company');
           setTimeout(() => location.reload(), 600);
         } else {
-          app.toast(d.message || 'Failed to delete company', 'error');
+          Swal.fire({
+            title: 'Cannot Delete Company',
+            text: d.message || 'Company cannot be deleted because it is linked to existing orders or dispatches.',
+            icon: 'warning',
+            background: 'var(--dark-panel, #1e293b)',
+            color: 'var(--text-main, #fff)',
+            confirmButtonColor: 'var(--primary, #D88A00)'
+          });
         }
       })
       .catch(() => app.toast('Network error deleting company', 'error'));
@@ -764,14 +799,21 @@ html.dark-mode .info-preview-box .info-label {
           'X-CSRF-TOKEN': window.csrfToken || csrfToken
         }
       })
-      .then(r => r.json())
-      .then(d => {
-        if (d.success) {
+      .then(async r => {
+        const d = await r.json().catch(() => ({}));
+        if (r.ok && d.success) {
           app.toast(d.message || 'Transporter deleted!');
           sessionStorage.setItem('activeSalesTab', 'transport');
           setTimeout(() => location.reload(), 600);
         } else {
-          app.toast(d.message || 'Failed to delete transporter', 'error');
+          Swal.fire({
+            title: 'Cannot Delete Transporter',
+            text: d.message || 'Transporter cannot be deleted because it is linked to existing orders or dispatches.',
+            icon: 'warning',
+            background: 'var(--dark-panel, #1e293b)',
+            color: 'var(--text-main, #fff)',
+            confirmButtonColor: 'var(--primary, #D88A00)'
+          });
         }
       })
       .catch(() => app.toast('Network error deleting transporter', 'error'));
