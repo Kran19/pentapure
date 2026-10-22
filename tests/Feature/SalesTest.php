@@ -849,6 +849,77 @@ namespace Tests\Feature;
             $delFreeTrans->assertJson(['success' => true]);
             $this->assertNull(Transporter::find($freeTrans->id));
         }
+
+        public function test_sales_history_orders_sequence_due_today_overdue_upcoming(): void
+        {
+            $session = ['auth_user' => [
+                'id'   => $this->salesUser->id,
+                'name' => $this->salesUser->name,
+                'role' => 'SALES',
+            ]];
+
+            $today = now()->timezone('Asia/Kolkata')->startOfDay();
+
+            // Order A: 6 days left (upcoming)
+            $order6DaysLeft = Order::create([
+                'created_by' => $this->salesUser->id,
+                'company_id' => $this->company->id,
+                'total'      => 725000,
+                'status'     => 'OPEN',
+                'dispatch_status' => 'PENDING',
+                'due_date'   => $today->copy()->addDays(6)->toDateString(),
+            ]);
+
+            // Order B: 2 days left (upcoming)
+            $order2DaysLeft = Order::create([
+                'created_by' => $this->salesUser->id,
+                'company_id' => $this->company->id,
+                'total'      => 916400,
+                'status'     => 'OPEN',
+                'dispatch_status' => 'PENDING',
+                'due_date'   => $today->copy()->addDays(2)->toDateString(),
+            ]);
+
+            // Order C: Due today
+            $orderDueToday = Order::create([
+                'created_by' => $this->salesUser->id,
+                'company_id' => $this->company->id,
+                'total'      => 65750,
+                'status'     => 'OPEN',
+                'dispatch_status' => 'PENDING',
+                'due_date'   => $today->toDateString(),
+            ]);
+
+            // Order D: 1 day overdue
+            $order1DayOverdue = Order::create([
+                'created_by' => $this->salesUser->id,
+                'company_id' => $this->company->id,
+                'total'      => 23500,
+                'status'     => 'OPEN',
+                'dispatch_status' => 'PENDING',
+                'due_date'   => $today->copy()->subDays(1)->toDateString(),
+            ]);
+
+            $res = $this->withSession($session)->get('/sales/history?page=1');
+            $res->assertStatus(200);
+
+            $html = $res->getContent();
+
+            // Verify the sequence: Due Today -> 1 Day Overdue -> 2 Days Left -> 6 Days Left
+            $posDueToday    = strpos($html, "#{$orderDueToday->id} —");
+            $pos1DayOverdue = strpos($html, "#{$order1DayOverdue->id} —");
+            $pos2DaysLeft   = strpos($html, "#{$order2DaysLeft->id} —");
+            $pos6DaysLeft   = strpos($html, "#{$order6DaysLeft->id} —");
+
+            $this->assertNotFalse($posDueToday);
+            $this->assertNotFalse($pos1DayOverdue);
+            $this->assertNotFalse($pos2DaysLeft);
+            $this->assertNotFalse($pos6DaysLeft);
+
+            $this->assertTrue($posDueToday < $pos1DayOverdue, "Due Today should appear before 1 Day Overdue");
+            $this->assertTrue($pos1DayOverdue < $pos2DaysLeft, "1 Day Overdue should appear before 2 Days Left");
+            $this->assertTrue($pos2DaysLeft < $pos6DaysLeft, "2 Days Left should appear before 6 Days Left");
+        }
     }
 
 

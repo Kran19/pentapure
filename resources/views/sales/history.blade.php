@@ -77,32 +77,47 @@
     });
   }
 
-  $statusPriority = function($item) {
-    $orderStatus = strtoupper(str_replace('_', ' ', $item['status'] ?? ''));
-    $dispatchStatus = strtoupper(str_replace('_', ' ', $item['dispatchStatus'] ?? 'PENDING'));
+  // Priority Sorting: Due Today (0) -> Overdue (1: 1 day, 2 days...) -> Upcoming (2: 1 day, 2 days...) -> Active No Due Date (3) -> Done (4) -> Cancelled (5)
+  $todayKolkata = now()->timezone('Asia/Kolkata')->startOfDay();
 
+  $timeline = $timeline->sortBy(function($item) use ($todayKolkata) {
+    $orderStatus = strtoupper(trim(str_replace('_', ' ', (string)($item['status'] ?? ''))));
+    $dispatchStatus = strtoupper(trim(str_replace('_', ' ', (string)($item['dispatchStatus'] ?? 'PENDING'))));
+    $isDone = in_array($dispatchStatus, ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'FULLY_DISPATCHED', 'DISPATCHED']) ||
+              ((float)($item['totalQty'] ?? 0) > 0 && (float)($item['remainingQty'] ?? 0) <= 0);
+
+    // Cancelled -> Group 5 (Bottom)
     if ($orderStatus === 'CANCELLED') {
-      return 5;
+      return sprintf('5_%012d_%010d', 999999999999 - strtotime($item['date'] ?? 'now'), 9999999999 - (int)($item['id'] ?? 0));
     }
-    if ($dispatchStatus === 'PENDING' || $dispatchStatus === 'UNASSIGNED' || empty($dispatchStatus)) {
-      return 1;
-    }
-    if (in_array($dispatchStatus, ['PARTIAL', 'PARTIAL PENDING', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL_PENDING', 'PARTIAL_DISPATCH'])) {
-      return 2;
-    }
-    if ($dispatchStatus === 'DONE' || $dispatchStatus === 'COMPLETED' || $dispatchStatus === 'FULLY DISPATCHED' || $dispatchStatus === 'DISPATCHED') {
-      return 4;
-    }
-    return 6;
-  };
 
-  $timeline = $timeline->sort(function($a, $b) use ($statusPriority) {
-    $pA = $statusPriority($a);
-    $pB = $statusPriority($b);
-    if ($pA !== $pB) {
-      return $pA <=> $pB;
+    // Fully Dispatched / Completed -> Group 4
+    if ($isDone) {
+      return sprintf('4_%012d_%010d', 999999999999 - strtotime($item['date'] ?? 'now'), 9999999999 - (int)($item['id'] ?? 0));
     }
-    return strtotime($b['date']) <=> strtotime($a['date']);
+
+    $rawDue = $item['rawDueDate'] ?? (!empty($item['dueDate']) && $item['dueDate'] !== 'Not Specified' ? \Carbon\Carbon::parse($item['dueDate'], 'Asia/Kolkata')->format('Y-m-d') : null);
+    $diffDays = null;
+    if ($rawDue) {
+      $dueObj = \Carbon\Carbon::parse($rawDue, 'Asia/Kolkata')->startOfDay();
+      $diffDays = (int) $todayKolkata->diffInDays($dueObj, false);
+    }
+
+    if ($diffDays !== null) {
+      if ($diffDays === 0) {
+        // Due today -> Top priority (Group 0)
+        return sprintf('0_%010d', 9999999999 - (int)($item['id'] ?? 0));
+      } elseif ($diffDays < 0) {
+        // Overdue -> Group 1 (most recent overdue first: 1 day overdue, 2 days overdue...)
+        return sprintf('1_%06d_%010d', abs($diffDays), 9999999999 - (int)($item['id'] ?? 0));
+      } else {
+        // Upcoming -> Group 2 (closest due date first: 1 day left, 2 days left, 3 days left...)
+        return sprintf('2_%06d_%010d', $diffDays, 9999999999 - (int)($item['id'] ?? 0));
+      }
+    }
+
+    // Active with no due date -> Group 3
+    return sprintf('3_%010d', 9999999999 - (int)($item['id'] ?? 0));
   })->values();
 
   $page = request('page', 1);
