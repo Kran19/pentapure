@@ -337,7 +337,9 @@ class StockManagerController extends Controller
             'locationMappings' => $locationMappings,
         ];
 
-        return view('stock_manager.stock', compact('pageData'));
+        $isReadOnly = view()->shared('isReadOnly') ?? false;
+
+        return view('stock_manager.stock', compact('pageData', 'isReadOnly'));
     }
 
     // ── PO: Purchase Orders Panel ──────────────────────────────────────────

@@ -441,10 +441,69 @@ class AdminController extends Controller
             ->groupBy('product_id')
             ->map(fn($group) => (float)$group->sum('qty'));
 
-        $attachData = function($p) use ($stockMap) {
+        $gradeStockRows = DB::table('stocks')
+            ->selectRaw("product_id, UPPER(TRIM(grade)) as grade_norm, SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as qty")
+            ->groupBy('product_id', DB::raw("UPPER(TRIM(grade))"))
+            ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
+            ->get();
+
+        $productGradeStockMap = [];
+        foreach ($gradeStockRows as $gs) {
+            $productGradeStockMap[$gs->product_id][$gs->grade_norm] = (float)$gs->qty;
+        }
+
+        $allGradesKeyed = \App\Models\Grade::all()->keyBy(fn($g) => strtoupper(trim($g->name)));
+
+        $attachData = function($p) use ($stockMap, $productGradeStockMap, $allGradesKeyed) {
             $p->gradeIds = $p->grades->pluck('id')->toArray();
             $p->gradeNames = $p->grades->pluck('name')->toArray();
             $p->current_stock = (float)($stockMap[$p->id] ?? 0);
+
+            $pStock = $productGradeStockMap[$p->id] ?? [];
+            $gradeStocks = [];
+            $lockedGradeIds = [];
+
+            foreach ($p->grades as $g) {
+                $gNameUpper = strtoupper(trim($g->name));
+                $qty = 0;
+                if (isset($pStock[$gNameUpper])) {
+                    $qty = $pStock[$gNameUpper];
+                } elseif (in_array($gNameUpper, ['N/A', 'NONE', 'NA', 'N / A'])) {
+                    $qty = $pStock['NONE'] ?? $pStock['N/A'] ?? $pStock[''] ?? 0;
+                }
+
+                if ($qty > 0) {
+                    $gradeStocks[$g->id] = [
+                        'qty' => $qty,
+                        'name' => $g->name,
+                        'has_stock' => true
+                    ];
+                    $lockedGradeIds[] = $g->id;
+                }
+            }
+
+            foreach ($pStock as $stkGradeNorm => $stkQty) {
+                if ($stkQty > 0) {
+                    $matchedG = $allGradesKeyed->get($stkGradeNorm);
+                    if (!$matchedG && in_array($stkGradeNorm, ['NONE', 'N/A', '', 'DEFAULT'])) {
+                        $matchedG = $allGradesKeyed->get('N/A') ?: $allGradesKeyed->get('NONE');
+                    }
+                    if ($matchedG && !in_array($matchedG->id, $lockedGradeIds)) {
+                        $gradeStocks[$matchedG->id] = [
+                            'qty' => $stkQty,
+                            'name' => $matchedG->name,
+                            'has_stock' => true
+                        ];
+                        $lockedGradeIds[] = $matchedG->id;
+                        if (!in_array($matchedG->id, $p->gradeIds)) {
+                            $p->gradeIds[] = $matchedG->id;
+                        }
+                    }
+                }
+            }
+
+            $p->grade_stocks = $gradeStocks;
+            $p->locked_grade_ids = $lockedGradeIds;
             return $p;
         };
 
@@ -641,6 +700,28 @@ class AdminController extends Controller
                 }
 
                 if (is_array($grades)) {
+                    // Prevent unselecting grades that currently have stock (> 0)
+                    $stockGrades = DB::table('stocks')
+                        ->where('product_id', $product->id)
+                        ->groupBy(DB::raw("UPPER(TRIM(grade))"))
+                        ->selectRaw("UPPER(TRIM(grade)) as grade_norm, SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as net_qty")
+                        ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
+                        ->get();
+
+                    if ($stockGrades->isNotEmpty()) {
+                        $allGradeModels = \App\Models\Grade::all()->keyBy(fn($g) => strtoupper(trim($g->name)));
+                        foreach ($stockGrades as $esg) {
+                            $norm = $esg->grade_norm;
+                            $matchedGrade = $allGradeModels->get($norm);
+                            if (!$matchedGrade && in_array($norm, ['NONE', 'N/A', '', 'DEFAULT'])) {
+                                $matchedGrade = $allGradeModels->get('N/A') ?: $allGradeModels->get('NONE');
+                            }
+                            if ($matchedGrade && !in_array($matchedGrade->id, $grades)) {
+                                $grades[] = $matchedGrade->id;
+                            }
+                        }
+                    }
+
                     $product->grades()->sync($grades);
                 }
                 
@@ -855,11 +936,14 @@ class AdminController extends Controller
             $locationMappings[$key][$ls->location_name] = (float) $ls->quantity;
         }
 
+        $allLocations = Location::orderBy('name')->get(['id', 'name']);
+
         $pageData = [
             'allStock' => $allStock,
             'allProducts' => $allProducts,
             'stockLogsByKey' => $stockLogsByKey,
             'locationMappings' => $locationMappings,
+            'allLocations' => $allLocations,
         ];
         return view('admin.stock', compact('pageData'));
     }
@@ -2052,7 +2136,8 @@ class AdminController extends Controller
 
             // Single location fallback
             $qty          = (float) $request->quantity;
-            $locationName = $request->input('location') ? trim($request->location) : 'Main Warehouse';
+            $fallbackLoc  = Location::orderBy('name')->value('name') ?: 'Default';
+            $locationName = $request->filled('location') ? trim($request->location) : $fallbackLoc;
             $locationId   = Location::firstOrCreate(['name' => $locationName])->id;
             $note = "Manual adjustment at location '{$locationName}'" . ($reason ? " — {$reason}" : '');
 
@@ -2196,7 +2281,8 @@ class AdminController extends Controller
                         }
                     }
                     if ((empty($item['locations']) || !is_array($item['locations'])) && !empty($item['quantity'])) {
-                        $item['locations'] = [['name' => 'Main Warehouse', 'qty' => (float) $item['quantity']]];
+                        $fallbackLocName = Location::orderBy('name')->value('name') ?: 'Default';
+                        $item['locations'] = [['name' => $fallbackLocName, 'qty' => (float) $item['quantity']]];
                     }
                 }
                 unset($item);

@@ -2689,7 +2689,9 @@ a.btn-danger:hover,
 /* View-Only Mode Styles */
 body.is-read-only .read-only-hide,
 body.is-read-only .hide-in-read-only,
-body.is-read-only [data-read-only-hide] {
+body.is-read-only [data-read-only-hide],
+body.is-read-only .btn-icon.edit,
+body.is-read-only button[title="Edit Min Qty"] {
   display: none !important;
 }
 

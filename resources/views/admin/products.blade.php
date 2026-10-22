@@ -611,9 +611,36 @@ function adminEditProduct(prod) {
   // Build the grades HTML
   let gradesHtml = '';
   const prodGradeIds = prod.gradeIds || [];
+  const lockedGradeIds = prod.locked_grade_ids || [];
+  const gradeStocks = prod.grade_stocks || {};
+
   allGrades.forEach(g => {
-    const isChecked = prodGradeIds.includes(g.id) ? 'checked' : '';
-    gradesHtml += `<label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; background:var(--bg-hover); border:1px solid var(--border-soft); padding:6px 10px; border-radius:6px; cursor:pointer;"><input type="checkbox" id="swal-grade-${g.id}" value="${g.id}" ${isChecked} style="width:auto;"> ${escapeHtml(g.name)}</label>`;
+    const isLocked = lockedGradeIds.includes(g.id);
+    const stockInfo = gradeStocks[g.id] || null;
+    const stockQty = stockInfo ? stockInfo.qty : 0;
+    const isChecked = isLocked || prodGradeIds.includes(g.id);
+    const qtyText = stockQty > 0 ? (stockQty % 1 === 0 ? stockQty.toFixed(0) : stockQty.toFixed(2)) : '0';
+    const unitText = escapeHtml(prod.unit || 'KG');
+
+    if (isLocked) {
+      gradesHtml += `
+        <label title="Cannot unselect: ${qtyText} ${unitText} currently in stock" 
+               style="display:flex; align-items:center; justify-content:space-between; gap:6px; font-size:0.85rem; background:#fffbeb; border:1.5px solid #f59e0b; padding:6px 10px; border-radius:6px; cursor:not-allowed; user-select:none;"
+               onclick="event.preventDefault(); Swal.showValidationMessage('🔒 Grade &quot;${escapeHtml(g.name)}&quot; has ${qtyText} ${unitText} in stock and cannot be unselected.'); return false;">
+          <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+            <input type="checkbox" id="swal-grade-${g.id}" value="${g.id}" checked disabled data-locked="true" data-stock-qty="${stockQty}" style="width:auto; cursor:not-allowed;">
+            <span style="font-weight:700; color:#92400e; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(g.name)}</span>
+          </div>
+          <span style="font-size:0.7rem; font-weight:700; background:#f59e0b; color:#ffffff; padding:2px 6px; border-radius:4px; white-space:nowrap; flex-shrink:0;" title="${qtyText} ${unitText} in stock">🔒 ${qtyText} ${unitText}</span>
+        </label>`;
+    } else {
+      const checkedAttr = isChecked ? 'checked' : '';
+      gradesHtml += `
+        <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; background:var(--bg-hover); border:1px solid var(--border-soft); padding:6px 10px; border-radius:6px; cursor:pointer;">
+          <input type="checkbox" id="swal-grade-${g.id}" value="${g.id}" ${checkedAttr} style="width:auto; cursor:pointer;">
+          <span style="font-weight:500; color:#374151;">${escapeHtml(g.name)}</span>
+        </label>`;
+    }
   });
 
   // Build the roles HTML
@@ -705,7 +732,10 @@ function adminEditProduct(prod) {
       
       const selectedGrades = [];
       allGrades.forEach(g => {
-        if(document.getElementById(`swal-grade-${g.id}`) && document.getElementById(`swal-grade-${g.id}`).checked) selectedGrades.push(g.id);
+        const el = document.getElementById(`swal-grade-${g.id}`);
+        if (el && (el.checked || el.getAttribute('data-locked') === 'true')) {
+          selectedGrades.push(g.id);
+        }
       });
       
       const selectedRoles = [];
