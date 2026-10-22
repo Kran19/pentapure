@@ -41,7 +41,7 @@
       <div style="margin-top:6px; font-size:0.82rem; color:var(--text-muted); display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
         <span>Ordered: <strong>{{ \Carbon\Carbon::parse($dOrder['date'])->format('d-m-Y') }}</strong></span>
         <span>•</span>
-        <span>DUE: <strong style="color:var(--text-main, #111827); font-weight:700;">{{ $dOrder['dueDate'] ?? 'NOT SPECIFIED' }}</strong>{!! $dueDaysBadge !!}</span>
+        <span>EXPECTED DELIVERY DATE: <strong style="color:var(--text-main, #111827); font-weight:700;">{{ $dOrder['dueDate'] ?? 'NOT SPECIFIED' }}</strong>{!! $dueDaysBadge !!}</span>
         @if(!empty($dOrder['transportName']))
           <span>•</span>
           <span>Transport: <strong>{{ $dOrder['transportName'] }}</strong></span>

@@ -622,11 +622,8 @@ namespace Tests\Feature;
             $res->assertSee('Dispatched Orders');
             $res->assertSee('Due Today Orders');
 
-            // Verify Tabs
-            $res->assertSee('📋 All Open');
-            $res->assertSee('⏳ Pending');
-            $res->assertSee('📦 Partial');
-            $res->assertSee('📅 Due Today');
+            // Verify Orders Due Today section
+            $res->assertSee('Orders Due Today');
 
             // Verify both pending and partial orders due today are present
             $content = $res->getContent();

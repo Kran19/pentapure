@@ -611,6 +611,7 @@ class SalesController extends Controller
                     'dispatchStatus' => $computedStatus,
                     'date'           => $o->created_at->toISOString(),
                     'dueDate'        => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
+                    'rawDueDate'     => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('Y-m-d') : null,
                     'notes'          => $o->notes,
                     'lrCopies'       => $o->dispatchLogs ? $o->dispatchLogs->filter(fn($l) => !empty($l->lr_image_path))->flatMap(function($l) {
                         $rawPaths = \App\Http\Controllers\DispatchController::getLrImagePaths($l);

@@ -249,8 +249,24 @@
             <span>•</span>
             <span>{{ \Carbon\Carbon::parse($item['date'])->format('d-m-Y') }}</span>
             @if(!empty($item['dueDate']))
+              @php
+                $rawDue = $item['rawDueDate'] ?? (!empty($item['dueDate']) && $item['dueDate'] !== 'Not Specified' ? \Carbon\Carbon::parse($item['dueDate'])->format('Y-m-d') : null);
+                $historyDueBadge = '';
+                if ($rawDue) {
+                  $todayKolkata = now()->timezone('Asia/Kolkata')->startOfDay();
+                  $diffDays = (int) $todayKolkata->diffInDays(\Carbon\Carbon::parse($rawDue, 'Asia/Kolkata')->startOfDay(), false);
+                  if ($diffDays < 0) {
+                    $days = abs($diffDays);
+                    $historyDueBadge = '<span style="font-size:0.72rem; padding:2px 7px; border-radius:4px; font-weight:700; background:#fef2f2; border:1px solid #fecaca; color:#dc2626; margin-left:4px;">' . $days . ' ' . ($days === 1 ? 'day' : 'days') . ' overdue</span>';
+                  } elseif ($diffDays === 0) {
+                    $historyDueBadge = '<span style="font-size:0.72rem; padding:2px 7px; border-radius:4px; font-weight:700; background:#fffbeb; border:1px solid #fde68a; color:#b45309; margin-left:4px;">Due today</span>';
+                  } else {
+                    $historyDueBadge = '<span style="font-size:0.72rem; padding:2px 7px; border-radius:4px; font-weight:700; background:#ecfdf5; border:1px solid #a7f3d0; color:#047857; margin-left:4px;">' . $diffDays . ' ' . ($diffDays === 1 ? 'day' : 'days') . ' left</span>';
+                  }
+                }
+              @endphp
               <span>•</span>
-              <span>DUE: <strong style="color:var(--text-main, #111827); font-weight:700;">{{ $item['dueDate'] }}</strong></span>
+              <span>EXPECTED DELIVERY DATE: <strong style="color:var(--text-main, #111827); font-weight:700;">{{ $item['dueDate'] }}</strong>{!! $historyDueBadge !!}</span>
             @endif
             @if(!empty($item['lrCopies']) && count($item['lrCopies']) > 0)
               <span>•</span>
@@ -303,7 +319,7 @@
             <div style="font-size:0.85rem; font-weight:500;">{{ \Carbon\Carbon::parse($item['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }}</div>
           </div>
           <div>
-            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Due Date</div>
+            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Expected Delivery Date</div>
             <div style="font-size:0.85rem; font-weight:700; color:var(--text-main, #111827);">{{ $item['dueDate'] ?? 'N/A' }}</div>
           </div>
           <div>

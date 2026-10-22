@@ -15,6 +15,86 @@ class DispatchController extends Controller
 {
     private function authUser(): array { return session('auth_user'); }
 
+    private function getStockMap(): array
+    {
+        $liveStocks = DB::table('stocks')
+            ->selectRaw("product_id, stage, grade, SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as net_qty")
+            ->groupBy('product_id', 'stage', 'grade')
+            ->get();
+
+        $stockMap = [];
+        foreach ($liveStocks as $ls) {
+            $rawStage = strtoupper(trim((string)$ls->stage));
+            $normStage = ($rawStage === 'FG') ? 'FINISHED' : (($rawStage === 'PKG') ? 'PACKAGING' : ($rawStage ?: 'FINISHED'));
+
+            $rawGrade = trim((string)$ls->grade);
+            $normGrade = (!empty($rawGrade) && strtoupper($rawGrade) !== 'NONE' && strtoupper($rawGrade) !== 'N/A') ? strtoupper($rawGrade) : 'NONE';
+
+            $key = $ls->product_id . '_' . $normStage . '_' . $normGrade;
+            $stockMap[$key] = ($stockMap[$key] ?? 0) + (float)$ls->net_qty;
+        }
+
+        return $stockMap;
+    }
+
+    private function calculateOrderReadiness($order, array $stockMap): array
+    {
+        $items = $order->items->map(function($i) use ($stockMap) {
+            $needed = max(0, (float)$i->quantity - (float)$i->dispatched_qty);
+            $rawType = strtoupper(trim((string)($i->product?->type ?? 'FINISHED')));
+            $itemStage = ($rawType === 'FG') ? 'FINISHED' : (($rawType === 'PKG') ? 'PACKAGING' : ($rawType ?: 'FINISHED'));
+
+            $rawGrade = trim((string)$i->grade);
+            $itemGrade = (!empty($rawGrade) && strtoupper($rawGrade) !== 'NONE' && strtoupper($rawGrade) !== 'N/A') ? strtoupper($rawGrade) : 'NONE';
+
+            $key = $i->product_id . '_' . $itemStage . '_' . $itemGrade;
+            $avail = max(0, (float)($stockMap[$key] ?? 0));
+            return [
+                'id'            => $i->id,
+                'productId'     => $i->product_id,
+                'rawProductName'=> $i->product?->name ?? 'Unknown',
+                'productName'   => $i->product?->name ?? 'Unknown',
+                'formattedName' => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
+                'productType'   => $i->product?->type,
+                'quantity'      => (float) $i->quantity,
+                'dispatchedQty' => (float) $i->dispatched_qty,
+                'remainingQty'  => $needed,
+                'availStock'    => $avail,
+                'grade'         => $i->grade,
+            ];
+        });
+
+        $remainingItems = $items->filter(fn($i) => $i['remainingQty'] > 0);
+        $totalRemainingItems = $remainingItems->count();
+        $orderTotalQty = (float) $items->sum('quantity');
+
+        $fullCount = 0;
+        $partialCount = 0;
+
+        foreach ($remainingItems as $ri) {
+            if ($ri['availStock'] >= $ri['remainingQty']) {
+                $fullCount++;
+                $partialCount++;
+            } elseif ($ri['availStock'] > 0) {
+                $partialCount++;
+            }
+        }
+
+        if ($orderTotalQty <= 0) {
+            $readiness = 'NOT_READY';
+        } elseif ($totalRemainingItems == 0) {
+            $readiness = 'DONE';
+        } elseif ($fullCount === $totalRemainingItems) {
+            $readiness = 'READY_DISPATCH';
+        } elseif ($partialCount > 0) {
+            $readiness = 'READY_PARTIAL';
+        } else {
+            $readiness = 'NOT_READY';
+        }
+
+        return [$readiness, $items];
+    }
+
     public function home()
     {
         $pending   = Order::with(['company', 'transporter', 'items.product', 'creator'])
@@ -69,77 +149,11 @@ class DispatchController extends Controller
             ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
             ->get();
 
-        $liveStocks = DB::table('stocks')
-            ->selectRaw("product_id, stage, grade, SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as net_qty")
-            ->groupBy('product_id', 'stage', 'grade')
-            ->get();
-
-        $stockMap = [];
-        foreach ($liveStocks as $ls) {
-            $rawStage = strtoupper(trim((string)$ls->stage));
-            $normStage = ($rawStage === 'FG') ? 'FINISHED' : (($rawStage === 'PKG') ? 'PACKAGING' : ($rawStage ?: 'FINISHED'));
-
-            $rawGrade = trim((string)$ls->grade);
-            $normGrade = (!empty($rawGrade) && strtoupper($rawGrade) !== 'NONE' && strtoupper($rawGrade) !== 'N/A') ? strtoupper($rawGrade) : 'NONE';
-
-            $key = $ls->product_id . '_' . $normStage . '_' . $normGrade;
-            $stockMap[$key] = ($stockMap[$key] ?? 0) + (float)$ls->net_qty;
-        }
+        $stockMap = $this->getStockMap();
 
         $today = now()->timezone('Asia/Kolkata')->startOfDay();
         $pendingMapped = $pending->map(function($o) use ($stockMap) {
-            $items = $o->items->map(function($i) use ($stockMap) {
-                $needed = max(0, (float)$i->quantity - (float)$i->dispatched_qty);
-                $rawType = strtoupper(trim((string)($i->product?->type ?? 'FINISHED')));
-                $itemStage = ($rawType === 'FG') ? 'FINISHED' : (($rawType === 'PKG') ? 'PACKAGING' : ($rawType ?: 'FINISHED'));
-
-                $rawGrade = trim((string)$i->grade);
-                $itemGrade = (!empty($rawGrade) && strtoupper($rawGrade) !== 'NONE' && strtoupper($rawGrade) !== 'N/A') ? strtoupper($rawGrade) : 'NONE';
-
-                $key = $i->product_id . '_' . $itemStage . '_' . $itemGrade;
-                $avail = max(0, (float)($stockMap[$key] ?? 0));
-                return [
-                    'id'            => $i->id,
-                    'productId'     => $i->product_id,
-                    'rawProductName'=> $i->product?->name ?? 'Unknown',
-                    'productName'   => $i->product?->name ?? 'Unknown',
-                    'formattedName' => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
-                    'productType'   => $i->product?->type,
-                    'quantity'      => (float) $i->quantity,
-                    'dispatchedQty' => (float) $i->dispatched_qty,
-                    'remainingQty'  => $needed,
-                    'availStock'    => $avail,
-                    'grade'         => $i->grade,
-                ];
-            });
-
-            $remainingItems = $items->filter(fn($i) => $i['remainingQty'] > 0);
-            $totalRemainingItems = $remainingItems->count();
-            $orderTotalQty = (float) $items->sum('quantity');
-
-            $fullCount = 0;
-            $partialCount = 0;
-
-            foreach ($remainingItems as $ri) {
-                if ($ri['availStock'] >= $ri['remainingQty']) {
-                    $fullCount++;
-                    $partialCount++;
-                } elseif ($ri['availStock'] > 0) {
-                    $partialCount++;
-                }
-            }
-
-            if ($orderTotalQty <= 0) {
-                $readiness = 'NOT_READY';
-            } elseif ($totalRemainingItems == 0) {
-                $readiness = 'DONE';
-            } elseif ($fullCount === $totalRemainingItems) {
-                $readiness = 'READY_DISPATCH';
-            } elseif ($partialCount > 0) {
-                $readiness = 'READY_PARTIAL';
-            } else {
-                $readiness = 'NOT_READY';
-            }
+            [$readiness, $items] = $this->calculateOrderReadiness($o, $stockMap);
 
             return [
                 'id'           => $o->id,
@@ -261,37 +275,31 @@ class DispatchController extends Controller
             return sprintf('3_%010d', 9999999999 - (int)$o->id);
         })->values();
 
+        $stockMap = $this->getStockMap();
         $pageData = [
-            'pendingOrders' => $pendingOrders->map(fn($o)=>[
-                'id'          => $o->id,
-                'status'      => $o->status,
-                'notes'       => $o->notes,
-                'salesPerson' => $o->creator?->name ?? 'N/A',
-                'company'     => [
-                    'name'    => $o->company?->name,
-                    'gst'     => $o->company?->gst,
-                    'contact' => $o->company?->contact,
-                    'address' => $o->company?->address,
-                ],
-                'transporter' => [
-                    'name'     => $o->transporter?->name,
-                    'gst'      => $o->transporter?->gst,
-                    'contact'  => $o->transporter?->contact,
-                    'vehicles' => $o->transporter?->vehicles,
-                ],
-                'items'       => $o->items->map(fn($i)=>[
-                    'id'            => $i->id,
-                    'rawProductName'=> $i->product?->name ?? 'Unknown',
-                    'productName'   => $i->product?->name ?? 'Unknown',
-                    'formattedName' => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
-                    'productId'     => $i->product_id,
-                    'productType'   => $i->product?->type,
-                    'quantity'      => (float) $i->quantity,
-                    'dispatchedQty' => (float) $i->dispatched_qty,
-                    'remainingQty'  => $i->remainingQty(),
-                    'grade'         => $i->grade,
-                ])->values()
-            ])->values()
+            'pendingOrders' => $pendingOrders->map(function($o) use ($stockMap) {
+                [$readiness, $items] = $this->calculateOrderReadiness($o, $stockMap);
+                return [
+                    'id'          => $o->id,
+                    'status'      => $o->status,
+                    'readiness'   => $readiness,
+                    'notes'       => $o->notes,
+                    'salesPerson' => $o->creator?->name ?? 'N/A',
+                    'company'     => [
+                        'name'    => $o->company?->name,
+                        'gst'     => $o->company?->gst,
+                        'contact' => $o->company?->contact,
+                        'address' => $o->company?->address,
+                    ],
+                    'transporter' => [
+                        'name'     => $o->transporter?->name,
+                        'gst'      => $o->transporter?->gst,
+                        'contact'  => $o->transporter?->contact,
+                        'vehicles' => $o->transporter?->vehicles,
+                    ],
+                    'items'       => $items->values()
+                ];
+            })->values()
         ];
 
         return response()
@@ -313,23 +321,14 @@ class DispatchController extends Controller
             $item->syncDispatchedQty();
         }
 
-        $items = $order->items->map(fn($i) => [
-            'id'            => $i->id,
-            'rawProductName'=> $i->product?->name ?? 'Unknown',
-            'productName'   => $i->product?->name ?? 'Unknown',
-            'formattedName' => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
-            'productId'     => $i->product_id,
-            'productType'   => $i->product?->type,
-            'quantity'      => (float) $i->quantity,
-            'dispatchedQty' => (float) $i->dispatched_qty,
-            'remainingQty'  => $i->remainingQty(),
-            'grade'         => $i->grade,
-        ]);
+        $stockMap = $this->getStockMap();
+        [$readiness, $items] = $this->calculateOrderReadiness($order, $stockMap);
 
         return response()->json([
             'success' => true,
             'order'   => [
                 'id'          => $order->id,
+                'readiness'   => $readiness,
                 'notes'       => $order->notes,
                 'salesPerson' => $order->creator?->name ?? 'N/A',
                 'company'     => [
@@ -344,7 +343,7 @@ class DispatchController extends Controller
                     'contact'  => $order->transporter?->contact,
                     'vehicles' => $order->transporter?->vehicles,
                 ],
-                'items'       => $items,
+                'items'       => $items->values(),
             ]
         ]);
     }

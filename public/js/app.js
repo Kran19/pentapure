@@ -2148,14 +2148,36 @@ const app = {
 
         const company = orderData.company || {};
         const transporter = orderData.transporter || {};
+        const readiness = orderData.readiness || (validItems.length === 0 ? 'DONE' : 'NOT_READY');
+
+        let readinessBadgeHtml = '';
+        if (validItems.length === 0 || readiness === 'DONE') {
+          readinessBadgeHtml = `<span class="badge readiness-status-badge" style="background:#16a34a; color:#ffffff; padding:5px 12px; font-size:0.75rem; font-weight:700; border-radius:6px; letter-spacing:0.5px;">FULLY DISPATCHED</span>`;
+        } else if (readiness === 'READY_DISPATCH') {
+          readinessBadgeHtml = `<span class="badge readiness-status-badge" style="background:#16a34a; color:#ffffff; padding:5px 12px; font-size:0.75rem; font-weight:700; border-radius:6px; letter-spacing:0.5px;">READY FOR DISPATCH</span>`;
+        } else if (readiness === 'READY_PARTIAL') {
+          readinessBadgeHtml = `<span class="badge readiness-status-badge" style="background:#f59e0b; color:#ffffff; padding:5px 12px; font-size:0.75rem; font-weight:700; border-radius:6px; letter-spacing:0.5px;">READY TO PARTIAL DISPATCH</span>`;
+        } else {
+          readinessBadgeHtml = `<span class="badge readiness-status-badge" style="background:#dc2626; color:#ffffff; padding:5px 12px; font-size:0.75rem; font-weight:700; border-radius:6px; letter-spacing:0.5px;">NOT READY</span>`;
+        }
 
         if (div) {
           div.innerHTML = `
             <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:20px; box-shadow:0 4px 15px rgba(0,0,0,0.04);">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1.5px solid #e2e8f0; padding-bottom:10px;">
                 <h3 style="margin:0; color:var(--primary, #D88A00); font-size:1.3rem; letter-spacing:1px; font-weight:800;">ORDER #${String(orderData.id).toUpperCase()}</h3>
-                <span class="badge badge-pending" style="padding:4px 12px; font-size:0.75rem;">${validItems.length === 0 ? 'FULLY DISPATCHED' : 'READY FOR DISPATCH'}</span>
+                ${readinessBadgeHtml}
               </div>
+
+              ${(readiness === 'NOT_READY' && validItems.length > 0) ? `
+              <div style="margin-bottom:20px; background:#fef2f2; border:1.5px solid #fecaca; border-left:4px solid #dc2626; border-radius:8px; padding:12px 16px; display:flex; align-items:center; gap:12px;">
+                <span style="font-size:1.3rem;">⚠️</span>
+                <div>
+                  <div style="color:#991b1b; font-weight:800; font-size:0.88rem;">ORDER IS NOT READY FOR DISPATCH</div>
+                  <div style="color:#b91c1c; font-size:0.8rem; margin-top:2px;">This order is marked as <strong>Not Ready</strong> on the Dashboard because current inventory stock is insufficient to fulfill the required quantities.</div>
+                </div>
+              </div>
+              ` : ''}
               
               <div style="display:grid; grid-template-columns:1fr 1fr; gap:25px; margin-bottom:20px;">
                 <div>
@@ -2282,6 +2304,26 @@ const app = {
           .then(r => (r.ok && (r.headers.get('content-type') || '').includes('application/json')) ? r.json() : null)
           .then(data => {
             if (data && data.success && data.order && Array.isArray(data.order.items)) {
+              if (data.order.readiness) {
+                o.readiness = data.order.readiness;
+                const badgeEl = div.querySelector('.readiness-status-badge');
+                if (badgeEl) {
+                  const validCount = (data.order.items || []).filter(i => (i.remainingQty ?? 0) > 0).length;
+                  if (validCount === 0 || o.readiness === 'DONE') {
+                    badgeEl.style.background = '#16a34a';
+                    badgeEl.textContent = 'FULLY DISPATCHED';
+                  } else if (o.readiness === 'READY_DISPATCH') {
+                    badgeEl.style.background = '#16a34a';
+                    badgeEl.textContent = 'READY FOR DISPATCH';
+                  } else if (o.readiness === 'READY_PARTIAL') {
+                    badgeEl.style.background = '#f59e0b';
+                    badgeEl.textContent = 'READY TO PARTIAL DISPATCH';
+                  } else {
+                    badgeEl.style.background = '#dc2626';
+                    badgeEl.textContent = 'NOT READY';
+                  }
+                }
+              }
               data.order.items.forEach(freshItem => {
                 const freshRem = freshItem.remainingQty;
                 const badge = document.getElementById(`pending-badge-${freshItem.id}`);

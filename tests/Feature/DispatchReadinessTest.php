@@ -782,6 +782,49 @@ class DispatchReadinessTest extends TestCase
         $this->assertEquals(6, $detailsData['order']['items'][0]['remainingQty']);
         $this->assertEquals(15, $detailsData['order']['items'][1]['remainingQty']);
     }
+
+    public function test_order_action_page_and_details_reflect_not_ready_when_zero_stock(): void
+    {
+        $session = ['auth_user' => [
+            'id'   => $this->subAdminUser->id,
+            'name' => $this->subAdminUser->name,
+            'role' => 'SUB_ADMIN',
+        ]];
+
+        $orderZero = Order::create([
+            'created_by'      => $this->subAdminUser->id,
+            'company_id'      => $this->company->id,
+            'transporter_id'  => $this->transporter->id,
+            'total'           => 1500,
+            'status'          => 'OPEN',
+            'dispatch_status' => 'PENDING',
+        ]);
+        OrderItem::create([
+            'order_id'       => $orderZero->id,
+            'product_id'     => $this->productPipe->id,
+            'grade'          => 'NONE',
+            'quantity'       => 50,
+            'price'          => 30,
+            'dispatched_qty' => 0,
+        ]);
+
+        // Action page should have [Not Ready] in option and NOT_READY in JSON
+        $actionResp = $this->withSession($session)->get("/sub_admin/dispatch/action?order_id={$orderZero->id}");
+        $actionResp->assertStatus(200);
+        $content = $actionResp->getContent();
+
+        $this->assertStringContainsString("value=\"{$orderZero->id}\"", $content);
+        $this->assertStringContainsString("[Not Ready]", $content);
+        $this->assertStringContainsString('"readiness":"NOT_READY"', $content);
+
+        // Order details endpoint must also return readiness: NOT_READY
+        $detailsResp = $this->withSession($session)->get("/sub_admin/dispatch/order-details/{$orderZero->id}");
+        $detailsResp->assertStatus(200);
+        $detailsData = $detailsResp->json();
+
+        $this->assertTrue($detailsData['success']);
+        $this->assertEquals('NOT_READY', $detailsData['order']['readiness']);
+    }
 }
 
 
