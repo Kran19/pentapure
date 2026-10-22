@@ -132,14 +132,14 @@
                 </select>
             </div>
 
-            <div class="form-group bs-col-location" style="position:relative;">
+            <div class="form-group bs-col-location" style="position:relative; z-index:1000;">
                 <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280; display:block;">Storage Location *</label>
-                <div class="custom-location-dropdown" style="width: 100%; position: relative;">
+                <div class="custom-location-dropdown" style="width: 100%; position: relative; z-index:1000;">
                     <button class="btn custom-location-btn" type="button" onclick="event.stopPropagation(); window.toggleLocDropdown(this);" style="width:100%; text-align:left; display:flex; justify-content:space-between; align-items:center; background:#ffffff !important; border:1px solid #d1d5db !important; border-radius:6px; height:1.8rem; padding: 0.1rem 0.5rem; font-size:0.8rem; font-weight:600; color:#111827 !important; cursor:pointer; transition: all 0.15s ease;">
                         <span class="loc-dropdown-text" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">📍 Select Locations</span>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-left:4px;"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </button>
-                    <div class="dropdown-menu shadow custom-location-menu" style="display:none; position:absolute; top:calc(100% + 3px); left:0; z-index:1050; min-width: 250px; max-height:240px; overflow-y:auto; background:#ffffff !important; border:1px solid #d1d5db; border-radius:8px; padding:0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+                    <div class="dropdown-menu shadow custom-location-menu" style="display:none; position:absolute; top:calc(100% + 3px); left:0; z-index:999999 !important; min-width: 250px; max-height:240px; overflow-y:auto; background:#ffffff !important; border:1px solid #d1d5db; border-radius:8px; padding:0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2) !important;">
                         <div style="font-size:0.7rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px; padding:0.2rem 0.3rem 0.4rem; border-bottom:1px solid #f3f4f6; margin-bottom:0.4rem; display:flex; justify-content:space-between;">
                             <span>Location Name</span>
                             <span>Qty</span>
@@ -504,8 +504,29 @@
     .bs-col-note     { grid-area: note; min-width: 0 !important; }
     .bs-col-actions  { grid-area: actions; display: flex; align-items: flex-end; }
 
+    #stock-form-card,
+    #stock-rows-wrapper,
+    .bulk-stock-row,
+    .bulk-stock-fields {
+      overflow: visible !important;
+    }
+
     .bulk-stock-row {
       position: relative;
+    }
+
+    .bs-col-location {
+      position: relative !important;
+      z-index: 1000 !important;
+    }
+
+    .custom-location-dropdown {
+      position: relative !important;
+      z-index: 1000 !important;
+    }
+
+    .custom-location-menu {
+      z-index: 999999 !important;
     }
 
     /* Custom Location Dropdown & Hover Styles - High Contrast & Clean */
@@ -3326,9 +3347,19 @@ window.adminSaveBulkStock = function() {
 window.toggleLocDropdown = function(btn) {
   const menu = btn.nextElementSibling;
   const isShown = menu && menu.style.display === 'block';
-  document.querySelectorAll('.custom-location-menu').forEach(m => m.style.display = 'none');
+  document.querySelectorAll('.custom-location-menu').forEach(m => {
+    m.style.display = 'none';
+    const row = m.closest('.bulk-stock-row');
+    if (row) row.style.zIndex = '';
+    const col = m.closest('.bs-col-location');
+    if (col) col.style.zIndex = '';
+  });
   if (menu && !isShown) {
     menu.style.display = 'block';
+    const row = btn.closest('.bulk-stock-row');
+    if (row) row.style.zIndex = '99999';
+    const col = btn.closest('.bs-col-location');
+    if (col) col.style.zIndex = '99999';
   }
 };
 
@@ -3336,6 +3367,10 @@ document.addEventListener('click', function(e) {
   if (!e.target.closest('.custom-location-dropdown')) {
     document.querySelectorAll('.custom-location-menu').forEach(menu => {
       menu.style.display = 'none';
+      const row = menu.closest('.bulk-stock-row');
+      if (row) row.style.zIndex = '';
+      const col = menu.closest('.bs-col-location');
+      if (col) col.style.zIndex = '';
     });
   }
 });
