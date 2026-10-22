@@ -881,7 +881,7 @@ class CashierController extends Controller
                     'tx_id'     => $row['id'],
                     'tx_date'   => $formattedTxDate,
                     'tx_cat'    => ucwords(str_replace('_', ' ', $row['category'])),
-                    'tx_amount' => ($row['type'] === 'OUT' ? '-' : '+') . '₹' . number_format($row['amount'], 2),
+                    'tx_amount' => ($row['type'] === 'OUT' ? '-' : '+') . 'Rs. ' . number_format($row['amount'], 2),
                     'tx_note'   => $row['note'] ?? '',
                 ]);
             }
@@ -943,19 +943,87 @@ class CashierController extends Controller
                     continue;
                 }
 
-                if ($bill['file_type'] === 'pdf') {
-                    // Import each page of the bill PDF
+                // Check if the file is actually a direct image (even if extension or file_type is .pdf)
+                $isImage = false;
+                $size = @getimagesize($absPath);
+                if ($size && !empty($size[0]) && !empty($size[1])) {
+                    $isImage = true;
+                }
+
+                if ($isImage || $bill['file_type'] !== 'pdf') {
+                    // Image bill (JPEG, PNG, WEBP, or renamed image)
+                    $this->renderImageOnFpdi($fpdi, $absPath, $bill, $billNum, count($billPages), $tempFilesToClean);
+                } else {
+                    // PDF Document
+                    $imported = false;
+
+                    // 1. Try direct FPDI import
                     try {
                         $billPageCount = $fpdi->setSourceFile($absPath);
                         for ($p = 1; $p <= $billPageCount; $p++) {
                             $tpl = $fpdi->importPage($p);
                             $fpdi->AddPage('P', 'A4');
-                            // Bill header
                             $this->fpdiAddBillHeader($fpdi, $bill, $billNum, count($billPages));
                             $fpdi->useTemplate($tpl, 5, 30, 200, 250);
                         }
+                        $imported = true;
                     } catch (\Throwable $e) {
-                        \Illuminate\Support\Facades\Log::warning("Could not import PDF bill ID " . ($bill['id'] ?? 'unknown') . ": " . $e->getMessage());
+                        \Illuminate\Support\Facades\Log::warning("Direct FPDI import failed for bill ID " . ($bill['id'] ?? 'unknown') . ": " . $e->getMessage());
+                    }
+
+                    // 2. Try converting PDF 1.5+ to PDF 1.4 using qpdf or gs if available
+                    if (!$imported) {
+                        $convertedPdf = $this->tryConvertPdfToV14($absPath);
+                        if ($convertedPdf && file_exists($convertedPdf)) {
+                            $tempFilesToClean[] = $convertedPdf;
+                            try {
+                                $billPageCount = $fpdi->setSourceFile($convertedPdf);
+                                for ($p = 1; $p <= $billPageCount; $p++) {
+                                    $tpl = $fpdi->importPage($p);
+                                    $fpdi->AddPage('P', 'A4');
+                                    $this->fpdiAddBillHeader($fpdi, $bill, $billNum, count($billPages));
+                                    $fpdi->useTemplate($tpl, 5, 30, 200, 250);
+                                }
+                                $imported = true;
+                            } catch (\Throwable $e) {
+                                \Illuminate\Support\Facades\Log::warning("FPDI import of converted PDF failed: " . $e->getMessage());
+                            }
+                        }
+                    }
+
+                    // 3. Try Imagick extension if installed
+                    if (!$imported && extension_loaded('imagick')) {
+                        try {
+                            $im = new \Imagick();
+                            $im->setResolution(150, 150);
+                            $im->readImage($absPath);
+                            foreach ($im as $page) {
+                                $page->setImageFormat('jpeg');
+                                $tmpJpg = tempnam(sys_get_temp_dir(), 'ppure_im_') . '.jpg';
+                                $page->writeImage($tmpJpg);
+                                $tempFilesToClean[] = $tmpJpg;
+                                $this->renderImageOnFpdi($fpdi, $tmpJpg, $bill, $billNum, count($billPages), $tempFilesToClean);
+                            }
+                            $imported = true;
+                        } catch (\Throwable $e) {
+                            \Illuminate\Support\Facades\Log::warning("Imagick PDF render failed: " . $e->getMessage());
+                        }
+                    }
+
+                    // 4. Try extracting embedded images from PDF stream (e.g. mobile scan / WhatsApp image saved as PDF)
+                    if (!$imported) {
+                        $extractedImages = $this->extractImagesFromPdf($absPath);
+                        if (!empty($extractedImages)) {
+                            foreach ($extractedImages as $imgFile) {
+                                $tempFilesToClean[] = $imgFile;
+                                $this->renderImageOnFpdi($fpdi, $imgFile, $bill, $billNum, count($billPages), $tempFilesToClean);
+                            }
+                            $imported = true;
+                        }
+                    }
+
+                    // 5. Fallback page if file cannot be parsed or merged
+                    if (!$imported) {
                         try {
                             $fpdi->AddPage('P', 'A4');
                             $this->fpdiAddBillHeader($fpdi, $bill, $billNum, count($billPages));
@@ -969,47 +1037,6 @@ class CashierController extends Controller
                             $fpdi->SetTextColor(0, 0, 0);
                         } catch (\Throwable $ignored) {}
                     }
-                } else {
-                    // Image bill
-                    $fpdi->AddPage('P', 'A4');
-                    $this->fpdiAddBillHeader($fpdi, $bill, $billNum, count($billPages));
-                    try {
-                        $ext = strtoupper(pathinfo($absPath, PATHINFO_EXTENSION));
-                        if ($ext === 'JPG') $ext = 'JPEG';
-
-                        // Convert WEBP/BMP/AVIF to temporary JPEG if GD is available
-                        if (in_array($ext, ['WEBP', 'BMP', 'AVIF']) && extension_loaded('gd')) {
-                            $imgData = @file_get_contents($absPath);
-                            if ($imgData) {
-                                $im = @imagecreatefromstring($imgData);
-                                if ($im) {
-                                    $tmpJpg = tempnam(sys_get_temp_dir(), 'ppure_bill_img_') . '.jpg';
-                                    imagejpeg($im, $tmpJpg, 90);
-                                    imagedestroy($im);
-                                    $tempFilesToClean[] = $tmpJpg;
-                                    $absPath = $tmpJpg;
-                                    $ext = 'JPEG';
-                                }
-                            }
-                        }
-
-                        // Calculate fit dimensions maintaining aspect ratio
-                        $size = @getimagesize($absPath);
-                        $imgW = ($size && $size[0] > 0) ? $size[0] : 210;
-                        $imgH = ($size && $size[1] > 0) ? $size[1] : 297;
-                        $maxW = 200;
-                        $maxH = 250;
-                        $ratio = min($maxW / $imgW, $maxH / $imgH);
-                        $drawW = $imgW * $ratio;
-                        $drawH = $imgH * $ratio;
-                        $x = (210 - $drawW) / 2;
-                        $fpdi->Image($absPath, $x, 35, $drawW, $drawH, $ext);
-                    } catch (\Throwable $e) {
-                        \Illuminate\Support\Facades\Log::warning("Could not render image bill: " . $e->getMessage());
-                        $fpdi->SetFont('Helvetica', '', 10);
-                        $fpdi->SetXY(15, 60);
-                        $fpdi->Cell(180, 10, 'Could not load image: ' . ($bill['original_name'] ?? 'Bill attachment'));
-                    }
                 }
                 $billNum++;
             }
@@ -1022,6 +1049,153 @@ class CashierController extends Controller
                 }
             }
         }
+    }
+
+    private function renderImageOnFpdi(\setasign\Fpdi\Fpdi $fpdi, string $imgPath, array $bill, int $billNum, int $totalBills, array &$tempFilesToClean): void
+    {
+        $fpdi->AddPage('P', 'A4');
+        $this->fpdiAddBillHeader($fpdi, $bill, $billNum, $totalBills);
+
+        try {
+            $ext = strtoupper(pathinfo($imgPath, PATHINFO_EXTENSION));
+            if ($ext === 'JPG') $ext = 'JPEG';
+
+            $size = @getimagesize($imgPath);
+            if ($size && !empty($size['mime'])) {
+                if ($size['mime'] === 'image/jpeg') $ext = 'JPEG';
+                elseif ($size['mime'] === 'image/png') $ext = 'PNG';
+                elseif ($size['mime'] === 'image/gif') $ext = 'GIF';
+                elseif ($size['mime'] === 'image/webp') $ext = 'WEBP';
+                elseif ($size['mime'] === 'image/bmp') $ext = 'BMP';
+            }
+
+            // Convert WEBP/BMP/AVIF/GIF to temporary JPEG if GD is available
+            if ((in_array($ext, ['WEBP', 'BMP', 'AVIF', 'GIF']) || !in_array($ext, ['JPEG', 'PNG'])) && extension_loaded('gd')) {
+                $imgData = @file_get_contents($imgPath);
+                if ($imgData) {
+                    $im = @imagecreatefromstring($imgData);
+                    if ($im) {
+                        $tmpJpg = tempnam(sys_get_temp_dir(), 'ppure_bill_img_') . '.jpg';
+                        imagejpeg($im, $tmpJpg, 90);
+                        imagedestroy($im);
+                        $tempFilesToClean[] = $tmpJpg;
+                        $imgPath = $tmpJpg;
+                        $ext = 'JPEG';
+                        $size = @getimagesize($imgPath);
+                    }
+                }
+            }
+
+            $imgW = ($size && $size[0] > 0) ? $size[0] : 210;
+            $imgH = ($size && $size[1] > 0) ? $size[1] : 297;
+            $maxW = 200;
+            $maxH = 250;
+            $ratio = min($maxW / $imgW, $maxH / $imgH);
+            $drawW = $imgW * $ratio;
+            $drawH = $imgH * $ratio;
+            $x = (210 - $drawW) / 2;
+            $fpdi->Image($imgPath, $x, 35, $drawW, $drawH, $ext);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Could not render image bill: " . $e->getMessage());
+            $fpdi->SetFont('Helvetica', '', 10);
+            $fpdi->SetXY(15, 60);
+            $fpdi->Cell(180, 10, 'Could not load image: ' . ($bill['original_name'] ?? 'Bill attachment'));
+        }
+    }
+
+    private function tryConvertPdfToV14(string $pdfPath): ?string
+    {
+        // 1. Try qpdf (fast, unwraps object streams into standard PDF 1.4)
+        $tmpOutput = tempnam(sys_get_temp_dir(), 'ppure_qpdf_') . '.pdf';
+        $cmd = 'qpdf --compatibility-level=1.4 ' . escapeshellarg($pdfPath) . ' ' . escapeshellarg($tmpOutput) . ' 2>&1';
+        @exec($cmd, $out, $ret);
+        if ($ret === 0 && file_exists($tmpOutput) && filesize($tmpOutput) > 500) {
+            return $tmpOutput;
+        }
+        @unlink($tmpOutput);
+
+        // 2. Try Ghostscript (gs / gswin64c)
+        $gsBin = stripos(PHP_OS, 'WIN') !== false ? 'gswin64c' : 'gs';
+        $tmpOutput = tempnam(sys_get_temp_dir(), 'ppure_gs_') . '.pdf';
+        $cmd = $gsBin . ' -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dNOPAUSE -dQUIET -dBATCH -sOutputFile=' . escapeshellarg($tmpOutput) . ' ' . escapeshellarg($pdfPath) . ' 2>&1';
+        @exec($cmd, $out, $ret);
+        if ($ret === 0 && file_exists($tmpOutput) && filesize($tmpOutput) > 500) {
+            return $tmpOutput;
+        }
+        @unlink($tmpOutput);
+
+        return null;
+    }
+
+    private function extractImagesFromPdf(string $pdfPath): array
+    {
+        $content = @file_get_contents($pdfPath);
+        if (!$content || strlen($content) < 100) {
+            return [];
+        }
+
+        $extractedFiles = [];
+        $offset = 0;
+        $maxImages = 10;
+        $found = 0;
+
+        // Search for embedded JPEG streams (SOI \xFF\xD8\xFF to EOI \xFF\xD9)
+        while ($found < $maxImages && ($start = strpos($content, "\xFF\xD8\xFF", $offset)) !== false) {
+            $end = strpos($content, "\xFF\xD9", $start + 3);
+            if ($end === false) {
+                break;
+            }
+
+            $length = ($end + 2) - $start;
+            if ($length > 2048) {
+                $candidate = substr($content, $start, $length);
+                $size = @getimagesizefromstring($candidate);
+                if ($size && $size[0] >= 80 && $size[1] >= 80) {
+                    $tmpJpg = tempnam(sys_get_temp_dir(), 'ppure_ext_') . '.jpg';
+                    file_put_contents($tmpJpg, $candidate);
+                    $extractedFiles[] = $tmpJpg;
+                    $found++;
+                    $offset = $end + 2;
+                    continue;
+                }
+            }
+            $offset = $start + 3;
+        }
+
+        if (!empty($extractedFiles)) {
+            return $extractedFiles;
+        }
+
+        // Search in FlateDecode streams if direct scan found nothing
+        if (preg_match_all('/stream[\r\n]+(.*?)[\r\n]+endstream/s', $content, $matches)) {
+            foreach ($matches[1] as $streamData) {
+                if (strlen($streamData) < 200) continue;
+
+                $decompressed = @gzuncompress($streamData);
+                if (!$decompressed) {
+                    $decompressed = @gzinflate($streamData);
+                }
+
+                if ($decompressed && strlen($decompressed) > 2000) {
+                    $start = strpos($decompressed, "\xFF\xD8\xFF");
+                    if ($start !== false) {
+                        $end = strrpos($decompressed, "\xFF\xD9");
+                        if ($end !== false && $end > $start) {
+                            $candidate = substr($decompressed, $start, ($end + 2) - $start);
+                            $size = @getimagesizefromstring($candidate);
+                            if ($size && $size[0] >= 80 && $size[1] >= 80) {
+                                $tmpJpg = tempnam(sys_get_temp_dir(), 'ppure_ext_') . '.jpg';
+                                file_put_contents($tmpJpg, $candidate);
+                                $extractedFiles[] = $tmpJpg;
+                                if (count($extractedFiles) >= $maxImages) break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return $extractedFiles;
     }
 
     private function fpdiAddBillHeader(\setasign\Fpdi\Fpdi $fpdi, array $bill, int $num, int $total): void
@@ -1038,8 +1212,14 @@ class CashierController extends Controller
         $fpdi->SetFont('Helvetica', '', 8);
         $fpdi->SetXY(5, 13);
         $fpdi->Cell(60, 5, strtoupper('Txn #' . $bill['tx_id'] . ' | ' . $bill['tx_date']));
+
+        $rawAmount = (string)($bill['tx_amount'] ?? '');
+        // Clean currency string to prevent Unicode/mojibake corruption in Helvetica (e.g. â,¹)
+        $cleanAmount = str_replace(['â,¹', 'â‚¹', '₹'], 'Rs. ', $rawAmount);
+        $cleanAmount = preg_replace('/Rs\.\s*/i', 'Rs. ', $cleanAmount);
+
         $fpdi->SetXY(75, 13);
-        $fpdi->Cell(60, 5, strtoupper('Amount: ' . $bill['tx_amount']));
+        $fpdi->Cell(60, 5, 'AMOUNT: ' . $cleanAmount);
 
         // Bill number top-right
         $fpdi->SetFont('Helvetica', 'B', 9);

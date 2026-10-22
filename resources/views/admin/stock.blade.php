@@ -132,18 +132,6 @@
                 </select>
             </div>
 
-            <div class="form-group bs-col-location">
-                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280; display:block;">Storage Location *</label>
-                @php $allLocations = \App\Models\Location::orderBy('name')->get(); @endphp
-                <select class="form-control form-control-sm bs-location" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem; font-weight:600; width:100%; border:1px solid #d1d5db; border-radius:6px; background:#fff; color:#111827; cursor:pointer;">
-                    @forelse($allLocations as $index => $loc)
-                        <option value="{{ $loc->name }}" {{ $index === 0 ? 'selected' : '' }}>{{ $loc->name }}</option>
-                    @empty
-                        <option value="" disabled selected>No locations configured</option>
-                    @endforelse
-                </select>
-            </div>
-
             <div class="form-group bs-col-qty">
                 <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280; display:block;">Qty *</label>
                 <input type="number" min="0.001" step="0.001" class="form-control form-control-sm bs-loc-qty no-spinners" placeholder="0.00" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem; font-weight:600; width:100%; border:1px solid #d1d5db; border-radius:6px; background:#fff; color:#111827;">
@@ -465,8 +453,8 @@
     /* Responsive Bulk Stock Fields Grid */
     .bulk-stock-fields {
       display: grid;
-      grid-template-columns: 115px 85px minmax(190px, 2fr) minmax(150px, 1.3fr) minmax(85px, 0.9fr) 75px 75px minmax(90px, 1fr) auto;
-      grid-template-areas: "date stage product location qty minqty rate note actions";
+      grid-template-columns: 120px 85px minmax(200px, 2.5fr) minmax(95px, 1.2fr) 75px 75px minmax(95px, 1fr) auto;
+      grid-template-areas: "date stage product qty minqty rate note actions";
       gap: 0.5rem;
       align-items: flex-end;
       width: 100%;
@@ -481,7 +469,6 @@
     .bs-col-date     { grid-area: date; }
     .bs-col-stage    { grid-area: stage; }
     .bs-col-product  { grid-area: product; min-width: 0 !important; }
-    .bs-col-location { grid-area: location; min-width: 0 !important; }
     .bs-col-qty      { grid-area: qty; min-width: 0 !important; }
     .bs-col-minqty   { grid-area: minqty; }
     .bs-col-rate     { grid-area: rate; }
@@ -492,51 +479,13 @@
       position: relative;
     }
 
-    /* Storage Location Select - Proper Dropdown with Crisp Contrast & Hover */
-    select.bs-location,
-    .white-orange-card select.bs-location {
-      background-color: #ffffff !important;
-      color: #111827 !important;
-      -webkit-text-fill-color: #111827 !important;
-      border: 1px solid #d1d5db !important;
-      border-radius: 6px !important;
-      height: 1.8rem !important;
-      padding: 0.1rem 0.5rem !important;
-      font-size: 0.8rem !important;
-      font-weight: 600 !important;
-      cursor: pointer !important;
-      transition: all 0.15s ease !important;
-    }
-    select.bs-location:hover,
-    .white-orange-card select.bs-location:hover {
-      border-color: #f59e0b !important;
-      background-color: #fffbeb !important;
-      color: #111827 !important;
-      -webkit-text-fill-color: #111827 !important;
-    }
-    select.bs-location:focus,
-    .white-orange-card select.bs-location:focus {
-      border-color: #f59e0b !important;
-      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25) !important;
-      outline: none !important;
-      background-color: #ffffff !important;
-      color: #111827 !important;
-      -webkit-text-fill-color: #111827 !important;
-    }
-    select.bs-location option {
-      background-color: #ffffff !important;
-      color: #111827 !important;
-      padding: 6px 10px !important;
-      font-weight: 600 !important;
-    }
-
     /* Tablet & Smaller Desktop Screens (<= 1280px) */
     @media (max-width: 1280px) and (min-width: 641px) {
       .bulk-stock-fields {
-        grid-template-columns: 120px 95px 1fr 1fr 85px 80px 80px 1fr auto;
+        grid-template-columns: 130px 100px 1fr 1fr 85px 85px 1fr auto;
         grid-template-areas:
-          "date stage product product product product product product product"
-          "location location location qty minqty rate note note actions";
+          "date stage product product product product product product"
+          "qty qty minqty rate note note note actions";
         gap: 0.65rem 0.5rem;
       }
     }
@@ -548,7 +497,7 @@
         grid-template-areas:
           "date stage"
           "product product"
-          "location qty"
+          "qty qty"
           "minqty rate"
           "note note"
           "actions actions";
@@ -3223,9 +3172,7 @@ window.adminSaveBulkStock = function() {
     const alertLimit = parseFloat(row.querySelector('.bs-min-qty').value);
     const rate = parseFloat(row.querySelector('.bs-rate') ? row.querySelector('.bs-rate').value : NaN);
     const note = row.querySelector('.bs-note').value.trim();
-    const locSelect = row.querySelector('.bs-location');
-    const firstOptionVal = (locSelect && locSelect.options && locSelect.options.length > 0) ? locSelect.options[0].value : ((window.adminMasterLocations && window.adminMasterLocations.length > 0) ? window.adminMasterLocations[0].name : '');
-    const selectedLocName = (locSelect && locSelect.value) ? locSelect.value.trim() : firstOptionVal;
+    const fallbackLocName = (window.adminMasterLocations && window.adminMasterLocations.length > 0) ? window.adminMasterLocations[0].name : '';
     const qtyVal = parseFloat(row.querySelector('.bs-loc-qty')?.value) || 0;
     
     if (productId && qtyVal > 0) {
@@ -3238,7 +3185,7 @@ window.adminSaveBulkStock = function() {
         rate: isNaN(rate) ? null : rate,
         note: note,
         quantity: qtyVal,
-        locations: [{ name: selectedLocName, qty: qtyVal }]
+        locations: fallbackLocName ? [{ name: fallbackLocName, qty: qtyVal }] : []
       });
     } else {
       hasError = true;
@@ -3272,7 +3219,6 @@ window.adminSaveBulkStock = function() {
     if (data.success) {
       // 1. Reset form (but don't hide it)
       document.querySelectorAll('.bs-loc-qty').forEach(inp => inp.value = '');
-      document.querySelectorAll('.bs-location').forEach(sel => sel.selectedIndex = 0);
 
       // 2. Immediate live stock fetch
       fetchLiveStock();
@@ -3304,50 +3250,6 @@ window.adminSaveBulkStock = function() {
     btn.textContent = 'Save Stock';
   });
 };
-
-document.addEventListener('input', function(e) {
-  if (e.target.classList.contains('loc-qty-input')) {
-    const row = e.target.closest('.bulk-stock-row');
-    if (!row) return;
-    
-    const inputs = row.querySelectorAll('.loc-qty-input');
-    let total = 0;
-    let selectedLocs = [];
-    
-    inputs.forEach(input => {
-      const val = parseFloat(input.value) || 0;
-      if (val > 0) {
-        total += val;
-        selectedLocs.push(input.getAttribute('data-loc'));
-      }
-    });
-    
-    const totalInput = row.querySelector('.bs-loc-qty');
-    if (totalInput) {
-      totalInput.value = total > 0 ? total : '';
-    }
-    
-    const btnText = row.querySelector('.loc-dropdown-text');
-    if (btnText) {
-      const defaultName = (window.adminMasterLocations && window.adminMasterLocations.length > 0) ? window.adminMasterLocations[0].name : 'Select Location';
-      if (selectedLocs.length === 0) {
-        btnText.textContent = defaultName;
-      } else if (selectedLocs.length === 1) {
-        btnText.textContent = selectedLocs[0];
-      } else {
-        btnText.textContent = selectedLocs.length + ' Locations';
-      }
-    }
-  }
-});
-
-document.addEventListener('click', function(e) {
-  if (!e.target.closest('.custom-location-dropdown')) {
-    document.querySelectorAll('.custom-location-dropdown .dropdown-menu').forEach(menu => {
-      menu.style.display = 'none';
-    });
-  }
-});
 
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize the single form on load
@@ -3383,13 +3285,6 @@ function addStockRow() {
     newRow.querySelectorAll('input').forEach(inp => {
         if (inp.type === 'number' || inp.type === 'text') inp.value = '';
     });
-    // Set location quantities to 0
-    newRow.querySelectorAll('.loc-qty-input').forEach(inp => inp.value = '0');
-    
-    const dropdownText = newRow.querySelector('.loc-dropdown-text');
-    const defaultName = (window.adminMasterLocations && window.adminMasterLocations.length > 0) ? window.adminMasterLocations[0].name : 'Select Location';
-    if (dropdownText) dropdownText.textContent = defaultName;
-    
     // Set date of new row to previous row's date or today
     const prevDate = firstRow.querySelector('.bs-date')?.value || '{{ date('Y-m-d') }}';
     const dateInput = newRow.querySelector('.bs-date');

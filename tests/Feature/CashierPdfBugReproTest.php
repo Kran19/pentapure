@@ -141,4 +141,74 @@ class CashierPdfBugReproTest extends TestCase
         $response->assertHeader('Content-Type', 'application/pdf');
         $this->assertNotEmpty($response->getContent());
     }
+
+    public function test_bill_header_amount_has_no_mojibake_and_whatsapp_pdf_renders_successfully(): void
+    {
+        Storage::fake('public');
+
+        $cashier = User::create([
+            'name' => 'Cashier Four',
+            'email' => 'cashier4@example.com',
+            'password' => 'password123',
+            'role' => 'CASHIER',
+            'status' => 'ACTIVE',
+            'branch' => 'pPF OTHER expenses',
+        ]);
+
+        // Create transaction with amount 528.00 OUT
+        $tx = Transaction::create([
+            'user_id' => $cashier->id,
+            'type' => 'OUT',
+            'amount' => 528.00,
+            'category' => 'other_expenses',
+            'site' => 'pPF OTHER expenses',
+            'date' => '2026-10-17 10:00:00',
+            'note' => 'Kamdhenu Enterprise invoice',
+        ]);
+
+        // 1. Create a WhatsApp JPEG image named as .pdf (common case from WhatsApp download / mobile save)
+        $file = UploadedFile::fake()->image('WhatsApp Image 2026-10-20 at 4.04.59 PM (1).pdf', 800, 600);
+        $path = $file->storeAs("bills/{$tx->id}", 'whatsapp_invoice.pdf', 'public');
+
+        TransactionBill::create([
+            'transaction_id' => $tx->id,
+            'file_path' => $path,
+            'file_type' => 'pdf',
+            'original_name' => 'WhatsApp Image 2026-10-20 at 4.04.59 PM (1).pdf',
+            'mime_type' => 'application/pdf',
+            'file_size' => 2048,
+            'sort_order' => 1,
+        ]);
+
+        $response = $this->withSession([
+            'auth_user' => [
+                'id' => $cashier->id,
+                'name' => $cashier->name,
+                'role' => 'CASHIER',
+            ]
+        ])->get('/cashier/history/pdf?include_bills=yes&site=' . urlencode('pPF OTHER expenses') . '&tab=personal');
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $pdfContent = $response->getContent();
+
+        // Must NOT contain the corrupted mojibake bytes â,¹
+        $this->assertStringNotContainsString('â,¹', $pdfContent);
+        $this->assertStringNotContainsString('â‚¹', $pdfContent);
+
+        // Decompress PDF streams to check page text
+        preg_match_all('/stream[\r\n]+(.*?)[\r\n]+endstream/s', $pdfContent, $matches);
+        $uncompressedText = '';
+        foreach ($matches[1] as $stream) {
+            $dec = @gzuncompress($stream);
+            $uncompressedText .= $dec ?: $stream;
+        }
+
+        // Must contain cleanly formatted Rs. amount
+        $this->assertStringContainsString('AMOUNT: -Rs. 528.00', $uncompressedText);
+
+        // Must NOT show the failed attachment error message
+        $this->assertStringNotContainsString('Attachment could not be rendered', $uncompressedText);
+    }
 }
+
