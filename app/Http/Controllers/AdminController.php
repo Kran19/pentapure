@@ -2195,6 +2195,9 @@ class AdminController extends Controller
                             }
                         }
                     }
+                    if ((empty($item['locations']) || !is_array($item['locations'])) && !empty($item['quantity'])) {
+                        $item['locations'] = [['name' => 'Main Warehouse', 'qty' => (float) $item['quantity']]];
+                    }
                 }
                 unset($item);
                 $request->merge(['items' => $items]);

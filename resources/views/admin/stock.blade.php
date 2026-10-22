@@ -132,37 +132,9 @@
                 </select>
             </div>
 
-            <div class="bs-location-row bs-col-location" style="display:flex; gap:0.4rem; align-items:flex-end;">
-                <div class="form-group" style="margin:0; flex:1.6; min-width:0; position:relative;">
-                    <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280; display:block;">Storage Location *</label>
-                    <div class="custom-location-dropdown" style="width: 100%; position: relative;">
-                        <button class="btn" type="button" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'block' ? 'none' : 'block'" style="width:100%; text-align:left; display:flex; justify-content:space-between; align-items:center; background:#fff; border: 1px solid #d1d5db; height:1.8rem; padding: 0.1rem 0.5rem; font-size:0.8rem; color:#333; cursor:pointer;">
-                            <span class="loc-dropdown-text" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Main Warehouse</span>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                        </button>
-                        <ul class="dropdown-menu p-2 shadow" style="display:none; position:absolute; top:100%; left:0; z-index:1000; width: 220px; max-height:250px; overflow-y:auto; background:#fff; border:1px solid #d1d5db; border-radius:0.25rem; list-style:none; margin-top:0.125rem;">
-                            @php $allLocs = \App\Models\Location::orderBy('name')->get(); @endphp
-                            
-                            <li style="margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; font-weight:600; color:var(--primary-dark);">
-                                <span style="padding-left: 0.2rem;">MAIN WAREHOUSE</span>
-                                <input type="number" min="0" step="0.001" class="form-control form-control-sm loc-qty-input no-spinners" data-loc="Main Warehouse" style="width: 60px; text-align:center; padding: 0.1rem; height:1.6rem; font-size:0.8rem;" value="0">
-                            </li>
-                            
-                            @foreach($allLocs as $loc)
-                                @if($loc->name !== 'Main Warehouse')
-                                <li style="margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:#333;">
-                                    <span style="padding-left: 0.2rem;">{{ strtoupper($loc->name) }}</span>
-                                    <input type="number" min="0" step="0.001" class="form-control form-control-sm loc-qty-input no-spinners" data-loc="{{ $loc->name }}" style="width: 60px; text-align:center; padding: 0.1rem; height:1.6rem; font-size:0.8rem;" value="0">
-                                </li>
-                                @endif
-                            @endforeach
-                        </ul>
-                    </div>
-                </div>
-                <div class="form-group" style="margin:0; flex:1; min-width:65px;">
-                    <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280; display:block;">Qty *</label>
-                    <input type="number" min="0.001" step="0.001" class="form-control form-control-sm bs-loc-qty no-spinners" placeholder="0.00" readonly style="background-color: #f9fafb; height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem; width:100%;">
-                </div>
+            <div class="form-group bs-col-qty">
+                <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280; display:block;">Qty *</label>
+                <input type="number" min="0.001" step="0.001" class="form-control form-control-sm bs-loc-qty no-spinners" placeholder="0.00" style="height:1.8rem; padding:0.1rem 0.5rem; font-size:0.8rem; width:100%; border:1px solid #d1d5db; border-radius:6px; background:#fff; color:#333;">
             </div>
 
             <div class="form-group bs-col-minqty">
@@ -197,27 +169,7 @@
   </div>
   @endif
 
-  <template id="bulk-stock-location-template">
-    <div class="bs-location-row" style="display:flex; gap:0.5rem; align-items:flex-end; margin-bottom:0.5rem;">
-        <div class="form-group" style="flex:2; margin:0;">
-            <label style="font-size: 0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Location</label>
-            <select class="form-control form-control-sm bs-loc-name" style="width:100%; height: 1.8rem; padding: 0.1rem 0.5rem; font-size: 0.8rem;">
-                <option value="Main Warehouse" selected>Main Warehouse</option>
-                @php $allLocs = \App\Models\Location::orderBy('name')->get(); @endphp
-                @foreach($allLocs as $loc)
-                    @if($loc->name !== 'Main Warehouse')
-                        <option value="{{ $loc->name }}">{{ $loc->name }}</option>
-                    @endif
-                @endforeach
-            </select>
-        </div>
-        <div class="form-group" style="flex:1; margin:0;">
-            <label style="font-size: 0.75rem; font-weight:600; margin-bottom:0.1rem; color:#6b7280;">Qty *</label>
-            <input type="number" min="0.001" step="0.001" class="form-control form-control-sm bs-loc-qty no-spinners" placeholder="0.00" oninput="recalcBsTotal(this)" style="height: 1.8rem; padding: 0.1rem 0.5rem; font-size: 0.8rem;">
-        </div>
-        <button type="button" class="btn btn-danger btn-sm" onclick="removeBsLocation(this)" style="padding:0.2rem 0.5rem; height: 1.8rem; background: #dc3545; color:#fff; border:none; font-size: 0.8rem;">X</button>
-    </div>
-  </template>
+
 
   <script>
     const adminAllGrades = {!! json_encode($adminAllGrades) !!};
@@ -501,16 +453,15 @@
     /* Responsive Bulk Stock Fields Grid */
     .bulk-stock-fields {
       display: grid;
-      grid-template-columns: 120px 85px minmax(200px, 2.5fr) minmax(220px, 1.8fr) 75px 75px minmax(95px, 1fr) auto;
-      grid-template-areas: "date stage product location minqty rate note actions";
+      grid-template-columns: 120px 85px minmax(200px, 2.5fr) minmax(95px, 1.2fr) 75px 75px minmax(95px, 1fr) auto;
+      grid-template-areas: "date stage product qty minqty rate note actions";
       gap: 0.5rem;
       align-items: flex-end;
       width: 100%;
       box-sizing: border-box;
     }
 
-    .bulk-stock-fields > .form-group,
-    .bulk-stock-fields > .bs-location-row {
+    .bulk-stock-fields > .form-group {
       margin: 0 !important;
       min-width: 0 !important;
     }
@@ -518,7 +469,7 @@
     .bs-col-date     { grid-area: date; }
     .bs-col-stage    { grid-area: stage; }
     .bs-col-product  { grid-area: product; min-width: 0 !important; }
-    .bs-col-location { grid-area: location; min-width: 0 !important; }
+    .bs-col-qty      { grid-area: qty; min-width: 0 !important; }
     .bs-col-minqty   { grid-area: minqty; }
     .bs-col-rate     { grid-area: rate; }
     .bs-col-note     { grid-area: note; min-width: 0 !important; }
@@ -534,7 +485,7 @@
         grid-template-columns: 130px 100px 1fr 1fr 85px 85px 1fr auto;
         grid-template-areas:
           "date stage product product product product product product"
-          "location location minqty rate note note note actions";
+          "qty qty minqty rate note note note actions";
         gap: 0.65rem 0.5rem;
       }
     }
@@ -546,7 +497,7 @@
         grid-template-areas:
           "date stage"
           "product product"
-          "location location"
+          "qty qty"
           "minqty rate"
           "note note"
           "actions actions";
@@ -3122,16 +3073,21 @@ window.adminSaveBulkStock = function() {
     const alertLimit = parseFloat(row.querySelector('.bs-min-qty').value);
     const rate = parseFloat(row.querySelector('.bs-rate') ? row.querySelector('.bs-rate').value : NaN);
     const note = row.querySelector('.bs-note').value.trim();
+    const qtyVal = parseFloat(row.querySelector('.bs-loc-qty')?.value) || 0;
     const locInputs = row.querySelectorAll('.loc-qty-input');
     const locations = [];
-    locInputs.forEach(input => {
-      const qty = parseFloat(input.value) || 0;
-      if (qty > 0) {
-        locations.push({ name: input.getAttribute('data-loc'), qty: qty });
-      }
-    });
+    if (locInputs.length > 0) {
+      locInputs.forEach(input => {
+        const qty = parseFloat(input.value) || 0;
+        if (qty > 0) {
+          locations.push({ name: input.getAttribute('data-loc'), qty: qty });
+        }
+      });
+    } else if (qtyVal > 0) {
+      locations.push({ name: 'Main Warehouse', qty: qtyVal });
+    }
     
-    if (productId && locations.length > 0) {
+    if (productId && (locations.length > 0 || qtyVal > 0)) {
       items.push({
         product_id: productId,
         stage: stage,
@@ -3140,7 +3096,8 @@ window.adminSaveBulkStock = function() {
         alert_limit: isNaN(alertLimit) ? null : alertLimit,
         rate: isNaN(rate) ? null : rate,
         note: note,
-        locations: locations
+        quantity: qtyVal,
+        locations: locations.length > 0 ? locations : [{ name: 'Main Warehouse', qty: qtyVal }]
       });
     } else {
       hasError = true;
@@ -3148,12 +3105,12 @@ window.adminSaveBulkStock = function() {
   });
   
   if (items.length === 0) {
-    Swal.fire('Validation Error', 'Please select a product and enter a quantity (>0) with at least one storage location.', 'error');
+    Swal.fire('Validation Error', 'Please select a product and enter a quantity (>0).', 'error');
     return;
   }
   
   if (hasError) {
-    Swal.fire('Incomplete Rows', 'Some rows have missing product or storage location quantities. Please complete or remove incomplete rows before saving.', 'warning');
+    Swal.fire('Incomplete Rows', 'Some rows have missing product or quantity. Please complete or remove incomplete rows before saving.', 'warning');
     return;
   }
   
@@ -3174,9 +3131,9 @@ window.adminSaveBulkStock = function() {
     if (data.success) {
       // 1. Reset form (but don't hide it)
       document.querySelectorAll('.loc-qty-input').forEach(inp => inp.value = '0');
-      document.querySelector('.bs-loc-qty').value = '';
+      document.querySelectorAll('.bs-loc-qty').forEach(inp => inp.value = '');
       const btnText = document.querySelector('.loc-dropdown-text');
-      if (btnText) btnText.innerHTML = '📍 Select Locations <span style="float:right;">▼</span>';
+      if (btnText) btnText.innerHTML = 'Main Warehouse';
 
       // 2. Immediate live stock fetch
       fetchLiveStock();
