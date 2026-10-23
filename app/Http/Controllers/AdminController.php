@@ -2601,7 +2601,24 @@ class AdminController extends Controller
 
     public function dispatchActivityPdf(Request $request)
     {
-        return app(\App\Http\Controllers\HistoryPdfController::class)->download($request, 'DISPATCH');
+        try {
+            return app(\App\Http\Controllers\HistoryPdfController::class)->download($request, 'DISPATCH');
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('HistoryPdfController dispatch download failed: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+
+            $query = Order::with(['company', 'items.product', 'dispatchLog.user', 'dispatchLogs.user', 'transporter', 'creator'])
+                ->orderByDesc('id');
+            if ($request->filled('company_id')) {
+                $query->where('company_id', $request->company_id);
+            }
+            if ($request->filled('status') && $request->status !== 'ALL') {
+                $query->where('dispatch_status', $request->status);
+            }
+            $orders = $query->limit(200)->get();
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.dispatch_activity_pdf', compact('orders'))
+                ->setPaper('A4', 'landscape');
+            return $pdf->download('dispatch-activity-' . now()->format('Y-m-d') . '.pdf');
+        }
     }
 
     public function cashierOverview(Request $request)

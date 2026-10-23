@@ -598,8 +598,8 @@ class HistoryPdfController extends Controller
 
     private function buildDispatchReportData(Request $request): array
     {
-        @ini_set('memory_limit', '512M');
-        @set_time_limit(120);
+        @ini_set('memory_limit', '1024M');
+        @set_time_limit(300);
 
         $user = $this->authUser();
         [$from, $to] = $this->dateRange($request);
