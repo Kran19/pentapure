@@ -2024,19 +2024,27 @@ class AdminController extends Controller
     public function adjustStock(Request $request)
     {
         try {
-            if ($request->input('stage') === 'FG') {
-                $request->merge(['stage' => 'FINISHED']);
-            }
-            if ($request->input('stage') === 'ALL' && $request->filled('product_id')) {
+            $rawStage = strtoupper(trim((string)$request->input('stage', '')));
+            if ($rawStage === 'ALL' && $request->filled('product_id')) {
                 $prod = Product::find($request->product_id);
-                if ($prod) {
-                    $request->merge(['stage' => $prod->type]);
-                }
+                $rawStage = $prod ? strtoupper(trim((string)$prod->type)) : 'RAW';
             }
+            $stage = match($rawStage) {
+                'FG', 'FINISHED' => 'FINISHED',
+                'PKG', 'PM', 'PACKAGING' => 'PACKAGING',
+                'SEMI' => 'SEMI',
+                'RAW' => 'RAW',
+                default => $rawStage ?: 'FINISHED',
+            };
+            $request->merge(['stage' => $stage]);
+
+            $rawGrade = strtoupper(trim((string)$request->input('grade', '')));
+            $normGrade = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL'], true) ? 'NONE' : $rawGrade;
+            $request->merge(['grade' => $normGrade]);
 
             $request->validate([
                 'product_id'      => 'required|exists:products,id',
-                'stage'           => 'required|in:RAW,SEMI,FINISHED,FG,PACKAGING',
+                'stage'           => 'required|in:RAW,SEMI,FINISHED,FG,PACKAGING,PKG,PM',
                 'grade'           => 'required',
                 'date'            => 'nullable|date',
                 'quantity'        => 'nullable|numeric|min:0',
@@ -2074,10 +2082,23 @@ class AdminController extends Controller
                         $locId = Location::firstOrCreate(['name' => $locName])->id;
                         $note = "Manual adjustment at location '{$locName}'" . ($reason ? " — {$reason}" : '');
 
+                        $targetStage = $request->stage;
+                        $stageList = match($targetStage) {
+                            'FINISHED', 'FG' => ['FINISHED', 'FG'],
+                            'PACKAGING', 'PKG', 'PM' => ['PACKAGING', 'PKG', 'PM'],
+                            default => [$targetStage]
+                        };
+
                         $locAvail = (float) (DB::table('stocks')
                             ->where('product_id', $request->product_id)
-                            ->where('stage', $request->stage)
-                            ->where('grade', $request->grade)
+                            ->whereIn('stage', $stageList)
+                            ->where(function($q) use ($normGrade) {
+                                if ($normGrade === 'NONE') {
+                                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'NULL']);
+                                } else {
+                                    $q->where('grade', $normGrade);
+                                }
+                            })
                             ->where('location_id', $locId)
                             ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
                             ->value('net') ?? 0);
@@ -2141,10 +2162,23 @@ class AdminController extends Controller
             $locationId   = Location::firstOrCreate(['name' => $locationName])->id;
             $note = "Manual adjustment at location '{$locationName}'" . ($reason ? " — {$reason}" : '');
 
+            $targetStage = $request->stage;
+            $stageList = match($targetStage) {
+                'FINISHED', 'FG' => ['FINISHED', 'FG'],
+                'PACKAGING', 'PKG', 'PM' => ['PACKAGING', 'PKG', 'PM'],
+                default => [$targetStage]
+            };
+
             $locAvailable = (float) (DB::table('stocks')
                 ->where('product_id', $request->product_id)
-                ->where('stage', $request->stage)
-                ->where('grade', $request->grade)
+                ->whereIn('stage', $stageList)
+                ->where(function($q) use ($normGrade) {
+                    if ($normGrade === 'NONE') {
+                        $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'NULL']);
+                    } else {
+                        $q->where('grade', $normGrade);
+                    }
+                })
                 ->where('location_id', $locationId)
                 ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
                 ->value('net') ?? 0);
@@ -2271,14 +2305,22 @@ class AdminController extends Controller
                 $items = $request->items;
                 foreach ($items as &$item) {
                     if (isset($item['stage'])) {
-                        if ($item['stage'] === 'FG') {
-                            $item['stage'] = 'FINISHED';
-                        } elseif ($item['stage'] === 'ALL' && !empty($item['product_id'])) {
+                        $rawStage = strtoupper(trim((string)$item['stage']));
+                        if ($rawStage === 'ALL' && !empty($item['product_id'])) {
                             $prod = Product::find($item['product_id']);
-                            if ($prod) {
-                                $item['stage'] = $prod->type;
-                            }
+                            $rawStage = $prod ? strtoupper(trim((string)$prod->type)) : 'RAW';
                         }
+                        $item['stage'] = match($rawStage) {
+                            'FG', 'FINISHED' => 'FINISHED',
+                            'PKG', 'PM', 'PACKAGING' => 'PACKAGING',
+                            'SEMI' => 'SEMI',
+                            'RAW' => 'RAW',
+                            default => $rawStage ?: 'FINISHED',
+                        };
+                    }
+                    if (isset($item['grade'])) {
+                        $rawGrade = strtoupper(trim((string)$item['grade']));
+                        $item['grade'] = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL'], true) ? 'NONE' : $rawGrade;
                     }
                     if ((empty($item['locations']) || !is_array($item['locations'])) && !empty($item['quantity'])) {
                         $fallbackLocName = Location::orderBy('name')->value('name') ?: 'Default';
@@ -2293,7 +2335,7 @@ class AdminController extends Controller
                 'date'               => 'nullable|date',
                 'items'              => 'required|array',
                 'items.*.product_id' => 'required|exists:products,id',
-                'items.*.stage'      => 'required|in:RAW,SEMI,FINISHED,FG,PACKAGING',
+                'items.*.stage'      => 'required|in:RAW,SEMI,FINISHED,FG,PACKAGING,PKG,PM',
                 'items.*.grade'      => 'required',
                 'items.*.date'       => 'nullable|date',
                 'items.*.alert_limit'=> 'nullable|numeric|min:0',
@@ -2960,20 +3002,33 @@ class AdminController extends Controller
         ]);
 
         $locations = Location::orderBy('name')->get();
-        $grade = (!empty($request->grade) && strtoupper($request->grade) !== 'ALL') ? $request->grade : null;
-        $stage = (!empty($request->stage) && strtoupper($request->stage) !== 'ALL') ? $request->stage : null;
+        $rawGrade = strtoupper(trim((string)$request->grade));
+        $grade = (!empty($rawGrade) && $rawGrade !== 'ALL') ? (in_array($rawGrade, ['NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL'], true) ? 'NONE' : $rawGrade) : null;
+
+        $rawStage = strtoupper(trim((string)$request->stage));
+        $stage = (!empty($rawStage) && $rawStage !== 'ALL') ? $rawStage : null;
+        $stagesList = null;
+        if ($stage) {
+            $stagesList = match($stage) {
+                'FG', 'FINISHED' => ['FINISHED', 'FG'],
+                'PKG', 'PM', 'PACKAGING' => ['PACKAGING', 'PKG', 'PM'],
+                'SEMI' => ['SEMI'],
+                'RAW' => ['RAW'],
+                default => [$stage],
+            };
+        }
 
         $stockCountsQuery = DB::table('stocks')
             ->where('stocks.product_id', $request->product_id);
             
-        if ($stage) {
-            $stockCountsQuery->where('stocks.stage', $stage);
+        if ($stagesList) {
+            $stockCountsQuery->whereIn('stocks.stage', $stagesList);
         }
 
         if ($grade) {
             $stockCountsQuery->where(function($q) use ($grade) {
-                if (strtoupper($grade) === 'NONE') {
-                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '');
+                if ($grade === 'NONE') {
+                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'NULL']);
                 } else {
                     $q->where('grade', $grade);
                 }
@@ -2990,14 +3045,14 @@ class AdminController extends Controller
         $unassignedStockQuery = DB::table('stocks')
             ->where('stocks.product_id', $request->product_id);
 
-        if ($stage) {
-            $unassignedStockQuery->where('stocks.stage', $stage);
+        if ($stagesList) {
+            $unassignedStockQuery->whereIn('stocks.stage', $stagesList);
         }
 
         if ($grade) {
             $unassignedStockQuery->where(function($q) use ($grade) {
-                if (strtoupper($grade) === 'NONE') {
-                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '');
+                if ($grade === 'NONE') {
+                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'NULL']);
                 } else {
                     $q->where('grade', $grade);
                 }
@@ -3047,28 +3102,53 @@ class AdminController extends Controller
             return response()->json(['success' => false, 'message' => 'Source and destination locations must be different.'], 422);
         }
 
+        $rawStage = strtoupper(trim((string)$request->stage));
+        $stage = match($rawStage) {
+            'FG', 'FINISHED' => 'FINISHED',
+            'PKG', 'PM', 'PACKAGING' => 'PACKAGING',
+            'SEMI' => 'SEMI',
+            'RAW' => 'RAW',
+            default => $rawStage ?: 'FINISHED',
+        };
+        $stagesList = match($stage) {
+            'FINISHED' => ['FINISHED', 'FG'],
+            'PACKAGING' => ['PACKAGING', 'PKG', 'PM'],
+            'SEMI' => ['SEMI'],
+            'RAW' => ['RAW'],
+            default => [$stage],
+        };
+
+        $rawGrade = strtoupper(trim((string)$request->grade));
+        $grade = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL'], true) ? 'NONE' : $rawGrade;
+
         // Validate stock availability in the source location
-        $available = DB::table('stocks')
+        $available = (float) (DB::table('stocks')
             ->where('product_id', $request->product_id)
-            ->where('stage', $request->stage)
-            ->where('grade', $request->grade)
+            ->whereIn('stage', $stagesList)
+            ->where(function($q) use ($grade) {
+                if ($grade === 'NONE') {
+                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'NULL']);
+                } else {
+                    $q->where('grade', $grade);
+                }
+            })
             ->where('location_id', $fromLocationId)
             ->selectRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as net")
-            ->value('net') ?? 0;
+            ->value('net') ?? 0);
 
         if ($qty > $available) {
             return response()->json(['success' => false, 'message' => "Insufficient stock at source location. Available: {$available} kg"], 422);
         }
 
-        DB::transaction(function () use ($request, $fromLocationId, $toLocationId, $qty) {
+        DB::transaction(function () use ($request, $fromLocationId, $toLocationId, $qty, $stage, $grade) {
             $userId = session('auth_user')['id'] ?? null;
 
             // 1. Create OUT transaction for source location
             Stock::create([
                 'product_id' => $request->product_id,
                 'user_id' => $userId,
-                'stage' => $request->stage,
-                'grade' => $request->grade,
+                'stage' => $stage,
+                'grade' => $grade,
                 'location_id' => $fromLocationId,
                 'quantity' => $qty,
                 'transaction_type' => 'OUT',
@@ -3079,8 +3159,8 @@ class AdminController extends Controller
             Stock::create([
                 'product_id' => $request->product_id,
                 'user_id' => $userId,
-                'stage' => $request->stage,
-                'grade' => $request->grade,
+                'stage' => $stage,
+                'grade' => $grade,
                 'location_id' => $toLocationId,
                 'quantity' => $qty,
                 'transaction_type' => 'IN',

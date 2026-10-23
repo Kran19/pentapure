@@ -25,10 +25,16 @@ class DispatchController extends Controller
         $stockMap = [];
         foreach ($liveStocks as $ls) {
             $rawStage = strtoupper(trim((string)$ls->stage));
-            $normStage = ($rawStage === 'FG') ? 'FINISHED' : (($rawStage === 'PKG') ? 'PACKAGING' : ($rawStage ?: 'FINISHED'));
+            $normStage = match($rawStage) {
+                'FG', 'FINISHED' => 'FINISHED',
+                'PKG', 'PM', 'PACKAGING' => 'PACKAGING',
+                'SEMI' => 'SEMI',
+                'RAW' => 'RAW',
+                default => $rawStage ?: 'FINISHED',
+            };
 
-            $rawGrade = trim((string)$ls->grade);
-            $normGrade = (!empty($rawGrade) && strtoupper($rawGrade) !== 'NONE' && strtoupper($rawGrade) !== 'N/A') ? strtoupper($rawGrade) : 'NONE';
+            $rawGrade = strtoupper(trim((string)$ls->grade));
+            $normGrade = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL'], true) ? 'NONE' : $rawGrade;
 
             $key = $ls->product_id . '_' . $normStage . '_' . $normGrade;
             $stockMap[$key] = ($stockMap[$key] ?? 0) + (float)$ls->net_qty;
@@ -42,10 +48,16 @@ class DispatchController extends Controller
         $items = $order->items->map(function($i) use ($stockMap) {
             $needed = max(0, (float)$i->quantity - (float)$i->dispatched_qty);
             $rawType = strtoupper(trim((string)($i->product?->type ?? 'FINISHED')));
-            $itemStage = ($rawType === 'FG') ? 'FINISHED' : (($rawType === 'PKG') ? 'PACKAGING' : ($rawType ?: 'FINISHED'));
+            $itemStage = match($rawType) {
+                'FG', 'FINISHED' => 'FINISHED',
+                'PKG', 'PM', 'PACKAGING' => 'PACKAGING',
+                'SEMI' => 'SEMI',
+                'RAW' => 'RAW',
+                default => $rawType ?: 'FINISHED',
+            };
 
-            $rawGrade = trim((string)$i->grade);
-            $itemGrade = (!empty($rawGrade) && strtoupper($rawGrade) !== 'NONE' && strtoupper($rawGrade) !== 'N/A') ? strtoupper($rawGrade) : 'NONE';
+            $rawGrade = strtoupper(trim((string)$i->grade));
+            $itemGrade = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL'], true) ? 'NONE' : $rawGrade;
 
             $key = $i->product_id . '_' . $itemStage . '_' . $itemGrade;
             $avail = max(0, (float)($stockMap[$key] ?? 0));
@@ -117,35 +129,37 @@ class DispatchController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
+        $gradeNormExpr = "CASE WHEN stocks.grade IS NULL OR UPPER(TRIM(stocks.grade)) IN ('', 'NONE', 'N/A', 'NA', 'N / A') THEN 'NONE' ELSE UPPER(TRIM(stocks.grade)) END";
+
         $rawStock = DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
             ->where('stocks.stage', 'RAW')
-            ->groupBy('stocks.product_id', 'stocks.grade', 'products.name', 'products.unit')
-            ->selectRaw("stocks.product_id as id, products.name, stocks.grade, products.unit, SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity")
+            ->groupBy('stocks.product_id', DB::raw($gradeNormExpr), 'products.name', 'products.unit')
+            ->selectRaw("stocks.product_id as id, products.name, {$gradeNormExpr} as grade, products.unit, SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity")
             ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
             ->get();
 
         $semiStock = DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
             ->where('stocks.stage', 'SEMI')
-            ->groupBy('stocks.product_id', 'stocks.grade', 'products.name', 'products.unit')
-            ->selectRaw("stocks.product_id as id, products.name, stocks.grade, products.unit, SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity")
+            ->groupBy('stocks.product_id', DB::raw($gradeNormExpr), 'products.name', 'products.unit')
+            ->selectRaw("stocks.product_id as id, products.name, {$gradeNormExpr} as grade, products.unit, SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity")
             ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
             ->get();
 
         $finishedStock = DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
-            ->where('stocks.stage', 'FINISHED')
-            ->groupBy('stocks.product_id', 'stocks.grade', 'products.name', 'products.unit')
-            ->selectRaw("stocks.product_id as id, products.name, stocks.grade, products.unit, SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity")
+            ->whereIn('stocks.stage', ['FINISHED', 'FG'])
+            ->groupBy('stocks.product_id', DB::raw($gradeNormExpr), 'products.name', 'products.unit')
+            ->selectRaw("stocks.product_id as id, products.name, {$gradeNormExpr} as grade, products.unit, SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity")
             ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
             ->get();
 
         $packagingStock = DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
-            ->where('stocks.stage', 'PACKAGING')
-            ->groupBy('stocks.product_id', 'stocks.grade', 'products.name', 'products.unit')
-            ->selectRaw("stocks.product_id as id, products.name, stocks.grade, products.unit, SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity")
+            ->whereIn('stocks.stage', ['PACKAGING', 'PKG', 'PM'])
+            ->groupBy('stocks.product_id', DB::raw($gradeNormExpr), 'products.name', 'products.unit')
+            ->selectRaw("stocks.product_id as id, products.name, {$gradeNormExpr} as grade, products.unit, SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity")
             ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
             ->get();
 
@@ -410,8 +424,17 @@ class DispatchController extends Controller
 
                 $dispatchQty   = (float) $dispatchItem['quantity'];
                 $remaining     = $orderItem->remainingQty();
-                $itemGrade     = (!empty($orderItem->grade) && $orderItem->grade !== 'NONE') ? $orderItem->grade : 'NONE';
-                $itemStage     = !empty($orderItem->product?->type) ? $orderItem->product->type : 'RAW';
+                $rawGrade      = strtoupper(trim((string)$orderItem->grade));
+                $itemGrade     = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL'], true) ? 'NONE' : $rawGrade;
+                
+                $rawType       = strtoupper(trim((string)($orderItem->product?->type ?? 'FINISHED')));
+                $itemStages    = match($rawType) {
+                    'FG', 'FINISHED' => ['FINISHED', 'FG'],
+                    'PKG', 'PM', 'PACKAGING' => ['PACKAGING', 'PKG', 'PM'],
+                    'SEMI' => ['SEMI'],
+                    'RAW' => ['RAW'],
+                    default => [$rawType ?: 'FINISHED'],
+                };
                 $formattedName = $orderItem->product ? $orderItem->product->formatName($orderItem->grade) : ($orderItem->product?->name ?? 'Product');
                 $unit          = $orderItem->product?->unit ?? 'kg';
 
@@ -441,41 +464,41 @@ class DispatchController extends Controller
                         $allocQty = (float) $split['dispatch_location_qty'];
                         $locationId = \App\Models\Location::firstOrCreate(['name' => $locationName])->id;
 
-                        $availableAtLocation = DB::table('stocks')
+                        $availableAtLocation = (float) (DB::table('stocks')
                             ->where('product_id', $orderItem->product_id)
-                            ->where('stage', $itemStage)
+                            ->whereIn('stage', $itemStages)
                             ->where(function($q) use ($itemGrade) {
                                 if ($itemGrade === 'NONE') {
-                                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '');
+                                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'NULL']);
                                 } else {
                                     $q->where('grade', $itemGrade);
                                 }
                             })
                             ->where('location_id', $locationId)
                             ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
-                            ->value('net') ?? 0;
+                            ->value('net') ?? 0);
 
                         if ($allocQty > $availableAtLocation) {
                             $response = response()->json([
                                 'success' => false,
-                                'message' => "Insufficient stock at location. Need: {$allocQty} kg, Have: {$availableAtLocation} kg"
+                                'message' => "Insufficient stock at location '{$locationName}'. Need: {$allocQty} kg, Have: {$availableAtLocation} kg"
                             ], 422);
                             return;
                         }
                     }
                 } else {
-                    $available = DB::table('stocks')
+                    $available = (float) (DB::table('stocks')
                         ->where('product_id', $orderItem->product_id)
-                        ->where('stage', $itemStage)
+                        ->whereIn('stage', $itemStages)
                         ->where(function($q) use ($itemGrade) {
                             if ($itemGrade === 'NONE') {
-                                $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '');
+                                $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'NULL']);
                             } else {
                                 $q->where('grade', $itemGrade);
                             }
                         })
                         ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
-                        ->value('net') ?? 0;
+                        ->value('net') ?? 0);
 
                     if ($dispatchQty > $available) {
                         $pName = $orderItem->product?->name;
@@ -545,8 +568,16 @@ class DispatchController extends Controller
             foreach ($request->items as $dispatchItem) {
                 $orderItem   = $order->items->firstWhere('id', $dispatchItem['order_item_id']);
                 $dispatchQty = (float) $dispatchItem['quantity'];
-                $itemGrade   = (!empty($orderItem->grade) && $orderItem->grade !== 'NONE') ? $orderItem->grade : 'NONE';
-                $itemStage   = !empty($orderItem->product?->type) ? $orderItem->product->type : 'RAW';
+                $rawGrade  = strtoupper(trim((string)$orderItem->grade));
+                $itemGrade = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL'], true) ? 'NONE' : $rawGrade;
+                $rawType   = strtoupper(trim((string)($orderItem->product?->type ?? 'FINISHED')));
+                $itemStages = match($rawType) {
+                    'FG', 'FINISHED' => ['FINISHED', 'FG'],
+                    'PKG', 'PM', 'PACKAGING' => ['PACKAGING', 'PKG', 'PM'],
+                    'SEMI' => ['SEMI'],
+                    'RAW' => ['RAW'],
+                    default => [$rawType ?: 'FINISHED'],
+                };
 
                 // Record what was dispatched in this round
                 $dispatchLogItem = \App\Models\DispatchLogItem::create([
@@ -565,11 +596,18 @@ class DispatchController extends Controller
                         $allocQty = (float) $split['dispatch_location_qty'];
                         $locationId = \App\Models\Location::firstOrCreate(['name' => $locationName])->id;
 
+                        $existingStage = DB::table('stocks')
+                            ->where('product_id', $orderItem->product_id)
+                            ->whereIn('stage', $itemStages)
+                            ->where('location_id', $locationId)
+                            ->value('stage');
+                        $outStage = $existingStage ?: $itemStages[0];
+
                         // Create stock OUT transaction for this location
                         $stock = Stock::create([
                             'product_id'       => $orderItem->product_id,
                             'user_id'          => $user['id'],
-                            'stage'            => $itemStage,
+                            'stage'            => $outStage,
                             'grade'            => $itemGrade,
                             'location_id'      => $locationId,
                             'quantity'         => $allocQty,
@@ -593,7 +631,7 @@ class DispatchController extends Controller
                     // Deduct from total stock without location tracking
                     Stock::deductStock(
                         $orderItem->product_id,
-                        $itemStage,
+                        $itemStages[0],
                         $itemGrade,
                         $dispatchQty,
                         $user['id'],
@@ -724,21 +762,29 @@ class DispatchController extends Controller
                     }
 
                     // Check stock inventory availability
-                    $itemGrade = (!empty($orderItem->grade) && $orderItem->grade !== 'NONE') ? $orderItem->grade : 'NONE';
-                    $itemStage = !empty($orderItem->product?->type) ? $orderItem->product->type : 'FINISHED';
+                    $rawGrade = strtoupper(trim((string)$orderItem->grade));
+                    $itemGrade = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL'], true) ? 'NONE' : $rawGrade;
+                    $rawType = strtoupper(trim((string)($orderItem->product?->type ?? 'FINISHED')));
+                    $itemStages = match($rawType) {
+                        'FG', 'FINISHED' => ['FINISHED', 'FG'],
+                        'PKG', 'PM', 'PACKAGING' => ['PACKAGING', 'PKG', 'PM'],
+                        'SEMI' => ['SEMI'],
+                        'RAW' => ['RAW'],
+                        default => [$rawType ?: 'FINISHED'],
+                    };
 
-                    $availableStock = DB::table('stocks')
+                    $availableStock = (float) (DB::table('stocks')
                         ->where('product_id', $orderItem->product_id)
-                        ->where('stage', $itemStage)
+                        ->whereIn('stage', $itemStages)
                         ->where(function($q) use ($itemGrade) {
                             if ($itemGrade === 'NONE') {
-                                $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '');
+                                $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'NULL']);
                             } else {
                                 $q->where('grade', $itemGrade);
                             }
                         })
                         ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
-                        ->value('net') ?? 0;
+                        ->value('net') ?? 0);
 
                     if ($newQty > (float) $availableStock + 0.0001) {
                         $pName = $orderItem->product?->name ?? 'Product';
@@ -757,10 +803,17 @@ class DispatchController extends Controller
                             if ($allocQty <= 0) continue;
                             $locationId = \App\Models\Location::firstOrCreate(['name' => $locationName])->id;
 
+                            $existingStage = DB::table('stocks')
+                                ->where('product_id', $orderItem->product_id)
+                                ->whereIn('stage', $itemStages)
+                                ->where('location_id', $locationId)
+                                ->value('stage');
+                            $outStage = $existingStage ?: $itemStages[0];
+
                             $stock = Stock::create([
                                 'product_id'       => $orderItem->product_id,
                                 'user_id'          => $user['id'],
-                                'stage'            => $itemStage,
+                                'stage'            => $outStage,
                                 'grade'            => $itemGrade,
                                 'location_id'      => $locationId,
                                 'quantity'         => $allocQty,
@@ -778,7 +831,7 @@ class DispatchController extends Controller
                     } else {
                         Stock::deductStock(
                             $orderItem->product_id,
-                            $itemStage,
+                            $itemStages[0],
                             $itemGrade,
                             $newQty,
                             $user['id'],

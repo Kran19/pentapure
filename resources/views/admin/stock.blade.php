@@ -29,8 +29,8 @@
 
   $rawItems       = $sortStockAlphabetical(collect($pageData['allStock'])->where('stage', 'RAW'));
   $semiItems      = $sortStockAlphabetical(collect($pageData['allStock'])->where('stage', 'SEMI'));
-  $finishedItems  = $sortStockAlphabetical(collect($pageData['allStock'])->where('stage', 'FINISHED'));
-  $packagingItems = $sortStockAlphabetical(collect($pageData['allStock'])->where('stage', 'PACKAGING'));
+  $finishedItems  = $sortStockAlphabetical(collect($pageData['allStock'])->filter(fn($s) => in_array($s->stage, ['FINISHED', 'FG'])));
+  $packagingItems = $sortStockAlphabetical(collect($pageData['allStock'])->filter(fn($s) => in_array($s->stage, ['PACKAGING', 'PKG', 'PM'])));
   $adminAllGrades = \App\Models\Grade::orderBy('id')->get();
 @endphp
 
@@ -1670,7 +1670,11 @@ function adminAddStock() {
       let stage = document.getElementById('add-stock-stage').value;
       if (stage === 'ALL') {
         const prod = adminStockProducts.find(p => String(p.id) === String(productId));
-        stage = prod ? prod.type : 'RAW';
+        stage = prod ? ((prod.type === 'FG' || prod.type === 'FINISHED') ? 'FINISHED' : ((prod.type === 'PKG' || prod.type === 'PM' || prod.type === 'PACKAGING') ? 'PACKAGING' : prod.type)) : 'RAW';
+      } else if (stage === 'FG') {
+        stage = 'FINISHED';
+      } else if (stage === 'PKG' || stage === 'PM') {
+        stage = 'PACKAGING';
       }
       let grade = gradeVal || 'NONE';
       const quantity = parseFloat(document.getElementById('add-stock-qty').value);
@@ -3255,9 +3259,11 @@ window.adminSaveBulkStock = function() {
     let stage = row.querySelector('.bs-stage').value;
     if (stage === 'ALL') {
       const prod = adminStockProducts.find(p => String(p.id) === String(productId));
-      stage = prod ? (prod.type === 'FG' ? 'FINISHED' : prod.type) : 'RAW';
+      stage = prod ? ((prod.type === 'FG' || prod.type === 'FINISHED') ? 'FINISHED' : ((prod.type === 'PKG' || prod.type === 'PM' || prod.type === 'PACKAGING') ? 'PACKAGING' : prod.type)) : 'RAW';
     } else if (stage === 'FG') {
       stage = 'FINISHED';
+    } else if (stage === 'PKG' || stage === 'PM') {
+      stage = 'PACKAGING';
     }
     let grade = gradeVal || 'NONE';
     const rowDate = (row.querySelector('.bs-date') && row.querySelector('.bs-date').value) ? row.querySelector('.bs-date').value : fallbackDate;

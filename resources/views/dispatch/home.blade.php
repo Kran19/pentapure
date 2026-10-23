@@ -6,6 +6,7 @@
   $orderTab = request('tab', 'pending');     // 'pending' or 'completed'
   $stockSubTab = request('stock_stage', 'all'); // 'all', 'raw', 'semi', 'finished', 'packaging'
   $dispatchFilter = request('dispatch_filter', 'all');
+  $q = request('q', '');
 
   $pendingOrdersList = collect($pageData['pendingOrders'] ?? [])->filter(fn($o) => strtoupper(trim((string)($o['status'] ?? ''))) !== 'CANCELLED');
   $completedOrdersList = collect($pageData['completedOrders'] ?? [])->filter(fn($o) => strtoupper(trim((string)($o['status'] ?? ''))) !== 'CANCELLED');
@@ -184,6 +185,29 @@
     border: 1px solid #bbf7d0;
     color: #16a34a !important;
   }
+
+  .dispatch-search-box {
+    transition: all 0.2s ease;
+  }
+  .dispatch-search-box:focus-within {
+    border-color: var(--primary, #D88A00) !important;
+    box-shadow: 0 0 0 3px rgba(216, 138, 0, 0.25) !important;
+  }
+  html.dark-mode .dispatch-search-box {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+  }
+  html.dark-mode #dispatch-orders-search {
+    background: transparent !important;
+    color: #ffffff !important;
+  }
+  html.dark-mode #dispatch-orders-search::placeholder {
+    color: #9ca3af !important;
+  }
+  html.dark-mode #dispatch-orders-empty-search {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
 </style>
 
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
@@ -226,10 +250,10 @@
   <!-- Orders Sub-filters (Pending / Completed and Scenarios) -->
   <div class="tabs" style="margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
     <div style="display:flex; gap:8px;">
-      <a class="tab-btn {{ $orderTab==='pending'?'active':'' }}" href="?main_tab=orders&tab=pending&dispatch_filter={{ $dispatchFilter }}" style="text-decoration:none;">
+      <a class="tab-btn {{ $orderTab==='pending'?'active':'' }}" href="?main_tab=orders&tab=pending&dispatch_filter={{ $dispatchFilter }}{{ $q ? '&q='.urlencode($q) : '' }}" style="text-decoration:none;">
         Pending Orders ({{ $pendingOrdersList->count() }})
       </a>
-      <a class="tab-btn {{ $orderTab==='completed'?'active':'' }}" href="?main_tab=orders&tab=completed&dispatch_filter={{ $dispatchFilter }}" style="text-decoration:none;">
+      <a class="tab-btn {{ $orderTab==='completed'?'active':'' }}" href="?main_tab=orders&tab=completed&dispatch_filter={{ $dispatchFilter }}{{ $q ? '&q='.urlencode($q) : '' }}" style="text-decoration:none;">
         Completed Orders ({{ $completedOrdersList->count() }})
       </a>
     </div>
@@ -238,6 +262,7 @@
       <form method="GET" action="" style="display:flex; align-items:center; gap:8px; margin:0;">
         <input type="hidden" name="main_tab" value="orders">
         <input type="hidden" name="tab" value="pending">
+        <input type="hidden" name="q" id="hidden-dispatch-filter-q" value="{{ $q }}">
         <select name="dispatch_filter" onchange="this.form.submit()" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:6px; border:1px solid rgba(255,255,255,0.2); background:#1f2937; color:#fff; cursor:pointer;">
           <option value="all" {{ $dispatchFilter === 'all' ? 'selected' : '' }}>All Scenarios</option>
           <option value="ready_dispatch" {{ $dispatchFilter === 'ready_dispatch' ? 'selected' : '' }}>Ready to Dispatch</option>
@@ -247,6 +272,29 @@
         </select>
       </form>
     @endif
+  </div>
+
+  <!-- Orders Search Bar -->
+  <div class="card mb-2 dispatch-search-box" style="background:#ffffff; border:1.5px solid #d1d5db; padding:0.6rem 0.9rem; border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,0.04); margin-bottom:1rem;">
+    <div style="position:relative; display:flex; align-items:center;">
+      <svg style="position:absolute; left:10px; width:18px; height:18px; color:#9ca3af; pointer-events:none;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input type="text" id="dispatch-orders-search"
+             placeholder="🔍 Search orders by #ID, customer, transporter, sales person, or product..."
+             value="{{ $q }}"
+             oninput="filterDispatchOrders(this.value)"
+             autocomplete="off"
+             style="width:100%; padding:0.55rem 2.4rem 0.55rem 2.3rem; font-size:0.9rem; border-radius:6px; border:none; background:transparent; color:#111827; outline:none; font-weight:500;">
+      <button type="button" id="dispatch-orders-search-clear" onclick="clearDispatchOrdersSearch()" style="display:{{ $q ? 'block' : 'none' }}; position:absolute; right:8px; background:none; border:none; color:#9ca3af; font-size:1.25rem; cursor:pointer; padding:0 4px; line-height:1;" title="Clear search">
+        &times;
+      </button>
+    </div>
+    <div id="dispatch-orders-search-feedback" style="display:none; margin-top:6px; padding-top:6px; border-top:1px solid rgba(0,0,0,0.06); font-size:0.78rem; color:#64748b; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+      <span id="dispatch-orders-match-count"></span>
+      <button type="button" onclick="clearDispatchOrdersSearch()" style="background:none; border:none; color:var(--primary, #D88A00); font-weight:700; cursor:pointer; font-size:0.76rem; padding:0;">✕ Clear Filter</button>
+    </div>
   </div>
 
   <!-- Orders List -->
@@ -308,8 +356,25 @@
                   $dueDaysBadge = '<span class="due-days-badge upcoming">' . $diffDays . ' ' . ($diffDays === 1 ? 'day' : 'days') . ' left</span>';
               }
           }
+
+          $pendingItemsSearch = collect($o['items'] ?? [])->map(function($it) {
+              return ($it['rawProductName'] ?? '') . ' ' . ($it['productName'] ?? '') . ' ' . ($it['grade'] ?? '') . ' ' . ($it['productType'] ?? '');
+          })->implode(' ');
+          $pendingSearchTokens = strtolower(implode(' ', array_filter([
+              $o['id'],
+              '#' . $o['id'],
+              $o['companyName'] ?? '',
+              $o['transporterName'] ?? '',
+              $o['salesPerson'] ?? '',
+              $o['dueDate'] ?? '',
+              $o['rawDueDate'] ?? '',
+              $o['notes'] ?? '',
+              $statusBadgeLabel ?? '',
+              $readinessLabel ?? '',
+              $pendingItemsSearch
+          ])));
         @endphp
-        <div class="card dispatch-order-card" style="border-left: 4px solid {{ $progressColor }}; background:#ffffff; box-shadow:0 2px 10px rgba(0,0,0,0.04); transition: transform 0.2s; margin-bottom: 0; padding:0; overflow:hidden; border-radius:12px; border:1px solid #e2e8f0; {{ $isDueToday ? 'box-shadow: 0 4px 14px rgba(216, 138, 0, 0.15); border-color: rgba(216, 138, 0, 0.4);' : '' }}">
+        <div class="card dispatch-order-card dispatch-home-order-card" data-order-id="{{ $o['id'] }}" data-search="{{ $pendingSearchTokens }}" style="border-left: 4px solid {{ $progressColor }}; background:#ffffff; box-shadow:0 2px 10px rgba(0,0,0,0.04); transition: transform 0.2s; margin-bottom: 0; padding:0; overflow:hidden; border-radius:12px; border:1px solid #e2e8f0; {{ $isDueToday ? 'box-shadow: 0 4px 14px rgba(216, 138, 0, 0.15); border-color: rgba(216, 138, 0, 0.4);' : '' }}">
           <!-- Clickable Header Row -->
           <div onclick="toggleHomeAccordion('home-acc-{{ $o['id'] }}', this)" style="cursor:pointer; padding:1.1rem; user-select:none; {{ $isDueToday ? 'background: linear-gradient(to right, rgba(254, 243, 199, 0.25), transparent);' : '' }}">
             <div class="flex-between mb-1" style="align-items:flex-start; gap:10px;">
@@ -471,7 +536,24 @@
       @endforelse
     @else
       @forelse($completedOrdersList as $o)
-        <div class="card" style="border-left: 4px solid var(--secondary, #16a34a); background:rgba(255,255,255,0.02); margin-bottom: 0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--glass-border, rgba(255,255,255,0.06));">
+        @php
+          $compItemsSearch = collect($o['items'] ?? [])->map(function($it) {
+              return ($it['rawProductName'] ?? '') . ' ' . ($it['productName'] ?? '') . ' ' . ($it['grade'] ?? '') . ' ' . ($it['productType'] ?? '');
+          })->implode(' ');
+          $compSearchTokens = strtolower(implode(' ', array_filter([
+              $o['id'],
+              '#' . $o['id'],
+              $o['companyName'] ?? '',
+              $o['transporterName'] ?? '',
+              $o['salesPerson'] ?? '',
+              $o['dueDate'] ?? '',
+              $o['rawDueDate'] ?? '',
+              $o['notes'] ?? '',
+              'COMPLETED',
+              $compItemsSearch
+          ])));
+        @endphp
+        <div class="card dispatch-order-card dispatch-home-order-card dispatch-completed-card" data-order-id="{{ $o['id'] }}" data-search="{{ $compSearchTokens }}" style="border-left: 4px solid var(--secondary, #16a34a); background:rgba(255,255,255,0.02); margin-bottom: 0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--glass-border, rgba(255,255,255,0.06));">
           <div onclick="toggleHomeAccordion('home-acc-comp-{{ $o['id'] }}', this)" style="cursor:pointer; padding:1.1rem; user-select:none;">
             <div class="flex-between mb-1" style="align-items:flex-start; gap:10px;">
               <div>
@@ -574,6 +656,16 @@
         </div>
       @endforelse
     @endif
+
+    <!-- Empty Search State Container -->
+    <div id="dispatch-orders-empty-search" style="display:none; padding:2.5rem 1.5rem; text-align:center; color:var(--text-muted); background:#ffffff; border:1.5px dashed #cbd5e1; border-radius:12px; margin-top:4px;">
+      <div style="font-size:2rem; margin-bottom:8px;">🔍</div>
+      <div style="font-weight:700; font-size:1.05rem; color:var(--text-main, #111827);">No orders matching your search</div>
+      <div style="font-size:0.85rem; margin-top:4px; color:#64748b;">Try searching with a different order #, customer, transporter, or material name.</div>
+      <button type="button" class="btn btn-sm" onclick="clearDispatchOrdersSearch()" style="margin-top:14px; width:auto; padding:0.45rem 1.2rem; display:inline-flex; align-items:center; gap:5px;">
+        <span>✕</span> <span>Clear Search Filter</span>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -751,5 +843,85 @@
       if (chevron) chevron.style.transform = 'rotate(0deg)';
     }
   }
+
+  function filterDispatchOrders(query) {
+    const input = document.getElementById('dispatch-orders-search');
+    const clearBtn = document.getElementById('dispatch-orders-search-clear');
+    const feedback = document.getElementById('dispatch-orders-search-feedback');
+    const countEl = document.getElementById('dispatch-orders-match-count');
+    const emptyState = document.getElementById('dispatch-orders-empty-search');
+    const hiddenQ = document.getElementById('hidden-dispatch-filter-q');
+    const cards = document.querySelectorAll('.dispatch-home-order-card');
+
+    const q = (query || '').toLowerCase().trim();
+
+    if (clearBtn) {
+      clearBtn.style.display = q ? 'block' : 'none';
+    }
+    if (hiddenQ) {
+      hiddenQ.value = query || '';
+    }
+
+    // Update query param in browser history without full page reload
+    try {
+      const url = new URL(window.location);
+      if (q) {
+        url.searchParams.set('q', query);
+      } else {
+        url.searchParams.delete('q');
+      }
+      window.history.replaceState({}, '', url);
+    } catch(e) {}
+
+    const tokens = q ? q.split(/\s+/).filter(Boolean) : [];
+    let visibleCount = 0;
+    const totalCards = cards.length;
+
+    cards.forEach(card => {
+      if (!tokens.length) {
+        card.style.display = 'block';
+        visibleCount++;
+        return;
+      }
+
+      const searchData = card.getAttribute('data-search') || '';
+      const matchesAll = tokens.every(token => searchData.includes(token));
+      if (matchesAll) {
+        card.style.display = 'block';
+        visibleCount++;
+      } else {
+        card.style.display = 'none';
+      }
+    });
+
+    if (feedback && countEl) {
+      if (tokens.length > 0) {
+        feedback.style.display = 'flex';
+        countEl.textContent = `Showing ${visibleCount} of ${totalCards} orders matching "${query}"`;
+      } else {
+        feedback.style.display = 'none';
+      }
+    }
+
+    if (emptyState) {
+      emptyState.style.display = (tokens.length > 0 && visibleCount === 0 && totalCards > 0) ? 'block' : 'none';
+    }
+  }
+
+  function clearDispatchOrdersSearch() {
+    const input = document.getElementById('dispatch-orders-search');
+    if (input) {
+      input.value = '';
+      input.focus();
+    }
+    filterDispatchOrders('');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const searchInp = document.getElementById('dispatch-orders-search');
+    if (searchInp && searchInp.value) {
+      filterDispatchOrders(searchInp.value);
+    }
+  });
 </script>
 @endsection

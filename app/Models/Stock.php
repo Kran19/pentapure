@@ -35,21 +35,31 @@ class Stock extends Model
     public static function deductStock($productId, $stage, $grade, $quantity, $userId, $notes = '')
     {
         $remaining = $quantity;
-        $normGrade = (!empty($grade) && $grade !== 'NONE') ? $grade : 'NONE';
+        $rawGrade = strtoupper(trim((string)$grade));
+        $normGrade = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL'], true) ? 'NONE' : $rawGrade;
+        
+        $rawStage = strtoupper(trim((string)$stage));
+        $stagesList = match($rawStage) {
+            'FINISHED', 'FG' => ['FINISHED', 'FG'],
+            'PACKAGING', 'PKG', 'PM' => ['PACKAGING', 'PKG', 'PM'],
+            'SEMI' => ['SEMI'],
+            'RAW' => ['RAW'],
+            default => [$rawStage ?: 'FINISHED'],
+        };
         
         $locations = \Illuminate\Support\Facades\DB::table('stocks')
-            ->select('location_id', \Illuminate\Support\Facades\DB::raw('SUM(CASE WHEN transaction_type = "IN" THEN quantity ELSE -quantity END) as available'))
+            ->select('location_id', 'stage', \Illuminate\Support\Facades\DB::raw('SUM(CASE WHEN transaction_type = "IN" THEN quantity ELSE -quantity END) as available'))
             ->where('product_id', $productId)
-            ->where('stage', $stage)
+            ->whereIn('stage', $stagesList)
             ->where(function($q) use ($normGrade) {
                 if ($normGrade === 'NONE') {
-                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '');
+                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(\Illuminate\Support\Facades\DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'NULL']);
                 } else {
                     $q->where('grade', $normGrade);
                 }
             })
             ->whereNotNull('location_id')
-            ->groupBy('location_id')
+            ->groupBy('location_id', 'stage')
             ->havingRaw('SUM(CASE WHEN transaction_type = "IN" THEN quantity ELSE -quantity END) > 0')
             ->get();
             
@@ -60,7 +70,7 @@ class Stock extends Model
             self::create([
                 'product_id' => $productId,
                 'user_id' => $userId,
-                'stage' => $stage,
+                'stage' => $loc->stage ?: $stagesList[0],
                 'grade' => $normGrade,
                 'location_id' => $loc->location_id,
                 'quantity' => $deduct,
@@ -76,7 +86,7 @@ class Stock extends Model
             self::create([
                 'product_id' => $productId,
                 'user_id' => $userId,
-                'stage' => $stage,
+                'stage' => $stagesList[0],
                 'grade' => $normGrade,
                 'location_id' => $defaultLocId,
                 'quantity' => $remaining,

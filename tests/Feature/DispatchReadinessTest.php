@@ -825,6 +825,101 @@ class DispatchReadinessTest extends TestCase
         $this->assertTrue($detailsData['success']);
         $this->assertEquals('NOT_READY', $detailsData['order']['readiness']);
     }
+
+    public function test_stock_added_from_admin_stock_shows_in_dispatch_home_and_action(): void
+    {
+        $adminUser = User::create([
+            'name'        => 'Admin User',
+            'email'       => 'admin@example.com',
+            'password'    => 'password123',
+            'role'        => 'ADMIN',
+            'status'      => 'ACTIVE',
+        ]);
+
+        $adminSession = ['auth_user' => [
+            'id'   => $adminUser->id,
+            'name' => $adminUser->name,
+            'role' => 'ADMIN',
+        ]];
+
+        $dispatchSession = ['auth_user' => [
+            'id'   => $this->subAdminUser->id,
+            'name' => $this->subAdminUser->name,
+            'role' => 'SUB_ADMIN',
+        ]];
+
+        // 1. Admin adds stock via bulk-add (as sent by + Add Stock form on /admin/stock)
+        $bulkResponse = $this->withSession($adminSession)->postJson('/admin/stock/bulk-add', [
+            'items' => [
+                [
+                    'product_id' => $this->productPipe->id,
+                    'stage'      => 'ALL', // as selected by default in admin stock form
+                    'grade'      => 'NONE',
+                    'quantity'   => 150,
+                    'locations'  => [
+                        ['name' => 'Main Warehouse', 'qty' => 150]
+                    ],
+                ]
+            ]
+        ]);
+        $bulkResponse->assertStatus(200);
+        $this->assertTrue($bulkResponse->json('success'));
+
+        // 2. Location breakdown API returns stock when queried with stage=FINISHED or stage=FG
+        $locRespFinished = $this->withSession($dispatchSession)->getJson("/api/stock/locations?product_id={$this->productPipe->id}&stage=FINISHED&grade=NONE");
+        $locRespFinished->assertStatus(200);
+        $this->assertTrue($locRespFinished->json('success'));
+        $this->assertEquals(150, collect($locRespFinished->json('breakdown'))->firstWhere('name', 'Main Warehouse')['quantity'] ?? 0);
+
+        $locRespFG = $this->withSession($dispatchSession)->getJson("/api/stock/locations?product_id={$this->productPipe->id}&stage=FG&grade=NONE");
+        $locRespFG->assertStatus(200);
+        $this->assertTrue($locRespFG->json('success'));
+        $this->assertEquals(150, collect($locRespFG->json('breakdown'))->firstWhere('name', 'Main Warehouse')['quantity'] ?? 0);
+
+        // 3. Create order for 100 kg
+        $order = Order::create([
+            'created_by'      => $this->subAdminUser->id,
+            'company_id'      => $this->company->id,
+            'transporter_id'  => $this->transporter->id,
+            'total'           => 6000,
+            'status'          => 'OPEN',
+            'dispatch_status' => 'PENDING',
+        ]);
+        OrderItem::create([
+            'order_id'       => $order->id,
+            'product_id'     => $this->productPipe->id,
+            'grade'          => 'NONE',
+            'quantity'       => 100,
+            'price'          => 60,
+            'dispatched_qty' => 0,
+        ]);
+
+        // 4. Dispatch Home shows READY TO DISPATCH, 150 kg stock badge, and appears in stock tab
+        $homeResp = $this->withSession($dispatchSession)->get('/sub_admin/dispatch/home');
+        $homeResp->assertStatus(200);
+        $content = $homeResp->getContent();
+
+        $this->assertStringContainsString("Order #{$order->id}", $content);
+        $this->assertStringContainsString('READY TO DISPATCH', $content);
+        $this->assertStringContainsString('150 kg', $content);
+
+        // Stock tab view
+        $stockTabResp = $this->withSession($dispatchSession)->get('/sub_admin/dispatch/home?main_tab=stock');
+        $stockTabResp->assertStatus(200);
+        $stockContent = $stockTabResp->getContent();
+        $this->assertStringContainsString('HDPE Pipe 110mm', $stockContent);
+        $this->assertStringContainsString('150', $stockContent);
+
+        // 5. Dispatch Action page and Order Details API reflect READY_DISPATCH
+        $actionResp = $this->withSession($dispatchSession)->get("/sub_admin/dispatch/action?order_id={$order->id}");
+        $actionResp->assertStatus(200);
+        $this->assertStringContainsString('"readiness":"READY_DISPATCH"', $actionResp->getContent());
+
+        $detailsResp = $this->withSession($dispatchSession)->get("/sub_admin/dispatch/order-details/{$order->id}");
+        $detailsResp->assertStatus(200);
+        $this->assertEquals('READY_DISPATCH', $detailsResp->json('order.readiness'));
+        $this->assertEquals(150, $detailsResp->json('order.items.0.availStock'));
+    }
 }
 
 

@@ -62,8 +62,8 @@
 
     $rawItems       = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'RAW'));
     $semiItems      = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'SEMI'));
-    $finishedItems  = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'FINISHED'));
-    $packagingItems = $sortStockByLow(collect($pageData['allStock'])->where('stage', 'PACKAGING'));
+    $finishedItems  = $sortStockByLow(collect($pageData['allStock'])->filter(fn($s) => in_array($s->stage, ['FINISHED', 'FG'])));
+    $packagingItems = $sortStockByLow(collect($pageData['allStock'])->filter(fn($s) => in_array($s->stage, ['PACKAGING', 'PKG', 'PM'])));
     $adminAllGrades = \App\Models\Grade::orderBy('id')->get();
   @endphp
   <script>
@@ -1940,7 +1940,15 @@ window.adminSaveBulkStock = function() {
   rows.forEach(row => {
     const val = row.querySelector('.bs-product').value;
     const [productId, gradeVal] = val ? val.split('|') : ['', 'NONE'];
-    const stage = row.querySelector('.bs-stage').value;
+    let stage = row.querySelector('.bs-stage').value;
+    if (stage === 'ALL') {
+      const prod = (typeof adminStockProducts !== 'undefined' ? adminStockProducts : []).find(p => String(p.id) === String(productId));
+      stage = prod ? ((prod.type === 'FG' || prod.type === 'FINISHED') ? 'FINISHED' : ((prod.type === 'PKG' || prod.type === 'PM' || prod.type === 'PACKAGING') ? 'PACKAGING' : prod.type)) : 'RAW';
+    } else if (stage === 'FG') {
+      stage = 'FINISHED';
+    } else if (stage === 'PKG' || stage === 'PM') {
+      stage = 'PACKAGING';
+    }
     let grade = gradeVal || 'NONE';
     const alertLimit = parseFloat(row.querySelector('.bs-min-qty').value);
     const rate = parseFloat(row.querySelector('.bs-rate') ? row.querySelector('.bs-rate').value : NaN);
