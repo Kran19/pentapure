@@ -153,7 +153,11 @@ table, th, td, div, span, p, a, strong, small {
     <tr>
         <td colspan="2" style="border-bottom: 1px solid #cbd5e1; background: #f1f5f9; padding: 8px 10px;">
             <span class="meta-title">
-                @if(empty($from) && empty($to) && empty(request('from')) && empty(request('to')))
+                @if(request('specific_date'))
+                    DATE: {{ \Carbon\Carbon::parse(request('specific_date'))->format('d-m-Y') }}
+                @elseif(!empty($from) && !empty($to) && \Carbon\Carbon::parse($fromDate)->format('Y-m-d') === \Carbon\Carbon::parse($toDate)->format('Y-m-d'))
+                    DATE: {{ \Carbon\Carbon::parse($fromDate)->format('d-m-Y') }}
+                @elseif(empty($from) && empty($to) && empty(request('from')) && empty(request('to')))
                     DURATION: ALL TIME (ALL RECORDS)
                 @else
                     DURATION: {{ \Carbon\Carbon::parse($fromDate)->format('d-m-Y') }} - {{ \Carbon\Carbon::parse($toDate)->format('d-m-Y') }}
@@ -175,10 +179,11 @@ table, th, td, div, span, p, a, strong, small {
     <table class="data-table">
         <thead>
             <tr>
-                <th style="width: 85px;">DATE</th>
+                <th style="width: 80px;">DATE</th>
                 <th>DESCRIPTION</th>
-                <th style="width: 95px; text-align: right;">AMT</th>
-                <th style="width: 105px; text-align: right;">BALANCE</th>
+                <th style="width: 75px; text-align: center;">RECEIPT</th>
+                <th style="width: 90px; text-align: right;">AMT</th>
+                <th style="width: 95px; text-align: right;">BALANCE</th>
             </tr>
         </thead>
         <tbody>
@@ -199,6 +204,23 @@ table, th, td, div, span, p, a, strong, small {
                         </div>
                     @endif
                 </td>
+                <td style="text-align: center; vertical-align: middle; padding: 3px;">
+                    @if(!empty($row['bills']))
+                        @foreach($row['bills'] as $b)
+                            @if(!empty($b['base64_data']))
+                                <div style="display: inline-block; margin: 1px;">
+                                    <img src="{{ $b['base64_data'] }}" style="height: 34px; max-width: 50px; object-fit: cover; border: 1px solid #cbd5e1; border-radius: 3px; display: block;" alt="Receipt">
+                                </div>
+                            @elseif(!empty($b['is_pdf']))
+                                <span style="font-size: 7px; color: #dc2626; font-weight: bold; display: block;">📄 PDF</span>
+                            @else
+                                <span style="font-size: 7px; color: #2563eb; font-weight: bold; display: block;">📎 BILL</span>
+                            @endif
+                        @endforeach
+                    @else
+                        <span style="color: #94a3b8; font-size: 8px;">—</span>
+                    @endif
+                </td>
                 <td style="text-align: right;" class="{{ $row['type'] === 'IN' ? 'amt-in' : 'amt-out' }}">
                     {{ $row['type'] === 'IN' ? '+' : '-' }}{{ number_format($row['amount'], 2) }}
                 </td>
@@ -208,7 +230,7 @@ table, th, td, div, span, p, a, strong, small {
             </tr>
             @empty
             <tr>
-                <td colspan="4" style="padding:15px; text-align:center; color:#888;">
+                <td colspan="5" style="padding:15px; text-align:center; color:#888;">
                     NO TRANSACTIONS FOUND FOR THIS PERIOD.
                 </td>
             </tr>
@@ -239,7 +261,7 @@ table, th, td, div, span, p, a, strong, small {
                     THIS IS A SYSTEM-GENERATED STATEMENT. NO SIGNATURE REQUIRED.<br>
                     FOR QUERIES, CONTACT THE PPF ADMINISTRATOR.<br>
                     REPORT PERIOD: {{ (empty($from) && empty($to) && empty(request('from')) && empty(request('to'))) ? 'ALL TIME (ALL RECORDS)' : (\Carbon\Carbon::parse($fromDate)->format('d-m-Y') . ' TO ' . \Carbon\Carbon::parse($toDate)->format('d-m-Y')) }}
-                    @if($includeBills && collect($rows)->flatMap(fn($r)=>$r['bills'])->isNotEmpty())
+                    @if($includeBills && (!empty($imageBillPages) || collect($rows)->flatMap(fn($r)=>$r['bills'])->isNotEmpty()))
                         &nbsp;| BILL ATTACHMENTS FOLLOW ON NEXT PAGES.
                     @endif
                 </div>
@@ -255,5 +277,8 @@ table, th, td, div, span, p, a, strong, small {
 
 </div>
 </div>
+
+
+
 </body>
 </html>

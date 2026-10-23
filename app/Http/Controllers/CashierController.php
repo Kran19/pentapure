@@ -610,6 +610,13 @@ class CashierController extends Controller
         if (is_string($visibleIds)) $visibleIds = json_decode($visibleIds, true) ?? [];
         $visibleIds = array_values(array_filter(array_map('intval', (array)$visibleIds)));
         
+        // Normalize specific_date / date to from and to if not explicitly passed
+        if ($request->filled('specific_date') && !$request->filled('from')) {
+            $request->merge(['from' => $request->specific_date, 'to' => $request->specific_date]);
+        } elseif ($request->filled('date') && !$request->filled('from')) {
+            $request->merge(['from' => $request->date, 'to' => $request->date]);
+        }
+
         if ($cashierId && $cashierId !== 'all') {
             $targetId = (int)$cashierId;
             if (!$isAdmin && $targetId !== (int)$user['id'] && !in_array($targetId, $visibleIds)) {
@@ -617,7 +624,7 @@ class CashierController extends Controller
             }
             $targetUser = User::find($targetId);
             $targetName = $targetUser ? strtoupper($targetUser->name) : $user['name'];
-            if ((!$request->filled('site') || $request->site === 'all') && $targetUser && !empty($targetUser->branch)) {
+            if (!$request->filled('site') && $targetUser && !empty($targetUser->branch)) {
                 $request->merge(['site' => $targetUser->branch]);
             }
             return $this->generateCashierPdf($request, $targetId, $targetName);
@@ -636,7 +643,20 @@ class CashierController extends Controller
             return $this->generateCashierPdf($request, 0, 'TEAM LEDGER', $allowedIds);
         }
 
-        if ((!$request->filled('site') || $request->site === 'all') && $userModel && !empty($userModel->branch)) {
+        // If Admin or Sub-Admin is downloading personal tab without specifying a specific cashier_id,
+        // include all active cashiers so the generated PDF matches their ledger view
+        if ($isAdmin && (!$cashierId || $cashierId === 'all')) {
+            $allOther = User::where('role', 'CASHIER')->where('status', 'ACTIVE')->get();
+            $allowedIds = [$user['id']];
+            foreach ($allOther as $c) {
+                if (!in_array($c->id, $allowedIds)) {
+                    $allowedIds[] = $c->id;
+                }
+            }
+            return $this->generateCashierPdf($request, 0, 'CASHIER STATEMENT', $allowedIds);
+        }
+
+        if (!$request->filled('site') && $userModel && !empty($userModel->branch)) {
             $request->merge(['site' => $userModel->branch]);
         }
         return $this->generateCashierPdf($request, $user['id'], $user['name']);
@@ -653,41 +673,61 @@ class CashierController extends Controller
     // ══════════════════════════════════════════════════════════════════════════
     public function generateCashierPdf(Request $request, int $userId, string $cashierName, $teamUserIds = null)
     {
-        $from = $request->from ? Carbon::parse($request->from)->startOfDay() : null;
-        $to   = $request->to   ? Carbon::parse($request->to)->endOfDay()     : null;
+        if ($request->filled('specific_date') && !$request->filled('from')) {
+            $from = Carbon::parse($request->specific_date)->startOfDay();
+            $to   = Carbon::parse($request->specific_date)->endOfDay();
+        } elseif ($request->filled('date') && !$request->filled('from')) {
+            $from = Carbon::parse($request->date)->startOfDay();
+            $to   = Carbon::parse($request->date)->endOfDay();
+        } else {
+            $from = $request->from ? Carbon::parse($request->from)->startOfDay() : null;
+            $to   = $request->to   ? Carbon::parse($request->to)->endOfDay()     : null;
+        }
 
         $targetUserModel = $userId > 0 ? \App\Models\User::find($userId) : null;
         $userBranch = $targetUserModel ? $targetUserModel->branch : null;
 
         $selectedSite = $request->site;
-        if ((empty($selectedSite) || $selectedSite === 'all') && !empty($userBranch)) {
+        if (empty($selectedSite) && !empty($userBranch)) {
             $selectedSite = $userBranch;
         }
 
         if ($teamUserIds !== null && is_array($teamUserIds)) {
-            $query = Transaction::with('bills')->whereIn('user_id', $teamUserIds)->orderByRaw('COALESCE(date, created_at) ASC')->orderBy('id', 'asc');
+            $query = Transaction::with(['bills', 'user'])->where(function($q) use ($teamUserIds, $userBranch) {
+                $q->whereIn('user_id', $teamUserIds);
+                if (!empty($userBranch)) {
+                    $q->orWhere('site', $userBranch)
+                      ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
+                }
+            })->orderByRaw('COALESCE(date, created_at) ASC')->orderBy('id', 'asc');
         } else {
-            $query = Transaction::with('bills')->where(function($q) use ($userId, $userBranch) {
+            $query = Transaction::with(['bills', 'user'])->where(function($q) use ($userId, $userBranch) {
                 if (!empty($userBranch)) {
                     $q->where('site', $userBranch)
                       ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))])
-                      ->orWhere(function($sub) use ($userId, $userBranch) {
-                          $sub->where('user_id', $userId)
-                              ->where(function($s) use ($userBranch) {
-                                  $s->whereNull('site')
-                                    ->orWhere('site', '')
-                                    ->orWhere('site', $userBranch)
-                                    ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
-                              });
-                      });
+                      ->orWhere('user_id', $userId);
                 } else {
                     $q->where('user_id', $userId);
                 }
             })->orderByRaw('COALESCE(date, created_at) ASC')->orderBy('id', 'asc');
         }
 
-        if ($from) $query->where(\DB::raw("COALESCE(date, created_at)"), '>=', $from);
-        if ($to)   $query->where(\DB::raw("COALESCE(date, created_at)"), '<=', $to);
+        if ($from && $to) {
+            $query->where(function($dq) use ($from, $to) {
+                $dq->where(function($sub) use ($from, $to) {
+                    $sub->where(\DB::raw("COALESCE(date, created_at)"), '>=', $from)
+                        ->where(\DB::raw("COALESCE(date, created_at)"), '<=', $to);
+                })->orWhere(function($subDate) use ($from, $to) {
+                    $subDate->whereDate(\DB::raw("COALESCE(date, created_at)"), '>=', $from->format('Y-m-d'))
+                            ->whereDate(\DB::raw("COALESCE(date, created_at)"), '<=', $to->format('Y-m-d'));
+                });
+            });
+        } elseif ($from) {
+            $query->where(\DB::raw("COALESCE(date, created_at)"), '>=', $from);
+        } elseif ($to) {
+            $query->where(\DB::raw("COALESCE(date, created_at)"), '<=', $to);
+        }
+
         if ($request->category && $request->category !== 'all') {
             $query->where('category', $request->category);
         }
@@ -728,15 +768,7 @@ class CashierController extends Controller
                     if (!empty($userBranch)) {
                         $q->where('site', $userBranch)
                           ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))])
-                          ->orWhere(function($sub) use ($userId, $userBranch) {
-                              $sub->where('user_id', $userId)
-                                  ->where(function($s) use ($userBranch) {
-                                      $s->whereNull('site')
-                                        ->orWhere('site', '')
-                                        ->orWhere('site', $userBranch)
-                                        ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))]);
-                                  });
-                          });
+                          ->orWhere('user_id', $userId);
                     } else {
                         $q->where('user_id', $userId);
                     }
@@ -746,15 +778,7 @@ class CashierController extends Controller
                     $prevQuery->where(function($q) use ($selectedSite, $userId) {
                         $q->where('site', $selectedSite)
                           ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($selectedSite))])
-                          ->orWhere(function($sub) use ($userId, $selectedSite) {
-                              $sub->where('user_id', $userId)
-                                  ->where(function($s) use ($selectedSite) {
-                                      $s->whereNull('site')
-                                        ->orWhere('site', '')
-                                        ->orWhere('site', $selectedSite)
-                                        ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($selectedSite))]);
-                                  });
-                          });
+                          ->orWhere('user_id', $userId);
                     });
                 } else {
                     $prevQuery->where(function($q) use ($selectedSite) {
@@ -767,9 +791,12 @@ class CashierController extends Controller
             $openingBalance = (float) $prevTxs->sum(fn($t) => $t->type === 'IN' ? $t->amount : -$t->amount);
         }
 
-        // Build transaction rows with running balance
+        // Build transaction rows with running balance and process bills
         $runningBalance = $openingBalance;
         $rows = [];
+        $billPages = [];
+        $billSeq = 1;
+
         foreach ($txs as $tx) {
             $openBal = $runningBalance;
             if ($tx->type === 'IN') {
@@ -781,6 +808,37 @@ class CashierController extends Controller
             $txDateObj = !empty($tx->date)
                 ? ($tx->date instanceof \DateTimeInterface ? $tx->date : \Carbon\Carbon::parse($tx->date))
                 : ($tx->created_at instanceof \DateTimeInterface ? $tx->created_at : ($tx->created_at ? \Carbon\Carbon::parse($tx->created_at) : now()));
+
+            $formattedTxDate = $txDateObj->format('d-M-Y');
+            $formattedAmount = ($tx->type === 'OUT' ? '-' : '+') . 'Rs. ' . number_format($tx->amount, 2);
+            $catLabel = ucwords(str_replace('_', ' ', $tx->category ?? 'General'));
+
+            $txBillsData = [];
+            foreach ($tx->bills as $b) {
+                $bPath = $b->absolute_path;
+                $isImg = $b->isImage();
+                $b64 = $isImg ? $b->base64 : null;
+
+                $billInfo = [
+                    'id'            => $b->id,
+                    'file_type'     => $isImg ? 'image' : ($b->isPdf() ? 'pdf' : $b->file_type),
+                    'is_image'      => $isImg,
+                    'is_pdf'        => $b->isPdf(),
+                    'original_name' => $b->original_name,
+                    'absolute_path' => $bPath,
+                    'base64_data'   => $b64,
+                    'mime_type'     => $b->mime_type,
+                    'tx_id'         => $tx->id,
+                    'tx_date'       => $formattedTxDate,
+                    'tx_cat'        => $catLabel,
+                    'tx_amount'     => $formattedAmount,
+                    'tx_note'       => $tx->note ?? ($tx->description ?? ''),
+                    'seq'           => $billSeq++,
+                ];
+
+                $txBillsData[] = $billInfo;
+                $billPages[] = $billInfo;
+            }
 
             $rows[] = [
                 'id'          => $tx->id,
@@ -795,13 +853,7 @@ class CashierController extends Controller
                 'amount'      => (float) $tx->amount,
                 'opening_bal' => $openBal,
                 'closing_bal' => $runningBalance,
-                'bills'       => $tx->bills->map(fn($b) => [
-                    'id'            => $b->id,
-                    'file_type'     => $b->file_type,
-                    'original_name' => $b->original_name,
-                    'absolute_path' => $b->absolute_path,
-                    'mime_type'     => $b->mime_type,
-                ])->toArray(),
+                'bills'       => $txBillsData,
             ];
         }
 
@@ -839,7 +891,7 @@ class CashierController extends Controller
             'totalRecords'   => count($rows),
             'includeBills'   => $includeBills,
             'showBalance'    => $showBalance,
-            'billPages'      => [], // no embedded blade bills, using FPDI
+            'billPages'      => $billPages,
         ];
 
         $branchName = $effectiveSite !== 'ALL'
@@ -856,45 +908,20 @@ class CashierController extends Controller
 
         $filename = 'PENTAPURE_' . $branchName . '_' . $dateRangeStr . '.pdf';
 
-        // 1. Generate the main statement HTML via DomPDF
+        // 1. Generate the main statement HTML with embedded receipt thumbnails via DomPDF
         $mainPdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.cashier-statement', $data);
         $mainPdf->setPaper('A4', 'portrait');
         $mainPdfContent = $mainPdf->output();
 
-        // If no bills to include, return immediately
-        if (!$includeBills) {
+        // If bills are not requested, or there are no attachments to merge, return DomPDF directly
+        if (!$includeBills || empty($billPages)) {
             return response($mainPdfContent, 200, [
                 'Content-Type'        => 'application/pdf',
                 'Content-Disposition' => 'attachment; filename="' . $filename . '"',
             ]);
         }
 
-        // 2. Collect all bill pages in transaction sequence order
-        $billPages = [];
-        foreach ($rows as $row) {
-            $formattedTxDate = !empty($row['date'])
-                ? ($row['date'] instanceof \DateTimeInterface ? $row['date']->format('d-M-Y') : \Carbon\Carbon::parse($row['date'])->format('d-M-Y'))
-                : '—';
-
-            foreach ($row['bills'] as $bill) {
-                $billPages[] = array_merge($bill, [
-                    'tx_id'     => $row['id'],
-                    'tx_date'   => $formattedTxDate,
-                    'tx_cat'    => ucwords(str_replace('_', ' ', $row['category'])),
-                    'tx_amount' => ($row['type'] === 'OUT' ? '-' : '+') . 'Rs. ' . number_format($row['amount'], 2),
-                    'tx_note'   => $row['note'] ?? '',
-                ]);
-            }
-        }
-
-        if (empty($billPages)) {
-            return response($mainPdfContent, 200, [
-                'Content-Type'        => 'application/pdf',
-                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-            ]);
-        }
-
-        // 3. Merge using FPDI with fallback
+        // 2. Merge bill attachments using FPDI with fallback
         try {
             $merged = $this->mergePdfWithBills($mainPdfContent, $billPages);
 
@@ -937,7 +964,7 @@ class CashierController extends Controller
             // Now add each bill as a new page
             $billNum = 1;
             foreach ($billPages as $bill) {
-                $absPath = $bill['absolute_path'] ?? '';
+                $absPath = TransactionBill::resolveDiskPath($bill['absolute_path'] ?? '') ?: ($bill['absolute_path'] ?? '');
                 if (empty($absPath) || !file_exists($absPath)) {
                     $billNum++;
                     continue;

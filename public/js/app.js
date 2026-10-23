@@ -2878,7 +2878,7 @@ const app = {
     const defaultFromDate = earliestDate || new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
 
     const pageRange = document.getElementById('ledger-range-select')?.value || 'all';
-    const pageSpecificDate = document.getElementById('ledger-specific-date')?.value || '';
+    const pageSpecificDate = document.getElementById('ledger-specific-date')?.value || urlParams.get('specific_date') || '';
     const pageStart = document.getElementById('ledger-start-date')?.value || '';
     const pageEnd = document.getElementById('ledger-end-date')?.value || '';
 
@@ -3023,7 +3023,8 @@ const app = {
           include_bills: document.getElementById('sp-bills').checked ? 'yes' : 'no',
           opening_balance: document.getElementById('sp-opening').value || '',
           cashier_id: memberEl ? memberEl.value : (isTeam ? selectedMember : ''),
-          tab: activeTab
+          tab: activeTab,
+          specific_date: (dateType === 'single_day' ? (document.getElementById('sp-as-on')?.value || pageSpecificDate) : '')
         };
       }
     }).then(result => {
@@ -3033,6 +3034,7 @@ const app = {
       let url = `${this.getBaseUrl()}/${currentSlug}/history/pdf?include_bills=${p.include_bills}&site=${encodeURIComponent(p.site)}`;
       if (p.from) url += `&from=${encodeURIComponent(p.from)}`;
       if (p.to) url += `&to=${encodeURIComponent(p.to)}`;
+      if (p.specific_date) url += `&specific_date=${encodeURIComponent(p.specific_date)}`;
       if (p.opening_balance) url += `&opening_balance=${encodeURIComponent(p.opening_balance)}`;
       if (p.tab) url += `&tab=${encodeURIComponent(p.tab)}`;
       if (p.cashier_id) url += `&cashier_id=${encodeURIComponent(p.cashier_id)}`;
