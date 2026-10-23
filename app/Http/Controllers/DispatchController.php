@@ -43,6 +43,36 @@ class DispatchController extends Controller
         return $stockMap;
     }
 
+    private function getStageStock(array|string $stages)
+    {
+        $stages = (array) $stages;
+        $gradeNormExpr = "CASE WHEN stocks.grade IS NULL OR UPPER(TRIM(stocks.grade)) IN ('', 'NONE', 'N/A', 'NA', 'N / A') THEN 'NONE' ELSE UPPER(TRIM(stocks.grade)) END";
+
+        return DB::table(function ($query) use ($stages, $gradeNormExpr) {
+            $query->from('stocks')
+                ->join('products', 'stocks.product_id', '=', 'products.id')
+                ->whereIn('stocks.stage', $stages)
+                ->selectRaw("
+                    stocks.product_id as id,
+                    products.name,
+                    products.unit,
+                    {$gradeNormExpr} as grade,
+                    stocks.transaction_type,
+                    stocks.quantity
+                ");
+        }, 'sub')
+        ->selectRaw("
+            id,
+            name,
+            grade,
+            unit,
+            SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity
+        ")
+        ->groupBy('id', 'name', 'grade', 'unit')
+        ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
+        ->get();
+    }
+
     private function calculateOrderReadiness($order, array $stockMap): array
     {
         $items = $order->items->map(function($i) use ($stockMap) {
@@ -129,39 +159,10 @@ class DispatchController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        $gradeNormExpr = "CASE WHEN stocks.grade IS NULL OR UPPER(TRIM(stocks.grade)) IN ('', 'NONE', 'N/A', 'NA', 'N / A') THEN 'NONE' ELSE UPPER(TRIM(stocks.grade)) END";
-
-        $rawStock = DB::table('stocks')
-            ->join('products', 'stocks.product_id', '=', 'products.id')
-            ->where('stocks.stage', 'RAW')
-            ->groupBy('stocks.product_id', DB::raw($gradeNormExpr), 'products.name', 'products.unit')
-            ->selectRaw("stocks.product_id as id, products.name, {$gradeNormExpr} as grade, products.unit, SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity")
-            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
-            ->get();
-
-        $semiStock = DB::table('stocks')
-            ->join('products', 'stocks.product_id', '=', 'products.id')
-            ->where('stocks.stage', 'SEMI')
-            ->groupBy('stocks.product_id', DB::raw($gradeNormExpr), 'products.name', 'products.unit')
-            ->selectRaw("stocks.product_id as id, products.name, {$gradeNormExpr} as grade, products.unit, SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity")
-            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
-            ->get();
-
-        $finishedStock = DB::table('stocks')
-            ->join('products', 'stocks.product_id', '=', 'products.id')
-            ->whereIn('stocks.stage', ['FINISHED', 'FG'])
-            ->groupBy('stocks.product_id', DB::raw($gradeNormExpr), 'products.name', 'products.unit')
-            ->selectRaw("stocks.product_id as id, products.name, {$gradeNormExpr} as grade, products.unit, SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity")
-            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
-            ->get();
-
-        $packagingStock = DB::table('stocks')
-            ->join('products', 'stocks.product_id', '=', 'products.id')
-            ->whereIn('stocks.stage', ['PACKAGING', 'PKG', 'PM'])
-            ->groupBy('stocks.product_id', DB::raw($gradeNormExpr), 'products.name', 'products.unit')
-            ->selectRaw("stocks.product_id as id, products.name, {$gradeNormExpr} as grade, products.unit, SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity")
-            ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
-            ->get();
+        $rawStock       = $this->getStageStock(['RAW']);
+        $semiStock      = $this->getStageStock(['SEMI']);
+        $finishedStock  = $this->getStageStock(['FINISHED', 'FG']);
+        $packagingStock = $this->getStageStock(['PACKAGING', 'PKG', 'PM']);
 
         $stockMap = $this->getStockMap();
 
