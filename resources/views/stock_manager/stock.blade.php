@@ -832,17 +832,25 @@ async function adminAdjustStock(productId, stage, grade, productName = '', curre
   const key = `${productId}_${grade}_${stage}`;
   const locMap = mappings[key] || {};
 
-  let locOptionsHtml = allLocations.map(loc => {
-    const locName = (loc.name || '').trim();
-    let q = 0;
-    for (const [k, v] of Object.entries(locMap)) {
-      if (k.trim().toLowerCase() === locName.toLowerCase()) {
-        q = v;
-        break;
-      }
+  const namesSet = new Set();
+  const allLocNames = [];
+  (allLocations || []).forEach(l => {
+    const n = (l.name || '').trim();
+    if (n && !namesSet.has(n.toLowerCase())) {
+      namesSet.add(n.toLowerCase());
+      allLocNames.push(n);
     }
-    return `<option value="${escapeHtml(locName)}">${escapeHtml(locName)} (${q.toFixed(2)} kg)</option>`;
-  }).join('');
+  });
+  for (const k of Object.keys(locMap)) {
+    const n = k.trim();
+    if (n && !namesSet.has(n.toLowerCase())) {
+      namesSet.add(n.toLowerCase());
+      allLocNames.push(n);
+    }
+  }
+  allLocNames.sort((a, b) => a.localeCompare(b));
+
+  const totalCurrent = parseFloat(currentQty) || 0;
 
   Swal.fire({
     title: 'Adjust Stock',
@@ -850,41 +858,72 @@ async function adminAdjustStock(productId, stage, grade, productName = '', curre
       <div style="text-align:left; font-size:0.9rem; margin-bottom:1rem; color:#6b7280; background:var(--bg-sidebar, #FFF8EA); border:1px solid var(--border-soft, #ECE4CF); border-radius:8px; padding:10px 12px;">
         <strong style="color:var(--primary); font-size:1.05rem;">${escapeHtml(productName)} (${stage})</strong><br>
         <span style="font-size:0.85rem;">${stageLabel}${displayGrade}</span>
-        <div style="margin-top:4px; font-size:0.85rem; color:#333;">Total Current Stock: <strong style="color:var(--secondary);">${parseFloat(currentQty).toFixed(2)} kg</strong></div>
+        <div style="margin-top:4px; font-size:0.85rem; color:#333;">Total Current Stock: <strong id="swal-sm-total-badge" style="color:var(--secondary);">${totalCurrent.toFixed(2)} kg</strong></div>
       </div>
 
       <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
         Adjustment Type
       </label>
-      <select id="swal-adj-type" style="
+      <select id="swal-sm-adj-type" onchange="onSwalSmAdjTypeChange()" style="
         width:100%; padding:0.65rem 0.8rem; border-radius:8px;
         background:#fff; border:1px solid #d1d5db; color:#333;
-        font-size:0.95rem; margin-bottom:1rem; outline:none;
+        font-size:0.95rem; margin-bottom:1rem; outline:none; font-weight:600;
       ">
-        <option value="add">➕ Add — Increase current stock</option>
-        <option value="subtract">➖ Subtract — Decrease current stock</option>
         <option value="set">🎯 Set — Override to exact quantity</option>
+        <option value="add" selected>➕ Add — Increase current stock</option>
+        <option value="subtract">➖ Subtract — Decrease current stock</option>
       </select>
 
-      <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
-        Storage Location *
-      </label>
-      <select id="swal-adj-loc" style="
-        width:100%; padding:0.65rem 0.8rem; border-radius:8px;
-        background:#fff; border:1px solid #d1d5db; color:#333;
-        font-size:0.95rem; margin-bottom:1rem; outline:none;
-      ">
-        ${locOptionsHtml}
-      </select>
-
-      <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
-        Quantity (kg)
-      </label>
-      <input id="swal-qty" type="number" min="0" step="0.01" placeholder="e.g. 50.00" style="
-        width:100%; padding:0.65rem 0.8rem; border-radius:8px;
-        background:#fff; border:1px solid #d1d5db; color:#333;
-        font-size:1rem; margin-bottom:1rem; outline:none; box-sizing:border-box;
-      ">
+      <div style="margin-bottom:1rem;">
+        <label id="swal-sm-loc-title" style="display:block; text-align:left; font-size:0.82rem; font-weight:700; color:#374151; margin-bottom:0.4rem; text-transform:uppercase;">
+          Storage Locations &amp; Quantity (KG) *
+        </label>
+        <div style="border:1px solid #d1d5db; border-radius:8px; overflow:hidden; background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="background:#f9fafb; border-bottom:1px solid #e5e7eb; padding:0.45rem 0.8rem; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:0.75rem; font-weight:700; color:#4b5563; text-transform:uppercase; letter-spacing:0.5px;">LOCATION NAME</span>
+            <span style="font-size:0.75rem; font-weight:700; color:#4b5563; text-transform:uppercase; letter-spacing:0.5px; padding-right:1.2rem;">QTY</span>
+          </div>
+          <div id="swal-sm-locations-table" style="max-height:220px; overflow-y:auto; padding:0.35rem 0.5rem;">
+            ${allLocNames.map(locName => {
+              const key = locName.trim().toLowerCase();
+              let avail = 0;
+              for (const [k, v] of Object.entries(locMap)) {
+                if (k.trim().toLowerCase() === key) {
+                  avail = parseFloat(v) || 0;
+                  break;
+                }
+              }
+              return `
+                <div class="swal-loc-row" style="display:flex; justify-content:space-between; align-items:center; padding:0.45rem 0.5rem; margin-bottom:0.25rem; border-radius:6px; transition:all 0.15s ease;">
+                  <div style="text-align:left; flex:1; padding-right:10px;">
+                    <div class="swal-loc-name" style="font-weight:700; font-size:0.88rem; color:#1f2937; letter-spacing:0.3px;">
+                      ${escapeHtml(locName.toUpperCase())}
+                    </div>
+                    <div style="font-size:0.75rem; color:#6b7280; font-weight:500;">
+                      Current: <strong style="color:#374151;">${avail.toFixed(2)} kg</strong>
+                    </div>
+                  </div>
+                  <div>
+                    <input type="number" min="0" step="0.001" class="form-control form-control-sm inner-qty-input no-spinners"
+                      data-loc="${escapeHtml(locName)}"
+                      data-avail="${avail}"
+                      placeholder="0.00"
+                      value=""
+                      oninput="onSwalSmLocInput(this)"
+                      onfocus="onSwalSmLocFocus(this)"
+                      onblur="onSwalSmLocBlur(this)"
+                      style="width:90px; height:2.2rem; text-align:center; padding:0.2rem 0.4rem; font-size:0.95rem; font-weight:700; border:1.5px solid #d1d5db; border-radius:6px; background:#ffffff; color:#111827; outline:none; transition:all 0.15s ease;">
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+          <div style="background:#f9fafb; border-top:1px solid #e5e7eb; padding:0.45rem 0.8rem; display:flex; justify-content:space-between; align-items:center; font-size:0.82rem; font-weight:600;">
+            <span style="color:#6b7280;">Total To Adjust: <strong id="swal-sm-entered-qty" style="color:#111827;">0.00 kg</strong></span>
+            <span style="color:#6b7280;">Updated Total: <strong id="swal-sm-new-total" style="color:var(--primary, #d88a00);">${totalCurrent.toFixed(2)} kg</strong></span>
+          </div>
+        </div>
+      </div>
 
       <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
         Reason / Note <span style="font-weight:400;">(optional)</span>
@@ -892,7 +931,7 @@ async function adminAdjustStock(productId, stage, grade, productName = '', curre
       <textarea id="swal-reason" rows="2" placeholder="e.g. Physical count correction, spillage, etc." style="
         width:100%; padding:0.65rem 0.8rem; border-radius:8px;
         background:#fff; border:1px solid #d1d5db; color:#333;
-        font-size:0.9rem; resize:vertical; outline:none; box-sizing:border-box;
+        font-size:0.9rem; resize:vertical; outline:none; box-sizing:border-box; margin-bottom:1.5rem;
       "></textarea>
     `,
     background: '#ffffff',
@@ -903,32 +942,66 @@ async function adminAdjustStock(productId, stage, grade, productName = '', curre
     confirmButtonColor: '#f59e0b',
     cancelButtonColor: '#9ca3af',
     focusConfirm: false,
-    width: '460px',
+    width: '600px',
     customClass: {
       popup: 'swal-stock-popup',
       confirmButton: 'swal-confirm-btn',
       cancelButton: 'swal-cancel-btn',
     },
     preConfirm: () => {
-      const qty      = parseFloat(document.getElementById('swal-qty').value);
-      const type     = document.getElementById('swal-adj-type').value;
-      const location = document.getElementById('swal-adj-loc').value;
-      const reason   = document.getElementById('swal-reason').value.trim();
+      const type = document.getElementById('swal-sm-adj-type').value;
+      const reason = document.getElementById('swal-reason').value.trim();
+      const locInputs = document.querySelectorAll('#swal-sm-locations-table .inner-qty-input');
+      const splits = [];
+      let totalQtyEntered = 0;
+      let hasAnyChange = false;
 
-      if (isNaN(qty) || qty < 0) {
-        Swal.showValidationMessage('⚠️ Please enter a valid quantity (≥ 0).');
+      for (const inp of locInputs) {
+        const loc = inp.getAttribute('data-loc');
+        const avail = parseFloat(inp.getAttribute('data-avail') || 0);
+        const rawVal = inp.value.trim();
+        const val = parseFloat(rawVal) || 0;
+
+        if (type === 'set') {
+          splits.push({ location: loc, quantity: val });
+          totalQtyEntered += val;
+          if (rawVal !== '' && Math.abs(val - avail) > 0.0001) {
+            hasAnyChange = true;
+          }
+        } else if (val > 0) {
+          if (type === 'subtract' && val > avail) {
+            Swal.showValidationMessage(`⚠️ Cannot subtract ${val} kg from '${loc}' — only ${avail.toFixed(2)} kg available.`);
+            return false;
+          }
+          splits.push({ location: loc, quantity: val });
+          totalQtyEntered += val;
+          hasAnyChange = true;
+        }
+      }
+
+      if (type === 'set' && !hasAnyChange) {
+        Swal.showValidationMessage('⚠️ No changes were made to any location quantity.');
         return false;
       }
-      if (!location) {
-        Swal.showValidationMessage('⚠️ Please select a storage location.');
+      if (type !== 'set' && splits.length === 0) {
+        Swal.showValidationMessage(`⚠️ Please enter a quantity to ${type} in at least one storage location.`);
         return false;
       }
-      return { qty, type, location, reason };
+
+      const firstMasterLoc = allLocNames.length > 0 ? allLocNames[0] : (splits[0]?.location || '');
+
+      return {
+        type,
+        reason,
+        splits,
+        mainQty: totalQtyEntered,
+        location: splits[0]?.location || firstMasterLoc
+      };
     }
   }).then(result => {
     if (!result.isConfirmed) return;
 
-    const { qty, type, location, reason } = result.value;
+    const { type, reason, splits, mainQty, location } = result.value;
 
     Swal.fire({
       title: 'Applying…',
@@ -951,10 +1024,11 @@ async function adminAdjustStock(productId, stage, grade, productName = '', curre
         product_id: productId,
         stage,
         grade,
-        quantity: qty,
+        quantity: mainQty,
         adjust_type: type,
         location,
-        reason
+        reason,
+        location_splits: splits
       })
     })
     .then(async r => {
@@ -999,6 +1073,131 @@ async function adminAdjustStock(productId, stage, grade, productName = '', curre
       });
     });
   });
+}
+
+function onSwalSmLocFocus(input) {
+  const row = input.closest('.swal-loc-row');
+  if (row) {
+    row.style.background = '#fffbeb';
+    const nameEl = row.querySelector('.swal-loc-name');
+    if (nameEl) nameEl.style.color = '#b45309';
+  }
+  input.style.borderColor = '#f59e0b';
+  input.style.boxShadow = '0 0 0 3px rgba(245, 158, 11, 0.18)';
+}
+
+function onSwalSmLocBlur(input) {
+  const row = input.closest('.swal-loc-row');
+  const val = parseFloat(input.value) || 0;
+  const avail = parseFloat(input.getAttribute('data-avail') || 0);
+  const type = document.getElementById('swal-sm-adj-type')?.value || 'add';
+
+  const isHighlighted = (type === 'set') ? (Math.abs(val - avail) > 0.0001) : (val > 0);
+
+  if (row) {
+    if (isHighlighted) {
+      row.style.background = '#fffbeb';
+      const nameEl = row.querySelector('.swal-loc-name');
+      if (nameEl) nameEl.style.color = '#b45309';
+      input.style.borderColor = '#f59e0b';
+    } else {
+      row.style.background = 'transparent';
+      const nameEl = row.querySelector('.swal-loc-name');
+      if (nameEl) nameEl.style.color = '#1f2937';
+      input.style.borderColor = '#d1d5db';
+    }
+  }
+  input.style.boxShadow = 'none';
+}
+
+function onSwalSmLocInput(input) {
+  const row = input.closest('.swal-loc-row');
+  const val = parseFloat(input.value) || 0;
+  const avail = parseFloat(input.getAttribute('data-avail') || 0);
+  const type = document.getElementById('swal-sm-adj-type')?.value || 'add';
+
+  const isHighlighted = (type === 'set') ? (Math.abs(val - avail) > 0.0001) : (val > 0);
+
+  if (row) {
+    if (isHighlighted) {
+      row.style.background = '#fffbeb';
+      const nameEl = row.querySelector('.swal-loc-name');
+      if (nameEl) nameEl.style.color = '#b45309';
+      input.style.borderColor = '#f59e0b';
+    } else {
+      row.style.background = 'transparent';
+      const nameEl = row.querySelector('.swal-loc-name');
+      if (nameEl) nameEl.style.color = '#1f2937';
+      input.style.borderColor = '#d1d5db';
+    }
+  }
+
+  recalcSwalSmTotals();
+}
+
+function onSwalSmAdjTypeChange() {
+  const type = document.getElementById('swal-sm-adj-type')?.value || 'add';
+  const titleLabel = document.getElementById('swal-sm-loc-title');
+  if (titleLabel) {
+    if (type === 'set') {
+      titleLabel.textContent = 'Storage Locations — Set Exact Quantity (KG) *';
+    } else if (type === 'add') {
+      titleLabel.textContent = 'Storage Locations — Quantity To Add (KG) *';
+    } else {
+      titleLabel.textContent = 'Storage Locations — Quantity To Subtract (KG) *';
+    }
+  }
+
+  const inputs = document.querySelectorAll('#swal-sm-locations-table .inner-qty-input');
+  inputs.forEach(inp => {
+    const avail = parseFloat(inp.getAttribute('data-avail') || 0);
+    if (type === 'set') {
+      inp.value = avail > 0 ? avail : 0;
+    } else {
+      inp.value = '';
+    }
+    onSwalSmLocBlur(inp);
+  });
+
+  recalcSwalSmTotals();
+}
+
+function recalcSwalSmTotals() {
+  const typeSelect = document.getElementById('swal-sm-adj-type');
+  const badge = document.getElementById('swal-sm-total-badge');
+  const totalEnteredEl = document.getElementById('swal-sm-entered-qty');
+  const newTotalEl = document.getElementById('swal-sm-new-total');
+  if (!typeSelect) return;
+
+  const type = typeSelect.value;
+  const totalExistingAvail = (window._swalLocBreakdown || []).reduce((sum, l) => sum + (parseFloat(l.quantity) || 0), 0);
+
+  const inputs = document.querySelectorAll('#swal-sm-locations-table .inner-qty-input');
+  let sumEntered = 0;
+  let setSum = 0;
+
+  inputs.forEach(inp => {
+    const q = parseFloat(inp.value) || 0;
+    if (q > 0) sumEntered += q;
+    setSum += q;
+  });
+
+  let newTotal = totalExistingAvail;
+  if (type === 'set') {
+    newTotal = setSum;
+    if (totalEnteredEl) totalEnteredEl.textContent = setSum.toFixed(2) + ' kg';
+  } else if (type === 'add') {
+    newTotal = totalExistingAvail + sumEntered;
+    if (totalEnteredEl) totalEnteredEl.textContent = sumEntered.toFixed(2) + ' kg';
+  } else { // subtract
+    newTotal = Math.max(0, totalExistingAvail - sumEntered);
+    if (totalEnteredEl) totalEnteredEl.textContent = sumEntered.toFixed(2) + ' kg';
+  }
+
+  if (newTotalEl) newTotalEl.textContent = `${newTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} kg`;
+  if (badge) {
+    badge.innerText = `${newTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} kg`;
+  }
 }
 
 function adminUpdateRate(productId, currentRate, name) {

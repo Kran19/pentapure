@@ -1793,28 +1793,23 @@ function adminAdjustStock(productId, stage, grade, productName = '', currentQty 
       </select>
 
       <div style="margin-bottom:1rem;">
-        <label style="display:block;text-align:left;font-size:0.82rem;font-weight:700;color:#374151;margin-bottom:0.35rem;">
-          STORAGE LOCATION *
+        <label id="swal-loc-table-title" style="display:block; text-align:left; font-size:0.82rem; font-weight:700; color:#374151; margin-bottom:0.4rem; text-transform:uppercase;">
+          Storage Locations &amp; Quantity (KG) *
         </label>
-        <select id="swal-adj-loc" onchange="onSwalAdjLocationChange()" style="
-          width:100%; padding:0.65rem 0.85rem; border-radius:8px;
-          background:#fff; border:1px solid #d1d5db; color:#111827;
-          font-size:0.92rem; outline:none; font-weight:600; cursor:pointer; box-sizing:border-box;
-        ">
-        </select>
+        <div style="border:1px solid #d1d5db; border-radius:8px; overflow:hidden; background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="background:#f9fafb; border-bottom:1px solid #e5e7eb; padding:0.45rem 0.8rem; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:0.75rem; font-weight:700; color:#4b5563; text-transform:uppercase; letter-spacing:0.5px;">LOCATION NAME</span>
+            <span style="font-size:0.75rem; font-weight:700; color:#4b5563; text-transform:uppercase; letter-spacing:0.5px; padding-right:1.2rem;">QTY</span>
+          </div>
+          <div id="swal-locations-table-body" style="max-height:220px; overflow-y:auto; padding:0.35rem 0.5rem;">
+            <!-- Rendered by populateSwalLocations() -->
+          </div>
+          <div style="background:#f9fafb; border-top:1px solid #e5e7eb; padding:0.45rem 0.8rem; display:flex; justify-content:space-between; align-items:center; font-size:0.82rem; font-weight:600;">
+            <span style="color:#6b7280;">Total To Adjust: <strong id="swal-total-entered-qty" style="color:#111827;">0.00 kg</strong></span>
+            <span style="color:#6b7280;">Updated Total: <strong id="swal-new-total-stock" style="color:var(--primary, #d88a00);">${currentQty.toFixed(2)} kg</strong></span>
+          </div>
+        </div>
       </div>
-
-      <div id="swal-single-qty-wrapper" style="margin-bottom:1rem;">
-        <label id="swal-qty-label" style="display:block;text-align:left;font-size:0.82rem;font-weight:700;color:#374151;margin-bottom:0.35rem;">
-          QUANTITY (KG) *
-        </label>
-        <input type="number" min="0" step="0.001" id="swal-single-qty-input" class="no-spinners" placeholder="0.00" value="0" oninput="recalcSwalTotals()" style="
-          width:100%; height:2.7rem; padding:0.5rem 0.85rem; font-size:1.05rem; font-weight:700; text-align:left; border:1px solid #d1d5db; border-radius:8px; box-sizing:border-box; color:#111827; background:#fff; outline:none;
-        ">
-        <div id="swal-loc-current-stock-hint" style="text-align:left; font-size:0.78rem; color:#6b7280; margin-top:4px; font-weight:500;"></div>
-      </div>
-
-      <div id="swal-multi-split-wrapper" style="display:none; margin-bottom:1rem; border:1px solid #e5e7eb; border-radius:8px; padding:0.75rem; background:#f9fafb; max-height:220px; overflow-y:auto;"></div>
 
       <label style="display:block;text-align:left;font-size:0.82rem;font-weight:600;color:#6b7280;margin-bottom:0.35rem;">
         Reason / Note <span style="font-weight:400;">(optional)</span>
@@ -1844,68 +1839,60 @@ function adminAdjustStock(productId, stage, grade, productName = '', currentQty 
         }
       }
       populateSwalLocations();
-      onSwalAdjLocationChange();
     },
     preConfirm: () => {
       const type = document.getElementById('swal-adj-type').value;
       const reason = document.getElementById('swal-reason').value.trim();
       const adjDate = document.getElementById('swal-adj-date') ? document.getElementById('swal-adj-date').value : '';
-      const selectedLoc = document.getElementById('swal-adj-loc').value;
+      const locInputs = document.querySelectorAll('#swal-locations-table-body .inner-qty-input');
+      const splits = [];
+      let totalQtyEntered = 0;
+      let hasAnyChange = false;
 
-      if (selectedLoc === '__SPLIT__') {
-        const locInputs = document.querySelectorAll('#swal-multi-split-wrapper .inner-qty-input');
-        const splits = [];
-        let totalQtyEntered = 0;
+      for (const inp of locInputs) {
+        const loc = inp.getAttribute('data-loc');
+        const avail = parseFloat(inp.getAttribute('data-avail') || 0);
+        const rawVal = inp.value.trim();
+        const val = parseFloat(rawVal) || 0;
 
-        for (const inp of locInputs) {
-          const loc = inp.getAttribute('data-loc');
-          const avail = parseFloat(inp.getAttribute('data-avail') || 0);
-          const val = parseFloat(inp.value) || 0;
-
-          if (type === 'set') {
-            splits.push({ location: loc, quantity: val });
-          } else if (val > 0) {
-            if (type === 'subtract' && val > avail) {
-              Swal.showValidationMessage(`⚠️ Cannot subtract ${val} kg from '${loc}' — only ${avail} kg available.`);
-              return false;
-            }
-            splits.push({ location: loc, quantity: val });
-            totalQtyEntered += val;
+        if (type === 'set') {
+          splits.push({ location: loc, quantity: val });
+          totalQtyEntered += val;
+          if (rawVal !== '' && Math.abs(val - avail) > 0.0001) {
+            hasAnyChange = true;
           }
-        }
-
-        if (splits.length === 0 && type !== 'set') {
-          Swal.showValidationMessage('⚠️ Please enter a quantity for at least one storage location.');
-          return false;
-        }
-
-        const firstMasterLoc = (window.adminMasterLocations && window.adminMasterLocations.length > 0) ? window.adminMasterLocations[0].name : '';
-        return { type, reason, splits, mainQty: totalQtyEntered, location: splits[0]?.location || firstMasterLoc, date: adjDate };
-      } else {
-        const qtyVal = parseFloat(document.getElementById('swal-single-qty-input').value);
-        if (isNaN(qtyVal) || qtyVal < 0) {
-          Swal.showValidationMessage('⚠️ Please enter a valid quantity (≥ 0).');
-          return false;
-        }
-
-        if (type === 'subtract') {
-          const selOpt = document.querySelector(`#swal-adj-loc option[value="${CSS.escape(selectedLoc)}"]`);
-          const avail = parseFloat(selOpt?.getAttribute('data-avail') || 0);
-          if (qtyVal > avail) {
-            Swal.showValidationMessage(`⚠️ Cannot subtract ${qtyVal} kg from '${selectedLoc}' — only ${avail} kg available.`);
+        } else if (val > 0) {
+          if (type === 'subtract' && val > avail) {
+            Swal.showValidationMessage(`⚠️ Cannot subtract ${val} kg from '${loc}' — only ${avail.toFixed(2)} kg available.`);
             return false;
           }
+          splits.push({ location: loc, quantity: val });
+          totalQtyEntered += val;
+          hasAnyChange = true;
         }
-
-        return {
-          type,
-          reason,
-          splits: null,
-          mainQty: qtyVal,
-          location: selectedLoc,
-          date: adjDate
-        };
       }
+
+      if (type === 'set' && !hasAnyChange) {
+        Swal.showValidationMessage('⚠️ No changes were made to any location quantity.');
+        return false;
+      }
+      if (type !== 'set' && splits.length === 0) {
+        Swal.showValidationMessage(`⚠️ Please enter a quantity to ${type} in at least one storage location.`);
+        return false;
+      }
+
+      const firstMasterLoc = (window.adminMasterLocations && window.adminMasterLocations.length > 0)
+        ? window.adminMasterLocations[0].name
+        : (splits[0]?.location || '');
+
+      return {
+        type,
+        reason,
+        splits,
+        mainQty: totalQtyEntered,
+        location: splits[0]?.location || firstMasterLoc,
+        date: adjDate
+      };
     }
   }).then(result => {
     if (!result.isConfirmed) return;
@@ -1989,8 +1976,8 @@ function adminAdjustStock(productId, stage, grade, productName = '', currentQty 
 }
 
 function populateSwalLocations() {
-  const locSelect = document.getElementById('swal-adj-loc');
-  if (!locSelect) return;
+  const container = document.getElementById('swal-locations-table-body');
+  if (!container) return;
 
   const locMap = {};
   (window._swalLocBreakdown || []).forEach(l => {
@@ -2023,83 +2010,101 @@ function populateSwalLocations() {
   // Alphabetical sort of all configured locations
   allLocNames.sort((a, b) => a.localeCompare(b));
 
+  const type = document.getElementById('swal-adj-type')?.value || 'add';
+
   let html = '';
   allLocNames.forEach(locName => {
     const key = locName.trim().toLowerCase();
     const avail = locMap[key] !== undefined ? locMap[key] : 0;
-    html += `<option value="${escapeHtml(locName)}" data-avail="${avail}">${escapeHtml(locName.toUpperCase())} (${avail.toFixed(2)} KG)</option>`;
+    const initialVal = (type === 'set') ? (avail > 0 ? avail : 0) : '';
+
+    html += `
+      <div class="swal-loc-row" id="swal-loc-row-${escapeHtml(locName)}" style="display:flex; justify-content:space-between; align-items:center; padding:0.45rem 0.5rem; margin-bottom:0.25rem; border-radius:6px; transition:background 0.15s ease, border-color 0.15s ease;">
+        <div style="text-align:left; flex:1; padding-right:10px;">
+          <div class="swal-loc-name" style="font-weight:700; font-size:0.88rem; color:#1f2937; letter-spacing:0.3px;">
+            ${escapeHtml(locName.toUpperCase())}
+          </div>
+          <div style="font-size:0.75rem; color:#6b7280; font-weight:500;">
+            Current: <strong style="color:#374151;">${avail.toFixed(2)} kg</strong>
+          </div>
+        </div>
+        <div>
+          <input type="number" min="0" step="0.001" class="form-control form-control-sm inner-qty-input no-spinners"
+            data-loc="${escapeHtml(locName)}"
+            data-avail="${avail}"
+            placeholder="0.00"
+            value="${initialVal}"
+            oninput="onSwalLocInput(this)"
+            onfocus="onSwalLocFocus(this)"
+            onblur="onSwalLocBlur(this)"
+            style="width:90px; height:2.2rem; text-align:center; padding:0.2rem 0.4rem; font-size:0.95rem; font-weight:700; border:1.5px solid #d1d5db; border-radius:6px; background:#ffffff; color:#111827; outline:none; transition:all 0.15s ease;">
+        </div>
+      </div>
+    `;
   });
 
-  if (allLocNames.length > 1) {
-    html += `<option value="__SPLIT__">⚡ Multiple Locations (Split / Breakdown)...</option>`;
+  if (allLocNames.length === 0) {
+    html = `<div style="text-align:center; color:#6b7280; padding:1rem; font-size:0.85rem;">No storage locations configured.</div>`;
   }
 
-  locSelect.innerHTML = html;
-
-  // Build multi-split HTML as well
-  const splitWrapper = document.getElementById('swal-multi-split-wrapper');
-  if (splitWrapper) {
-    let splitHtml = '<div style="font-size:0.8rem; font-weight:700; color:#374151; margin-bottom:6px;">ENTER QUANTITY FOR EACH LOCATION:</div>';
-    allLocNames.forEach(locName => {
-      const key = locName.trim().toLowerCase();
-      const avail = locMap[key] !== undefined ? locMap[key] : 0;
-      splitHtml += `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #e5e7eb;">
-          <span style="font-size:0.82rem; font-weight:600; color:#111827;">${escapeHtml(locName.toUpperCase())} <span style="color:#6b7280; font-size:0.75rem;">(Current: ${avail.toFixed(2)} kg)</span></span>
-          <input type="number" min="0" step="0.001" class="form-control form-control-sm inner-qty-input no-spinners" data-loc="${escapeHtml(locName)}" data-avail="${avail}" oninput="recalcSwalTotals()" style="width:95px; text-align:center; padding:0.25rem; height:2rem; font-size:0.88rem; font-weight:700; border:1px solid #d1d5db; border-radius:6px; background:#fff; color:#111827;" value="0">
-        </div>
-      `;
-    });
-    splitWrapper.innerHTML = splitHtml;
-  }
+  container.innerHTML = html;
+  recalcSwalTotals();
 }
 
-function onSwalAdjLocationChange() {
-  const locSelect = document.getElementById('swal-adj-loc');
-  const typeSelect = document.getElementById('swal-adj-type');
-  if (!locSelect || !typeSelect) return;
+function onSwalLocFocus(input) {
+  const row = input.closest('.swal-loc-row');
+  if (row) {
+    row.style.background = '#fffbeb';
+    const nameEl = row.querySelector('.swal-loc-name');
+    if (nameEl) nameEl.style.color = '#b45309';
+  }
+  input.style.borderColor = '#f59e0b';
+  input.style.boxShadow = '0 0 0 3px rgba(245, 158, 11, 0.18)';
+}
 
-  const selectedVal = locSelect.value;
-  const type = typeSelect.value;
-  const singleWrapper = document.getElementById('swal-single-qty-wrapper');
-  const multiWrapper = document.getElementById('swal-multi-split-wrapper');
-  const qtyInput = document.getElementById('swal-single-qty-input');
-  const qtyLabel = document.getElementById('swal-qty-label');
-  const hintEl = document.getElementById('swal-loc-current-stock-hint');
+function onSwalLocBlur(input) {
+  const row = input.closest('.swal-loc-row');
+  const val = parseFloat(input.value) || 0;
+  const avail = parseFloat(input.getAttribute('data-avail') || 0);
+  const type = document.getElementById('swal-adj-type')?.value || 'add';
 
-  if (selectedVal === '__SPLIT__') {
-    if (singleWrapper) singleWrapper.style.display = 'none';
-    if (multiWrapper) multiWrapper.style.display = 'block';
+  const isHighlighted = (type === 'set') ? (Math.abs(val - avail) > 0.0001) : (val > 0);
 
-    const inputs = document.querySelectorAll('#swal-multi-split-wrapper .inner-qty-input');
-    inputs.forEach(inp => {
-      const avail = parseFloat(inp.getAttribute('data-avail') || 0);
-      inp.value = (type === 'set') ? avail : 0;
-    });
-  } else {
-    if (singleWrapper) singleWrapper.style.display = 'block';
-    if (multiWrapper) multiWrapper.style.display = 'none';
-
-    const selOpt = locSelect.querySelector(`option[value="${CSS.escape(selectedVal)}"]`);
-    const avail = parseFloat(selOpt?.getAttribute('data-avail') || 0);
-
-    if (hintEl) {
-      hintEl.innerHTML = `Current stock in <strong>${escapeHtml(selectedVal)}</strong>: <strong style="color:var(--secondary);">${avail.toFixed(2)} kg</strong>`;
+  if (row) {
+    if (isHighlighted) {
+      row.style.background = '#fffbeb';
+      const nameEl = row.querySelector('.swal-loc-name');
+      if (nameEl) nameEl.style.color = '#b45309';
+      input.style.borderColor = '#f59e0b';
+    } else {
+      row.style.background = 'transparent';
+      const nameEl = row.querySelector('.swal-loc-name');
+      if (nameEl) nameEl.style.color = '#1f2937';
+      input.style.borderColor = '#d1d5db';
     }
+  }
+  input.style.boxShadow = 'none';
+}
 
-    if (qtyLabel) {
-      if (type === 'set') qtyLabel.textContent = 'SET EXACT QUANTITY (KG) *';
-      else if (type === 'add') qtyLabel.textContent = 'QUANTITY TO ADD (KG) *';
-      else qtyLabel.textContent = 'QUANTITY TO SUBTRACT (KG) *';
-    }
+function onSwalLocInput(input) {
+  const row = input.closest('.swal-loc-row');
+  const val = parseFloat(input.value) || 0;
+  const avail = parseFloat(input.getAttribute('data-avail') || 0);
+  const type = document.getElementById('swal-adj-type')?.value || 'add';
 
-    if (qtyInput) {
-      if (type === 'set') {
-        qtyInput.value = avail;
-      } else {
-        qtyInput.value = '';
-        qtyInput.placeholder = type === 'add' ? 'e.g. 10.00' : `Max ${avail.toFixed(2)} kg`;
-      }
+  const isHighlighted = (type === 'set') ? (Math.abs(val - avail) > 0.0001) : (val > 0);
+
+  if (row) {
+    if (isHighlighted) {
+      row.style.background = '#fffbeb';
+      const nameEl = row.querySelector('.swal-loc-name');
+      if (nameEl) nameEl.style.color = '#b45309';
+      input.style.borderColor = '#f59e0b';
+    } else {
+      row.style.background = 'transparent';
+      const nameEl = row.querySelector('.swal-loc-name');
+      if (nameEl) nameEl.style.color = '#1f2937';
+      input.style.borderColor = '#d1d5db';
     }
   }
 
@@ -2107,58 +2112,65 @@ function onSwalAdjLocationChange() {
 }
 
 function onSwalAdjTypeChange() {
-  onSwalAdjLocationChange();
-}
-
-function recalcSwalTotals() {
-  const locSelect = document.getElementById('swal-adj-loc');
-  const typeSelect = document.getElementById('swal-adj-type');
-  const badge = document.getElementById('swal-total-stock-badge');
-  if (!locSelect || !typeSelect) return;
-
-  const selectedVal = locSelect.value;
-  const type = typeSelect.value;
-  const totalExistingAvail = (window._swalLocBreakdown || []).reduce((sum, l) => sum + (parseFloat(l.quantity) || 0), 0);
-
-  let newTotal = totalExistingAvail;
-
-  if (selectedVal === '__SPLIT__') {
-    const inputs = document.querySelectorAll('#swal-multi-split-wrapper .inner-qty-input');
-    let sumSplit = 0;
-    inputs.forEach(inp => {
-      const q = parseFloat(inp.value) || 0;
-      const avail = parseFloat(inp.getAttribute('data-avail') || 0);
-      if (type === 'set') {
-        sumSplit += q;
-      } else if (type === 'add') {
-        sumSplit += q;
-      } else {
-        sumSplit += q;
-      }
-    });
-
+  const type = document.getElementById('swal-adj-type')?.value || 'add';
+  const titleLabel = document.getElementById('swal-loc-table-title');
+  if (titleLabel) {
     if (type === 'set') {
-      newTotal = sumSplit;
+      titleLabel.textContent = 'Storage Locations — Set Exact Quantity (KG) *';
     } else if (type === 'add') {
-      newTotal = totalExistingAvail + sumSplit;
+      titleLabel.textContent = 'Storage Locations — Quantity To Add (KG) *';
     } else {
-      newTotal = Math.max(0, totalExistingAvail - sumSplit);
-    }
-  } else {
-    const selOpt = locSelect.querySelector(`option[value="${CSS.escape(selectedVal)}"]`);
-    const avail = parseFloat(selOpt?.getAttribute('data-avail') || 0);
-    const qtyInput = document.getElementById('swal-single-qty-input');
-    const val = parseFloat(qtyInput?.value) || 0;
-
-    if (type === 'set') {
-      newTotal = Math.max(0, totalExistingAvail - avail + val);
-    } else if (type === 'add') {
-      newTotal = totalExistingAvail + val;
-    } else {
-      newTotal = Math.max(0, totalExistingAvail - val);
+      titleLabel.textContent = 'Storage Locations — Quantity To Subtract (KG) *';
     }
   }
 
+  const inputs = document.querySelectorAll('#swal-locations-table-body .inner-qty-input');
+  inputs.forEach(inp => {
+    const avail = parseFloat(inp.getAttribute('data-avail') || 0);
+    if (type === 'set') {
+      inp.value = avail > 0 ? avail : 0;
+    } else {
+      inp.value = '';
+    }
+    onSwalLocBlur(inp);
+  });
+
+  recalcSwalTotals();
+}
+
+function recalcSwalTotals() {
+  const typeSelect = document.getElementById('swal-adj-type');
+  const badge = document.getElementById('swal-total-stock-badge');
+  const totalEnteredEl = document.getElementById('swal-total-entered-qty');
+  const newTotalEl = document.getElementById('swal-new-total-stock');
+  if (!typeSelect) return;
+
+  const type = typeSelect.value;
+  const totalExistingAvail = (window._swalLocBreakdown || []).reduce((sum, l) => sum + (parseFloat(l.quantity) || 0), 0);
+
+  const inputs = document.querySelectorAll('#swal-locations-table-body .inner-qty-input');
+  let sumEntered = 0;
+  let setSum = 0;
+
+  inputs.forEach(inp => {
+    const q = parseFloat(inp.value) || 0;
+    if (q > 0) sumEntered += q;
+    setSum += q;
+  });
+
+  let newTotal = totalExistingAvail;
+  if (type === 'set') {
+    newTotal = setSum;
+    if (totalEnteredEl) totalEnteredEl.textContent = setSum.toFixed(2) + ' kg';
+  } else if (type === 'add') {
+    newTotal = totalExistingAvail + sumEntered;
+    if (totalEnteredEl) totalEnteredEl.textContent = sumEntered.toFixed(2) + ' kg';
+  } else { // subtract
+    newTotal = Math.max(0, totalExistingAvail - sumEntered);
+    if (totalEnteredEl) totalEnteredEl.textContent = sumEntered.toFixed(2) + ' kg';
+  }
+
+  if (newTotalEl) newTotalEl.textContent = `${newTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} kg`;
   if (badge) {
     badge.innerText = `${newTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} kg`;
   }
