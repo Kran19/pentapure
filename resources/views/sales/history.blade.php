@@ -249,6 +249,7 @@
       }
     @endphp
 
+    <div class="card sales-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--border-soft, #e5e7eb); background:var(--bg-card, #ffffff); box-shadow:0 1px 3px rgba(0,0,0,0.04); transition:all 0.2s ease;">
       <!-- Header -->
       <div onclick="toggleHistoryAccordion('sales-acc-{{ $item['id'] }}', this)" style="cursor:pointer; padding:1.1rem; display:flex; justify-content:space-between; align-items:center; user-select:none; gap:10px;">
         <div style="flex:1; min-width:0;">
