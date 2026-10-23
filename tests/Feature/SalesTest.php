@@ -509,6 +509,7 @@ namespace Tests\Feature;
             $this->assertStringContainsString('>40 kg<', $content2);
             $this->assertStringContainsString('>60 kg<', $content2);
             $this->assertStringContainsString('PARTIAL', $content2);
+            $this->assertStringContainsString('DISPATCH DATE:', $content2);
 
             // 3. Full Dispatch: dispatch remaining 60 kg
             $dispatchLog2 = DispatchLog::create([
@@ -527,6 +528,25 @@ namespace Tests\Feature;
             $content3 = $resp3->getContent();
             $this->assertStringContainsString('>100 kg<', $content3);
             $this->assertStringContainsString('FULLY DISPATCHED', $content3);
+            $this->assertStringContainsString('DISPATCH DATE:', $content3);
+            $this->assertStringContainsString('Dispatch Date', $content3);
+
+            // 4. Specifically verify on /sales/history?page=1&status=DONE
+            $respDone = $this->withSession($session)->get('/sales/history?page=1&status=DONE');
+            $respDone->assertStatus(200);
+            $contentDone = $respDone->getContent();
+            $this->assertStringContainsString('DISPATCH DATE:', $contentDone);
+            $this->assertStringContainsString('Dispatch Date', $contentDone);
+            $this->assertStringContainsString(now()->timezone('Asia/Kolkata')->format('d-m-Y'), $contentDone);
+            // Verify Delete Order button is disabled for fully dispatched order
+            $this->assertStringContainsString('disabled', $contentDone);
+            $this->assertStringContainsString('Cannot delete order: This order has already been fully dispatched.', $contentDone);
+
+            // 5. Verify backend prevents deleting fully dispatched order
+            $delResp = $this->withSession($session)->deleteJson("/sales/order/{$order->id}/delete");
+            $delResp->assertStatus(422);
+            $delResp->assertJson(['success' => false]);
+            $this->assertNotNull(Order::find($order->id));
         }
 
         public function test_sales_home_displays_pending_and_partial_orders_and_stats(): void

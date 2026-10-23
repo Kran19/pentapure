@@ -796,7 +796,11 @@ class HistoryPdfController extends Controller
                 $latestDispatchLog = $order->dispatchLogs ? $order->dispatchLogs->sortByDesc('created_at')->first() : null;
                 $dispatchDateStr = ($latestDispatchLog && $latestDispatchLog->created_at)
                     ? \Carbon\Carbon::parse($latestDispatchLog->created_at)->format('d-m-Y')
-                    : (($latestDispatchLog && $latestDispatchLog->date) ? \Carbon\Carbon::parse($latestDispatchLog->date)->format('d-m-Y') : '-');
+                    : (($latestDispatchLog && $latestDispatchLog->date) ? \Carbon\Carbon::parse($latestDispatchLog->date)->format('d-m-Y') : null);
+                if (!$dispatchDateStr && in_array($dispatchStatus, ['DONE', 'COMPLETED', 'FULLY DISPATCHED']) && $order->updated_at) {
+                    $dispatchDateStr = \Carbon\Carbon::parse($order->updated_at)->format('d-m-Y');
+                }
+                $dispatchDateStr = $dispatchDateStr ?: '-';
 
                 $dueDateStr = null;
                 if (!empty($order->due_date)) {

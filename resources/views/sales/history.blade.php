@@ -64,7 +64,8 @@
       $query = strtolower($q);
       return str_contains(strtolower($item['companyName'] ?? ''), $query) ||
              str_contains(strtolower((string)$item['id']), $query) ||
-             str_contains(strtolower((string)$item['total']), $query);
+             str_contains(strtolower((string)$item['total']), $query) ||
+             str_contains(strtolower((string)($item['dispatchDate'] ?? '')), $query);
     });
   }
 
@@ -91,9 +92,10 @@
       return sprintf('5_%012d_%010d', 999999999999 - strtotime($item['date'] ?? 'now'), 9999999999 - (int)($item['id'] ?? 0));
     }
 
-    // Fully Dispatched / Completed -> Group 4
+    // Fully Dispatched / Completed -> Group 4 (Sorted by dispatch date, newest first)
     if ($isDone) {
-      return sprintf('4_%012d_%010d', 999999999999 - strtotime($item['date'] ?? 'now'), 9999999999 - (int)($item['id'] ?? 0));
+      $dispTime = !empty($item['rawDispatchDate']) ? strtotime($item['rawDispatchDate']) : strtotime($item['date'] ?? 'now');
+      return sprintf('4_%012d_%010d', 999999999999 - $dispTime, 9999999999 - (int)($item['id'] ?? 0));
     }
 
     $rawDue = $item['rawDueDate'] ?? (!empty($item['dueDate']) && $item['dueDate'] !== 'Not Specified' ? \Carbon\Carbon::parse($item['dueDate'], 'Asia/Kolkata')->format('Y-m-d') : null);
@@ -221,31 +223,31 @@
 <div style="display:flex; flex-direction:column; gap:10px;">
   @forelse($paginated as $idx => $item)
     @php
-      $canCancel = ($item['status'] ?? '') !== 'CANCELLED' && ($item['status'] ?? '') !== 'CLOSED' && ($item['dispatchStatus'] ?? '') !== 'DONE' && ($item['dispatchStatus'] ?? '') !== 'PARTIAL';
-      $canEdit = ($item['status'] ?? '') === 'OPEN' && (($item['dispatchStatus'] ?? '') === 'PENDING' || ($item['dispatchStatus'] ?? '') === 'UNASSIGNED' || empty($item['dispatchStatus']));
+      $oStatus = strtoupper(str_replace('_', ' ', $item['status'] ?? ''));
+      $ds = strtoupper(str_replace('_', ' ', $item['dispatchStatus'] ?? 'PENDING'));
+      $isDone = in_array($ds, ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'DISPATCHED']) ||
+                ((float)($item['totalQty'] ?? 0) > 0 && (float)($item['remainingQty'] ?? 0) <= 0);
+      $canCancel = $oStatus !== 'CANCELLED' && $oStatus !== 'CLOSED' && !$isDone && $ds !== 'PARTIAL';
+      $canEdit = $oStatus === 'OPEN' && ($ds === 'PENDING' || $ds === 'UNASSIGNED' || empty($item['dispatchStatus']));
+
+      if ($oStatus === 'CANCELLED') {
+        $statusText = 'CANCELLED';
+        $badgeClass = 'badge-danger';
+        $customBadgeStyle = 'background:#dc2626; color:#fff;';
+      } elseif ($isDone) {
+        $statusText = 'FULLY DISPATCHED';
+        $badgeClass = 'badge-done';
+        $customBadgeStyle = 'background:#16a34a; color:#fff;';
+      } elseif (in_array($ds, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL PENDING', 'PARTIAL_PENDING', 'PARTIAL_DISPATCH'])) {
+        $statusText = 'PARTIAL';
+        $badgeClass = 'badge-pending';
+        $customBadgeStyle = 'background:#f59e0b; color:#fff;';
+      } else {
+        $statusText = 'PENDING';
+        $badgeClass = 'badge-pending';
+        $customBadgeStyle = 'background:#3b82f6; color:#fff;';
+      }
     @endphp
-    <div class="card sales-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--glass-border, rgba(255,255,255,0.06)); background:var(--card-bg, rgba(255,255,255,0.03)); transition:all 0.2s ease;">
-      @php
-        $oStatus = strtoupper(str_replace('_', ' ', $item['status'] ?? ''));
-        $ds = strtoupper(str_replace('_', ' ', $item['dispatchStatus'] ?? 'PENDING'));
-        if ($oStatus === 'CANCELLED') {
-          $statusText = 'CANCELLED';
-          $badgeClass = 'badge-danger';
-          $customBadgeStyle = 'background:#dc2626; color:#fff;';
-        } elseif ($ds === 'DONE' || $ds === 'COMPLETED' || $ds === 'FULLY DISPATCHED' || $ds === 'DISPATCHED') {
-          $statusText = 'FULLY DISPATCHED';
-          $badgeClass = 'badge-done';
-          $customBadgeStyle = 'background:#16a34a; color:#fff;';
-        } elseif (in_array($ds, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL PENDING', 'PARTIAL_PENDING', 'PARTIAL_DISPATCH'])) {
-          $statusText = 'PARTIAL';
-          $badgeClass = 'badge-pending';
-          $customBadgeStyle = 'background:#f59e0b; color:#fff;';
-        } else {
-          $statusText = 'PENDING';
-          $badgeClass = 'badge-pending';
-          $customBadgeStyle = 'background:#3b82f6; color:#fff;';
-        }
-      @endphp
 
       <!-- Header -->
       <div onclick="toggleHistoryAccordion('sales-acc-{{ $item['id'] }}', this)" style="cursor:pointer; padding:1.1rem; display:flex; justify-content:space-between; align-items:center; user-select:none; gap:10px;">
@@ -276,6 +278,10 @@
               @endphp
               <span>•</span>
               <span>EXPECTED DELIVERY DATE: <strong style="color:var(--text-main, #111827); font-weight:700;">{{ $item['dueDate'] }}</strong>{!! $historyDueBadge !!}</span>
+            @endif
+            @if(!empty($item['dispatchDate']))
+              <span>•</span>
+              <span>DISPATCH DATE: <strong style="color:var(--text-main, #111827); font-weight:700;">{{ $item['dispatchDate'] }}</strong>@if(!empty($item['dispatchLogs']) && count($item['dispatchLogs']) > 1)<span style="font-size:0.7rem; color:var(--text-muted); font-weight:600; margin-left:3px;">(Latest)</span>@endif</span>
             @endif
             @if(!empty($item['lrCopies']) && count($item['lrCopies']) > 0)
               <span>•</span>
@@ -332,6 +338,12 @@
             <div style="font-size:0.85rem; font-weight:700; color:var(--text-main, #111827);">{{ $item['dueDate'] ?? 'N/A' }}</div>
           </div>
           <div>
+            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Dispatch Date</div>
+            <div style="font-size:0.85rem; font-weight:700; color:{{ !empty($item['dispatchDate']) ? '#16a34a' : 'var(--text-muted)' }};">
+              {{ $item['dispatchDateTime'] ?? ($item['dispatchDate'] ?? 'Not Dispatched') }}
+            </div>
+          </div>
+          <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Total Amount</div>
             <div style="font-weight:700; font-size:1.15rem; color:var(--primary, #D88A00);">₹{{ number_format($item['total'] ?? 0, 2) }}</div>
           </div>
@@ -341,6 +353,26 @@
           <div style="margin-bottom:1rem; padding:0.8rem 1rem; background:rgba(0,0,0,0.03); border-radius:8px; border:1px solid var(--border-soft, rgba(0,0,0,0.08)); width:100%; box-sizing:border-box; word-break:break-word; overflow-wrap:anywhere;">
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:4px;">Notes / Instructions</div>
             <div style="font-size:0.88rem; color:var(--text-main); word-break:break-word; overflow-wrap:anywhere; white-space:pre-wrap; line-height:1.5;">{{ $item['notes'] }}</div>
+          </div>
+        @endif
+
+        @if(!empty($item['dispatchLogs']) && count($item['dispatchLogs']) > 1)
+          <div style="margin-bottom:1rem; padding:0.75rem 1rem; background:rgba(37,99,235,0.05); border:1px solid rgba(37,99,235,0.2); border-radius:8px;">
+            <div style="font-size:0.78rem; font-weight:700; color:#2563eb; text-transform:uppercase; margin-bottom:6px;">
+              📦 Dispatch History ({{ count($item['dispatchLogs']) }} Rounds)
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+              @foreach($item['dispatchLogs'] as $dLog)
+                <div style="font-size:0.8rem; background:var(--card-bg, rgba(255,255,255,0.05)); padding:4px 10px; border-radius:6px; border:1px solid var(--border-soft, rgba(0,0,0,0.1)); display:inline-flex; align-items:center; gap:6px;">
+                  <span style="font-weight:700; color:#0284c7;">{{ $dLog['dispatchId'] }}</span>
+                  <span style="color:var(--text-muted);">•</span>
+                  <span style="font-weight:600; color:var(--text-main);">{{ $dLog['dateTime'] ?? $dLog['date'] }}</span>
+                  @if(!empty($dLog['dispatchedBy']))
+                    <span style="color:var(--text-muted); font-size:0.75rem;">by {{ $dLog['dispatchedBy'] }}</span>
+                  @endif
+                </div>
+              @endforeach
+            </div>
           </div>
         @endif
 
@@ -437,6 +469,9 @@
           <div style="margin-bottom:1rem; padding:0.6rem 1rem; background:rgba(220,38,38,0.04); border-radius:8px; border:1px dashed rgba(220,38,38,0.3); display:flex; justify-content:space-between; align-items:center;">
             <div style="font-size:0.8rem; color:#ef4444; font-weight:600;">
               📦 Lorry Receipt (LR) Copy Pending
+              @if(!empty($item['dispatchDate']))
+                <span style="color:var(--text-muted); font-weight:normal; margin-left:6px;">(Dispatched: {{ $item['dispatchDateTime'] ?? $item['dispatchDate'] }})</span>
+              @endif
             </div>
             <span class="badge badge-pending" style="font-size:0.65rem; background:#dc2626; color:#ffffff !important; padding:2px 8px; border-radius:10px; font-weight:700;">LR PENDING</span>
           </div>
@@ -453,9 +488,15 @@
               🚫 Cancel Order
             </button>
           @endif
-          <button class="btn btn-sm" onclick="app.deleteSalesOrder({{ $item['id'] }})" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; background:rgba(220,38,38,0.12); border:1px solid rgba(220,38,38,0.35); color:#dc2626; display:inline-flex; align-items:center; gap:5px; font-weight:700; cursor:pointer; border-radius:6px;" title="Permanently delete this order from Sales and Dispatch">
-            🗑️ Delete Order
-          </button>
+          @if($isDone)
+            <button type="button" class="btn btn-sm" disabled style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; background:rgba(156,163,175,0.12); border:1px solid rgba(156,163,175,0.3); color:#9ca3af; display:inline-flex; align-items:center; gap:5px; font-weight:700; cursor:not-allowed; border-radius:6px; opacity:0.65;" title="Cannot delete order: This order has already been fully dispatched.">
+              🗑️ Delete Order
+            </button>
+          @else
+            <button type="button" class="btn btn-sm" onclick="app.deleteSalesOrder({{ $item['id'] }})" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; background:rgba(220,38,38,0.12); border:1px solid rgba(220,38,38,0.35); color:#dc2626; display:inline-flex; align-items:center; gap:5px; font-weight:700; cursor:pointer; border-radius:6px;" title="Permanently delete this order from Sales and Dispatch">
+              🗑️ Delete Order
+            </button>
+          @endif
           <a class="btn btn-sm btn-secondary" href="{{ url((request()->segment(1) === 'sales' ? 'sales' : request()->segment(1) . '/sales') . '/order/pdf/' . $item['id']) }}" target="_blank" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
             📄 Download PDF
           </a>
@@ -529,6 +570,20 @@
 
   window.app = window.app || {};
   app.deleteSalesOrder = function(id) {
+    const orderData = (window._historyLogs || []).find(o => String(o.id) === String(id));
+    if (orderData) {
+      const ds = String(orderData.dispatchStatus || '').toUpperCase().replace(/_/g, ' ');
+      const isDone = ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'DISPATCHED'].includes(ds) ||
+                     (Number(orderData.totalQty || 0) > 0 && Number(orderData.remainingQty || 0) <= 0);
+      if (isDone) {
+        if (typeof Swal !== 'undefined') {
+          Swal.fire('Cannot Delete', 'This order has already been fully dispatched and cannot be deleted.', 'warning');
+        } else {
+          alert('Cannot delete order: This order has already been fully dispatched.');
+        }
+        return;
+      }
+    }
     const token = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
     const doDelete = () => {
       const seg1 = '{{ request()->segment(1) }}';

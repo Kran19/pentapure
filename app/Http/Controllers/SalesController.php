@@ -556,7 +556,7 @@ class SalesController extends Controller
     public function history()
     {
         $user = $this->authUser();
-        $query = Order::with(['company', 'transporter', 'items.product', 'dispatchLogs', 'creator']);
+        $query = Order::with(['company', 'transporter', 'items.product', 'dispatchLogs.user', 'creator']);
         if ($user && isset($user['role']) && $user['role'] === 'SALES') {
             $query->where('created_by', $user['id']);
         }
@@ -595,24 +595,66 @@ class SalesController extends Controller
                     $o->update(['dispatch_status' => $computedStatus]);
                 }
 
+                // Resolve dispatch date & logs
+                $sortedLogs = $o->dispatchLogs ? $o->dispatchLogs->sortByDesc('created_at')->values() : collect();
+                $latestDispatchLog = $sortedLogs->first();
+                $dispatchDate = null;
+                $dispatchDateTime = null;
+                $rawDispatchDate = null;
+
+                if ($latestDispatchLog && $latestDispatchLog->created_at) {
+                    $dispatchDate = $latestDispatchLog->created_at->timezone('Asia/Kolkata')->format('d-m-Y');
+                    $dispatchDateTime = $latestDispatchLog->created_at->timezone('Asia/Kolkata')->format('d-m-Y, h:i A');
+                    $rawDispatchDate = $latestDispatchLog->created_at->toISOString();
+                } elseif ($latestDispatchLog && !empty($latestDispatchLog->date)) {
+                    $dCarbon = \Carbon\Carbon::parse($latestDispatchLog->date)->timezone('Asia/Kolkata');
+                    $dispatchDate = $dCarbon->format('d-m-Y');
+                    $dispatchDateTime = $dCarbon->format('d-m-Y, h:i A');
+                    $rawDispatchDate = $dCarbon->toISOString();
+                } elseif (in_array($computedStatus, ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'FULLY_DISPATCHED']) || $dispatchedQty > 0) {
+                    $fallbackDate = $o->updated_at ?? $o->created_at;
+                    if ($fallbackDate) {
+                        $dispatchDate = $fallbackDate->timezone('Asia/Kolkata')->format('d-m-Y');
+                        $dispatchDateTime = $fallbackDate->timezone('Asia/Kolkata')->format('d-m-Y, h:i A');
+                        $rawDispatchDate = $fallbackDate->toISOString();
+                    }
+                }
+
+                $dispatchLogsData = $sortedLogs->map(function($dl) {
+                    return [
+                        'id'           => $dl->id,
+                        'dispatchId'   => 'DSP-' . str_pad($dl->id, 4, '0', STR_PAD_LEFT),
+                        'date'         => $dl->created_at ? $dl->created_at->timezone('Asia/Kolkata')->format('d-m-Y') : null,
+                        'dateTime'     => $dl->created_at ? $dl->created_at->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') : null,
+                        'rawDate'      => $dl->created_at ? $dl->created_at->toISOString() : null,
+                        'dispatchedBy' => $dl->user?->name ?? 'System',
+                        'driverNo'     => $dl->driver_no,
+                        'lrNo'         => $dl->lr_no,
+                    ];
+                })->values()->toArray();
+
                 return [
-                    'id'             => $o->id,
-                    'createdBy'      => $o->creator?->name ?? 'System',
-                    'companyId'      => $o->company_id,
-                    'companyName'    => strtoupper($o->company?->name ?? ''),
-                    'transportId'    => $o->transporter_id,
-                    'transportName'  => strtoupper($o->transporter?->name ?? ''),
-                    'transporter'    => $o->transporter ? ['id' => $o->transporter->id, 'name' => strtoupper($o->transporter->name)] : null,
-                    'total'          => (float) $o->total,
-                    'totalQty'       => $totalQty,
-                    'dispatchedQty'  => $dispatchedQty,
-                    'remainingQty'   => $remainingQty,
-                    'status'         => $o->status,
-                    'dispatchStatus' => $computedStatus,
-                    'date'           => $o->created_at->toISOString(),
-                    'dueDate'        => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
-                    'rawDueDate'     => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('Y-m-d') : null,
-                    'notes'          => $o->notes,
+                    'id'                 => $o->id,
+                    'createdBy'          => $o->creator?->name ?? 'System',
+                    'companyId'          => $o->company_id,
+                    'companyName'        => strtoupper($o->company?->name ?? ''),
+                    'transportId'        => $o->transporter_id,
+                    'transportName'      => strtoupper($o->transporter?->name ?? ''),
+                    'transporter'        => $o->transporter ? ['id' => $o->transporter->id, 'name' => strtoupper($o->transporter->name)] : null,
+                    'total'              => (float) $o->total,
+                    'totalQty'           => $totalQty,
+                    'dispatchedQty'      => $dispatchedQty,
+                    'remainingQty'       => $remainingQty,
+                    'status'             => $o->status,
+                    'dispatchStatus'     => $computedStatus,
+                    'date'               => $o->created_at->toISOString(),
+                    'dueDate'            => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
+                    'rawDueDate'         => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('Y-m-d') : null,
+                    'dispatchDate'       => $dispatchDate,
+                    'dispatchDateTime'   => $dispatchDateTime,
+                    'rawDispatchDate'    => $rawDispatchDate,
+                    'dispatchLogs'       => $dispatchLogsData,
+                    'notes'              => $o->notes,
                     'lrCopies'       => $o->dispatchLogs ? $o->dispatchLogs->filter(fn($l) => !empty($l->lr_image_path))->flatMap(function($l) {
                         $rawPaths = \App\Http\Controllers\DispatchController::getLrImagePaths($l);
                         if (empty($rawPaths)) return [];
@@ -792,6 +834,19 @@ class SalesController extends Controller
     public function destroyOrder(Request $request, $id)
     {
         $order = Order::with(['items', 'dispatchLogs.dispatchItems'])->findOrFail($id);
+
+        $totalQty = (float) $order->items->sum('quantity');
+        $remainingQty = (float) $order->items->sum(fn($i) => $i->remainingQty());
+        $rawSt = strtoupper(trim(str_replace('_', ' ', (string)($order->dispatch_status ?? 'PENDING'))));
+        $isFullyDispatched = in_array($rawSt, ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'FULLY_DISPATCHED', 'CLOSED'])
+            || ($totalQty > 0 && $remainingQty <= 0);
+
+        if ($isFullyDispatched) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete order: This order has already been fully dispatched.'
+            ], 422);
+        }
 
         DB::transaction(function () use ($order) {
             // 1. Revert and clean up all dispatch logs, locations, and stock deductions
