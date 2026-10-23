@@ -305,6 +305,28 @@ html.dark-mode .highlight-expected-delivery,
   border-color: rgba(56, 189, 248, 0.45);
 }
 
+.highlight-dispatch-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: 0.84rem;
+  color: #16a34a !important;
+  background: rgba(22, 163, 74, 0.12);
+  border: 1px solid rgba(22, 163, 74, 0.35);
+  padding: 3px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  flex-wrap: wrap;
+}
+html.dark-mode .highlight-dispatch-date,
+.dark-mode .highlight-dispatch-date {
+  color: #4ade80 !important;
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(74, 222, 128, 0.45);
+}
+
 .due-days-badge {
   display: inline-block;
   font-size: 0.72rem;
@@ -472,6 +494,15 @@ html.dark-mode .highlight-expected-delivery,
             <span>Ordered: {{ \Carbon\Carbon::parse($d['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }}</span>
             <span>•</span>
             <span class="highlight-expected-delivery">EXPECTED DELIVERY DATE: {{ $dueDate ? strtoupper($dueDate) : 'NOT SPECIFIED' }}{!! $dueDaysBadge !!}</span>
+            @if(!empty($d['dispatchDate']))
+              <span>•</span>
+              <span class="highlight-dispatch-date">
+                DISPATCH DATE: <strong style="color:var(--text-main, #111827); font-weight:800; margin-left:3px;">{{ $d['dispatchDate'] }}</strong>
+                @if(!empty($d['dispatchLogs']) && count($d['dispatchLogs']) > 1)
+                  <span style="font-size:0.7rem; color:var(--text-muted); font-weight:600; margin-left:2px;">(Latest)</span>
+                @endif
+              </span>
+            @endif
           </div>
         </div>
         <div style="display:flex; align-items:center; gap:10px; text-align:right; flex-wrap:nowrap;">
@@ -505,6 +536,17 @@ html.dark-mode .highlight-expected-delivery,
             <div style="font-size:1.05rem; font-weight:800; color:#0284c7 !important; margin-top:2px;">{{ !empty($d['dueDate']) && $d['dueDate'] !== '—' && $d['dueDate'] !== 'N/A' ? strtoupper($d['dueDate']) : 'NOT SPECIFIED' }}</div>
             @if($dueDaysBadge)
               <div style="margin-top:4px;">{!! $dueDaysBadge !!}</div>
+            @endif
+          </div>
+          <div style="background:rgba(22, 163, 74, 0.08); padding:8px 12px; border-radius:8px; border:1px solid rgba(22, 163, 74, 0.25);">
+            <div style="color:#16a34a !important; font-size:0.72rem; text-transform:uppercase; font-weight:800; letter-spacing:0.3px;">Dispatch Date</div>
+            <div style="font-size:1.05rem; font-weight:800; color:{{ !empty($d['dispatchDate']) ? '#16a34a !important' : 'var(--text-muted)' }}; margin-top:2px;">
+              {{ $d['dispatchDateTime'] ?? ($d['dispatchDate'] ?? 'Not Dispatched') }}
+            </div>
+            @if(!empty($d['dispatchLogs']) && count($d['dispatchLogs']) > 1)
+              <div style="font-size:0.72rem; color:var(--text-muted); font-weight:600; margin-top:4px;">
+                Latest of {{ count($d['dispatchLogs']) }} rounds
+              </div>
             @endif
           </div>
           <div>
@@ -550,6 +592,26 @@ html.dark-mode .highlight-expected-delivery,
             <div style="flex:1;">
               <div style="color:var(--primary, #D88A00); font-size:0.75rem; text-transform:uppercase; font-weight:700; margin-bottom:3px; letter-spacing:0.3px;">Sales Note / Instructions</div>
               <div style="font-size:0.88rem; color:var(--text-main, #111827); line-height:1.45; word-break:break-word; white-space:pre-wrap;">{{ $d['notes'] }}</div>
+            </div>
+          </div>
+        @endif
+
+        @if(!empty($d['dispatchLogs']) && count($d['dispatchLogs']) > 1)
+          <div style="margin-bottom:1rem; padding:0.75rem 1rem; background:rgba(37,99,235,0.05); border:1px solid rgba(37,99,235,0.2); border-radius:8px;">
+            <div style="font-size:0.78rem; font-weight:700; color:#2563eb; text-transform:uppercase; margin-bottom:6px;">
+              📦 Dispatch History ({{ count($d['dispatchLogs']) }} Rounds)
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+              @foreach($d['dispatchLogs'] as $dLog)
+                <div style="font-size:0.8rem; background:var(--card-bg, rgba(255,255,255,0.05)); padding:4px 10px; border-radius:6px; border:1px solid var(--border-soft, rgba(0,0,0,0.1)); display:inline-flex; align-items:center; gap:6px;">
+                  <span style="font-weight:700; color:#0284c7;">{{ $dLog['dispatchId'] }}</span>
+                  <span style="color:var(--text-muted);">•</span>
+                  <span style="font-weight:600; color:var(--text-main);">{{ $dLog['dateTime'] ?? $dLog['date'] }}</span>
+                  @if(!empty($dLog['dispatchedBy']))
+                    <span style="color:var(--text-muted); font-size:0.75rem;">by {{ $dLog['dispatchedBy'] }}</span>
+                  @endif
+                </div>
+              @endforeach
             </div>
           </div>
         @endif

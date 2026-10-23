@@ -164,6 +164,28 @@ html.dark-mode .highlight-expected-delivery,
   border-color: rgba(56, 189, 248, 0.45);
 }
 
+.highlight-dispatch-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: 0.84rem;
+  color: #16a34a !important;
+  background: rgba(22, 163, 74, 0.12);
+  border: 1px solid rgba(22, 163, 74, 0.35);
+  padding: 3px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  flex-wrap: wrap;
+}
+html.dark-mode .highlight-dispatch-date,
+.dark-mode .highlight-dispatch-date {
+  color: #4ade80 !important;
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(74, 222, 128, 0.45);
+}
+
 .due-days-badge {
   display: inline-block;
   font-size: 0.72rem;
@@ -351,6 +373,27 @@ html.dark-mode .highlight-expected-delivery,
                   $dueDaysBadge = '<span class="due-days-badge done">Dispatched</span>';
               }
           }
+
+          // Resolve dispatch date & logs
+          $sortedLogs = $order->dispatchLogs ? $order->dispatchLogs->sortByDesc('created_at')->values() : collect();
+          $latestDispatchLog = $sortedLogs->first() ?? $order->dispatchLog;
+          $dispatchDate = null;
+          $dispatchDateTime = null;
+
+          if ($latestDispatchLog && $latestDispatchLog->created_at) {
+              $dispatchDate = $latestDispatchLog->created_at->timezone('Asia/Kolkata')->format('d-m-Y');
+              $dispatchDateTime = $latestDispatchLog->created_at->timezone('Asia/Kolkata')->format('d-m-Y, h:i A');
+          } elseif ($latestDispatchLog && !empty($latestDispatchLog->date)) {
+              $dCarbon = \Carbon\Carbon::parse($latestDispatchLog->date)->timezone('Asia/Kolkata');
+              $dispatchDate = $dCarbon->format('d-m-Y');
+              $dispatchDateTime = $dCarbon->format('d-m-Y, h:i A');
+          } elseif ($isOrderDone || $totalDispatchedQty > 0) {
+              $fallbackDate = $order->updated_at ?? $order->created_at;
+              if ($fallbackDate) {
+                  $dispatchDate = $fallbackDate->timezone('Asia/Kolkata')->format('d-m-Y');
+                  $dispatchDateTime = $fallbackDate->timezone('Asia/Kolkata')->format('d-m-Y, h:i A');
+              }
+          }
         @endphp
 
         <div class="card dispatch-history-card" style="margin-bottom:0; padding:0; overflow:hidden; border-radius:12px; border:1px solid {{ $isCancelled ? '#fca5a5' : 'var(--border-soft, #e5e7eb)' }}; background:{{ $isCancelled ? '#fffafb' : 'var(--bg-card, #ffffff)' }}; {{ $isCancelled ? 'border-left: 4px solid #dc2626;' : '' }} box-shadow:0 1px 3px rgba(0,0,0,0.04); transition:all 0.2s ease;">
@@ -373,6 +416,15 @@ html.dark-mode .highlight-expected-delivery,
                 <span>ORDERED: {{ $orderDate ? $orderDate->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') : 'N/A' }}</span>
                 <span>•</span>
                 <span class="highlight-expected-delivery">EXPECTED DELIVERY DATE: {{ $dueDateFormatted ? strtoupper($dueDateFormatted) : 'NOT SPECIFIED' }}{!! $dueDaysBadge !!}</span>
+                @if(!empty($dispatchDate))
+                  <span>•</span>
+                  <span class="highlight-dispatch-date">
+                    DISPATCH DATE: <strong style="color:var(--text-main, #111827); font-weight:800; margin-left:3px;">{{ $dispatchDate }}</strong>
+                    @if($sortedLogs->count() > 1)
+                      <span style="font-size:0.7rem; color:var(--text-muted); font-weight:600; margin-left:2px;">(Latest)</span>
+                    @endif
+                  </span>
+                @endif
               </div>
             </div>
             <div style="display:flex; align-items:center; gap:12px; text-align:right; flex-wrap:nowrap;">
@@ -424,6 +476,17 @@ html.dark-mode .highlight-expected-delivery,
                   <div style="margin-top:4px;">{!! $dueDaysBadge !!}</div>
                 @endif
               </div>
+              <div style="background:rgba(22, 163, 74, 0.08); padding:8px 12px; border-radius:8px; border:1px solid rgba(22, 163, 74, 0.25);">
+                <div style="color:#16a34a !important; font-size:0.72rem; text-transform:uppercase; font-weight:800; letter-spacing:0.3px;">Dispatch Date</div>
+                <div style="font-size:1.05rem; font-weight:800; color:{{ !empty($dispatchDate) ? '#16a34a !important' : 'var(--text-muted)' }}; margin-top:2px;">
+                  {{ $dispatchDateTime ?? ($dispatchDate ?? 'Not Dispatched') }}
+                </div>
+                @if($sortedLogs->count() > 1)
+                  <div style="font-size:0.72rem; color:var(--text-muted); font-weight:600; margin-top:4px;">
+                    Latest of {{ $sortedLogs->count() }} rounds
+                  </div>
+                @endif
+              </div>
               <div>
                 <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Company</div>
                 <div style="font-weight:600; font-size:0.9rem;">{{ $companyName }}</div>
@@ -456,14 +519,37 @@ html.dark-mode .highlight-expected-delivery,
               </div>
             </div>
 
+            @if($sortedLogs->count() > 1)
+              <div style="margin-bottom:1rem; padding:0.75rem 1rem; background:rgba(37,99,235,0.05); border:1px solid rgba(37,99,235,0.2); border-radius:8px;">
+                <div style="font-size:0.78rem; font-weight:700; color:#2563eb; text-transform:uppercase; margin-bottom:6px;">
+                  📦 Dispatch History ({{ $sortedLogs->count() }} Rounds)
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                  @foreach($sortedLogs as $dLog)
+                    <div style="font-size:0.8rem; background:var(--card-bg, rgba(255,255,255,0.05)); padding:4px 10px; border-radius:6px; border:1px solid var(--border-soft, rgba(0,0,0,0.1)); display:inline-flex; align-items:center; gap:6px;">
+                      <span style="font-weight:700; color:#0284c7;">DSP-{{ str_pad($dLog->id, 4, '0', STR_PAD_LEFT) }}</span>
+                      <span style="color:var(--text-muted);">•</span>
+                      <span style="font-weight:600; color:var(--text-main);">{{ $dLog->created_at ? $dLog->created_at->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') : ($dLog->date ? \Carbon\Carbon::parse($dLog->date)->format('d-m-Y') : 'N/A') }}</span>
+                      @if($dLog->user)
+                        <span style="color:var(--text-muted); font-size:0.75rem;">by {{ $dLog->user->name }}</span>
+                      @endif
+                    </div>
+                  @endforeach
+                </div>
+              </div>
+            @endif
+
             <!-- Dispatch User Info & LR Copy (if available) -->
             @php
-              $lastLog = $order->dispatchLog ?? $order->dispatchLogs?->last();
+              $lastLog = $latestDispatchLog ?? ($order->dispatchLog ?? $order->dispatchLogs?->last());
             @endphp
             @if($lastLog)
               <div style="margin-bottom:1rem; padding:8px 12px; background:#f9fafb; border:1px solid #f3f4f6; border-radius:6px; display:flex; align-items:center; gap:16px; font-size:0.82rem; flex-wrap:wrap;">
                 @if($lastLog->user)
                   <span style="color:var(--text-muted);">Dispatched by: <strong style="color:var(--text-main);">{{ $lastLog->user->name }}</strong></span>
+                @endif
+                @if($lastLog->created_at)
+                  <span style="color:var(--text-muted);">Dispatch Date & Time: <strong style="color:#16a34a;">{{ $lastLog->created_at->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }}</strong></span>
                 @endif
                 @if($lastLog->lr_image_path)
                   <a href="javascript:void(0)" onclick="app.viewImage('{{ asset($lastLog->lr_image_path) }}')" style="color:var(--primary, #D88A00); font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">

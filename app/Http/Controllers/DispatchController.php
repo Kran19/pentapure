@@ -1292,7 +1292,7 @@ class DispatchController extends Controller
 
     public function report()
     {
-        $orders = Order::with(['company', 'transporter', 'items.product', 'dispatchLogs', 'creator'])
+        $orders = Order::with(['company', 'transporter', 'items.product', 'dispatchLogs.user', 'creator'])
             ->where(function($q) {
                 $q->where('status', '!=', 'CANCELLED')
                   ->orWhereNull('status');
@@ -1318,6 +1318,37 @@ class DispatchController extends Controller
                 $dispatchStatus = 'PENDING';
             }
 
+            // Resolve dispatch date & logs
+            $sortedLogs = $o->dispatchLogs ? $o->dispatchLogs->sortByDesc('created_at')->values() : collect();
+            $latestDispatchLog = $sortedLogs->first();
+            $dispatchDate = null;
+            $dispatchDateTime = null;
+
+            if ($latestDispatchLog && $latestDispatchLog->created_at) {
+                $dispatchDate = $latestDispatchLog->created_at->timezone('Asia/Kolkata')->format('d-m-Y');
+                $dispatchDateTime = $latestDispatchLog->created_at->timezone('Asia/Kolkata')->format('d-m-Y, h:i A');
+            } elseif ($latestDispatchLog && !empty($latestDispatchLog->date)) {
+                $dCarbon = \Carbon\Carbon::parse($latestDispatchLog->date)->timezone('Asia/Kolkata');
+                $dispatchDate = $dCarbon->format('d-m-Y');
+                $dispatchDateTime = $dCarbon->format('d-m-Y, h:i A');
+            } elseif ($isFullyDispatched || $dispatchedQty > 0) {
+                $fallbackDate = $o->updated_at ?? $o->created_at;
+                if ($fallbackDate) {
+                    $dispatchDate = $fallbackDate->timezone('Asia/Kolkata')->format('d-m-Y');
+                    $dispatchDateTime = $fallbackDate->timezone('Asia/Kolkata')->format('d-m-Y, h:i A');
+                }
+            }
+
+            $dispatchLogsData = $sortedLogs->map(function($dl) {
+                return [
+                    'id'           => $dl->id,
+                    'dispatchId'   => 'DSP-' . str_pad($dl->id, 4, '0', STR_PAD_LEFT),
+                    'date'         => $dl->created_at ? $dl->created_at->timezone('Asia/Kolkata')->format('d-m-Y') : null,
+                    'dateTime'     => $dl->created_at ? $dl->created_at->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') : null,
+                    'dispatchedBy' => $dl->user?->name ?? 'System',
+                ];
+            })->values()->toArray();
+
             $reportOrders->push([
                 'id'             => $o->id,
                 'orderId'        => $o->id,
@@ -1329,6 +1360,9 @@ class DispatchController extends Controller
                 'orderTotal'     => $o->total,
                 'status'         => $o->status,
                 'dispatchStatus' => $dispatchStatus,
+                'dispatchDate'   => $dispatchDate,
+                'dispatchDateTime' => $dispatchDateTime,
+                'dispatchLogs'   => $dispatchLogsData,
                 'date'           => $o->created_at ? $o->created_at->toISOString() : ($o->date ? \Carbon\Carbon::parse($o->date)->toISOString() : now()->toISOString()),
                 'dueDate'        => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
                 'rawDueDate'     => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('Y-m-d') : null,

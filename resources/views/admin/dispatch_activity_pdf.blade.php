@@ -115,6 +115,21 @@
                                 EXPECTED DELIVERY DATE: {{ \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') }}{{ $dueDaysText }}
                             </div>
                         @endif
+                        @php
+                            $pdfDispatchLog = $order->dispatchLog ?? ($order->dispatchLogs ? $order->dispatchLogs->sortByDesc('created_at')->first() : null);
+                            $pdfDispDate = ($pdfDispatchLog && $pdfDispatchLog->created_at)
+                                ? $pdfDispatchLog->created_at->format('d-m-Y')
+                                : (($pdfDispatchLog && $pdfDispatchLog->date) ? \Carbon\Carbon::parse($pdfDispatchLog->date)->format('d-m-Y') : null);
+                            if (!$pdfDispDate && in_array($order->dispatch_status, ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED']) && $order->updated_at) {
+                                $pdfDispDate = $order->updated_at->format('d-m-Y');
+                            }
+                        @endphp
+                        @if(!empty($pdfDispDate))
+                            <br>
+                            <div style="font-size:9px; color:#16a34a; font-weight:bold; margin-top:2px; background: rgba(22, 163, 74, 0.08); padding: 2px 4px; border-radius: 3px; display: inline-block;">
+                                DISPATCH DATE: {{ $pdfDispDate }}
+                            </div>
+                        @endif
                     </td>
                     <td>
                         <strong>{{ $order->company?->name ?? 'N/A' }}</strong><br>
@@ -149,6 +164,9 @@
                         @if($order->dispatchLog)
                             <div>Transporter: {{ $order->transporter?->name ?? 'N/A' }}</div>
                             <div style="font-size:10px; color:#666;">Dispatched by: {{ $order->dispatchLog->user?->name }}</div>
+                            @if($order->dispatchLog->created_at)
+                                <div style="font-size:10px; color:#16a34a; font-weight:bold;">Dispatched: {{ $order->dispatchLog->created_at->format('d M Y, h:i A') }}</div>
+                            @endif
                             @if($order->dispatchLog->driver_no)
                                 <div style="font-size:10px; color:#666;">Driver: {{ $order->dispatchLog->driver_no }}</div>
                             @endif
