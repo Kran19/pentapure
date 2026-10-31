@@ -1751,12 +1751,25 @@ function adminAddStock() {
 function adminAdjustStock(productId, stage, grade, productName = '', currentQty = 0) {
   if (window.isReadOnly) { Swal.fire('Notice', 'You have view-only access.', 'info'); return; }
   const stageLabel = { RAW: '🌿 Raw', SEMI: '⚗️ Semi-Finished', FINISHED: '✅ FG', PACKAGING: '📦 Packaging' }[stage] || stage;
-  const isDefGrade = !grade || ['NONE', 'N/A', 'NA', 'N / A'].includes(grade.trim().toUpperCase());
+  const isDefGrade = !grade || ['NONE', 'N/A', 'NA', 'N / A', 'NULL'].includes(String(grade).trim().toUpperCase());
   const displayGrade = !isDefGrade ? ` &nbsp;·&nbsp; Grade: <strong style="color:#333;">${grade}</strong>` : '';
 
+  // Store adjustment context globally
+  window._swalProductId = productId;
+  window._swalStage = stage;
+  window._swalGrade = grade;
+  window._swalCurrentQty = parseFloat(currentQty) || 0;
+
   // Get locations breakdown instantly from serverPageData locationMappings
-  const key = `${productId}_${grade}_${stage}`;
-  const locMap = (locationMappings && locationMappings[key]) ? locationMappings[key] : {};
+  const normGrade = isDefGrade ? 'NONE' : String(grade).trim().toUpperCase();
+  const normStage = String(stage || '').trim().toUpperCase();
+  const key1 = `${productId}_${normGrade}_${normStage}`;
+  const key2 = `${productId}__${normStage}`;
+  const key3 = `${productId}_${grade}_${stage}`;
+
+  const locMap = (locationMappings && (locationMappings[key1] || locationMappings[key2] || locationMappings[key3])) 
+    ? (locationMappings[key1] || locationMappings[key2] || locationMappings[key3]) 
+    : {};
   const locBreakdown = [];
   for (const [locName, qty] of Object.entries(locMap)) {
     locBreakdown.push({ name: locName, quantity: parseFloat(qty) || 0 });
@@ -1764,14 +1777,14 @@ function adminAdjustStock(productId, stage, grade, productName = '', currentQty 
 
   window._swalLocBreakdown = locBreakdown;
 
-  // Background fetch to refresh fresh location breakdown silently if needed
-  fetch(`/api/stock/locations?product_id=${productId}&stage=${stage}&grade=${encodeURIComponent(grade)}`)
+  // Background fetch to refresh fresh location breakdown silently with baseUrl & userSlug
+  const locApiUrl = (window.baseUrl || '') + '/' + (window.userSlug ? window.userSlug + '/' : '') + `api/stock/locations?product_id=${productId}&stage=${stage}&grade=${encodeURIComponent(grade || '')}`;
+  fetch(locApiUrl)
     .then(r => r.json())
     .then(data => {
-      if (data.success && data.breakdown) {
+      if (data && data.success && Array.isArray(data.breakdown)) {
         window._swalLocBreakdown = data.breakdown;
         populateSwalLocations();
-        onSwalAdjLocationChange();
       }
     }).catch(() => {});
 
@@ -1876,13 +1889,20 @@ function adminAdjustStock(productId, stage, grade, productName = '', currentQty 
             hasAnyChange = true;
           }
         } else if (val > 0) {
-          if (type === 'subtract' && val > avail) {
-            Swal.showValidationMessage(`⚠️ Cannot subtract ${val} kg from '${loc}' — only ${avail.toFixed(2)} kg available.`);
-            return false;
-          }
           splits.push({ location: loc, quantity: val });
           totalQtyEntered += val;
           hasAnyChange = true;
+        }
+      }
+
+      if (type === 'subtract') {
+        const totalAvailAll = Math.max(
+          Array.from(locInputs).reduce((s, el) => s + parseFloat(el.getAttribute('data-avail') || 0), 0),
+          window._swalCurrentQty || 0
+        );
+        if (totalQtyEntered > totalAvailAll) {
+          Swal.showValidationMessage(`⚠️ Cannot subtract ${totalQtyEntered.toFixed(2)} kg — only ${totalAvailAll.toFixed(2)} kg available in total.`);
+          return false;
         }
       }
 
@@ -2024,13 +2044,20 @@ function populateSwalLocations() {
   // Alphabetical sort of all configured locations
   allLocNames.sort((a, b) => a.localeCompare(b));
 
+  // If no location has recorded stock yet, but total stock exists, assign to primary (first) location
+  let totalAvailInBreakdown = Object.values(locMap).reduce((s, v) => s + v, 0);
+  if (totalAvailInBreakdown <= 0.0001 && (window._swalCurrentQty || 0) > 0 && allLocNames.length > 0) {
+    const primaryKey = allLocNames[0].trim().toLowerCase();
+    locMap[primaryKey] = window._swalCurrentQty;
+  }
+
   const type = document.getElementById('swal-adj-type')?.value || 'add';
 
   let html = '';
   allLocNames.forEach(locName => {
     const key = locName.trim().toLowerCase();
     const avail = locMap[key] !== undefined ? locMap[key] : 0;
-    const initialVal = (type === 'set') ? (avail > 0 ? avail : 0) : '';
+    const initialVal = (type === 'set') ? (avail > 0 ? avail : '') : '';
 
     html += `
       <div class="swal-loc-row" id="swal-loc-row-${escapeHtml(locName)}" style="display:flex; justify-content:space-between; align-items:center; padding:0.45rem 0.5rem; margin-bottom:0.25rem; border-radius:6px; transition:background 0.15s ease, border-color 0.15s ease;">
@@ -2049,7 +2076,7 @@ function populateSwalLocations() {
             placeholder="0.00"
             value="${initialVal}"
             oninput="onSwalLocInput(this)"
-            onfocus="onSwalLocFocus(this)"
+            onfocus="this.select(); onSwalLocFocus(this)"
             onblur="onSwalLocBlur(this)"
             style="width:90px; height:2.2rem; text-align:center; padding:0.2rem 0.4rem; font-size:0.95rem; font-weight:700; border:1.5px solid #d1d5db; border-radius:6px; background:#ffffff; color:#111827; outline:none; transition:all 0.15s ease;">
         </div>
@@ -2142,7 +2169,7 @@ function onSwalAdjTypeChange() {
   inputs.forEach(inp => {
     const avail = parseFloat(inp.getAttribute('data-avail') || 0);
     if (type === 'set') {
-      inp.value = avail > 0 ? avail : 0;
+      inp.value = avail > 0 ? avail : '';
     } else {
       inp.value = '';
     }
@@ -2160,9 +2187,15 @@ function recalcSwalTotals() {
   if (!typeSelect) return;
 
   const type = typeSelect.value;
-  const totalExistingAvail = (window._swalLocBreakdown || []).reduce((sum, l) => sum + (parseFloat(l.quantity) || 0), 0);
-
   const inputs = document.querySelectorAll('#swal-locations-table-body .inner-qty-input');
+
+  let inputsAvailSum = 0;
+  inputs.forEach(inp => {
+    inputsAvailSum += parseFloat(inp.getAttribute('data-avail') || 0);
+  });
+  const fallbackQty = (window._swalCurrentQty !== undefined) ? window._swalCurrentQty : 0;
+  const totalExistingAvail = Math.max(inputsAvailSum, fallbackQty);
+
   let sumEntered = 0;
   let setSum = 0;
 

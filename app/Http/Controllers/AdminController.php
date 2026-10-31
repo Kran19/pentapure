@@ -916,6 +916,9 @@ class AdminController extends Controller
                 'created_at' => optional($log->created_at)->timezone('Asia/Kolkata')->format('d M Y, h:i A'),
             ])->values());
 
+        $allLocations = Location::orderBy('name')->get(['id', 'name']);
+        $primaryLocName = $allLocations->first(fn($l) => in_array(strtoupper(trim($l->name)), ['MAIN WAREHOUSE', 'DEFAULT', 'GENERAL', 'WAREHOUSE', 'MAIN']))?->name ?: $allLocations->first()?->name;
+
         // Fetch location mappings from DB
         $locationStock = DB::table('stocks')
             ->join('locations', 'stocks.location_id', '=', 'locations.id')
@@ -930,13 +933,40 @@ class AdminController extends Controller
             ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
             ->get();
 
+        $unassignedStock = DB::table('stocks')
+            ->whereNull('stocks.location_id')
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade')
+            ->selectRaw("
+                stocks.product_id,
+                stocks.stage,
+                stocks.grade,
+                SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity
+            ")
+            ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
+            ->get();
+
         $locationMappings = [];
         foreach ($locationStock as $ls) {
-            $key = "{$ls->product_id}_{$ls->grade}_{$ls->stage}";
-            $locationMappings[$key][$ls->location_name] = (float) $ls->quantity;
+            $normG = (!empty($ls->grade) && !in_array(strtoupper(trim($ls->grade)), ['NONE', 'N/A', 'NA', 'N / A', 'NULL'], true)) ? strtoupper(trim($ls->grade)) : 'NONE';
+            $normStage = strtoupper(trim($ls->stage));
+            $qty = (float) $ls->quantity;
+
+            foreach (["{$ls->product_id}_{$normG}_{$normStage}", "{$ls->product_id}_{$ls->grade}_{$ls->stage}", "{$ls->product_id}__{$normStage}"] as $k) {
+                $locationMappings[$k][$ls->location_name] = ($locationMappings[$k][$ls->location_name] ?? 0) + $qty;
+            }
         }
 
-        $allLocations = Location::orderBy('name')->get(['id', 'name']);
+        if ($primaryLocName) {
+            foreach ($unassignedStock as $us) {
+                $normG = (!empty($us->grade) && !in_array(strtoupper(trim($us->grade)), ['NONE', 'N/A', 'NA', 'N / A', 'NULL'], true)) ? strtoupper(trim($us->grade)) : 'NONE';
+                $normStage = strtoupper(trim($us->stage));
+                $qty = (float) $us->quantity;
+
+                foreach (["{$us->product_id}_{$normG}_{$normStage}", "{$us->product_id}_{$us->grade}_{$us->stage}", "{$us->product_id}__{$normStage}"] as $k) {
+                    $locationMappings[$k][$primaryLocName] = ($locationMappings[$k][$primaryLocName] ?? 0) + $qty;
+                }
+            }
+        }
 
         $pageData = [
             'allStock' => $allStock,
@@ -1469,6 +1499,9 @@ class AdminController extends Controller
             ->orderBy('stocks.grade', 'asc')
             ->get();
 
+        $allLocations = Location::orderBy('name')->get(['id', 'name']);
+        $primaryLocName = $allLocations->first(fn($l) => in_array(strtoupper(trim($l->name)), ['MAIN WAREHOUSE', 'DEFAULT', 'GENERAL', 'WAREHOUSE', 'MAIN']))?->name ?: $allLocations->first()?->name;
+
         // Fetch location mappings from DB
         $locationStock = DB::table('stocks')
             ->join('locations', 'stocks.location_id', '=', 'locations.id')
@@ -1483,10 +1516,39 @@ class AdminController extends Controller
             ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
             ->get();
 
+        $unassignedStock = DB::table('stocks')
+            ->whereNull('stocks.location_id')
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade')
+            ->selectRaw("
+                stocks.product_id,
+                stocks.stage,
+                stocks.grade,
+                SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity
+            ")
+            ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
+            ->get();
+
         $locationMappings = [];
         foreach ($locationStock as $ls) {
-            $key = "{$ls->product_id}_{$ls->grade}_{$ls->stage}";
-            $locationMappings[$key][$ls->location_name] = (float) $ls->quantity;
+            $normG = (!empty($ls->grade) && !in_array(strtoupper(trim($ls->grade)), ['NONE', 'N/A', 'NA', 'N / A', 'NULL'], true)) ? strtoupper(trim($ls->grade)) : 'NONE';
+            $normStage = strtoupper(trim($ls->stage));
+            $qty = (float) $ls->quantity;
+
+            foreach (["{$ls->product_id}_{$normG}_{$normStage}", "{$ls->product_id}_{$ls->grade}_{$ls->stage}", "{$ls->product_id}__{$normStage}"] as $k) {
+                $locationMappings[$k][$ls->location_name] = ($locationMappings[$k][$ls->location_name] ?? 0) + $qty;
+            }
+        }
+
+        if ($primaryLocName) {
+            foreach ($unassignedStock as $us) {
+                $normG = (!empty($us->grade) && !in_array(strtoupper(trim($us->grade)), ['NONE', 'N/A', 'NA', 'N / A', 'NULL'], true)) ? strtoupper(trim($us->grade)) : 'NONE';
+                $normStage = strtoupper(trim($us->stage));
+                $qty = (float) $us->quantity;
+
+                foreach (["{$us->product_id}_{$normG}_{$normStage}", "{$us->product_id}_{$us->grade}_{$us->stage}", "{$us->product_id}__{$normStage}"] as $k) {
+                    $locationMappings[$k][$primaryLocName] = ($locationMappings[$k][$primaryLocName] ?? 0) + $qty;
+                }
+            }
         }
 
         return response()->json([
@@ -2074,6 +2136,44 @@ class AdminController extends Controller
             if (!empty($splits) && is_array($splits)) {
                 $summaries = [];
                 DB::transaction(function() use ($request, $type, $reason, $userId, $splits, &$summaries, $stockDate, $normGrade) {
+                    $targetStage = $request->stage;
+                    $stageList = match($targetStage) {
+                        'FINISHED', 'FG' => ['FINISHED', 'FG'],
+                        'PACKAGING', 'PKG', 'PM' => ['PACKAGING', 'PKG', 'PM'],
+                        default => [$targetStage]
+                    };
+
+                    $unassignedStock = (float) (DB::table('stocks')
+                        ->where('product_id', $request->product_id)
+                        ->whereIn('stage', $stageList)
+                        ->where(function($q) use ($normGrade) {
+                            if ($normGrade === 'NONE') {
+                                $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'NULL']);
+                            } else {
+                                $q->where('grade', $normGrade);
+                            }
+                        })
+                        ->whereNull('location_id')
+                        ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
+                        ->value('net') ?? 0);
+
+                    if ($type === 'set' && $unassignedStock != 0) {
+                        $stock = new Stock([
+                            'product_id'       => $request->product_id,
+                            'user_id'          => $userId,
+                            'stage'            => $request->stage,
+                            'grade'            => $request->grade,
+                            'location_id'      => null,
+                            'quantity'         => abs($unassignedStock),
+                            'transaction_type' => $unassignedStock > 0 ? 'OUT' : 'IN',
+                            'date'             => $stockDate,
+                            'notes'            => "Reconciled unassigned stock into locations" . ($reason ? " — {$reason}" : ''),
+                        ]);
+                        $stock->created_at = $stockDate;
+                        $stock->updated_at = $stockDate;
+                        $stock->save();
+                    }
+
                     foreach ($splits as $split) {
                         $locName = trim($split['location']);
                         $splitQty = (float) $split['quantity'];
@@ -2081,13 +2181,6 @@ class AdminController extends Controller
 
                         $locId = Location::firstOrCreate(['name' => $locName])->id;
                         $note = "Manual adjustment at location '{$locName}'" . ($reason ? " — {$reason}" : '');
-
-                        $targetStage = $request->stage;
-                        $stageList = match($targetStage) {
-                            'FINISHED', 'FG' => ['FINISHED', 'FG'],
-                            'PACKAGING', 'PKG', 'PM' => ['PACKAGING', 'PKG', 'PM'],
-                            default => [$targetStage]
-                        };
 
                         $locAvail = (float) (DB::table('stocks')
                             ->where('product_id', $request->product_id)
@@ -2138,7 +2231,33 @@ class AdminController extends Controller
                         } else { // subtract
                             if ($splitQty > 0) {
                                 if ($splitQty > $locAvail) {
-                                    throw new \Exception("Cannot subtract {$splitQty} kg from location '{$locName}' — only {$locAvail} kg available.");
+                                    $diff = $splitQty - $locAvail;
+                                    if ($unassignedStock >= $diff) {
+                                        if ($locAvail > 0) {
+                                            $createStockTxn($locAvail, 'OUT', "Subtracted {$locAvail} kg from '{$locName}'");
+                                            $splitQty -= $locAvail;
+                                        }
+                                        $stock = new Stock([
+                                            'product_id'       => $request->product_id,
+                                            'user_id'          => $userId,
+                                            'stage'            => $request->stage,
+                                            'grade'            => $request->grade,
+                                            'location_id'      => null,
+                                            'quantity'         => $splitQty,
+                                            'transaction_type' => 'OUT',
+                                            'date'             => $stockDate,
+                                            'notes'            => "Subtracted {$splitQty} kg (unassigned stock for '{$locName}')" . ($reason ? " — {$reason}" : ''),
+                                        ]);
+                                        $stock->created_at = $stockDate;
+                                        $stock->updated_at = $stockDate;
+                                        $stock->save();
+                                        $unassignedStock -= $splitQty;
+                                        $summaries[] = "Subtracted {$split['quantity']} kg from '{$locName}'";
+                                        continue;
+                                    } else {
+                                        $totalAvail = $locAvail + $unassignedStock;
+                                        throw new \Exception("Cannot subtract {$splitQty} kg from location '{$locName}' — total available is {$totalAvail} kg.");
+                                    }
                                 }
                                 $summary = "Subtracted {$splitQty} kg from '{$locName}'";
                                 $createStockTxn($splitQty, 'OUT', $summary);
@@ -3127,9 +3246,14 @@ class AdminController extends Controller
             ->selectRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity")
             ->value('quantity');
 
-        $breakdown = $locations->map(function($loc) use ($stockCounts, $unassignedStock) {
+        $mainLoc = $locations->first(fn($l) => in_array(strtoupper(trim($l->name)), ['MAIN WAREHOUSE', 'DEFAULT', 'GENERAL', 'WAREHOUSE', 'MAIN']));
+        if (!$mainLoc && $locations->isNotEmpty()) {
+            $mainLoc = $locations->first();
+        }
+
+        $breakdown = $locations->map(function($loc) use ($stockCounts, $unassignedStock, $mainLoc) {
             $qty = (float) ($stockCounts[$loc->id] ?? 0);
-            if (strtoupper($loc->name) === 'MAIN WAREHOUSE' && $unassignedStock > 0) {
+            if ($mainLoc && $loc->id === $mainLoc->id && $unassignedStock > 0) {
                 $qty += $unassignedStock;
             }
             return [
@@ -3137,7 +3261,7 @@ class AdminController extends Controller
                 'name' => $loc->name,
                 'quantity' => max(0, $qty),
             ];
-        })->sortByDesc('quantity')->values();
+        })->values();
 
         return response()->json(['success' => true, 'breakdown' => $breakdown]);
     }

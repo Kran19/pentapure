@@ -843,8 +843,12 @@ async function adminAdjustStock(productId, stage, grade, productName = '', curre
   }
 
   const mappings = getStoredLocationMappings();
-  const key = `${productId}_${grade}_${stage}`;
-  const locMap = mappings[key] || {};
+  const normGrade = (!grade || ['NONE', 'N/A', 'NA', 'N / A', 'NULL'].includes(String(grade).trim().toUpperCase())) ? 'NONE' : String(grade).trim().toUpperCase();
+  const normStage = String(stage || '').trim().toUpperCase();
+  const key1 = `${productId}_${normGrade}_${normStage}`;
+  const key2 = `${productId}__${normStage}`;
+  const key3 = `${productId}_${grade}_${stage}`;
+  const locMap = mappings[key1] || mappings[key2] || mappings[key3] || {};
 
   const namesSet = new Set();
   const allLocNames = [];
@@ -865,6 +869,15 @@ async function adminAdjustStock(productId, stage, grade, productName = '', curre
   allLocNames.sort((a, b) => a.localeCompare(b));
 
   const totalCurrent = parseFloat(currentQty) || 0;
+  window._swalProductId = productId;
+  window._swalStage = stage;
+  window._swalGrade = grade;
+  window._swalCurrentQty = totalCurrent;
+
+  let totalAvailInBreakdown = Object.values(locMap).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+  if (totalAvailInBreakdown <= 0.0001 && totalCurrent > 0 && allLocNames.length > 0) {
+    locMap[allLocNames[0]] = totalCurrent;
+  }
 
   Swal.fire({
     title: 'Adjust Stock',
@@ -924,7 +937,7 @@ async function adminAdjustStock(productId, stage, grade, productName = '', curre
                       placeholder="0.00"
                       value=""
                       oninput="onSwalSmLocInput(this)"
-                      onfocus="onSwalSmLocFocus(this)"
+                      onfocus="this.select(); onSwalSmLocFocus(this)"
                       onblur="onSwalSmLocBlur(this)"
                       style="width:90px; height:2.2rem; text-align:center; padding:0.2rem 0.4rem; font-size:0.95rem; font-weight:700; border:1.5px solid #d1d5db; border-radius:6px; background:#ffffff; color:#111827; outline:none; transition:all 0.15s ease;">
                   </div>
@@ -983,13 +996,20 @@ async function adminAdjustStock(productId, stage, grade, productName = '', curre
             hasAnyChange = true;
           }
         } else if (val > 0) {
-          if (type === 'subtract' && val > avail) {
-            Swal.showValidationMessage(`⚠️ Cannot subtract ${val} kg from '${loc}' — only ${avail.toFixed(2)} kg available.`);
-            return false;
-          }
           splits.push({ location: loc, quantity: val });
           totalQtyEntered += val;
           hasAnyChange = true;
+        }
+      }
+
+      if (type === 'subtract') {
+        const totalAvailAll = Math.max(
+          Array.from(locInputs).reduce((s, el) => s + parseFloat(el.getAttribute('data-avail') || 0), 0),
+          window._swalCurrentQty || 0
+        );
+        if (totalQtyEntered > totalAvailAll) {
+          Swal.showValidationMessage(`⚠️ Cannot subtract ${totalQtyEntered.toFixed(2)} kg — only ${totalAvailAll.toFixed(2)} kg available in total.`);
+          return false;
         }
       }
 
@@ -1166,7 +1186,7 @@ function onSwalSmAdjTypeChange() {
   inputs.forEach(inp => {
     const avail = parseFloat(inp.getAttribute('data-avail') || 0);
     if (type === 'set') {
-      inp.value = avail > 0 ? avail : 0;
+      inp.value = avail > 0 ? avail : '';
     } else {
       inp.value = '';
     }
@@ -1184,9 +1204,15 @@ function recalcSwalSmTotals() {
   if (!typeSelect) return;
 
   const type = typeSelect.value;
-  const totalExistingAvail = (window._swalLocBreakdown || []).reduce((sum, l) => sum + (parseFloat(l.quantity) || 0), 0);
-
   const inputs = document.querySelectorAll('#swal-sm-locations-table .inner-qty-input');
+
+  let inputsAvailSum = 0;
+  inputs.forEach(inp => {
+    inputsAvailSum += parseFloat(inp.getAttribute('data-avail') || 0);
+  });
+  const fallbackQty = (window._swalCurrentQty !== undefined) ? window._swalCurrentQty : 0;
+  const totalExistingAvail = Math.max(inputsAvailSum, fallbackQty);
+
   let sumEntered = 0;
   let setSum = 0;
 
