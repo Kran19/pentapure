@@ -36,7 +36,7 @@ class Stock extends Model
     {
         $remaining = $quantity;
         $rawGrade = strtoupper(trim((string)$grade));
-        $normGrade = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL'], true) ? 'NONE' : $rawGrade;
+        $normGrade = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-'], true) ? 'NONE' : $rawGrade;
         
         $rawStage = strtoupper(trim((string)$stage));
         $stagesList = match($rawStage) {
@@ -48,21 +48,22 @@ class Stock extends Model
         };
         
         $locations = \Illuminate\Support\Facades\DB::table('stocks')
-            ->select('location_id', 'stage', \Illuminate\Support\Facades\DB::raw('SUM(CASE WHEN transaction_type = "IN" THEN quantity ELSE -quantity END) as available'))
+            ->select('location_id', 'stage', 'grade', \Illuminate\Support\Facades\DB::raw('SUM(CASE WHEN transaction_type = "IN" THEN quantity ELSE -quantity END) as available'))
             ->where('product_id', $productId)
             ->whereIn('stage', $stagesList)
             ->where(function($q) use ($normGrade) {
                 if ($normGrade === 'NONE') {
-                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(\Illuminate\Support\Facades\DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'NULL']);
+                    $q->whereIn(\Illuminate\Support\Facades\DB::raw("UPPER(TRIM(COALESCE(grade, '')))"), ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-']);
                 } else {
-                    $q->where('grade', $normGrade);
+                    $q->where(\Illuminate\Support\Facades\DB::raw("UPPER(TRIM(grade))"), $normGrade);
                 }
             })
-            ->whereNotNull('location_id')
-            ->groupBy('location_id', 'stage')
+            ->groupBy('location_id', 'stage', 'grade')
             ->havingRaw('SUM(CASE WHEN transaction_type = "IN" THEN quantity ELSE -quantity END) > 0')
             ->get();
             
+        $firstConfiguredLocId = \App\Models\Location::orderBy('name')->value('id');
+
         foreach ($locations as $loc) {
             if ($remaining <= 0) break;
             
@@ -71,10 +72,11 @@ class Stock extends Model
                 'product_id' => $productId,
                 'user_id' => $userId,
                 'stage' => $loc->stage ?: $stagesList[0],
-                'grade' => $normGrade,
-                'location_id' => $loc->location_id,
+                'grade' => $loc->grade ?? $normGrade,
+                'location_id' => $loc->location_id ?: $firstConfiguredLocId,
                 'quantity' => $deduct,
                 'transaction_type' => 'OUT',
+                'date' => now()->toDateString(),
                 'notes' => $notes
             ]);
             
@@ -82,7 +84,7 @@ class Stock extends Model
         }
         
         if ($remaining > 0) {
-            $defaultLocId = \App\Models\Location::firstOrCreate(['name' => 'Main Warehouse'])->id;
+            $defaultLocId = $firstConfiguredLocId ?: \App\Models\Location::firstOrCreate(['name' => 'Main Warehouse'])->id;
             self::create([
                 'product_id' => $productId,
                 'user_id' => $userId,
@@ -91,6 +93,7 @@ class Stock extends Model
                 'location_id' => $defaultLocId,
                 'quantity' => $remaining,
                 'transaction_type' => 'OUT',
+                'date' => now()->toDateString(),
                 'notes' => $notes . ' (Forced deduction fallback)'
             ]);
         }

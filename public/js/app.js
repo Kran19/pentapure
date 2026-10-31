@@ -2230,7 +2230,10 @@ const app = {
           
           const stage = i.productType || 'FINISHED';
           const grade = i.grade ? encodeURIComponent(i.grade) : 'NONE';
-          fetch(`/api/stock/locations?product_id=${i.productId}&stage=${stage}&grade=${grade}`)
+          const currentSlug = (typeof this.getCurrentSlug === 'function') ? this.getCurrentSlug('dispatch') : 'dispatch';
+          const baseUrl = (typeof this.getBaseUrl === 'function') ? this.getBaseUrl() : (window.baseUrl || '');
+          const locApiUrl = `${baseUrl}/${currentSlug}/api/stock/locations?product_id=${i.productId}&stage=${stage}&grade=${grade}`;
+          fetch(locApiUrl)
             .then(r => r.json())
             .then(data => {
               const container = document.getElementById(`loc-splits-${i.id}`);

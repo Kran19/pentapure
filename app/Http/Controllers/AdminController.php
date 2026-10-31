@@ -67,6 +67,11 @@ class AdminController extends Controller
         $packagingQty = count($packagingStockUnits) > 0 ? array_sum(array_column($packagingStockUnits, 'quantity')) : 0;
 
         $getLowCount = function (string $stage): int {
+            $stagesList = match($stage) {
+                'FINISHED', 'FG' => ['FINISHED', 'FG'],
+                'PACKAGING', 'PKG', 'PM' => ['PACKAGING', 'PKG', 'PM'],
+                default => [$stage],
+            };
             return DB::table('stocks')
                 ->join('products', 'stocks.product_id', '=', 'products.id')
                 ->leftJoin('stock_limits', function ($join) {
@@ -75,7 +80,7 @@ class AdminController extends Controller
                          ->on('stocks.grade', '=', 'stock_limits.grade');
                 })
                 ->select('stocks.product_id', 'stocks.stage', 'stocks.grade')
-                ->where('stocks.stage', $stage)
+                ->whereIn('stocks.stage', $stagesList)
                 ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.threshold', 'stock_limits.alert_limit')
                 ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) <= IFNULL(stock_limits.alert_limit, products.threshold)")
                 ->havingRaw("SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) > 0")
@@ -866,30 +871,52 @@ class AdminController extends Controller
             : "products.rate";
         $rateGroupBy = $hasLimitRate ? ['stock_limits.rate'] : [];
 
-        $allStock = DB::table('stocks')
-            ->join('products', 'stocks.product_id', '=', 'products.id')
-            ->leftJoin('stock_limits', function($join) {
-                $join->on('stocks.product_id', '=', 'stock_limits.product_id')
-                     ->on('stocks.stage', '=', 'stock_limits.stage')
-                     ->on('stocks.grade', '=', 'stock_limits.grade');
-            })
-            ->groupBy(array_merge(['stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.unit', 'products.threshold', 'products.rate', 'products.sort_order', 'stock_limits.alert_limit'], $rateGroupBy))
+        $stageNormExpr = "CASE 
+            WHEN UPPER(TRIM(stocks.stage)) IN ('FG', 'FINISHED') THEN 'FINISHED'
+            WHEN UPPER(TRIM(stocks.stage)) IN ('PKG', 'PM', 'PACKAGING') THEN 'PACKAGING'
+            WHEN UPPER(TRIM(stocks.stage)) = 'SEMI' THEN 'SEMI'
+            WHEN UPPER(TRIM(stocks.stage)) = 'RAW' THEN 'RAW'
+            ELSE UPPER(TRIM(stocks.stage))
+        END";
+
+        $gradeNormExpr = "CASE 
+            WHEN stocks.grade IS NULL OR UPPER(TRIM(stocks.grade)) IN ('', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-') THEN 'NONE' 
+            ELSE UPPER(TRIM(stocks.grade)) 
+        END";
+
+        $stockAgg = DB::table('stocks')
             ->selectRaw("
-                stocks.product_id as productId,
+                stocks.product_id,
+                {$stageNormExpr} as norm_stage,
+                {$gradeNormExpr} as norm_grade,
+                SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
+            ")
+            ->groupBy('stocks.product_id', DB::raw('norm_stage'), DB::raw('norm_grade'));
+
+        $allStock = DB::table(DB::raw("({$stockAgg->toSql()}) as aggregated_stocks"))
+            ->mergeBindings($stockAgg)
+            ->join('products', 'aggregated_stocks.product_id', '=', 'products.id')
+            ->leftJoin('stock_limits', function($join) {
+                $join->on('aggregated_stocks.product_id', '=', 'stock_limits.product_id')
+                     ->on('aggregated_stocks.norm_stage', '=', DB::raw("CASE WHEN UPPER(TRIM(stock_limits.stage)) IN ('FG', 'FINISHED') THEN 'FINISHED' WHEN UPPER(TRIM(stock_limits.stage)) IN ('PKG', 'PM', 'PACKAGING') THEN 'PACKAGING' ELSE UPPER(TRIM(stock_limits.stage)) END"))
+                     ->on('aggregated_stocks.norm_grade', '=', DB::raw("CASE WHEN stock_limits.grade IS NULL OR UPPER(TRIM(stock_limits.grade)) IN ('', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-') THEN 'NONE' ELSE UPPER(TRIM(stock_limits.grade)) END"));
+            })
+            ->selectRaw("
+                aggregated_stocks.product_id as productId,
                 products.name,
                 products.unit,
                 products.threshold,
                 {$rateSelect},
-                stocks.stage,
-                stocks.grade,
+                aggregated_stocks.norm_stage as stage,
+                aggregated_stocks.norm_grade as grade,
                 products.sort_order,
                 COALESCE(NULLIF(stock_limits.alert_limit, 0), NULLIF(products.threshold, 0), stock_limits.alert_limit, products.threshold, 0) as alert_limit,
-                SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
+                aggregated_stocks.quantity
             ")
-            ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) >= 0")
-            ->orderBy('stocks.stage')
+            ->where('aggregated_stocks.quantity', '>=', 0)
+            ->orderBy('aggregated_stocks.norm_stage')
             ->orderBy('products.name', 'asc')
-            ->orderBy('stocks.grade', 'asc')
+            ->orderBy('aggregated_stocks.norm_grade', 'asc')
             ->get();
 
         $allProducts = Product::with('grades')
@@ -919,50 +946,50 @@ class AdminController extends Controller
         $allLocations = Location::orderBy('name')->get(['id', 'name']);
         $primaryLocName = $allLocations->first(fn($l) => in_array(strtoupper(trim($l->name)), ['MAIN WAREHOUSE', 'DEFAULT', 'GENERAL', 'WAREHOUSE', 'MAIN']))?->name ?: $allLocations->first()?->name;
 
-        // Fetch location mappings from DB
+        // Fetch location mappings from DB with normalized stage and grade
         $locationStock = DB::table('stocks')
             ->join('locations', 'stocks.location_id', '=', 'locations.id')
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'locations.name')
             ->selectRaw("
                 stocks.product_id,
-                stocks.stage,
-                stocks.grade,
+                {$stageNormExpr} as norm_stage,
+                {$gradeNormExpr} as norm_grade,
                 locations.name as location_name,
                 SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity
             ")
-            ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
+            ->groupBy('stocks.product_id', DB::raw('norm_stage'), DB::raw('norm_grade'), 'locations.name')
+            ->havingRaw("quantity > 0")
             ->get();
 
         $unassignedStock = DB::table('stocks')
             ->whereNull('stocks.location_id')
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade')
             ->selectRaw("
                 stocks.product_id,
-                stocks.stage,
-                stocks.grade,
+                {$stageNormExpr} as norm_stage,
+                {$gradeNormExpr} as norm_grade,
                 SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity
             ")
-            ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
+            ->groupBy('stocks.product_id', DB::raw('norm_stage'), DB::raw('norm_grade'))
+            ->havingRaw("quantity > 0")
             ->get();
 
         $locationMappings = [];
         foreach ($locationStock as $ls) {
-            $normG = (!empty($ls->grade) && !in_array(strtoupper(trim($ls->grade)), ['NONE', 'N/A', 'NA', 'N / A', 'NULL'], true)) ? strtoupper(trim($ls->grade)) : 'NONE';
-            $normStage = strtoupper(trim($ls->stage));
+            $normG = $ls->norm_grade;
+            $normStage = $ls->norm_stage;
             $qty = (float) $ls->quantity;
 
-            foreach (["{$ls->product_id}_{$normG}_{$normStage}", "{$ls->product_id}_{$ls->grade}_{$ls->stage}", "{$ls->product_id}__{$normStage}"] as $k) {
+            foreach (["{$ls->product_id}_{$normG}_{$normStage}", "{$ls->product_id}__{$normStage}"] as $k) {
                 $locationMappings[$k][$ls->location_name] = ($locationMappings[$k][$ls->location_name] ?? 0) + $qty;
             }
         }
 
         if ($primaryLocName) {
             foreach ($unassignedStock as $us) {
-                $normG = (!empty($us->grade) && !in_array(strtoupper(trim($us->grade)), ['NONE', 'N/A', 'NA', 'N / A', 'NULL'], true)) ? strtoupper(trim($us->grade)) : 'NONE';
-                $normStage = strtoupper(trim($us->stage));
+                $normG = $us->norm_grade;
+                $normStage = $us->norm_stage;
                 $qty = (float) $us->quantity;
 
-                foreach (["{$us->product_id}_{$normG}_{$normStage}", "{$us->product_id}_{$us->grade}_{$us->stage}", "{$us->product_id}__{$normStage}"] as $k) {
+                foreach (["{$us->product_id}_{$normG}_{$normStage}", "{$us->product_id}__{$normStage}"] as $k) {
                     $locationMappings[$k][$primaryLocName] = ($locationMappings[$k][$primaryLocName] ?? 0) + $qty;
                 }
             }
@@ -1472,80 +1499,102 @@ class AdminController extends Controller
             : "products.rate";
         $rateGroupBy = $hasLimitRate ? ['stock_limits.rate'] : [];
 
-        $allStock = DB::table('stocks')
-            ->join('products', 'stocks.product_id', '=', 'products.id')
-            ->leftJoin('stock_limits', function($join) {
-                $join->on('stocks.product_id', '=', 'stock_limits.product_id')
-                     ->on('stocks.stage', '=', 'stock_limits.stage')
-                     ->on('stocks.grade', '=', 'stock_limits.grade');
-            })
-            ->groupBy(array_merge(['stocks.product_id', 'stocks.stage', 'stocks.grade', 'products.name', 'products.type', 'products.unit', 'products.rate', 'products.threshold', 'products.sort_order', 'stock_limits.alert_limit'], $rateGroupBy))
+        $stageNormExpr = "CASE 
+            WHEN UPPER(TRIM(stocks.stage)) IN ('FG', 'FINISHED') THEN 'FINISHED'
+            WHEN UPPER(TRIM(stocks.stage)) IN ('PKG', 'PM', 'PACKAGING') THEN 'PACKAGING'
+            WHEN UPPER(TRIM(stocks.stage)) = 'SEMI' THEN 'SEMI'
+            WHEN UPPER(TRIM(stocks.stage)) = 'RAW' THEN 'RAW'
+            ELSE UPPER(TRIM(stocks.stage))
+        END";
+
+        $gradeNormExpr = "CASE 
+            WHEN stocks.grade IS NULL OR UPPER(TRIM(stocks.grade)) IN ('', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-') THEN 'NONE' 
+            ELSE UPPER(TRIM(stocks.grade)) 
+        END";
+
+        $stockAgg = DB::table('stocks')
             ->selectRaw("
-                stocks.product_id as productId,
+                stocks.product_id,
+                {$stageNormExpr} as norm_stage,
+                {$gradeNormExpr} as norm_grade,
+                SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
+            ")
+            ->groupBy('stocks.product_id', DB::raw('norm_stage'), DB::raw('norm_grade'));
+
+        $allStock = DB::table(DB::raw("({$stockAgg->toSql()}) as aggregated_stocks"))
+            ->mergeBindings($stockAgg)
+            ->join('products', 'aggregated_stocks.product_id', '=', 'products.id')
+            ->leftJoin('stock_limits', function($join) {
+                $join->on('aggregated_stocks.product_id', '=', 'stock_limits.product_id')
+                     ->on('aggregated_stocks.norm_stage', '=', DB::raw("CASE WHEN UPPER(TRIM(stock_limits.stage)) IN ('FG', 'FINISHED') THEN 'FINISHED' WHEN UPPER(TRIM(stock_limits.stage)) IN ('PKG', 'PM', 'PACKAGING') THEN 'PACKAGING' ELSE UPPER(TRIM(stock_limits.stage)) END"))
+                     ->on('aggregated_stocks.norm_grade', '=', DB::raw("CASE WHEN stock_limits.grade IS NULL OR UPPER(TRIM(stock_limits.grade)) IN ('', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-') THEN 'NONE' ELSE UPPER(TRIM(stock_limits.grade)) END"));
+            })
+            ->selectRaw("
+                aggregated_stocks.product_id as productId,
                 products.name,
                 products.type,
                 products.unit,
                 {$rateSelect},
                 products.threshold,
                 products.sort_order,
-                stocks.stage,
-                stocks.grade,
+                aggregated_stocks.norm_stage as stage,
+                aggregated_stocks.norm_grade as grade,
                 COALESCE(NULLIF(stock_limits.alert_limit, 0), NULLIF(products.threshold, 0), stock_limits.alert_limit, products.threshold, 0) as alert_limit,
-                SUM(CASE WHEN stocks.transaction_type='IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
+                aggregated_stocks.quantity
             ")
-            ->havingRaw("SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) >= 0")
-            ->orderBy('stocks.stage')
+            ->where('aggregated_stocks.quantity', '>=', 0)
+            ->orderBy('aggregated_stocks.norm_stage')
             ->orderBy('products.name', 'asc')
-            ->orderBy('stocks.grade', 'asc')
+            ->orderBy('aggregated_stocks.norm_grade', 'asc')
             ->get();
 
         $allLocations = Location::orderBy('name')->get(['id', 'name']);
         $primaryLocName = $allLocations->first(fn($l) => in_array(strtoupper(trim($l->name)), ['MAIN WAREHOUSE', 'DEFAULT', 'GENERAL', 'WAREHOUSE', 'MAIN']))?->name ?: $allLocations->first()?->name;
 
-        // Fetch location mappings from DB
+        // Fetch location mappings from DB with normalized stage and grade
         $locationStock = DB::table('stocks')
             ->join('locations', 'stocks.location_id', '=', 'locations.id')
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'locations.name')
             ->selectRaw("
                 stocks.product_id,
-                stocks.stage,
-                stocks.grade,
+                {$stageNormExpr} as norm_stage,
+                {$gradeNormExpr} as norm_grade,
                 locations.name as location_name,
                 SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity
             ")
-            ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
+            ->groupBy('stocks.product_id', DB::raw('norm_stage'), DB::raw('norm_grade'), 'locations.name')
+            ->havingRaw("quantity > 0")
             ->get();
 
         $unassignedStock = DB::table('stocks')
             ->whereNull('stocks.location_id')
-            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade')
             ->selectRaw("
                 stocks.product_id,
-                stocks.stage,
-                stocks.grade,
+                {$stageNormExpr} as norm_stage,
+                {$gradeNormExpr} as norm_grade,
                 SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity
             ")
-            ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
+            ->groupBy('stocks.product_id', DB::raw('norm_stage'), DB::raw('norm_grade'))
+            ->havingRaw("quantity > 0")
             ->get();
 
         $locationMappings = [];
         foreach ($locationStock as $ls) {
-            $normG = (!empty($ls->grade) && !in_array(strtoupper(trim($ls->grade)), ['NONE', 'N/A', 'NA', 'N / A', 'NULL'], true)) ? strtoupper(trim($ls->grade)) : 'NONE';
-            $normStage = strtoupper(trim($ls->stage));
+            $normG = $ls->norm_grade;
+            $normStage = $ls->norm_stage;
             $qty = (float) $ls->quantity;
 
-            foreach (["{$ls->product_id}_{$normG}_{$normStage}", "{$ls->product_id}_{$ls->grade}_{$ls->stage}", "{$ls->product_id}__{$normStage}"] as $k) {
+            foreach (["{$ls->product_id}_{$normG}_{$normStage}", "{$ls->product_id}__{$normStage}"] as $k) {
                 $locationMappings[$k][$ls->location_name] = ($locationMappings[$k][$ls->location_name] ?? 0) + $qty;
             }
         }
 
         if ($primaryLocName) {
             foreach ($unassignedStock as $us) {
-                $normG = (!empty($us->grade) && !in_array(strtoupper(trim($us->grade)), ['NONE', 'N/A', 'NA', 'N / A', 'NULL'], true)) ? strtoupper(trim($us->grade)) : 'NONE';
-                $normStage = strtoupper(trim($us->stage));
+                $normG = $us->norm_grade;
+                $normStage = $us->norm_stage;
                 $qty = (float) $us->quantity;
 
-                foreach (["{$us->product_id}_{$normG}_{$normStage}", "{$us->product_id}_{$us->grade}_{$us->stage}", "{$us->product_id}__{$normStage}"] as $k) {
+                foreach (["{$us->product_id}_{$normG}_{$normStage}", "{$us->product_id}__{$normStage}"] as $k) {
                     $locationMappings[$k][$primaryLocName] = ($locationMappings[$k][$primaryLocName] ?? 0) + $qty;
                 }
             }
@@ -3363,10 +3412,23 @@ class AdminController extends Controller
         $grade = $request->query('grade', 'NONE');
         $product = Product::findOrFail($productId);
         
+        $stageList = match(strtoupper(trim($stage))) {
+            'FINISHED', 'FG' => ['FINISHED', 'FG'],
+            'PACKAGING', 'PKG', 'PM' => ['PACKAGING', 'PKG', 'PM'],
+            default => [strtoupper(trim($stage))]
+        };
+        $normGrade = in_array(strtoupper(trim((string)$grade)), ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-'], true) ? 'NONE' : strtoupper(trim((string)$grade));
+
         $allLogs = Stock::with(['user:id,name', 'location:id,name'])
             ->where('product_id', $productId)
-            ->where('stage', strtoupper($stage))
-            ->where('grade', $grade)
+            ->whereIn('stage', $stageList)
+            ->where(function($q) use ($normGrade) {
+                if ($normGrade === 'NONE') {
+                    $q->whereIn(DB::raw("UPPER(TRIM(COALESCE(grade, '')))"), ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-']);
+                } else {
+                    $q->where(DB::raw("UPPER(TRIM(grade))"), $normGrade);
+                }
+            })
             ->orderByRaw('COALESCE(date, created_at) asc')
             ->orderBy('id', 'asc')
             ->get();

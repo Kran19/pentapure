@@ -597,23 +597,33 @@ class DispatchController extends Controller
                         $allocQty = (float) $split['dispatch_location_qty'];
                         $locationId = \App\Models\Location::firstOrCreate(['name' => $locationName])->id;
 
-                        $existingStage = DB::table('stocks')
+                        $existingStock = DB::table('stocks')
                             ->where('product_id', $orderItem->product_id)
                             ->whereIn('stage', $itemStages)
+                            ->where(function($q) use ($itemGrade) {
+                                if ($itemGrade === 'NONE') {
+                                    $q->whereIn(DB::raw("UPPER(TRIM(COALESCE(grade, '')))"), ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-']);
+                                } else {
+                                    $q->where(DB::raw("UPPER(TRIM(grade))"), $itemGrade);
+                                }
+                            })
                             ->where('location_id', $locationId)
-                            ->value('stage');
-                        $outStage = $existingStage ?: $itemStages[0];
+                            ->first(['stage', 'grade']);
+
+                        $outStage = $existingStock?->stage ?: $itemStages[0];
+                        $outGrade = $existingStock?->grade ?? $itemGrade;
 
                         // Create stock OUT transaction for this location
                         $stock = Stock::create([
                             'product_id'       => $orderItem->product_id,
                             'user_id'          => $user['id'],
                             'stage'            => $outStage,
-                            'grade'            => $itemGrade,
+                            'grade'            => $outGrade,
                             'location_id'      => $locationId,
                             'quantity'         => $allocQty,
                             'transaction_type' => 'OUT',
-                            'notes'            => "Dispatched: Order #{$order->id} from Location #{$locationId}",
+                            'date'             => now()->toDateString(),
+                            'notes'            => "Dispatched: Order #{$order->id} from Location '{$locationName}'",
                         ]);
 
                         // Record location allocation
@@ -804,22 +814,32 @@ class DispatchController extends Controller
                             if ($allocQty <= 0) continue;
                             $locationId = \App\Models\Location::firstOrCreate(['name' => $locationName])->id;
 
-                            $existingStage = DB::table('stocks')
+                            $existingStock = DB::table('stocks')
                                 ->where('product_id', $orderItem->product_id)
                                 ->whereIn('stage', $itemStages)
+                                ->where(function($q) use ($itemGrade) {
+                                    if ($itemGrade === 'NONE') {
+                                        $q->whereIn(DB::raw("UPPER(TRIM(COALESCE(grade, '')))"), ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-']);
+                                    } else {
+                                        $q->where(DB::raw("UPPER(TRIM(grade))"), $itemGrade);
+                                    }
+                                })
                                 ->where('location_id', $locationId)
-                                ->value('stage');
-                            $outStage = $existingStage ?: $itemStages[0];
+                                ->first(['stage', 'grade']);
+
+                            $outStage = $existingStock?->stage ?: $itemStages[0];
+                            $outGrade = $existingStock?->grade ?? $itemGrade;
 
                             $stock = Stock::create([
                                 'product_id'       => $orderItem->product_id,
                                 'user_id'          => $user['id'],
                                 'stage'            => $outStage,
-                                'grade'            => $itemGrade,
+                                'grade'            => $outGrade,
                                 'location_id'      => $locationId,
                                 'quantity'         => $allocQty,
                                 'transaction_type' => 'OUT',
-                                'notes'            => "Dispatched: Order #{$order->id} (Partial round #{$log->id}) from Loc#{$locationId}",
+                                'date'             => now()->toDateString(),
+                                'notes'            => "Dispatched: Order #{$order->id} (Partial round #{$log->id}) from Location '{$locationName}'",
                             ]);
 
                             \App\Models\DispatchItemLocation::create([
