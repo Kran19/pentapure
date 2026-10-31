@@ -2125,33 +2125,21 @@ window.onBsStageChange = function(element) {
   // Append new options dynamically
   filteredProducts.forEach(p => {
     let t = targetType === 'FINISHED' ? 'FG' : targetType;
-    const sNorm = (t === 'FG' ? 'FINISHED' : (t === 'PKG' || t === 'PM' ? 'PACKAGING' : t));
     if (p.grades && p.grades.length > 0) {
       p.grades.forEach(g => {
         const val = `${p.id}|${g.name}`;
         const isDef = !g.name || ['NONE', 'N/A', 'NA', 'N / A'].includes(g.name.trim().toUpperCase());
         const gradeText = !isDef ? `_${g.name}` : '';
-        const gNorm = isDef ? 'NONE' : g.name.trim().toUpperCase();
-        const exists = window.isStockItemAlreadyExists ? window.isStockItemAlreadyExists(p.id, sNorm, gNorm) : false;
-        const text = `${p.name}${gradeText}(${t})` + (exists ? ' — [Already in Stock]' : '');
+        const text = `${p.name}${gradeText}(${t})`;
         const opt = new Option(text, val, false, false);
         opt.setAttribute('data-unit', p.unit || 'kg');
-        if (exists) {
-          opt.disabled = true;
-          opt.setAttribute('data-exists', '1');
-        }
         $(productSelect).append(opt);
       });
     } else {
       const val = `${p.id}|NONE`;
-      const exists = window.isStockItemAlreadyExists ? window.isStockItemAlreadyExists(p.id, sNorm, 'NONE') : false;
-      const text = `${p.name}(${t})` + (exists ? ' — [Already in Stock]' : '');
+      const text = `${p.name}(${t})`;
       const opt = new Option(text, val, false, false);
       opt.setAttribute('data-unit', p.unit || 'kg');
-      if (exists) {
-        opt.disabled = true;
-        opt.setAttribute('data-exists', '1');
-      }
       $(productSelect).append(opt);
     }
   });
@@ -2171,33 +2159,27 @@ window.onBsProductChange = function(element) {
   const [productId, gradeName] = val.split('|');
   const prod = (typeof adminStockProducts !== 'undefined' ? adminStockProducts : []).find(p => String(p.id) === String(productId));
   const prodName = prod ? prod.name : 'This product';
-  const stageVal = row ? (row.querySelector('.bs-stage')?.value || 'ALL') : 'ALL';
-  let targetStage = stageVal;
-  if (targetStage === 'ALL') {
-    targetStage = prod ? ((prod.type === 'FG' || prod.type === 'FINISHED') ? 'FINISHED' : ((prod.type === 'PKG' || prod.type === 'PM' || prod.type === 'PACKAGING') ? 'PACKAGING' : prod.type)) : 'RAW';
-  } else if (targetStage === 'FG') {
-    targetStage = 'FINISHED';
-  } else if (targetStage === 'PKG' || targetStage === 'PM') {
-    targetStage = 'PACKAGING';
-  }
-  const normGrade = (!gradeName || ['NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL'].includes(String(gradeName).trim().toUpperCase())) ? 'NONE' : String(gradeName).trim().toUpperCase();
 
-  // Prevention 1: Check if already in stock
-  if (window.isStockItemAlreadyExists && window.isStockItemAlreadyExists(productId, targetStage, normGrade)) {
+  // Prevention: Check if duplicate in another row
+  const allRows = document.querySelectorAll('.bulk-stock-row');
+  let duplicateCount = 0;
+  allRows.forEach(r => {
+    const sel = r.querySelector('.bs-product');
+    if (sel && sel.value === val) {
+      duplicateCount++;
+    }
+  });
+
+  if (duplicateCount > 1) {
     Swal.fire({
       icon: 'warning',
-      title: 'Already Exists in Stock',
-      html: `<strong>${escapeHtml(prodName)}</strong> already exists in stock!<br><br>Multiple same name products cannot be added. Please use <strong>Adjust Stock</strong> on the stock table to add quantity.`,
+      title: 'Duplicate Product in Rows',
+      html: `<strong>${escapeHtml(prodName)}</strong> is already selected in another row!<br><br>Multiple entries of the same product cannot be added. Please enter the total quantity in one row.`,
       confirmButtonColor: '#f59e0b'
     });
     $(element).val('').trigger('change');
     return;
   }
-
-  // Prevention 2: Check if duplicate in another row
-  const allRows = document.querySelectorAll('.bulk-stock-row');
-  let duplicateCount = 0;
-  allRows.forEach(r => {
     const sel = r.querySelector('.bs-product');
     if (sel && sel.value === val) {
       duplicateCount++;
@@ -2283,22 +2265,17 @@ window.adminSaveBulkStock = function() {
     return;
   }
 
-  // Duplicate product prevention across rows & already exists in stock check
+  // Duplicate product prevention across rows in the batch
   const seenRowKeys = new Set();
   for (const item of items) {
     const prod = (typeof adminStockProducts !== 'undefined' ? adminStockProducts : []).find(p => String(p.id) === String(item.product_id));
     const prodName = prod ? prod.name : `Product #${item.product_id}`;
     const rowKey = `${item.product_id}_${item.grade}`;
     if (seenRowKeys.has(rowKey)) {
-      Swal.fire('Duplicate Product', `"${prodName}" is selected in multiple rows. Each product can only be added once.`, 'error');
+      Swal.fire('Duplicate Product', `"${prodName}" is selected in multiple rows. Each product can only be added once per batch.`, 'error');
       return;
     }
     seenRowKeys.add(rowKey);
-
-    if (window.isStockItemAlreadyExists && window.isStockItemAlreadyExists(item.product_id, item.stage, item.grade)) {
-      Swal.fire('Already Exists in Stock', `"${prodName}" already exists in stock! Multiple same name products cannot be added.<br><br>Please use the <strong>Adjust Stock</strong> button on the table to update its quantity.`, 'error');
-      return;
-    }
   }
   
   btn.disabled = true;

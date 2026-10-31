@@ -2415,17 +2415,40 @@ class AdminController extends Controller
         try {
             $request->validate([
                 'product_id' => 'required|exists:products,id',
-                'stage'      => 'required|in:RAW,SEMI,FINISHED',
-                'grade'      => 'required',
+                'stage'      => 'required',
+                'grade'      => 'nullable',
             ]);
 
             $product = Product::findOrFail($request->product_id);
 
+            $rawStage = strtoupper(trim((string)$request->stage));
+            $normStage = match($rawStage) {
+                'FG', 'FINISHED' => 'FINISHED',
+                'PKG', 'PM', 'PACKAGING' => 'PACKAGING',
+                'SEMI' => 'SEMI',
+                'RAW' => 'RAW',
+                default => $rawStage ?: 'FINISHED',
+            };
+            $stageList = match($normStage) {
+                'FINISHED' => ['FINISHED', 'FG'],
+                'PACKAGING' => ['PACKAGING', 'PKG', 'PM'],
+                default => [$normStage]
+            };
+
+            $rawGrade = strtoupper(trim((string)($request->grade ?? 'NONE')));
+            $isDefGrade = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-'], true);
+
             // Check current net quantity across all locations
             $currentQty = (float) (DB::table('stocks')
                 ->where('product_id', $request->product_id)
-                ->where('stage', $request->stage)
-                ->where('grade', $request->grade)
+                ->whereIn('stage', $stageList)
+                ->where(function($q) use ($isDefGrade, $rawGrade) {
+                    if ($isDefGrade) {
+                        $q->whereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-']);
+                    } else {
+                        $q->where(DB::raw("UPPER(TRIM(grade))"), $rawGrade);
+                    }
+                })
                 ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
                 ->value('net') ?? 0);
 
@@ -2436,19 +2459,31 @@ class AdminController extends Controller
                 ], 422);
             }
 
-            DB::transaction(function() use ($request) {
+            DB::transaction(function() use ($request, $stageList, $isDefGrade, $rawGrade) {
                 // Delete all stock logs for this specific product, stage, and grade
                 DB::table('stocks')
                     ->where('product_id', $request->product_id)
-                    ->where('stage', $request->stage)
-                    ->where('grade', $request->grade)
+                    ->whereIn('stage', $stageList)
+                    ->where(function($q) use ($isDefGrade, $rawGrade) {
+                        if ($isDefGrade) {
+                            $q->whereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-']);
+                        } else {
+                            $q->where(DB::raw("UPPER(TRIM(grade))"), $rawGrade);
+                        }
+                    })
                     ->delete();
 
                 // Also clean up any custom stock_limits entry for this product, stage, grade
                 DB::table('stock_limits')
                     ->where('product_id', $request->product_id)
-                    ->where('stage', $request->stage)
-                    ->where('grade', $request->grade)
+                    ->whereIn('stage', $stageList)
+                    ->where(function($q) use ($isDefGrade, $rawGrade) {
+                        if ($isDefGrade) {
+                            $q->whereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-']);
+                        } else {
+                            $q->where(DB::raw("UPPER(TRIM(grade))"), $rawGrade);
+                        }
+                    })
                     ->delete();
             });
 
@@ -2526,38 +2561,10 @@ class AdminController extends Controller
                     $name = $prod?->name ?? "Product #{$pId}";
                     return response()->json([
                         'success' => false,
-                        'message' => "Duplicate product '{$name}' in entry. Each product can only be added once."
+                        'message' => "Duplicate product '{$name}' in entry. Each product can only be added once per batch."
                     ], 422);
                 }
                 $seenKeys[$key] = true;
-
-                $stageList = match($stg) {
-                    'FINISHED', 'FG' => ['FINISHED', 'FG'],
-                    'PACKAGING', 'PKG', 'PM' => ['PACKAGING', 'PKG', 'PM'],
-                    default => [$stg]
-                };
-
-                $alreadyExists = DB::table('stocks')
-                    ->where('product_id', $pId)
-                    ->whereIn('stage', $stageList)
-                    ->where(function($q) use ($grd) {
-                        if ($grd === 'NONE') {
-                            $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'NULL']);
-                        } else {
-                            $q->where('grade', $grd);
-                        }
-                    })
-                    ->exists();
-
-                if ($alreadyExists) {
-                    $prod = Product::find($pId);
-                    $name = $prod?->name ?? "Product #{$pId}";
-                    $gradeText = ($grd !== 'NONE') ? " ({$grd})" : '';
-                    return response()->json([
-                        'success' => false,
-                        'message' => "Product '{$name}{$gradeText}' already exists in stock. Please use Adjust Stock to update its quantity."
-                    ], 422);
-                }
             }
 
             DB::transaction(function () use ($request) {
