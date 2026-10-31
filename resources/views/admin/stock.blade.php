@@ -1512,10 +1512,24 @@
 window.isReadOnly = {{ !empty($isReadOnly) ? 'true' : 'false' }};
 const csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
 const adminStockProducts = @json($pageData['allProducts']);
+let adminCurrentStock = @json($pageData['allStock']);
 const adminStockLogsByKey = @json($pageData['stockLogsByKey']);
 let locationMappings = @json($pageData['locationMappings'] ?? (object)[]);
 window.adminMasterLocations = @json($pageData['allLocations'] ?? \App\Models\Location::orderBy('name')->get(['id', 'name']));
 window._swalAllLocations = window.adminMasterLocations;
+
+window.isStockItemAlreadyExists = function(productId, stage, grade) {
+  const normStage = (stage === 'FG' ? 'FINISHED' : (stage === 'PKG' || stage === 'PM' ? 'PACKAGING' : stage));
+  const normGrade = (!grade || ['NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL'].includes(String(grade).trim().toUpperCase())) ? 'NONE' : String(grade).trim().toUpperCase();
+  
+  return (adminCurrentStock || []).some(s => {
+    if (String(s.productId) !== String(productId)) return false;
+    const sStage = (s.stage === 'FG' ? 'FINISHED' : (s.stage === 'PKG' || s.stage === 'PM' ? 'PACKAGING' : s.stage));
+    if (normStage !== 'ALL' && sStage !== normStage) return false;
+    const sGrade = (!s.grade || ['NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL'].includes(String(s.grade).trim().toUpperCase())) ? 'NONE' : String(s.grade).trim().toUpperCase();
+    return sGrade === normGrade;
+  });
+};
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -2369,6 +2383,7 @@ function fetchLiveStock(isManual = false) {
       if (data.locationMappings) {
         locationMappings = data.locationMappings;
       }
+      adminCurrentStock = data.data;
       updateStockTables(data.data);
       updateAllLocationLabels();
 
@@ -3182,27 +3197,39 @@ window.onBsStageChange = function(element) {
   // Append new options dynamically
   filteredProducts.forEach(p => {
     let t = (p.type === 'FINISHED' || p.type === 'FG') ? 'FG' : p.type;
+    const sNorm = (t === 'FG' ? 'FINISHED' : (t === 'PKG' || t === 'PM' ? 'PACKAGING' : t));
     if (p.grades && p.grades.length > 0) {
       p.grades.forEach(g => {
         const val = `${p.id}|${g.name}`;
         const isDef = !g.name || ['NONE', 'N/A', 'NA', 'N / A'].includes(g.name.trim().toUpperCase());
         const gradeText = !isDef ? `_${g.name}` : '';
-        const text = `${p.name}${gradeText} (${t})`;
+        const gNorm = isDef ? 'NONE' : g.name.trim().toUpperCase();
+        const exists = window.isStockItemAlreadyExists ? window.isStockItemAlreadyExists(p.id, sNorm, gNorm) : false;
+        const text = `${p.name}${gradeText} (${t})` + (exists ? ' — [Already in Stock]' : '');
         const opt = new Option(text, val, false, false);
         opt.setAttribute('data-unit', p.unit || 'kg');
         opt.setAttribute('data-stage', t);
         opt.setAttribute('data-name', p.name);
         opt.setAttribute('data-grade', g.name || 'NONE');
+        if (exists) {
+          opt.disabled = true;
+          opt.setAttribute('data-exists', '1');
+        }
         $(productSelect).append(opt);
       });
     } else {
       const val = `${p.id}|NONE`;
-      const text = `${p.name} (${t})`;
+      const exists = window.isStockItemAlreadyExists ? window.isStockItemAlreadyExists(p.id, sNorm, 'NONE') : false;
+      const text = `${p.name} (${t})` + (exists ? ' — [Already in Stock]' : '');
       const opt = new Option(text, val, false, false);
       opt.setAttribute('data-unit', p.unit || 'kg');
       opt.setAttribute('data-stage', t);
       opt.setAttribute('data-name', p.name);
       opt.setAttribute('data-grade', 'NONE');
+      if (exists) {
+        opt.disabled = true;
+        opt.setAttribute('data-exists', '1');
+      }
       $(productSelect).append(opt);
     }
   });
@@ -3223,6 +3250,51 @@ window.onBsProductChange = function(element) {
   if (!val) return;
   const [productId, gradeName] = val.split('|');
   const prod = adminStockProducts.find(p => String(p.id) === String(productId));
+  const prodName = prod ? prod.name : 'This product';
+  const stageVal = row.querySelector('.bs-stage')?.value || 'ALL';
+  let targetStage = stageVal;
+  if (targetStage === 'ALL') {
+    targetStage = prod ? ((prod.type === 'FG' || prod.type === 'FINISHED') ? 'FINISHED' : ((prod.type === 'PKG' || prod.type === 'PM' || prod.type === 'PACKAGING') ? 'PACKAGING' : prod.type)) : 'RAW';
+  } else if (targetStage === 'FG') {
+    targetStage = 'FINISHED';
+  } else if (targetStage === 'PKG' || targetStage === 'PM') {
+    targetStage = 'PACKAGING';
+  }
+  const normGrade = (!gradeName || ['NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL'].includes(String(gradeName).trim().toUpperCase())) ? 'NONE' : String(gradeName).trim().toUpperCase();
+
+  // 1. Prevention: Check if already in stock
+  if (window.isStockItemAlreadyExists && window.isStockItemAlreadyExists(productId, targetStage, normGrade)) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Already Exists in Stock',
+      html: `<strong>${escapeHtml(prodName)}</strong> already exists in stock!<br><br>Multiple same name products cannot be added. Please use the <strong>Adjust Stock</strong> (✏️) button on the stock table to add or update quantity.`,
+      confirmButtonColor: '#f59e0b'
+    });
+    $(element).val('').trigger('change.select2');
+    return;
+  }
+
+  // 2. Prevention: Check if duplicate in another row
+  const allRows = document.querySelectorAll('.bulk-stock-row');
+  let duplicateCount = 0;
+  allRows.forEach(r => {
+    const sel = r.querySelector('.bs-product');
+    if (sel && sel.value === val) {
+      duplicateCount++;
+    }
+  });
+
+  if (duplicateCount > 1) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Duplicate Product in Rows',
+      html: `<strong>${escapeHtml(prodName)}</strong> is already selected in another row!<br><br>Multiple entries of the same product cannot be added. Please enter the total quantity in one row.`,
+      confirmButtonColor: '#f59e0b'
+    });
+    $(element).val('').trigger('change.select2');
+    return;
+  }
+
   if (prod) {
     const rateInput = row.querySelector('.bs-rate');
     if (rateInput && (!rateInput.value || rateInput.value === '0') && prod.rate) {
@@ -3328,6 +3400,24 @@ window.adminSaveBulkStock = function() {
   if (hasError) {
     Swal.fire('Incomplete Rows', 'Some rows have missing product or quantity. Please complete or remove incomplete rows before saving.', 'warning');
     return;
+  }
+
+  // Duplicate product prevention across rows & already exists in stock check
+  const seenRowKeys = new Set();
+  for (const item of items) {
+    const prod = adminStockProducts.find(p => String(p.id) === String(item.product_id));
+    const prodName = prod ? prod.name : `Product #${item.product_id}`;
+    const rowKey = `${item.product_id}_${item.grade}`;
+    if (seenRowKeys.has(rowKey)) {
+      Swal.fire('Duplicate Product', `"${prodName}" is selected in multiple rows. Each product can only be added once.`, 'error');
+      return;
+    }
+    seenRowKeys.add(rowKey);
+
+    if (window.isStockItemAlreadyExists && window.isStockItemAlreadyExists(item.product_id, item.stage, item.grade)) {
+      Swal.fire('Already Exists in Stock', `"${prodName}" already exists in stock! Multiple same name products cannot be added.<br><br>Please use the <strong>Adjust Stock</strong> (✏️) button on the table to update its quantity.`, 'error');
+      return;
+    }
   }
   
   btn.disabled = true;

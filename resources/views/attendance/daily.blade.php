@@ -219,7 +219,7 @@
           </div>
 
           <!-- Row 3: Break / Night Shift -->
-          <div class="row-3 extra-field-flex" style="display:{{ (!in_array($status, ['ABSENT', 'HOLIDAY', 'SUNDAY', 'PAID LEAVE']) && $shift === 'CUSTOM') ? 'flex' : 'none' }}; gap:10px; margin-bottom:0.75rem;">
+          <div class="row-3 extra-field-flex" style="display:{{ (!in_array($status, ['ABSENT', 'HOLIDAY', 'SUNDAY', 'PAID LEAVE']) && ($shift === 'CUSTOM' || in_array($status, ['DOUBLE', 'DOUBLE (OFF)']))) ? 'flex' : 'none' }}; gap:10px; margin-bottom:0.75rem;">
             <div style="flex:1;">
               <label class="label-bin" style="font-size:0.8rem; color:var(--text-muted); display:block;">Night In Time</label>
               <div style="position:relative; display:flex; align-items:center;">
@@ -332,6 +332,9 @@ function handleStatusChange(selectEl) {
 
     const extraBlocks = card.querySelectorAll('.extra-field-block');
     const extraFlexes = card.querySelectorAll('.extra-field-flex');
+    const isDouble = (val === 'DOUBLE' || val === 'DOUBLE (OFF)');
+    const labelIn = card.querySelector('.label-in');
+    const labelOut = card.querySelector('.label-out');
 
     if (val === 'ABSENT' || val === 'HOLIDAY' || val === 'SUNDAY' || val === 'PAID LEAVE') {
         extraBlocks.forEach(f => f.style.display = 'none');
@@ -342,12 +345,27 @@ function handleStatusChange(selectEl) {
         extraFlexes.forEach(f => {
             if (f.classList.contains('row-3')) {
                 const shiftVal = card.querySelector('.shift-select').value;
-                f.style.display = (shiftVal === 'CUSTOM') ? 'flex' : 'none';
+                f.style.display = (shiftVal === 'CUSTOM' || isDouble) ? 'flex' : 'none';
             } else {
                 f.style.display = 'flex';
             }
         });
         inputs.forEach(i => { i.disabled = false; });
+
+        if (isDouble) {
+            if (labelIn) labelIn.innerText = 'Day In Time';
+            if (labelOut) labelOut.innerText = 'Day Out Time';
+            const inTime = card.querySelector('.time-in');
+            const outTime = card.querySelector('.time-out');
+            const binTime = card.querySelector('.time-bin');
+            const boutTime = card.querySelector('.time-bout');
+            if (outTime && outTime.value && binTime && !binTime.value) {
+                binTime.value = outTime.value;
+            }
+            if (inTime && inTime.value && boutTime && !boutTime.value) {
+                boutTime.value = inTime.value;
+            }
+        }
     }
 }
 
@@ -356,6 +374,8 @@ function handleShiftChange(selectEl) {
     const card = selectEl.closest('.worker-card');
     const badge = card.querySelector('.shift-badge');
     const val = selectEl.value;
+    const statusVal = card.querySelector('.status-select')?.value;
+    const isDouble = (statusVal === 'DOUBLE' || statusVal === 'DOUBLE (OFF)');
     
     const inTime = card.querySelector('.time-in');
     const outTime = card.querySelector('.time-out');
@@ -366,16 +386,16 @@ function handleShiftChange(selectEl) {
     
     if (val === 'DAY') {
         badge.innerText = '☀ Day 9-6';
-        labelIn.innerText = 'In Time';
-        labelOut.innerText = 'Out Time';
-        row3.style.display = 'none';
+        labelIn.innerText = isDouble ? 'Day In Time' : 'In Time';
+        labelOut.innerText = isDouble ? 'Day Out Time' : 'Out Time';
+        row3.style.display = isDouble ? 'flex' : 'none';
         inTime.value = '';
         outTime.value = '';
     } else if (val === 'NIGHT') {
         badge.innerText = '🌙 Night 9-6';
-        labelIn.innerText = 'In Time';
-        labelOut.innerText = 'Out Time';
-        row3.style.display = 'none';
+        labelIn.innerText = isDouble ? 'Night In Time' : 'In Time';
+        labelOut.innerText = isDouble ? 'Night Out Time' : 'Out Time';
+        row3.style.display = isDouble ? 'flex' : 'none';
         inTime.value = '';
         outTime.value = '';
     } else {
@@ -503,6 +523,17 @@ function executeSaveAttendance(mode) {
         let outTime = formData.get(`attendances[${i}][out_time]`);
         let breakIn = formData.get(`attendances[${i}][break_in]`);
         let breakOut = formData.get(`attendances[${i}][break_out]`);
+        const statusVal = formData.get(`attendances[${i}][status]`);
+        const isDouble = (statusVal === 'DOUBLE' || statusVal === 'DOUBLE (OFF)');
+
+        if (isDouble) {
+            if (!breakIn && outTime) {
+                breakIn = outTime;
+            }
+            if (!breakOut && inTime) {
+                breakOut = inTime;
+            }
+        }
         
         if (inTime) {
             let suffix = (shiftVal === 'NIGHT') ? ' PM' : ' AM';

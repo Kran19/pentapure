@@ -2073,7 +2073,7 @@ class AdminController extends Controller
             $splits = $request->input('location_splits');
             if (!empty($splits) && is_array($splits)) {
                 $summaries = [];
-                DB::transaction(function() use ($request, $type, $reason, $userId, $splits, &$summaries, $stockDate) {
+                DB::transaction(function() use ($request, $type, $reason, $userId, $splits, &$summaries, $stockDate, $normGrade) {
                     foreach ($splits as $split) {
                         $locName = trim($split['location']);
                         $splitQty = (float) $split['quantity'];
@@ -2345,6 +2345,52 @@ class AdminController extends Controller
                 'items.*.locations.*.qty'  => 'required|numeric|min:0.01',
                 'items.*.note'       => 'nullable|string|max:255',
             ]);
+
+            // Prevent duplicate products within items & products already existing in stock
+            $seenKeys = [];
+            foreach ($request->items as $item) {
+                $pId = $item['product_id'];
+                $stg = $item['stage'];
+                $grd = $item['grade'];
+                $key = "{$pId}_{$stg}_{$grd}";
+                if (isset($seenKeys[$key])) {
+                    $prod = Product::find($pId);
+                    $name = $prod?->name ?? "Product #{$pId}";
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Duplicate product '{$name}' in entry. Each product can only be added once."
+                    ], 422);
+                }
+                $seenKeys[$key] = true;
+
+                $stageList = match($stg) {
+                    'FINISHED', 'FG' => ['FINISHED', 'FG'],
+                    'PACKAGING', 'PKG', 'PM' => ['PACKAGING', 'PKG', 'PM'],
+                    default => [$stg]
+                };
+
+                $alreadyExists = DB::table('stocks')
+                    ->where('product_id', $pId)
+                    ->whereIn('stage', $stageList)
+                    ->where(function($q) use ($grd) {
+                        if ($grd === 'NONE') {
+                            $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'NULL']);
+                        } else {
+                            $q->where('grade', $grd);
+                        }
+                    })
+                    ->exists();
+
+                if ($alreadyExists) {
+                    $prod = Product::find($pId);
+                    $name = $prod?->name ?? "Product #{$pId}";
+                    $gradeText = ($grd !== 'NONE') ? " ({$grd})" : '';
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Product '{$name}{$gradeText}' already exists in stock. Please use Adjust Stock to update its quantity."
+                    ], 422);
+                }
+            }
 
             DB::transaction(function () use ($request) {
                 foreach ($request->items as $item) {

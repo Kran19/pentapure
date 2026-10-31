@@ -136,10 +136,39 @@
                     $dStr = $date->toDateString();
                     $att = $attendances->get($dStr);
                     $isSunday = $date->isSunday();
-                    $isNight = $att && $att->shift_type === 'NIGHT';
+                    $status = $att?->status ?? '';
+                    $shiftType = strtoupper((string)($att?->shift_type ?? ''));
+                    $isDouble = in_array(strtoupper($status), ['DOUBLE', 'DOUBLE (OFF)']);
+                    $isNight = ($shiftType === 'NIGHT');
                     
                     $inTime = $att?->in_time ? date('h:i A', strtotime($att->in_time)) : '';
                     $outTime = $att?->out_time ? date('h:i A', strtotime($att->out_time)) : '';
+                    $breakIn = $att?->break_in ? date('h:i A', strtotime($att->break_in)) : '';
+                    $breakOut = $att?->break_out ? date('h:i A', strtotime($att->break_out)) : '';
+
+                    if ($isDouble) {
+                        if ($isNight) {
+                            $nightIn = $inTime;
+                            $nightOut = $outTime;
+                            $dayIn = $breakIn ?: ($outTime ?: '');
+                            $dayOut = $breakOut ?: ($inTime ?: '');
+                        } else {
+                            $dayIn = $inTime;
+                            $dayOut = $outTime;
+                            $nightIn = $breakIn ?: ($outTime ?: '');
+                            $nightOut = $breakOut ?: ($inTime ?: '');
+                        }
+                    } elseif ($isNight) {
+                        $dayIn = '';
+                        $dayOut = '';
+                        $nightIn = $inTime;
+                        $nightOut = $outTime;
+                    } else {
+                        $dayIn = $inTime;
+                        $dayOut = $outTime;
+                        $nightIn = $breakIn;
+                        $nightOut = $breakOut;
+                    }
                 @endphp
                 <tr style="{{ $isSunday ? 'background-color:#fff8f8;' : '' }}">
                     <td style="border-left:2px solid #000; font-weight:bold; text-align:center; white-space:nowrap; font-size:8px; padding:2px 1px;">
@@ -149,10 +178,10 @@
                     <td style="font-weight:bold; font-size:7.5px; color:{{ $att?->status === 'ABSENT' ? '#d00' : '#000' }};">
                         {{ $worker->salary_type === 'LABOUR_MUKADAM' ? ($att?->num_workers ?? '') : ($att?->status ?? '') }}
                     </td>
-                    <td style="font-size:7.5px; white-space:nowrap;">{{ !$isNight ? $inTime : '' }}</td>
-                    <td style="font-size:7.5px; white-space:nowrap;">{{ !$isNight ? $outTime : '' }}</td>
-                    <td style="font-size:7.5px; white-space:nowrap;">{{ $isNight ? $inTime : '' }}</td>
-                    <td style="font-size:7.5px; white-space:nowrap;">{{ $isNight ? $outTime : '' }}</td>
+                    <td style="font-size:7.5px; white-space:nowrap;">{{ $dayIn }}</td>
+                    <td style="font-size:7.5px; white-space:nowrap;">{{ $dayOut }}</td>
+                    <td style="font-size:7.5px; white-space:nowrap;">{{ $nightIn }}</td>
+                    <td style="font-size:7.5px; white-space:nowrap;">{{ $nightOut }}</td>
                     <td style="font-weight:bold; font-size:7.5px; color:{{ ($att?->overtime_hours ?? 0) < 0 ? '#d00' : '#000' }};">
                         @if($att && $att->overtime_hours != 0)
                             {{ $att->overtime_hours > 0 ? '+' : '' }}{{ number_format($att->overtime_hours, 1) }}

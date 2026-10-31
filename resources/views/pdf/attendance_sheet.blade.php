@@ -143,14 +143,34 @@
                         $nightIn = '--:--';
                         $nightOut = '--:--';
                         
-                        if ($att->shift_type === 'NIGHT') {
-                            $nightIn = $att->in_time ? \Carbon\Carbon::parse($att->in_time)->format('h:i A') : '--:--';
-                            $nightOut = $att->out_time ? \Carbon\Carbon::parse($att->out_time)->format('h:i A') : '--:--';
+                        $isDouble = in_array(strtoupper((string)($att->status ?? '')), ['DOUBLE', 'DOUBLE (OFF)']);
+                        $isNight = ($att->shift_type === 'NIGHT');
+
+                        $fIn = $att->in_time ? \Carbon\Carbon::parse($att->in_time)->format('h:i A') : '';
+                        $fOut = $att->out_time ? \Carbon\Carbon::parse($att->out_time)->format('h:i A') : '';
+                        $fBin = $att->break_in ? \Carbon\Carbon::parse($att->break_in)->format('h:i A') : '';
+                        $fBout = $att->break_out ? \Carbon\Carbon::parse($att->break_out)->format('h:i A') : '';
+
+                        if ($isDouble) {
+                            if ($isNight) {
+                                $nightIn = $fIn ?: '--:--';
+                                $nightOut = $fOut ?: '--:--';
+                                $dayIn = $fBin ?: ($fOut ?: '--:--');
+                                $dayOut = $fBout ?: ($fIn ?: '--:--');
+                            } else {
+                                $dayIn = $fIn ?: '--:--';
+                                $dayOut = $fOut ?: '--:--';
+                                $nightIn = $fBin ?: ($fOut ?: '--:--');
+                                $nightOut = $fBout ?: ($fIn ?: '--:--');
+                            }
+                        } elseif ($isNight) {
+                            $nightIn = $fIn ?: '--:--';
+                            $nightOut = $fOut ?: '--:--';
                         } else {
-                            $dayIn = $att->in_time ? \Carbon\Carbon::parse($att->in_time)->format('h:i A') : '--:--';
-                            $dayOut = $att->out_time ? \Carbon\Carbon::parse($att->out_time)->format('h:i A') : '--:--';
-                            $nightIn = $att->break_in ? \Carbon\Carbon::parse($att->break_in)->format('h:i A') : '--:--';
-                            $nightOut = $att->break_out ? \Carbon\Carbon::parse($att->break_out)->format('h:i A') : '--:--';
+                            $dayIn = $fIn ?: '--:--';
+                            $dayOut = $fOut ?: '--:--';
+                            $nightIn = $fBin ?: '--:--';
+                            $nightOut = $fBout ?: '--:--';
                         }
 
                         $statusText = $att->status ? strtoupper(str_replace('_', ' ', $att->status)) : 'ABSENT';

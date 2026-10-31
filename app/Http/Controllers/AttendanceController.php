@@ -965,17 +965,26 @@ class AttendanceController extends Controller
             $overtimeHrs = 0;
             $wage        = 0;
 
+            $isDoubleStatus = in_array($rec['status'], ['DOUBLE', 'DOUBLE (OFF)']);
+            $breakInInput   = !empty($rec['break_in']) ? $rec['break_in'] : ($isDoubleStatus && !empty($rec['out_time']) ? $rec['out_time'] : null);
+            $breakOutInput  = !empty($rec['break_out']) ? $rec['break_out'] : ($isDoubleStatus && !empty($rec['in_time']) ? $rec['in_time'] : null);
+
             if ($rec['status'] !== 'ABSENT' && !empty($rec['in_time']) && !empty($rec['out_time'])) {
                 $in  = Carbon::parse($date . ' ' . $rec['in_time']);
                 $out = Carbon::parse($date . ' ' . $rec['out_time']);
                 if ($out->lt($in)) $out->addDay();
                 $mins = abs($in->diffInMinutes($out));
 
-                if (!empty($rec['break_in']) && !empty($rec['break_out'])) {
-                    $bIn  = Carbon::parse($date . ' ' . $rec['break_in']);
-                    $bOut = Carbon::parse($date . ' ' . $rec['break_out']);
+                if (!empty($breakInInput) && !empty($breakOutInput)) {
+                    $bIn  = Carbon::parse($date . ' ' . $breakInInput);
+                    $bOut = Carbon::parse($date . ' ' . $breakOutInput);
                     if ($bOut->lt($bIn)) $bOut->addDay();
-                    $mins -= abs($bIn->diffInMinutes($bOut));
+                    $bMins = abs($bIn->diffInMinutes($bOut));
+                    if ($isDoubleStatus || ($rec['shift_type'] ?? '') === 'CUSTOM') {
+                        $mins += $bMins;
+                    } else {
+                        $mins -= $bMins;
+                    }
                 }
 
                 $totalHours  = max(0, $mins / 60);
@@ -1024,8 +1033,8 @@ class AttendanceController extends Controller
                 [
                     'in_time'         => !empty($rec['in_time']) ? Carbon::parse($rec['in_time'])->format('H:i:s') : null,
                     'out_time'        => !empty($rec['out_time']) ? Carbon::parse($rec['out_time'])->format('H:i:s') : null,
-                    'break_in'        => !empty($rec['break_in']) ? Carbon::parse($rec['break_in'])->format('H:i:s') : null,
-                    'break_out'       => !empty($rec['break_out']) ? Carbon::parse($rec['break_out'])->format('H:i:s') : null,
+                    'break_in'        => !empty($breakInInput) ? Carbon::parse($breakInInput)->format('H:i:s') : null,
+                    'break_out'       => !empty($breakOutInput) ? Carbon::parse($breakOutInput)->format('H:i:s') : null,
                     'total_hours'     => (float)$totalHours,
                     'overtime_hours'  => (float)$overtimeHrs,
                     'status'          => $rec['status'],
@@ -1478,9 +1487,13 @@ class AttendanceController extends Controller
         $perDaySalary = 0;
 
         if ($worker->salary_type === 'FIXED_MONTHLY') {
-            $attendanceSalary = (float) $worker->salary_amount;
-            $otUtAdjustment = 0;
             $perDaySalary = (float) ($worker->salary_amount / $daysInMonth);
+            if ($presentDays > $daysInMonth) {
+                $attendanceSalary = (float) ($worker->salary_amount + (($presentDays - $daysInMonth) * $perDaySalary));
+            } else {
+                $attendanceSalary = (float) $worker->salary_amount;
+            }
+            $otUtAdjustment = 0;
         } elseif ($worker->salary_type === 'LABOUR_MUKADAM') {
             $perDaySalary = (float) ($worker->salary_amount ?? 0);
             $attendanceSalary = $presentDays * $perDaySalary;
@@ -1488,7 +1501,13 @@ class AttendanceController extends Controller
             $otUtAdjustment = $totalOT * $hourlyRate;
         } elseif ($worker->salary_type === 'MONTHLY') {
             $perDaySalary = (float) ($worker->salary_amount / $daysInMonth);
-            $attendanceSalary = ($presentDays >= $daysInMonth) ? (float) $worker->salary_amount : ($presentDays * $perDaySalary);
+            if (abs($presentDays - $daysInMonth) < 0.001) {
+                $attendanceSalary = (float) $worker->salary_amount;
+            } elseif ($presentDays > $daysInMonth) {
+                $attendanceSalary = (float) ($worker->salary_amount + (($presentDays - $daysInMonth) * $perDaySalary));
+            } else {
+                $attendanceSalary = (float) ($presentDays * $perDaySalary);
+            }
             $hourlyRate = (float) ($worker->per_hour_salary > 0 ? $worker->per_hour_salary : ($perDaySalary / 12));
             $otUtAdjustment = $totalOT * $hourlyRate;
         } elseif ($worker->salary_type === 'DAILY') {

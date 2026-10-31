@@ -81,10 +81,39 @@
                 $dStr = $date->toDateString();
                 $att = $attendances->get($dStr);
                 $isSunday = $date->isSunday();
-                $isNight = $att && $att->shift_type === 'NIGHT';
+                $status = $att?->status ?? '';
+                $shiftType = strtoupper((string)($att?->shift_type ?? ''));
+                $isDouble = in_array(strtoupper($status), ['DOUBLE', 'DOUBLE (OFF)']);
+                $isNight = ($shiftType === 'NIGHT');
                 
                 $inTime = $att?->in_time ? date('h:i A', strtotime($att->in_time)) : '';
                 $outTime = $att?->out_time ? date('h:i A', strtotime($att->out_time)) : '';
+                $breakIn = $att?->break_in ? date('h:i A', strtotime($att->break_in)) : '';
+                $breakOut = $att?->break_out ? date('h:i A', strtotime($att->break_out)) : '';
+
+                if ($isDouble) {
+                    if ($isNight) {
+                        $nightIn = $inTime;
+                        $nightOut = $outTime;
+                        $dayIn = $breakIn ?: ($outTime ?: '');
+                        $dayOut = $breakOut ?: ($inTime ?: '');
+                    } else {
+                        $dayIn = $inTime;
+                        $dayOut = $outTime;
+                        $nightIn = $breakIn ?: ($outTime ?: '');
+                        $nightOut = $breakOut ?: ($inTime ?: '');
+                    }
+                } elseif ($isNight) {
+                    $dayIn = '';
+                    $dayOut = '';
+                    $nightIn = $inTime;
+                    $nightOut = $outTime;
+                } else {
+                    $dayIn = $inTime;
+                    $dayOut = $outTime;
+                    $nightIn = $breakIn;
+                    $nightOut = $breakOut;
+                }
             @endphp
             <tr style="border-bottom:1px solid #000; {{ $isSunday ? 'background:#fff8f8;' : '' }}">
               @if($worker->salary_type === 'LABOUR_MUKADAM')
@@ -98,12 +127,12 @@
                 {{ $att?->num_workers ?? '' }}
               </td>
               <!-- DAY SHIFT -->
-              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.85rem;">{{ !$isNight ? $inTime : '' }}</td>
-              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.85rem;">{{ !$isNight ? $outTime : '' }}</td>
+              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.85rem;">{{ $dayIn }}</td>
+              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.85rem;">{{ $dayOut }}</td>
               
               <!-- NIGHT SHIFT -->
-              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.85rem;">{{ $isNight ? $inTime : '' }}</td>
-              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.85rem;">{{ $isNight ? $outTime : '' }}</td>
+              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.85rem;">{{ $nightIn }}</td>
+              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.85rem;">{{ $nightOut }}</td>
               
               <!-- OT / UT -->
               <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.85rem; font-weight:bold; color: {{ ($att?->overtime_hours ?? 0) < 0 ? '#d00' : 'inherit' }};">
@@ -130,12 +159,12 @@
                 {{ $att?->status ?? '' }}
               </td>
               <!-- DAY SHIFT -->
-              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.8rem; white-space:nowrap;">{{ !$isNight ? $inTime : '' }}</td>
-              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.8rem; white-space:nowrap;">{{ !$isNight ? $outTime : '' }}</td>
+              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.8rem; white-space:nowrap;">{{ $dayIn }}</td>
+              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.8rem; white-space:nowrap;">{{ $dayOut }}</td>
               
               <!-- NIGHT SHIFT -->
-              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.8rem; white-space:nowrap;">{{ $isNight ? $inTime : '' }}</td>
-              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.8rem; white-space:nowrap;">{{ $isNight ? $outTime : '' }}</td>
+              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.8rem; white-space:nowrap;">{{ $nightIn }}</td>
+              <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.8rem; white-space:nowrap;">{{ $nightOut }}</td>
               
               <!-- OT / UT -->
               <td style="border:1px solid #000; padding:3px; text-align:center; font-size:0.8rem; font-weight:bold; color: {{ ($att?->overtime_hours ?? 0) < 0 ? '#d00' : 'inherit' }};">
