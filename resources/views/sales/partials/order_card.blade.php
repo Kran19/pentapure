@@ -1,13 +1,17 @@
 @php
   $oStatus = strtoupper(str_replace('_', ' ', $dOrder['status'] ?? ''));
   $ds = strtoupper(str_replace('_', ' ', $dOrder['dispatchStatus'] ?? 'PENDING'));
+  $isDone = in_array($ds, ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'FULLY_DISPATCHED', 'DISPATCHED', 'CLOSED']) ||
+            $oStatus === 'CLOSED' ||
+            ((float)($dOrder['totalQty'] ?? 0) > 0 && (float)($dOrder['remainingQty'] ?? 0) <= 0.001);
+
   if ($oStatus === 'CANCELLED') {
     $statusText = 'CANCELLED';
     $badgeStyle = 'background:#dc2626; color:#fff;';
-  } elseif ($ds === 'DONE' || $ds === 'COMPLETED' || $ds === 'FULLY DISPATCHED' || $ds === 'DISPATCHED') {
+  } elseif ($isDone) {
     $statusText = 'FULLY DISPATCHED';
     $badgeStyle = 'background:#16a34a; color:#fff;';
-  } elseif (in_array($ds, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL PENDING', 'PARTIAL_PENDING', 'PARTIAL_DISPATCH'])) {
+  } elseif (in_array($ds, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL PENDING', 'PARTIAL_PENDING', 'PARTIAL_DISPATCH']) || ((float)($dOrder['dispatchedQty'] ?? 0) > 0 && !$isDone)) {
     $statusText = 'PARTIAL';
     $badgeStyle = 'background:#f59e0b; color:#fff;';
   } else {
@@ -17,7 +21,7 @@
   $canEdit = ($dOrder['status'] ?? '') === 'OPEN' && ($ds === 'PENDING' || $ds === 'UNASSIGNED' || empty($dOrder['dispatchStatus']));
 
   $dueDaysBadge = '';
-  if (!empty($dOrder['rawDueDate'])) {
+  if (!empty($dOrder['rawDueDate']) && !$isDone && $oStatus !== 'CANCELLED') {
     $todayKolkata = now()->timezone('Asia/Kolkata')->startOfDay();
     $diffDays = (int) $todayKolkata->diffInDays(\Carbon\Carbon::parse($dOrder['rawDueDate'], 'Asia/Kolkata')->startOfDay(), false);
     if ($diffDays < 0) {

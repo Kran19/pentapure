@@ -25,12 +25,23 @@ class OrderItem extends Model
     public function syncDispatchedQty(): float
     {
         try {
-            $actual = (float) DispatchLogItem::where('order_item_id', $this->id)->sum('quantity');
-            if (abs((float)$this->dispatched_qty - $actual) > 0.001) {
-                $this->update(['dispatched_qty' => $actual]);
-                $this->dispatched_qty = $actual;
+            $hasLogItems = DispatchLogItem::where('order_item_id', $this->id)->exists();
+            if ($hasLogItems) {
+                $actual = (float) DispatchLogItem::where('order_item_id', $this->id)->sum('quantity');
+                if (abs((float)$this->dispatched_qty - $actual) > 0.001) {
+                    $this->update(['dispatched_qty' => $actual]);
+                    $this->dispatched_qty = $actual;
+                }
+                return $actual;
+            } elseif ($this->order && ($this->order->dispatchLogs()->exists() || in_array(strtoupper(trim((string)$this->order->dispatch_status)), ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'FULLY_DISPATCHED', 'DISPATCHED']) || $this->order->status === 'CLOSED')) {
+                // If parent order is dispatched/closed but no item-level breakdown exists, it's 100% dispatched
+                $actual = (float) $this->quantity;
+                if (abs((float)$this->dispatched_qty - $actual) > 0.001) {
+                    $this->update(['dispatched_qty' => $actual]);
+                    $this->dispatched_qty = $actual;
+                }
+                return $actual;
             }
-            return $actual;
         } catch (\Throwable $e) {}
         return (float) $this->dispatched_qty;
     }

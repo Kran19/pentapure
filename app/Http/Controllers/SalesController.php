@@ -100,22 +100,24 @@ class SalesController extends Controller
             }
         }
 
-        $pendingList = $orders->filter(function($o) {
-            if ($o->status === 'CANCELLED') return false;
-            $ds = strtoupper(str_replace('_', ' ', $o->dispatch_status ?? 'PENDING'));
-            return $ds === 'PENDING' || $ds === 'UNASSIGNED' || empty($o->dispatch_status) || $ds === 'OPEN';
-        })->values();
-
-        $partialList = $orders->filter(function($o) {
-            if ($o->status === 'CANCELLED') return false;
-            $ds = strtoupper(str_replace('_', ' ', $o->dispatch_status ?? ''));
-            return in_array($ds, ['PARTIAL', 'PARTIAL PENDING', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED']);
-        })->values();
-
         $dispatchedList = $orders->filter(function($o) {
             if ($o->status === 'CANCELLED') return false;
             $ds = strtoupper(str_replace('_', ' ', $o->dispatch_status ?? ''));
-            return in_array($ds, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'DISPATCHED']);
+            $rem = (float) $o->items->sum(fn($i) => $i->remainingQty());
+            $tot = (float) $o->items->sum('quantity');
+            return in_array($ds, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'DISPATCHED', 'CLOSED']) || $o->status === 'CLOSED' || ($tot > 0 && $rem <= 0.001);
+        })->values();
+
+        $partialList = $orders->filter(function($o) use ($dispatchedList) {
+            if ($o->status === 'CANCELLED' || $dispatchedList->contains('id', $o->id)) return false;
+            $ds = strtoupper(str_replace('_', ' ', $o->dispatch_status ?? ''));
+            $disp = (float) $o->items->sum('dispatched_qty');
+            return in_array($ds, ['PARTIAL', 'PARTIAL PENDING', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED']) || $disp > 0.001;
+        })->values();
+
+        $pendingList = $orders->filter(function($o) use ($dispatchedList, $partialList) {
+            if ($o->status === 'CANCELLED') return false;
+            return !$dispatchedList->contains('id', $o->id) && !$partialList->contains('id', $o->id);
         })->values();
 
         $pendingOrdersCount    = $pendingList->count();
@@ -123,26 +125,21 @@ class SalesController extends Controller
         $dispatchedOrdersCount = $dispatchedList->count();
 
         $todayDate = now()->timezone('Asia/Kolkata')->format('Y-m-d');
-        $dueTodayList = $orders->filter(function($o) use ($todayDate) {
-            if (!$o->due_date || $o->status === 'CANCELLED') return false;
+        $dueTodayList = $orders->filter(function($o) use ($todayDate, $dispatchedList) {
+            if (!$o->due_date || $o->status === 'CANCELLED' || $dispatchedList->contains('id', $o->id)) return false;
             return \Carbon\Carbon::parse($o->due_date, 'Asia/Kolkata')->format('Y-m-d') === $todayDate;
         })->values();
         $dueTodayOrdersCount = $dueTodayList->count();
 
         // Active open orders due today for sales/home dashboard
-        $dueTodayOpenOrders = $dueTodayList->filter(function($o) {
-            $ds = strtoupper(str_replace('_', ' ', $o->dispatch_status ?? ''));
-            return !in_array($ds, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'DISPATCHED']);
+        $dueTodayOpenOrders = $dueTodayList;
+
+        $dueTodayPendingList = $dueTodayOpenOrders->filter(function($o) use ($pendingList) {
+            return $pendingList->contains('id', $o->id);
         })->values();
 
-        $dueTodayPendingList = $dueTodayOpenOrders->filter(function($o) {
-            $ds = strtoupper(str_replace('_', ' ', $o->dispatch_status ?? ''));
-            return in_array($ds, ['PENDING', 'UNASSIGNED', 'OPEN']) || empty($o->dispatch_status);
-        })->values();
-
-        $dueTodayPartialList = $dueTodayOpenOrders->filter(function($o) {
-            $ds = strtoupper(str_replace('_', ' ', $o->dispatch_status ?? ''));
-            return in_array($ds, ['PARTIAL', 'PARTIAL PENDING', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED']);
+        $dueTodayPartialList = $dueTodayOpenOrders->filter(function($o) use ($partialList) {
+            return $partialList->contains('id', $o->id);
         })->values();
 
         $mapOrderFn = fn($o) => [
@@ -583,19 +580,36 @@ class SalesController extends Controller
                 $remainingQty = (float) $o->items->sum(fn($i) => $i->remainingQty());
 
                 $rawSt = strtoupper(trim(str_replace('_', ' ', (string)($o->dispatch_status ?? 'PENDING'))));
+                $hasLogs = $o->dispatchLogs && $o->dispatchLogs->isNotEmpty();
+
                 if ($o->status === 'CANCELLED') {
                     $computedStatus = 'CANCELLED';
-                } elseif (($totalQty > 0 && $remainingQty <= 0) || in_array($rawSt, ['DONE', 'COMPLETED', 'FULLY DISPATCHED'])) {
+                } elseif (
+                    ($totalQty > 0 && $remainingQty <= 0.001) ||
+                    in_array($rawSt, ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'FULLY_DISPATCHED', 'DISPATCHED', 'CLOSED']) ||
+                    $o->status === 'CLOSED'
+                ) {
                     $computedStatus = 'DONE';
-                } elseif ($dispatchedQty > 0) {
+                } elseif ($dispatchedQty > 0 || in_array($rawSt, ['PARTIAL', 'PARTIAL PENDING', 'PARTIAL_PENDING', 'PARTIAL DISPATCH', 'PARTIAL_DISPATCH', 'PARTIALLY DISPATCHED'])) {
                     $computedStatus = 'PARTIAL';
+                } elseif ($hasLogs) {
+                    $computedStatus = ($remainingQty <= 0.001) ? 'DONE' : 'PARTIAL';
                 } else {
                     $computedStatus = 'PENDING';
                 }
 
-                // Keep order dispatch_status up-to-date in DB if drifted
-                if ($o->status !== 'CANCELLED' && $o->dispatch_status !== $computedStatus) {
-                    $o->update(['dispatch_status' => $computedStatus]);
+                // Keep order dispatch_status and status up-to-date in DB if drifted
+                if ($o->status !== 'CANCELLED') {
+                    $orderUpdates = [];
+                    if ($o->dispatch_status !== $computedStatus) {
+                        $orderUpdates['dispatch_status'] = $computedStatus;
+                    }
+                    if ($computedStatus === 'DONE' && $o->status !== 'CLOSED') {
+                        $orderUpdates['status'] = 'CLOSED';
+                    }
+                    if (!empty($orderUpdates)) {
+                        $o->update($orderUpdates);
+                    }
                 }
 
                 // Resolve dispatch date & logs

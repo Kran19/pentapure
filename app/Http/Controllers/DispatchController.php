@@ -658,7 +658,8 @@ class DispatchController extends Controller
 
             // Check if ALL items in the order are now fully dispatched
             $order->refresh();
-            $allDone = $order->items->every(fn($item) => $item->remainingQty() <= 0);
+            $order->load('items');
+            $allDone = $order->items->isNotEmpty() && $order->items->every(fn($item) => $item->remainingQty() <= 0.001);
 
             if ($allDone) {
                 $order->update(['status' => 'CLOSED', 'dispatch_status' => 'DONE']);
@@ -1508,11 +1509,12 @@ class DispatchController extends Controller
 
             // Update order status accurately
             $order->refresh();
-            $anyDispatched = $order->items->filter(fn($item) => $item->dispatched_qty > 0)->isNotEmpty();
-            $allDone = $order->items->isNotEmpty() && $order->items->every(fn($item) => $item->remainingQty() <= 0);
+            $order->load('items');
+            $anyDispatched = $order->items->filter(fn($item) => (float)$item->dispatched_qty > 0.001)->isNotEmpty();
+            $allDone = $order->items->isNotEmpty() && $order->items->every(fn($item) => $item->remainingQty() <= 0.001);
             
             $order->update([
-                'status' => 'OPEN',
+                'status' => $allDone ? 'CLOSED' : 'OPEN',
                 'dispatch_status' => $allDone ? 'DONE' : ($anyDispatched ? 'PARTIAL' : 'PENDING')
             ]);
         });

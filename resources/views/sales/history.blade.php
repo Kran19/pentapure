@@ -72,6 +72,14 @@ html.dark-mode .highlight-dispatch-date,
 
   if ($dueFilter === 'today') {
     $timeline = $timeline->filter(function($item) use ($todayFormatted) {
+      $oStatus = strtoupper($item['status'] ?? '');
+      $dStatus = strtoupper(str_replace('_', ' ', $item['dispatchStatus'] ?? 'PENDING'));
+      $isDone = in_array($dStatus, ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'FULLY_DISPATCHED', 'DISPATCHED', 'CLOSED']) ||
+                $oStatus === 'CLOSED' ||
+                ((float)($item['totalQty'] ?? 0) > 0 && (float)($item['remainingQty'] ?? 0) <= 0.001);
+      if ($isDone || $oStatus === 'CANCELLED') {
+        return false;
+      }
       return ($item['dueDate'] ?? '') === $todayFormatted;
     });
   }
@@ -85,19 +93,24 @@ html.dark-mode .highlight-dispatch-date,
   if ($statusFilter) {
     $timeline = $timeline->filter(function($item) use ($statusFilter) {
       $oStatus = strtoupper($item['status'] ?? '');
-      $dStatus = strtoupper($item['dispatchStatus'] ?? 'PENDING');
+      $dStatus = strtoupper(str_replace('_', ' ', $item['dispatchStatus'] ?? 'PENDING'));
+      $isDone = in_array($dStatus, ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'FULLY_DISPATCHED', 'DISPATCHED', 'CLOSED']) ||
+                $oStatus === 'CLOSED' ||
+                ((float)($item['totalQty'] ?? 0) > 0 && (float)($item['remainingQty'] ?? 0) <= 0.001);
+      $isPartial = in_array($dStatus, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL PENDING', 'PARTIAL_PENDING', 'PARTIAL_DISPATCH'])
+                   || ((float)($item['dispatchedQty'] ?? 0) > 0 && !$isDone);
       
       if ($statusFilter === 'CANCELLED') {
         return $oStatus === 'CANCELLED';
       }
       if ($statusFilter === 'PENDING') {
-        return ($oStatus !== 'CANCELLED') && (in_array($dStatus, ['PENDING', 'OPEN', 'UNASSIGNED']) || empty($dStatus));
+        return ($oStatus !== 'CANCELLED') && !$isDone && !$isPartial;
       }
       if ($statusFilter === 'PARTIAL' || $statusFilter === 'PARTIAL_PENDING' || $statusFilter === 'PARTIAL_DISPATCH') {
-        return ($oStatus !== 'CANCELLED') && in_array($dStatus, ['PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL_PENDING', 'PARTIAL PENDING']);
+        return ($oStatus !== 'CANCELLED') && $isPartial && !$isDone;
       }
       if ($statusFilter === 'DONE' || in_array($statusFilter, ['FULLY_DISPATCHED', 'FULLY DISPATCHED', 'FULLY_DISPATCH', 'FULLY DISPATCH'])) {
-        return ($oStatus !== 'CANCELLED') && ($dStatus === 'DONE' || $dStatus === 'COMPLETED' || $dStatus === 'FULLY DISPATCHED' || $dStatus === 'DISPATCHED' || ((float)($item['totalQty'] ?? 0) > 0 && (float)($item['remainingQty'] ?? 0) <= 0));
+        return ($oStatus !== 'CANCELLED') && $isDone;
       }
       return $dStatus === $statusFilter;
     });
@@ -128,8 +141,9 @@ html.dark-mode .highlight-dispatch-date,
   $timeline = $timeline->sortBy(function($item) use ($todayKolkata) {
     $orderStatus = strtoupper(trim(str_replace('_', ' ', (string)($item['status'] ?? ''))));
     $dispatchStatus = strtoupper(trim(str_replace('_', ' ', (string)($item['dispatchStatus'] ?? 'PENDING'))));
-    $isDone = in_array($dispatchStatus, ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'FULLY_DISPATCHED', 'DISPATCHED']) ||
-              ((float)($item['totalQty'] ?? 0) > 0 && (float)($item['remainingQty'] ?? 0) <= 0);
+    $isDone = in_array($dispatchStatus, ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'FULLY_DISPATCHED', 'DISPATCHED', 'CLOSED']) ||
+              $orderStatus === 'CLOSED' ||
+              ((float)($item['totalQty'] ?? 0) > 0 && (float)($item['remainingQty'] ?? 0) <= 0.001);
 
     // Cancelled -> Group 5 (Bottom)
     if ($orderStatus === 'CANCELLED') {
@@ -269,8 +283,9 @@ html.dark-mode .highlight-dispatch-date,
     @php
       $oStatus = strtoupper(str_replace('_', ' ', $item['status'] ?? ''));
       $ds = strtoupper(str_replace('_', ' ', $item['dispatchStatus'] ?? 'PENDING'));
-      $isDone = in_array($ds, ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'DISPATCHED']) ||
-                ((float)($item['totalQty'] ?? 0) > 0 && (float)($item['remainingQty'] ?? 0) <= 0);
+      $isDone = in_array($ds, ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'FULLY_DISPATCHED', 'DISPATCHED', 'CLOSED']) ||
+                $oStatus === 'CLOSED' ||
+                ((float)($item['totalQty'] ?? 0) > 0 && (float)($item['remainingQty'] ?? 0) <= 0.001);
       $isPartial = in_array($ds, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL PENDING', 'PARTIAL_PENDING', 'PARTIAL_DISPATCH'])
                    || ((float)($item['dispatchedQty'] ?? 0) > 0 && !$isDone);
       $canCancel = $oStatus !== 'CANCELLED' && $oStatus !== 'CLOSED' && !$isDone && !$isPartial;
@@ -284,7 +299,7 @@ html.dark-mode .highlight-dispatch-date,
         $statusText = 'FULLY DISPATCHED';
         $badgeClass = 'badge-done';
         $customBadgeStyle = 'background:#16a34a; color:#fff;';
-      } elseif (in_array($ds, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL PENDING', 'PARTIAL_PENDING', 'PARTIAL_DISPATCH'])) {
+      } elseif ($isPartial) {
         $statusText = 'PARTIAL';
         $badgeClass = 'badge-pending';
         $customBadgeStyle = 'background:#f59e0b; color:#fff;';
@@ -310,7 +325,7 @@ html.dark-mode .highlight-dispatch-date,
               @php
                 $rawDue = $item['rawDueDate'] ?? (!empty($item['dueDate']) && $item['dueDate'] !== 'Not Specified' ? \Carbon\Carbon::parse($item['dueDate'])->format('Y-m-d') : null);
                 $historyDueBadge = '';
-                if ($rawDue) {
+                if ($rawDue && !$isDone && $oStatus !== 'CANCELLED') {
                   $todayKolkata = now()->timezone('Asia/Kolkata')->startOfDay();
                   $diffDays = (int) $todayKolkata->diffInDays(\Carbon\Carbon::parse($rawDue, 'Asia/Kolkata')->startOfDay(), false);
                   if ($diffDays < 0) {
