@@ -871,60 +871,50 @@ class AdminController extends Controller
     {
         try {
             // 1. Clean up duplicate stock_limits where stage & grade normalize to the same values
-            $stageLimitNorm = "CASE 
-                WHEN UPPER(TRIM(stage)) IN ('FG', 'FINISHED') THEN 'FINISHED' 
-                WHEN UPPER(TRIM(stage)) IN ('PKG', 'PM', 'PACKAGING') THEN 'PACKAGING' 
-                WHEN UPPER(TRIM(stage)) = 'SEMI' THEN 'SEMI' 
-                WHEN UPPER(TRIM(stage)) = 'RAW' THEN 'RAW' 
-                ELSE UPPER(TRIM(stage)) 
-            END";
-            $gradeLimitNorm = "CASE 
-                WHEN grade IS NULL OR UPPER(TRIM(grade)) IN ('', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-') THEN 'NONE' 
-                ELSE UPPER(TRIM(grade)) 
-            END";
+            $limits = DB::table('stock_limits')->get();
+            $seen = [];
+            $idsToDelete = [];
 
-            $dupLimits = DB::table('stock_limits')
-                ->selectRaw("product_id, {$stageLimitNorm} as norm_stage, {$gradeLimitNorm} as norm_grade, COUNT(*) as cnt, MAX(id) as max_id")
-                ->groupBy('product_id', DB::raw("{$stageLimitNorm}"), DB::raw("{$gradeLimitNorm}"))
-                ->havingRaw("COUNT(*) > 1")
-                ->get();
+            foreach ($limits as $l) {
+                $st = strtoupper(trim((string)$l->stage));
+                if (in_array($st, ['FG', 'FINISHED'])) $st = 'FINISHED';
+                elseif (in_array($st, ['PKG', 'PM', 'PACKAGING'])) $st = 'PACKAGING';
+                elseif ($st === 'SEMI') $st = 'SEMI';
+                elseif ($st === 'RAW') $st = 'RAW';
 
-            foreach ($dupLimits as $dl) {
-                DB::table('stock_limits')
-                    ->where('product_id', $dl->product_id)
-                    ->whereRaw("{$stageLimitNorm} = ?", [$dl->norm_stage])
-                    ->whereRaw("{$gradeLimitNorm} = ?", [$dl->norm_grade])
-                    ->where('id', '!=', $dl->max_id)
-                    ->delete();
+                $gr = strtoupper(trim((string)($l->grade ?? '')));
+                if (in_array($gr, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-'])) $gr = 'NONE';
+
+                $key = "{$l->product_id}_{$st}_{$gr}";
+                if (isset($seen[$key])) {
+                    $idsToDelete[] = $l->id;
+                } else {
+                    $seen[$key] = $l->id;
+                }
+            }
+
+            if (!empty($idsToDelete)) {
+                DB::table('stock_limits')->whereIn('id', $idsToDelete)->delete();
             }
 
             // 2. Find and merge duplicate products in products table (e.g. HVP SOYA POWDER SD)
-            $typeNormSql = "CASE 
-                WHEN UPPER(TRIM(type)) IN ('FG', 'FINISHED') THEN 'FINISHED' 
-                WHEN UPPER(TRIM(type)) IN ('PKG', 'PM', 'PACKAGING') THEN 'PACKAGING' 
-                WHEN UPPER(TRIM(type)) = 'SEMI' THEN 'SEMI' 
-                WHEN UPPER(TRIM(type)) = 'RAW' THEN 'RAW' 
-                ELSE UPPER(TRIM(type)) 
-            END";
+            $products = Product::orderBy('id', 'asc')->get();
+            $grouped = [];
+            foreach ($products as $p) {
+                $nameNorm = strtoupper(trim((string)$p->name));
+                $tNorm = strtoupper(trim((string)$p->type));
+                if (in_array($tNorm, ['FG', 'FINISHED'])) $tNorm = 'FINISHED';
+                elseif (in_array($tNorm, ['PKG', 'PM', 'PACKAGING'])) $tNorm = 'PACKAGING';
 
-            $duplicates = DB::table('products')
-                ->selectRaw("UPPER(TRIM(name)) as norm_name, {$typeNormSql} as norm_type, COUNT(*) as cnt")
-                ->groupBy(DB::raw("UPPER(TRIM(name))"), DB::raw("{$typeNormSql}"))
-                ->havingRaw("COUNT(*) > 1")
-                ->get();
+                $key = "{$nameNorm}_{$tNorm}";
+                $grouped[$key][] = $p;
+            }
 
-            foreach ($duplicates as $dup) {
-                $products = Product::whereRaw("UPPER(TRIM(name)) = ?", [$dup->norm_name])
-                    ->whereRaw("{$typeNormSql} = ?", [$dup->norm_type])
-                    ->orderBy('id', 'asc')
-                    ->get();
+            foreach ($grouped as $prods) {
+                if (count($prods) <= 1) continue;
 
-                if ($products->count() <= 1) {
-                    continue;
-                }
-
-                $primary = $products->first();
-                $duplicatesToDelete = $products->slice(1);
+                $primary = $prods[0];
+                $duplicatesToDelete = array_slice($prods, 1);
 
                 $primaryStock = (float) DB::table('stocks')
                     ->where('product_id', $primary->id)
@@ -974,8 +964,6 @@ class AdminController extends Controller
     {
         $this->cleanupDuplicateProductsAndLimits();
 
-        $hasLimitRate = $this->hasStockLimitsRateColumn();
-
         $stageNormExpr = "CASE 
             WHEN UPPER(TRIM(stocks.stage)) IN ('FG', 'FINISHED') THEN 'FINISHED'
             WHEN UPPER(TRIM(stocks.stage)) IN ('PKG', 'PM', 'PACKAGING') THEN 'PACKAGING'
@@ -996,53 +984,22 @@ class AdminController extends Controller
                 {$gradeNormExpr} as norm_grade,
                 SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
             ")
-            ->groupBy('stocks.product_id', DB::raw('norm_stage'), DB::raw('norm_grade'));
-
-        $stageLimitNorm = "CASE 
-            WHEN UPPER(TRIM(stage)) IN ('FG', 'FINISHED') THEN 'FINISHED' 
-            WHEN UPPER(TRIM(stage)) IN ('PKG', 'PM', 'PACKAGING') THEN 'PACKAGING' 
-            WHEN UPPER(TRIM(stage)) = 'SEMI' THEN 'SEMI' 
-            WHEN UPPER(TRIM(stage)) = 'RAW' THEN 'RAW' 
-            ELSE UPPER(TRIM(stage)) 
-        END";
-        $gradeLimitNorm = "CASE 
-            WHEN grade IS NULL OR UPPER(TRIM(grade)) IN ('', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-') THEN 'NONE' 
-            ELSE UPPER(TRIM(grade)) 
-        END";
-
-        $rateSubSelect = $hasLimitRate ? "MAX(COALESCE(rate, 0)) as rate," : "";
-        $limitsAgg = DB::table('stock_limits')
-            ->selectRaw("
-                product_id,
-                {$stageLimitNorm} as norm_stage,
-                {$gradeLimitNorm} as norm_grade,
-                {$rateSubSelect}
-                MAX(alert_limit) as alert_limit
-            ")
-            ->groupBy('product_id', DB::raw("{$stageLimitNorm}"), DB::raw("{$gradeLimitNorm}"));
-
-        $rateSelect = $hasLimitRate 
-            ? "COALESCE(limits_agg.rate, products.rate, 0) as rate" 
-            : "products.rate";
+            ->groupBy('stocks.product_id', DB::raw("{$stageNormExpr}"), DB::raw("{$gradeNormExpr}"));
 
         $allStock = DB::table(DB::raw("({$stockAgg->toSql()}) as aggregated_stocks"))
             ->mergeBindings($stockAgg)
             ->join('products', 'aggregated_stocks.product_id', '=', 'products.id')
-            ->leftJoinSub($limitsAgg, 'limits_agg', function($join) {
-                $join->on('aggregated_stocks.product_id', '=', 'limits_agg.product_id')
-                     ->on('aggregated_stocks.norm_stage', '=', 'limits_agg.norm_stage')
-                     ->on('aggregated_stocks.norm_grade', '=', 'limits_agg.norm_grade');
-            })
             ->selectRaw("
                 aggregated_stocks.product_id as productId,
                 products.name,
                 products.unit,
                 products.threshold,
-                {$rateSelect},
+                products.rate as product_rate,
+                products.rate,
+                products.sort_order,
                 aggregated_stocks.norm_stage as stage,
                 aggregated_stocks.norm_grade as grade,
-                products.sort_order,
-                COALESCE(NULLIF(limits_agg.alert_limit, 0), NULLIF(products.threshold, 0), limits_agg.alert_limit, products.threshold, 0) as alert_limit,
+                COALESCE(products.threshold, 0) as alert_limit,
                 aggregated_stocks.quantity
             ")
             ->where('aggregated_stocks.quantity', '>=', 0)
@@ -1050,6 +1007,44 @@ class AdminController extends Controller
             ->orderBy('products.name', 'asc')
             ->orderBy('aggregated_stocks.norm_grade', 'asc')
             ->get();
+
+        // Attach limits and rates cleanly in PHP to avoid any SQL ONLY_FULL_GROUP_BY issues
+        $hasLimitRate = $this->hasStockLimitsRateColumn();
+        $limits = DB::table('stock_limits')->get();
+        $limitsMap = [];
+        foreach ($limits as $l) {
+            $st = strtoupper(trim((string)$l->stage));
+            if (in_array($st, ['FG', 'FINISHED'])) $st = 'FINISHED';
+            elseif (in_array($st, ['PKG', 'PM', 'PACKAGING'])) $st = 'PACKAGING';
+            elseif ($st === 'SEMI') $st = 'SEMI';
+            elseif ($st === 'RAW') $st = 'RAW';
+
+            $gr = strtoupper(trim((string)($l->grade ?? '')));
+            if (in_array($gr, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-'])) $gr = 'NONE';
+
+            $key = "{$l->product_id}_{$st}_{$gr}";
+            if (!isset($limitsMap[$key])) {
+                $limitsMap[$key] = $l;
+            } else {
+                if (($l->alert_limit ?? 0) > ($limitsMap[$key]->alert_limit ?? 0)) {
+                    $limitsMap[$key]->alert_limit = $l->alert_limit;
+                }
+                if ($hasLimitRate && isset($l->rate) && ($l->rate ?? 0) > ($limitsMap[$key]->rate ?? 0)) {
+                    $limitsMap[$key]->rate = $l->rate;
+                }
+            }
+        }
+
+        foreach ($allStock as $item) {
+            $key = "{$item->productId}_{$item->stage}_{$item->grade}";
+            $lim = $limitsMap[$key] ?? null;
+            $limitRate = $hasLimitRate && $lim ? (float)($lim->rate ?? 0) : 0;
+            $item->rate = $limitRate > 0 ? $limitRate : (float)($item->product_rate ?? $item->rate ?? 0);
+
+            $alertLim = $lim ? (float)($lim->alert_limit ?? 0) : 0;
+            $thresh = (float)($item->threshold ?? 0);
+            $item->alert_limit = $alertLim > 0 ? $alertLim : $thresh;
+        }
 
         // Enforce uniqueness per product_id + stage + grade
         $allStock = $allStock->unique(fn($item) => "{$item->productId}_{$item->stage}_{$item->grade}")->values();
@@ -1652,52 +1647,21 @@ class AdminController extends Controller
             ")
             ->groupBy('stocks.product_id', DB::raw('norm_stage'), DB::raw('norm_grade'));
 
-        $stageLimitNorm = "CASE 
-            WHEN UPPER(TRIM(stage)) IN ('FG', 'FINISHED') THEN 'FINISHED' 
-            WHEN UPPER(TRIM(stage)) IN ('PKG', 'PM', 'PACKAGING') THEN 'PACKAGING' 
-            WHEN UPPER(TRIM(stage)) = 'SEMI' THEN 'SEMI' 
-            WHEN UPPER(TRIM(stage)) = 'RAW' THEN 'RAW' 
-            ELSE UPPER(TRIM(stage)) 
-        END";
-        $gradeLimitNorm = "CASE 
-            WHEN grade IS NULL OR UPPER(TRIM(grade)) IN ('', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-') THEN 'NONE' 
-            ELSE UPPER(TRIM(grade)) 
-        END";
-
-        $rateSubSelect = $hasLimitRate ? "MAX(COALESCE(rate, 0)) as rate," : "";
-        $limitsAgg = DB::table('stock_limits')
-            ->selectRaw("
-                product_id,
-                {$stageLimitNorm} as norm_stage,
-                {$gradeLimitNorm} as norm_grade,
-                {$rateSubSelect}
-                MAX(alert_limit) as alert_limit
-            ")
-            ->groupBy('product_id', DB::raw("{$stageLimitNorm}"), DB::raw("{$gradeLimitNorm}"));
-
-        $rateSelect = $hasLimitRate 
-            ? "COALESCE(limits_agg.rate, products.rate, 0) as rate" 
-            : "products.rate";
-
         $allStock = DB::table(DB::raw("({$stockAgg->toSql()}) as aggregated_stocks"))
             ->mergeBindings($stockAgg)
             ->join('products', 'aggregated_stocks.product_id', '=', 'products.id')
-            ->leftJoinSub($limitsAgg, 'limits_agg', function($join) {
-                $join->on('aggregated_stocks.product_id', '=', 'limits_agg.product_id')
-                     ->on('aggregated_stocks.norm_stage', '=', 'limits_agg.norm_stage')
-                     ->on('aggregated_stocks.norm_grade', '=', 'limits_agg.norm_grade');
-            })
             ->selectRaw("
                 aggregated_stocks.product_id as productId,
                 products.name,
                 products.type,
                 products.unit,
-                {$rateSelect},
+                products.rate as product_rate,
+                products.rate,
                 products.threshold,
                 products.sort_order,
                 aggregated_stocks.norm_stage as stage,
                 aggregated_stocks.norm_grade as grade,
-                COALESCE(NULLIF(limits_agg.alert_limit, 0), NULLIF(products.threshold, 0), limits_agg.alert_limit, products.threshold, 0) as alert_limit,
+                COALESCE(products.threshold, 0) as alert_limit,
                 aggregated_stocks.quantity
             ")
             ->where('aggregated_stocks.quantity', '>=', 0)
@@ -1705,6 +1669,43 @@ class AdminController extends Controller
             ->orderBy('products.name', 'asc')
             ->orderBy('aggregated_stocks.norm_grade', 'asc')
             ->get();
+
+        // Attach limits and rates cleanly in PHP
+        $limits = DB::table('stock_limits')->get();
+        $limitsMap = [];
+        foreach ($limits as $l) {
+            $st = strtoupper(trim((string)$l->stage));
+            if (in_array($st, ['FG', 'FINISHED'])) $st = 'FINISHED';
+            elseif (in_array($st, ['PKG', 'PM', 'PACKAGING'])) $st = 'PACKAGING';
+            elseif ($st === 'SEMI') $st = 'SEMI';
+            elseif ($st === 'RAW') $st = 'RAW';
+
+            $gr = strtoupper(trim((string)($l->grade ?? '')));
+            if (in_array($gr, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-'])) $gr = 'NONE';
+
+            $key = "{$l->product_id}_{$st}_{$gr}";
+            if (!isset($limitsMap[$key])) {
+                $limitsMap[$key] = $l;
+            } else {
+                if (($l->alert_limit ?? 0) > ($limitsMap[$key]->alert_limit ?? 0)) {
+                    $limitsMap[$key]->alert_limit = $l->alert_limit;
+                }
+                if ($hasLimitRate && isset($l->rate) && ($l->rate ?? 0) > ($limitsMap[$key]->rate ?? 0)) {
+                    $limitsMap[$key]->rate = $l->rate;
+                }
+            }
+        }
+
+        foreach ($allStock as $item) {
+            $key = "{$item->productId}_{$item->stage}_{$item->grade}";
+            $lim = $limitsMap[$key] ?? null;
+            $limitRate = $hasLimitRate && $lim ? (float)($lim->rate ?? 0) : 0;
+            $item->rate = $limitRate > 0 ? $limitRate : (float)($item->product_rate ?? $item->rate ?? 0);
+
+            $alertLim = $lim ? (float)($lim->alert_limit ?? 0) : 0;
+            $thresh = (float)($item->threshold ?? 0);
+            $item->alert_limit = $alertLim > 0 ? $alertLim : $thresh;
+        }
 
         $allStock = $allStock->unique(fn($item) => "{$item->productId}_{$item->stage}_{$item->grade}")->values();
 

@@ -13,60 +13,50 @@ return new class extends Migration
     {
         try {
             // 1. Clean up duplicate stock_limits where stage & grade normalize to the same values
-            $stageLimitNorm = "CASE 
-                WHEN UPPER(TRIM(stage)) IN ('FG', 'FINISHED') THEN 'FINISHED' 
-                WHEN UPPER(TRIM(stage)) IN ('PKG', 'PM', 'PACKAGING') THEN 'PACKAGING' 
-                WHEN UPPER(TRIM(stage)) = 'SEMI' THEN 'SEMI' 
-                WHEN UPPER(TRIM(stage)) = 'RAW' THEN 'RAW' 
-                ELSE UPPER(TRIM(stage)) 
-            END";
-            $gradeLimitNorm = "CASE 
-                WHEN grade IS NULL OR UPPER(TRIM(grade)) IN ('', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-') THEN 'NONE' 
-                ELSE UPPER(TRIM(grade)) 
-            END";
+            $limits = DB::table('stock_limits')->get();
+            $seen = [];
+            $idsToDelete = [];
 
-            $dupLimits = DB::table('stock_limits')
-                ->selectRaw("product_id, {$stageLimitNorm} as norm_stage, {$gradeLimitNorm} as norm_grade, COUNT(*) as cnt, MAX(id) as max_id")
-                ->groupBy('product_id', DB::raw("{$stageLimitNorm}"), DB::raw("{$gradeLimitNorm}"))
-                ->havingRaw("COUNT(*) > 1")
-                ->get();
+            foreach ($limits as $l) {
+                $st = strtoupper(trim((string)$l->stage));
+                if (in_array($st, ['FG', 'FINISHED'])) $st = 'FINISHED';
+                elseif (in_array($st, ['PKG', 'PM', 'PACKAGING'])) $st = 'PACKAGING';
+                elseif ($st === 'SEMI') $st = 'SEMI';
+                elseif ($st === 'RAW') $st = 'RAW';
 
-            foreach ($dupLimits as $dl) {
-                DB::table('stock_limits')
-                    ->where('product_id', $dl->product_id)
-                    ->whereRaw("{$stageLimitNorm} = ?", [$dl->norm_stage])
-                    ->whereRaw("{$gradeLimitNorm} = ?", [$dl->norm_grade])
-                    ->where('id', '!=', $dl->max_id)
-                    ->delete();
+                $gr = strtoupper(trim((string)($l->grade ?? '')));
+                if (in_array($gr, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-'])) $gr = 'NONE';
+
+                $key = "{$l->product_id}_{$st}_{$gr}";
+                if (isset($seen[$key])) {
+                    $idsToDelete[] = $l->id;
+                } else {
+                    $seen[$key] = $l->id;
+                }
+            }
+
+            if (!empty($idsToDelete)) {
+                DB::table('stock_limits')->whereIn('id', $idsToDelete)->delete();
             }
 
             // 2. Find and merge duplicate products in products table (e.g. HVP SOYA POWDER SD)
-            $typeNormSql = "CASE 
-                WHEN UPPER(TRIM(type)) IN ('FG', 'FINISHED') THEN 'FINISHED' 
-                WHEN UPPER(TRIM(type)) IN ('PKG', 'PM', 'PACKAGING') THEN 'PACKAGING' 
-                WHEN UPPER(TRIM(type)) = 'SEMI' THEN 'SEMI' 
-                WHEN UPPER(TRIM(type)) = 'RAW' THEN 'RAW' 
-                ELSE UPPER(TRIM(type)) 
-            END";
+            $products = Product::orderBy('id', 'asc')->get();
+            $grouped = [];
+            foreach ($products as $p) {
+                $nameNorm = strtoupper(trim((string)$p->name));
+                $tNorm = strtoupper(trim((string)$p->type));
+                if (in_array($tNorm, ['FG', 'FINISHED'])) $tNorm = 'FINISHED';
+                elseif (in_array($tNorm, ['PKG', 'PM', 'PACKAGING'])) $tNorm = 'PACKAGING';
 
-            $duplicates = DB::table('products')
-                ->selectRaw("UPPER(TRIM(name)) as norm_name, {$typeNormSql} as norm_type, COUNT(*) as cnt")
-                ->groupBy(DB::raw("UPPER(TRIM(name))"), DB::raw("{$typeNormSql}"))
-                ->havingRaw("COUNT(*) > 1")
-                ->get();
+                $key = "{$nameNorm}_{$tNorm}";
+                $grouped[$key][] = $p;
+            }
 
-            foreach ($duplicates as $dup) {
-                $products = Product::whereRaw("UPPER(TRIM(name)) = ?", [$dup->norm_name])
-                    ->whereRaw("{$typeNormSql} = ?", [$dup->norm_type])
-                    ->orderBy('id', 'asc')
-                    ->get();
+            foreach ($grouped as $prods) {
+                if (count($prods) <= 1) continue;
 
-                if ($products->count() <= 1) {
-                    continue;
-                }
-
-                $primary = $products->first();
-                $duplicatesToDelete = $products->slice(1);
+                $primary = $prods[0];
+                $duplicatesToDelete = array_slice($prods, 1);
 
                 $primaryStock = (float) DB::table('stocks')
                     ->where('product_id', $primary->id)
