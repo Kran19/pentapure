@@ -2857,14 +2857,36 @@ class AdminController extends Controller
     {
         $baseQuery = \App\Models\Transaction::with(['user', 'bills'])->orderByDesc('created_at');
 
+        $dateRange = $request->range ?? ($request->filled('date_from') || $request->filled('date_to') || $request->filled('start') || $request->filled('end') ? 'custom' : 'all');
+        $dateFrom = $request->start ?? $request->date_from;
+        $dateTo = $request->end ?? $request->date_to;
+        $dateCol = DB::raw('COALESCE(transactions.date, transactions.created_at)');
+
         if ($request->filled('cashier_id')) {
             $baseQuery->where('user_id', $request->cashier_id);
         }
-        if ($request->filled('date_from')) {
-            $baseQuery->whereDate('created_at', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $baseQuery->whereDate('created_at', '<=', $request->date_to);
+
+        if ($dateRange && $dateRange !== 'all') {
+            if ($dateRange === 'today') {
+                $baseQuery->whereDate($dateCol, Carbon::today());
+            } elseif ($dateRange === 'yesterday') {
+                $baseQuery->whereDate($dateCol, Carbon::yesterday());
+            } elseif ($dateRange === 'this_week') {
+                $baseQuery->whereBetween($dateCol, [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]);
+            } elseif ($dateRange === 'last_week') {
+                $baseQuery->whereBetween($dateCol, [Carbon::now()->subWeek()->startOfWeek(), Carbon::now()->subWeek()->endOfWeek()]);
+            } elseif ($dateRange === 'this_month') {
+                $baseQuery->whereBetween($dateCol, [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()]);
+            } elseif ($dateRange === 'last_month') {
+                $baseQuery->whereBetween($dateCol, [Carbon::now()->subMonth()->startOfMonth(), Carbon::now()->subMonth()->endOfMonth()]);
+            } elseif ($dateRange === 'custom') {
+                if ($dateFrom) {
+                    $baseQuery->whereDate($dateCol, '>=', $dateFrom);
+                }
+                if ($dateTo) {
+                    $baseQuery->whereDate($dateCol, '<=', $dateTo);
+                }
+            }
         }
 
         $allTxs = $baseQuery->get();
@@ -2939,6 +2961,9 @@ class AdminController extends Controller
             'cashiers' => $cashiers,
             'selectedCashier' => $request->cashier_id,
             'balMap' => $balMap,
+            'dateRange' => $dateRange,
+            'startDate' => $dateFrom,
+            'endDate' => $dateTo,
         ];
 
         return view('admin.cashier_overview', compact('pageData'));
@@ -2952,14 +2977,44 @@ class AdminController extends Controller
             $baseQuery->where('user_id', $request->cashier_id);
         }
 
-        $fromDateInput = $request->input('date_from') ?: $request->input('from');
-        $toDateInput   = $request->input('date_to') ?: $request->input('to');
+        $dateRange = $request->range ?? ($request->filled('date_from') || $request->filled('date_to') || $request->filled('start') || $request->filled('end') ? 'custom' : 'all');
+        $fromDateInput = $request->start ?: ($request->input('date_from') ?: $request->input('from'));
+        $toDateInput   = $request->end ?: ($request->input('date_to') ?: $request->input('to'));
+        $dateCol = DB::raw('COALESCE(transactions.date, transactions.created_at)');
 
-        if ($fromDateInput) {
-            $baseQuery->whereDate('created_at', '>=', $fromDateInput);
-        }
-        if ($toDateInput) {
-            $baseQuery->whereDate('created_at', '<=', $toDateInput);
+        if ($dateRange && $dateRange !== 'all') {
+            if ($dateRange === 'today') {
+                $baseQuery->whereDate($dateCol, Carbon::today());
+                $fromDateInput = Carbon::today()->format('Y-m-d');
+                $toDateInput = Carbon::today()->format('Y-m-d');
+            } elseif ($dateRange === 'yesterday') {
+                $baseQuery->whereDate($dateCol, Carbon::yesterday());
+                $fromDateInput = Carbon::yesterday()->format('Y-m-d');
+                $toDateInput = Carbon::yesterday()->format('Y-m-d');
+            } elseif ($dateRange === 'this_week') {
+                $baseQuery->whereBetween($dateCol, [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]);
+                $fromDateInput = Carbon::now()->startOfWeek()->format('Y-m-d');
+                $toDateInput = Carbon::now()->endOfWeek()->format('Y-m-d');
+            } elseif ($dateRange === 'last_week') {
+                $baseQuery->whereBetween($dateCol, [Carbon::now()->subWeek()->startOfWeek(), Carbon::now()->subWeek()->endOfWeek()]);
+                $fromDateInput = Carbon::now()->subWeek()->startOfWeek()->format('Y-m-d');
+                $toDateInput = Carbon::now()->subWeek()->endOfWeek()->format('Y-m-d');
+            } elseif ($dateRange === 'this_month') {
+                $baseQuery->whereBetween($dateCol, [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()]);
+                $fromDateInput = Carbon::now()->startOfMonth()->format('Y-m-d');
+                $toDateInput = Carbon::now()->endOfMonth()->format('Y-m-d');
+            } elseif ($dateRange === 'last_month') {
+                $baseQuery->whereBetween($dateCol, [Carbon::now()->subMonth()->startOfMonth(), Carbon::now()->subMonth()->endOfMonth()]);
+                $fromDateInput = Carbon::now()->subMonth()->startOfMonth()->format('Y-m-d');
+                $toDateInput = Carbon::now()->subMonth()->endOfMonth()->format('Y-m-d');
+            } elseif ($dateRange === 'custom') {
+                if ($fromDateInput) {
+                    $baseQuery->whereDate($dateCol, '>=', $fromDateInput);
+                }
+                if ($toDateInput) {
+                    $baseQuery->whereDate($dateCol, '<=', $toDateInput);
+                }
+            }
         }
 
         $statusFilter = strtoupper(trim((string)($request->type ?: $request->status)));
@@ -2975,7 +3030,7 @@ class AdminController extends Controller
         if ($request->filled('opening_balance')) {
             $openingBalance = (float) $request->opening_balance;
         } elseif ($fromDateInput) {
-            $prevQuery = \App\Models\Transaction::whereDate('created_at', '<', $fromDateInput);
+            $prevQuery = \App\Models\Transaction::whereDate($dateCol, '<', $fromDateInput);
             if ($request->filled('cashier_id')) {
                 $prevQuery->where('user_id', $request->cashier_id);
             }
