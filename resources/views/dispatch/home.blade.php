@@ -56,6 +56,10 @@
   $packagingList = collect($pageData['packagingStock'] ?? [])->map(fn($s) => (object)array_merge((array)$s, ['stage' => 'PACKAGING']));
   $allStockList = $rawList->concat($semiList)->concat($finishedList)->concat($packagingList);
   $totalStockItemsCount = $allStockList->count();
+
+  $authUserRole = strtoupper(session('auth_user')['role'] ?? auth()->user()->role ?? '');
+  // Do NOT show rate to DISPATCH user (or when accessing the dispatch portal)
+  $showRate = in_array($authUserRole, ['ADMIN', 'SUB_ADMIN']) && !str_starts_with(strtolower(request()->segment(1)), 'dispatch');
 @endphp
 
 <style>
@@ -632,7 +636,7 @@
                       @endif
                       <span style="color:var(--text-muted, #9ca3af); font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
                     </div>
-                    <div class="dispatch-item-badges" style="display:grid; grid-template-columns:130px 140px 140px 120px; gap:8px; align-items:center; flex-shrink:0;">
+                    <div class="dispatch-item-badges" style="display:grid; grid-template-columns:{{ $showRate ? '130px 140px 140px 120px' : '130px 140px 140px' }}; gap:8px; align-items:center; flex-shrink:0;">
                       <span style="background:rgba(255,255,255,0.08); padding:4px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.15); font-weight:600; color:var(--text-main, #fff); width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
                         <span style="color:var(--text-muted, #9ca3af); font-size:0.72rem; font-weight:700;">ORDER:</span>
                         <strong style="color:var(--primary, #D88A00);">{{ $fmtQty($tot) }}</strong>
@@ -645,10 +649,12 @@
                         <span style="font-size:0.72rem;">PENDING:</span>
                         <strong>{{ $fmtQty($rem) }}</strong>
                       </span>
+                      @if($showRate)
                       <span style="background:rgba(59,130,246,0.15); padding:4px 8px; border-radius:6px; border:1px solid rgba(59,130,246,0.3); font-weight:700; color:#60a5fa; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
                         <span style="color:#94a3b8; font-size:0.72rem; font-weight:700;">RATE:</span>
                         <strong style="color:#93c5fd;">{{ $fmtRate($rate) }}</strong>
                       </span>
+                      @endif
                     </div>
                   </div>
                 @endforeach

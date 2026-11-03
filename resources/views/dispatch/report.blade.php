@@ -176,6 +176,10 @@
     ? request()->segment(1)
     : (session('auth_user')['login_slug'] ?? strtolower(session('auth_user')['role'] ?? 'dispatch'));
   $pdfUrl = route('history.pdf', ['user_slug' => $userSlug, 'panel' => 'dispatch']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&company_id=' . $companyId . '&status=' . $statusFilter . '&q=' . $q;
+
+  $authUserRole = strtoupper(session('auth_user')['role'] ?? auth()->user()->role ?? '');
+  // Do NOT show rate to DISPATCH user (or when accessing the dispatch portal)
+  $showRate = in_array($authUserRole, ['ADMIN', 'SUB_ADMIN']) && !str_starts_with(strtolower(request()->segment(1)), 'dispatch');
 @endphp
 <style>
 .status-tabs-wrapper {
@@ -652,7 +656,7 @@ html.dark-mode .highlight-dispatch-date,
                   @endif
                   <span style="color:#6b7280; font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
                 </div>
-                <div class="dispatch-item-badges" style="display:grid; grid-template-columns:130px 140px 140px 120px; gap:8px; align-items:center; flex-shrink:0;">
+                <div class="dispatch-item-badges" style="display:grid; grid-template-columns:{{ $showRate ? '130px 140px 140px 120px' : '130px 140px 140px' }}; gap:8px; align-items:center; flex-shrink:0;">
                   <span style="background:#f9fafb; padding:4px 8px; border-radius:6px; border:1px solid #e5e7eb; font-weight:600; color:#111827; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
                     <span style="color:#6b7280; font-size:0.72rem; font-weight:700;">ORDER:</span>
                     <strong style="color:var(--primary, #D88A00);">{{ $fmtQty($tot) }}</strong>
@@ -665,10 +669,12 @@ html.dark-mode .highlight-dispatch-date,
                     <span style="font-size:0.72rem;">PENDING:</span>
                     <strong>{{ $fmtQty($rem) }}</strong>
                   </span>
+                  @if($showRate)
                   <span style="background:rgba(59,130,246,0.08); padding:4px 8px; border-radius:6px; border:1px solid rgba(59,130,246,0.25); font-weight:700; color:#1d4ed8; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
                     <span style="color:#64748b; font-size:0.72rem; font-weight:700;">RATE:</span>
                     <strong style="color:#1e40af;">{{ $fmtRate($rate) }}</strong>
                   </span>
+                  @endif
                 </div>
               </div>
             @endforeach
