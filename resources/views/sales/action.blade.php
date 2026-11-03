@@ -410,8 +410,8 @@ html.dark-mode .info-preview-box .info-label {
       </div>
 
       <div class="form-group" style="margin-top:1.5rem;">
-        <label>Notes / Special Instructions</label>
-        <textarea id="order-notes" rows="2">{{ !empty($pageData['editOrder']) ? $pageData['editOrder']->notes : '' }}</textarea>
+        <label>Notes / Special Instructions <span style="color:#ef4444; font-weight:bold;">*</span></label>
+        <textarea id="order-notes" rows="2" placeholder="Write instructions or notes here (mandatory)..." required oninput="this.style.borderColor=''">{{ !empty($pageData['editOrder']) ? $pageData['editOrder']->notes : '' }}</textarea>
       </div>
 
       @if(empty($isReadOnly))

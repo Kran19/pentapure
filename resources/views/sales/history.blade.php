@@ -1,6 +1,50 @@
 @extends(in_array(session('auth_user')['role'] ?? '', ['ADMIN', 'SUB_ADMIN', 'STOCK_MANAGER']) || str_contains(request()->path(), 'sub_admin') || str_contains(request()->path(), 'admin') ? 'layouts.admin' : 'layouts.app')
 
 @section('content')
+<style>
+.highlight-expected-delivery {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: 0.82rem;
+  color: #0284c7 !important;
+  background: rgba(2, 132, 199, 0.12);
+  border: 1px solid rgba(2, 132, 199, 0.35);
+  padding: 2px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  flex-wrap: wrap;
+}
+html.dark-mode .highlight-expected-delivery,
+.dark-mode .highlight-expected-delivery {
+  color: #38bdf8 !important;
+  background: rgba(14, 165, 233, 0.18);
+  border-color: rgba(56, 189, 248, 0.45);
+}
+.highlight-dispatch-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: 0.82rem;
+  color: #16a34a !important;
+  background: rgba(22, 163, 74, 0.12);
+  border: 1px solid rgba(22, 163, 74, 0.35);
+  padding: 2px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  flex-wrap: wrap;
+}
+html.dark-mode .highlight-dispatch-date,
+.dark-mode .highlight-dispatch-date {
+  color: #4ade80 !important;
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(74, 222, 128, 0.45);
+}
+</style>
 @if(session('success'))
   <div style="background:#dcfce7; border:1px solid #86efac; color:#166534; padding:0.8rem 1.2rem; border-radius:8px; margin-bottom:1rem; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
     <span>✓ {{ session('success') }}</span>
@@ -53,7 +97,7 @@
         return ($oStatus !== 'CANCELLED') && in_array($dStatus, ['PARTIAL', 'PARTIAL_DISPATCH', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL_PENDING', 'PARTIAL PENDING']);
       }
       if ($statusFilter === 'DONE' || in_array($statusFilter, ['FULLY_DISPATCHED', 'FULLY DISPATCHED', 'FULLY_DISPATCH', 'FULLY DISPATCH'])) {
-        return ($oStatus !== 'CANCELLED') && ($dStatus === 'DONE' || $dStatus === 'COMPLETED' || $dStatus === 'FULLY DISPATCHED' || $dStatus === 'DISPATCHED');
+        return ($oStatus !== 'CANCELLED') && ($dStatus === 'DONE' || $dStatus === 'COMPLETED' || $dStatus === 'FULLY DISPATCHED' || $dStatus === 'DISPATCHED' || ((float)($item['totalQty'] ?? 0) > 0 && (float)($item['remainingQty'] ?? 0) <= 0));
       }
       return $dStatus === $statusFilter;
     });
@@ -227,8 +271,10 @@
       $ds = strtoupper(str_replace('_', ' ', $item['dispatchStatus'] ?? 'PENDING'));
       $isDone = in_array($ds, ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'DISPATCHED']) ||
                 ((float)($item['totalQty'] ?? 0) > 0 && (float)($item['remainingQty'] ?? 0) <= 0);
-      $canCancel = $oStatus !== 'CANCELLED' && $oStatus !== 'CLOSED' && !$isDone && $ds !== 'PARTIAL';
-      $canEdit = $oStatus === 'OPEN' && ($ds === 'PENDING' || $ds === 'UNASSIGNED' || empty($item['dispatchStatus']));
+      $isPartial = in_array($ds, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL PENDING', 'PARTIAL_PENDING', 'PARTIAL_DISPATCH'])
+                   || ((float)($item['dispatchedQty'] ?? 0) > 0 && !$isDone);
+      $canCancel = $oStatus !== 'CANCELLED' && $oStatus !== 'CLOSED' && !$isDone && !$isPartial;
+      $canEdit = $oStatus !== 'CANCELLED' && $oStatus !== 'CLOSED' && !$isDone;
 
       if ($oStatus === 'CANCELLED') {
         $statusText = 'CANCELLED';
@@ -278,11 +324,11 @@
                 }
               @endphp
               <span>•</span>
-              <span>EXPECTED DELIVERY DATE: <strong style="color:var(--text-main, #111827); font-weight:700;">{{ $item['dueDate'] }}</strong>{!! $historyDueBadge !!}</span>
+              <span class="highlight-expected-delivery">EXPECTED DELIVERY DATE: <strong style="color:var(--text-main, #111827); font-weight:800; margin-left:3px;">{{ $item['dueDate'] }}</strong>{!! $historyDueBadge !!}</span>
             @endif
             @if(!empty($item['dispatchDate']))
               <span>•</span>
-              <span>DISPATCH DATE: <strong style="color:var(--text-main, #111827); font-weight:700;">{{ $item['dispatchDate'] }}</strong>@if(!empty($item['dispatchLogs']) && count($item['dispatchLogs']) > 1)<span style="font-size:0.7rem; color:var(--text-muted); font-weight:600; margin-left:3px;">(Latest)</span>@endif</span>
+              <span class="highlight-dispatch-date">DISPATCH DATE: <strong style="color:var(--text-main, #111827); font-weight:800; margin-left:3px;">{{ $item['dispatchDate'] }}</strong>@if(!empty($item['dispatchLogs']) && count($item['dispatchLogs']) > 1)<span style="font-size:0.7rem; color:var(--text-muted); font-weight:600; margin-left:3px;">(Latest)</span>@endif</span>
             @endif
             @if(!empty($item['lrCopies']) && count($item['lrCopies']) > 0)
               <span>•</span>
@@ -480,12 +526,12 @@
 
         <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:0.8rem;">
           @if($canEdit)
-            <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action?edit=' . $item['id']) }}" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px; background:var(--warning, #FFA500); color:#000; font-weight:600;">
+            <a class="btn btn-sm" href="{{ url(request()->segment(1) . '/action?edit=' . $item['id']) }}" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px; background:var(--warning, #FFA500); color:#000; font-weight:700; border-radius:6px;">
               ✏️ Edit Order
             </a>
           @endif
           @if($canCancel)
-            <button class="btn btn-sm" onclick="app.cancelSalesOrder({{ $item['id'] }})" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#ef4444; display:inline-flex; align-items:center; gap:5px; cursor:pointer;">
+            <button class="btn btn-sm" onclick="app.cancelSalesOrder({{ $item['id'] }})" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#ef4444; display:inline-flex; align-items:center; gap:5px; cursor:pointer; border-radius:6px;">
               🚫 Cancel Order
             </button>
           @endif
@@ -493,7 +539,7 @@
             <button type="button" class="btn btn-sm" disabled style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; background:rgba(156,163,175,0.12); border:1px solid rgba(156,163,175,0.3); color:#9ca3af; display:inline-flex; align-items:center; gap:5px; font-weight:700; cursor:not-allowed; border-radius:6px; opacity:0.65;" title="Cannot delete order: This order has already been fully dispatched.">
               🗑️ Delete Order
             </button>
-          @else
+          @elseif(!$isPartial)
             <button type="button" class="btn btn-sm" onclick="app.deleteSalesOrder({{ $item['id'] }})" style="width:auto; padding:0.45rem 1rem; font-size:0.82rem; background:rgba(220,38,38,0.12); border:1px solid rgba(220,38,38,0.35); color:#dc2626; display:inline-flex; align-items:center; gap:5px; font-weight:700; cursor:pointer; border-radius:6px;" title="Permanently delete this order from Sales and Dispatch">
               🗑️ Delete Order
             </button>

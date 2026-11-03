@@ -1775,9 +1775,18 @@ const app = {
   submitOrder() {
     const companyId   = document.getElementById('order-company').value;
     const transportId = document.getElementById('order-transport').value;
-    const notes       = document.getElementById('order-notes').value;
+    const notesEl     = document.getElementById('order-notes');
+    const notes       = (notesEl ? notesEl.value : '').trim();
 
     if (!companyId) return this.toast('Select Company', 'error');
+
+    if (!notes) {
+      if (notesEl) {
+        notesEl.focus();
+        notesEl.style.borderColor = '#ef4444';
+      }
+      return this.toast('Notes / Special Instructions is required. Please write instructions/notes.', 'error');
+    }
 
     const items = [];
     document.querySelectorAll('#order-products .dynamic-row').forEach(row => {
@@ -2240,16 +2249,22 @@ const app = {
               if (!container) return;
               
               if (data.success && data.breakdown && data.breakdown.length > 0) {
-                window[`locData_${i.id}`] = data.breakdown;
-                const hasAnyStock = data.breakdown.some(loc => loc.quantity > 0);
+                const sortedBreakdown = [...data.breakdown].sort((a, b) => (parseFloat(b.quantity) || 0) - (parseFloat(a.quantity) || 0));
+                window[`locData_${i.id}`] = sortedBreakdown;
+                const hasAnyStock = sortedBreakdown.some(loc => (loc.quantity || 0) > 0);
                 
                 let dropdownItemsHtml = '';
-                data.breakdown.forEach(loc => {
+                sortedBreakdown.forEach(loc => {
                   const locName = loc.name;
-                  const avail = loc.quantity || 0;
+                  const avail = parseFloat(loc.quantity) || 0;
+                  const hasStock = avail > 0;
+                  const fontColor = hasStock ? '#16a34a' : '#6b7280';
+                  const fontWeight = hasStock ? '700' : '500';
                   dropdownItemsHtml += `
-                    <li style="margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:#111827; gap:8px;">
-                      <span style="padding-left:0.2rem; font-weight:600; color:#111827;">${locName.toUpperCase()} (AVAIL: ${avail} KG)</span>
+                    <li style="margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:${fontColor}; gap:8px;">
+                      <span style="padding-left:0.2rem; font-weight:${fontWeight}; color:${fontColor};">
+                        ${locName.toUpperCase()} <span style="font-weight:800; color:${fontColor};">(AVAIL: ${avail} KG)</span>
+                      </span>
                       <input type="number" min="0" step="0.001" class="form-control form-control-sm inner-qty-input no-spinners" 
                              data-loc="${locName}" data-avail="${avail}" data-item-id="${i.id}" data-max-remaining="${remaining}"
                              oninput="app.recalcDispatchLocationDropdownTotals(${i.id}, ${remaining})" 
@@ -2381,7 +2396,7 @@ const app = {
   addDispatchLocationRow(itemId, maxRemaining) {
     const rowsContainer = document.getElementById(`loc-rows-${itemId}`);
     if (!rowsContainer) return;
-    const locData = window[`locData_${itemId}`] || [];
+    const locData = (window[`locData_${itemId}`] || []).slice().sort((a, b) => (parseFloat(b.quantity) || 0) - (parseFloat(a.quantity) || 0));
 
     const rowDiv = document.createElement('div');
     rowDiv.className = 'loc-row';
@@ -2392,12 +2407,14 @@ const app = {
     let autoSelectAvail = 0;
 
     locData.forEach((loc, idx) => {
-      const isFirstWithStock = !autoSelectLoc && loc.quantity > 0;
+      const avail = parseFloat(loc.quantity) || 0;
+      const isFirstWithStock = !autoSelectLoc && avail > 0;
       if (isFirstWithStock) {
         autoSelectLoc = loc.name;
-        autoSelectAvail = loc.quantity;
+        autoSelectAvail = avail;
       }
-      optionsHtml += `<option value="${loc.name}" data-avail="${loc.quantity}">${loc.name.toUpperCase()} (Avail: ${loc.quantity} KG)</option>`;
+      const fontStyle = avail > 0 ? 'style="color:#16a34a; font-weight:700;"' : 'style="color:#6b7280;"';
+      optionsHtml += `<option value="${loc.name}" data-avail="${avail}" ${fontStyle}>${loc.name.toUpperCase()} (Avail: ${avail} KG)</option>`;
     });
 
     rowDiv.innerHTML = `

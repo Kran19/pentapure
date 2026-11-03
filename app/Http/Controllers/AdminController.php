@@ -2661,8 +2661,10 @@ class AdminController extends Controller
             ELSE '9999-12-30'
         END";
 
+        $latestDispatchDateSub = "(SELECT MAX(created_at) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id)";
+
         $completedDateSort = "CASE 
-            WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN COALESCE(orders.date, orders.created_at)
+            WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN COALESCE({$latestDispatchDateSub}, orders.date, orders.created_at)
             ELSE '1970-01-01'
         END";
 
@@ -2790,12 +2792,18 @@ class AdminController extends Controller
                       ->whereRaw('(SELECT COUNT(*) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id) > 1')
                       ->where(function($q) {
                           $q->where('orders.status', '!=', 'CANCELLED')->orWhereNull('orders.status');
-                      });
+                      })
+                      ->reorder()
+                      ->orderByRaw("COALESCE({$latestDispatchDateSub}, orders.date, orders.created_at) DESC")
+                      ->orderByDesc('orders.id');
             } elseif ($status === 'FULLY_DISPATCH' || $status === 'FULLY_DISPATCHED') {
                 $query->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED'])
                       ->where(function($q) {
                           $q->where('orders.status', '!=', 'CANCELLED')->orWhereNull('orders.status');
-                      });
+                      })
+                      ->reorder()
+                      ->orderByRaw("COALESCE({$latestDispatchDateSub}, orders.date, orders.created_at) DESC")
+                      ->orderByDesc('orders.id');
             }
         }
 
@@ -3317,7 +3325,7 @@ class AdminController extends Controller
                 'name' => $loc->name,
                 'quantity' => max(0, $qty),
             ];
-        })->values();
+        })->sortByDesc('quantity')->values();
 
         return response()->json(['success' => true, 'breakdown' => $breakdown]);
     }

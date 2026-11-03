@@ -270,11 +270,14 @@ class SalesController extends Controller
             'company_id'      => 'required|exists:companies,id',
             'transporter_id'  => 'nullable|exists:transporters,id',
             'due_date'        => 'nullable|date',
+            'notes'           => 'required|string',
             'items'           => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.grade'      => 'required|string',
             'items.*.quantity'   => 'required|numeric|min:0.001',
             'items.*.price'      => 'required|numeric|min:0',
+        ], [
+            'notes.required'  => 'Notes / Special Instructions is required. Please write instructions/notes.',
         ]);
 
         $user  = $this->authUser();
@@ -722,12 +725,15 @@ class SalesController extends Controller
             'company_id'      => 'required|exists:companies,id',
             'transporter_id'  => 'nullable|exists:transporters,id',
             'due_date'        => 'nullable|date',
+            'notes'           => 'required|string',
             'items'           => 'required|array|min:1',
             'items.*.id'      => 'nullable|exists:order_items,id',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.grade'      => 'required|string',
             'items.*.quantity'   => 'required|numeric|min:0.001',
             'items.*.price'      => 'required|numeric|min:0',
+        ], [
+            'notes.required'  => 'Notes / Special Instructions is required. Please write instructions/notes.',
         ]);
 
         $user = $this->authUser();
@@ -845,6 +851,17 @@ class SalesController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Cannot delete order: This order has already been fully dispatched.'
+            ], 422);
+        }
+
+        $dispatchedQty = (float) $order->items->sum('dispatched_qty');
+        $hasDispatchLogs = DispatchLog::where('order_id', $order->id)->exists();
+        $isPartial = in_array($rawSt, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL PENDING']) || $dispatchedQty > 0 || $hasDispatchLogs;
+
+        if ($isPartial) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete order: This order has partial deliveries already dispatched. Please edit the order instead.'
             ], 422);
         }
 
