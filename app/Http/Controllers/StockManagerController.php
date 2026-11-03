@@ -283,13 +283,40 @@ class StockManagerController extends Controller
             ")
             ->groupBy('stocks.product_id', DB::raw('norm_stage'), DB::raw('norm_grade'));
 
+        $stageLimitNorm = "CASE 
+            WHEN UPPER(TRIM(stage)) IN ('FG', 'FINISHED') THEN 'FINISHED' 
+            WHEN UPPER(TRIM(stage)) IN ('PKG', 'PM', 'PACKAGING') THEN 'PACKAGING' 
+            WHEN UPPER(TRIM(stage)) = 'SEMI' THEN 'SEMI' 
+            WHEN UPPER(TRIM(stage)) = 'RAW' THEN 'RAW' 
+            ELSE UPPER(TRIM(stage)) 
+        END";
+        $gradeLimitNorm = "CASE 
+            WHEN grade IS NULL OR UPPER(TRIM(grade)) IN ('', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-') THEN 'NONE' 
+            ELSE UPPER(TRIM(grade)) 
+        END";
+
+        $rateSubSelect = $hasLimitRate ? "MAX(COALESCE(rate, 0)) as rate," : "";
+        $limitsAgg = DB::table('stock_limits')
+            ->selectRaw("
+                product_id,
+                {$stageLimitNorm} as norm_stage,
+                {$gradeLimitNorm} as norm_grade,
+                {$rateSubSelect}
+                MAX(alert_limit) as alert_limit
+            ")
+            ->groupBy('product_id', DB::raw("{$stageLimitNorm}"), DB::raw("{$gradeLimitNorm}"));
+
+        $rateSelect = $hasLimitRate 
+            ? "COALESCE(limits_agg.rate, products.rate, 0) as rate" 
+            : "products.rate";
+
         $allStock = DB::table(DB::raw("({$stockAgg->toSql()}) as aggregated_stocks"))
             ->mergeBindings($stockAgg)
             ->join('products', 'aggregated_stocks.product_id', '=', 'products.id')
-            ->leftJoin('stock_limits', function($join) {
-                $join->on('aggregated_stocks.product_id', '=', 'stock_limits.product_id')
-                     ->on('aggregated_stocks.norm_stage', '=', DB::raw("CASE WHEN UPPER(TRIM(stock_limits.stage)) IN ('FG', 'FINISHED') THEN 'FINISHED' WHEN UPPER(TRIM(stock_limits.stage)) IN ('PKG', 'PM', 'PACKAGING') THEN 'PACKAGING' ELSE UPPER(TRIM(stock_limits.stage)) END"))
-                     ->on('aggregated_stocks.norm_grade', '=', DB::raw("CASE WHEN stock_limits.grade IS NULL OR UPPER(TRIM(stock_limits.grade)) IN ('', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-') THEN 'NONE' ELSE UPPER(TRIM(stock_limits.grade)) END"));
+            ->leftJoinSub($limitsAgg, 'limits_agg', function($join) {
+                $join->on('aggregated_stocks.product_id', '=', 'limits_agg.product_id')
+                     ->on('aggregated_stocks.norm_stage', '=', 'limits_agg.norm_stage')
+                     ->on('aggregated_stocks.norm_grade', '=', 'limits_agg.norm_grade');
             })
             ->selectRaw("
                 aggregated_stocks.product_id as productId,
@@ -300,7 +327,7 @@ class StockManagerController extends Controller
                 aggregated_stocks.norm_stage as stage,
                 aggregated_stocks.norm_grade as grade,
                 products.sort_order,
-                COALESCE(NULLIF(stock_limits.alert_limit, 0), NULLIF(products.threshold, 0), stock_limits.alert_limit, products.threshold, 0) as alert_limit,
+                COALESCE(NULLIF(limits_agg.alert_limit, 0), NULLIF(products.threshold, 0), limits_agg.alert_limit, products.threshold, 0) as alert_limit,
                 aggregated_stocks.quantity
             ")
             ->where('aggregated_stocks.quantity', '>=', 0)
@@ -308,6 +335,8 @@ class StockManagerController extends Controller
             ->orderBy('products.name', 'asc')
             ->orderBy('aggregated_stocks.norm_grade', 'asc')
             ->get();
+
+        $allStock = $allStock->unique(fn($item) => "{$item->productId}_{$item->stage}_{$item->grade}")->values();
 
         $allProducts = Product::with('grades')
             ->orderBy('name', 'asc')

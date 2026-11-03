@@ -27,7 +27,8 @@
     $typeFilter = request('type') ? strtoupper(request('type')) : null;
 
     $sortStockByLow = function($collection) {
-        return $collection->sort(function($a, $b) {
+        return $collection->unique(fn($s) => ($s->productId ?? $s->product_id ?? '') . '_' . ($s->grade ?? '') . '_' . ($s->stage ?? ''))
+            ->sort(function($a, $b) {
             $alertA = (float) (($a->alert_limit ?? 0) > 0 ? $a->alert_limit : ($a->threshold ?? 0));
             $qtyA = (float) ($a->quantity ?? 0);
             $isLowA = $alertA > 0 && $qtyA <= $alertA;

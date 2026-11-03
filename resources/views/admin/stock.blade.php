@@ -18,13 +18,14 @@
   $typeFilter = request('type') ? strtoupper(request('type')) : null;
 
   $sortStockAlphabetical = function($collection) {
-      return $collection->sort(function($a, $b) {
-          $cmp = strcasecmp(trim($a->name ?? ''), trim($b->name ?? ''));
-          if ($cmp !== 0) {
-              return $cmp;
-          }
-          return strcasecmp(trim($a->grade ?? ''), trim($b->grade ?? ''));
-      })->values();
+      return $collection->unique(fn($s) => ($s->productId ?? $s->product_id ?? '') . '_' . ($s->grade ?? '') . '_' . ($s->stage ?? ''))
+          ->sort(function($a, $b) {
+              $cmp = strcasecmp(trim($a->name ?? ''), trim($b->name ?? ''));
+              if ($cmp !== 0) {
+                  return $cmp;
+              }
+              return strcasecmp(trim($a->grade ?? ''), trim($b->grade ?? ''));
+          })->values();
   };
 
   $rawItems       = $sortStockAlphabetical(collect($pageData['allStock'])->where('stage', 'RAW'));
