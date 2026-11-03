@@ -460,8 +460,8 @@ class AdminController extends Controller
         $allGradesKeyed = \App\Models\Grade::all()->keyBy(fn($g) => strtoupper(trim($g->name)));
 
         $attachData = function($p) use ($stockMap, $productGradeStockMap, $allGradesKeyed) {
-            $p->gradeIds = $p->grades->pluck('id')->toArray();
-            $p->gradeNames = $p->grades->pluck('name')->toArray();
+            $gradeIds = $p->grades->pluck('id')->toArray();
+            $gradeNames = $p->grades->pluck('name')->toArray();
             $p->current_stock = (float)($stockMap[$p->id] ?? 0);
 
             $pStock = $productGradeStockMap[$p->id] ?? [];
@@ -500,13 +500,16 @@ class AdminController extends Controller
                             'has_stock' => true
                         ];
                         $lockedGradeIds[] = $matchedG->id;
-                        if (!in_array($matchedG->id, $p->gradeIds)) {
-                            $p->gradeIds[] = $matchedG->id;
+                        if (!in_array($matchedG->id, $gradeIds)) {
+                            $gradeIds[] = $matchedG->id;
+                            $gradeNames[] = $matchedG->name;
                         }
                     }
                 }
             }
 
+            $p->gradeIds = $gradeIds;
+            $p->gradeNames = $gradeNames;
             $p->grade_stocks = $gradeStocks;
             $p->locked_grade_ids = $lockedGradeIds;
             return $p;
