@@ -162,20 +162,24 @@ class AttendanceController extends Controller
         $totalOT       = (clone $attBase)->sum('overtime_hours');
 
         $selectedMonth = $request->get('month', Carbon::today()->format('Y-m'));
-        try {
-            $monthCarbon = Carbon::createFromFormat('Y-m', $selectedMonth)->startOfMonth();
-        } catch (\Exception $e) {
-            $monthCarbon = Carbon::today()->startOfMonth();
-            $selectedMonth = $monthCarbon->format('Y-m');
-        }
+        $isAllMonths = ($selectedMonth === 'all');
 
-        $startOfMonth = $monthCarbon->copy()->startOfMonth();
-        $endOfMonth   = $monthCarbon->copy()->endOfMonth();
+        if (!$isAllMonths) {
+            try {
+                $monthCarbon = Carbon::createFromFormat('Y-m', $selectedMonth)->startOfMonth();
+            } catch (\Exception $e) {
+                $monthCarbon = Carbon::today()->startOfMonth();
+                $selectedMonth = $monthCarbon->format('Y-m');
+            }
+
+            $startOfMonth = $monthCarbon->copy()->startOfMonth();
+            $endOfMonth   = $monthCarbon->copy()->endOfMonth();
+        }
 
         // Fetch all pending attendance submissions (status != 'SUBMITTED')
         $pendingSubmissionsQuery = \App\Models\AttendanceSubmission::with(['createdBy', 'submittedBy', 'lastModifiedBy'])
             ->where('status', '!=', 'SUBMITTED');
-        if ($request->filled('month')) {
+        if (!$isAllMonths) {
             $pendingSubmissionsQuery->whereBetween('attendance_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()]);
         }
         $pendingSubmissions = $pendingSubmissionsQuery->get();
@@ -187,7 +191,7 @@ class AttendanceController extends Controller
         $unlinkedAttendanceDatesQuery = Attendance::select('date')
             ->distinct()
             ->whereNotIn('date', $existingSubDates);
-        if ($request->filled('month')) {
+        if (!$isAllMonths) {
             $unlinkedAttendanceDatesQuery->whereBetween('date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()]);
         }
         $unlinkedAttendanceDates = $unlinkedAttendanceDatesQuery->pluck('date');
@@ -216,7 +220,7 @@ class AttendanceController extends Controller
 
         // All submissions query (show all records, remove limit 50)
         $allRecentSubmissionsQuery = \App\Models\AttendanceSubmission::with(['createdBy', 'submittedBy']);
-        if ($request->filled('month')) {
+        if (!$isAllMonths) {
             $allRecentSubmissionsQuery->whereBetween('attendance_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()]);
         }
         $allRecentSubmissions = $allRecentSubmissionsQuery
@@ -226,7 +230,7 @@ class AttendanceController extends Controller
         // Also include any unlinked attendance dates that have actual punch records
         foreach ($unlinkedAttendanceDates as $uDate) {
             $uDateCarbon = Carbon::parse($uDate);
-            if ($request->filled('month') && ($uDateCarbon->lt($startOfMonth) || $uDateCarbon->gt($endOfMonth))) {
+            if (!$isAllMonths && ($uDateCarbon->lt($startOfMonth) || $uDateCarbon->gt($endOfMonth))) {
                 continue;
             }
             $uDateStr = $uDateCarbon->toDateString();
@@ -244,7 +248,7 @@ class AttendanceController extends Controller
         // Submitted submissions (show all submitted records, remove limit 50)
         $submittedSubmissionsQuery = \App\Models\AttendanceSubmission::with(['createdBy', 'submittedBy'])
             ->where('status', 'SUBMITTED');
-        if ($request->filled('month')) {
+        if (!$isAllMonths) {
             $submittedSubmissionsQuery->whereBetween('attendance_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()]);
         }
         $submittedSubmissions = $submittedSubmissionsQuery

@@ -146,9 +146,17 @@
         <form method="GET" action="{{ url()->current() }}" id="monthFilterForm" style="display:inline-flex; align-items:center; gap:6px;">
           <input type="hidden" name="tab" id="activeTabInput" value="{{ request('tab', 'all') }}">
           <label style="font-weight:600; font-size:0.85rem; color:#475569;">Month:</label>
-          <input type="month" name="month" value="{{ request('month', $selectedMonth ?? date('Y-m')) }}" onchange="this.form.submit()" onclick="if(typeof this.showPicker === 'function'){ try{ this.showPicker(); }catch(e){} }" style="padding:0.4rem 0.65rem; border-radius:8px; border:1px solid #cbd5e1; font-weight:600; font-size:0.85rem; cursor:pointer; background:#fff; color:#0f172a;">
-          @if(request()->filled('month'))
-            <a href="{{ url()->current() }}#all" style="font-size:0.8rem; color:#ef4444; text-decoration:none; font-weight:600; padding:0.2rem 0.5rem; background:#fee2e2; border-radius:6px;" title="Clear month filter to view all records">✕ Clear</a>
+          @php
+            $activeTab = request('tab', 'all');
+            $currentMonthCarbon = \Carbon\Carbon::createFromFormat('Y-m', ($selectedMonth && $selectedMonth !== 'all') ? $selectedMonth : date('Y-m'))->startOfMonth();
+            $prevMonthStr = $currentMonthCarbon->copy()->subMonth()->format('Y-m');
+            $nextMonthStr = $currentMonthCarbon->copy()->addMonth()->format('Y-m');
+          @endphp
+          <a href="{{ url()->current() }}?month={{ $prevMonthStr }}&tab={{ $activeTab }}#{{ $activeTab }}" style="padding:0.35rem 0.65rem; border-radius:6px; border:1px solid #cbd5e1; background:#f8fafc; color:#334155; text-decoration:none; font-weight:700; font-size:0.85rem; display:inline-flex; align-items:center;" title="Previous Month ({{ $currentMonthCarbon->copy()->subMonth()->format('F Y') }})">&larr;</a>
+          <input type="month" name="month" value="{{ $selectedMonth }}" onchange="this.form.submit()" onclick="if(typeof this.showPicker === 'function'){ try{ this.showPicker(); }catch(e){} }" style="padding:0.4rem 0.65rem; border-radius:8px; border:1px solid #cbd5e1; font-weight:600; font-size:0.85rem; cursor:pointer; background:#fff; color:#0f172a;">
+          <a href="{{ url()->current() }}?month={{ $nextMonthStr }}&tab={{ $activeTab }}#{{ $activeTab }}" style="padding:0.35rem 0.65rem; border-radius:6px; border:1px solid #cbd5e1; background:#f8fafc; color:#334155; text-decoration:none; font-weight:700; font-size:0.85rem; display:inline-flex; align-items:center;" title="Next Month ({{ $currentMonthCarbon->copy()->addMonth()->format('F Y') }})">&rarr;</a>
+          @if($selectedMonth !== date('Y-m'))
+            <a href="{{ url()->current() }}?month={{ date('Y-m') }}&tab={{ $activeTab }}#{{ $activeTab }}" style="font-size:0.8rem; color:#0284c7; text-decoration:none; font-weight:600; padding:0.25rem 0.6rem; background:#e0f2fe; border:1px solid #bae6fd; border-radius:6px;" title="Reset to current month ({{ date('F Y') }})">↺ Current Month</a>
           @endif
         </form>
 
@@ -291,6 +299,15 @@
 
     <!-- TAB 2: ALL RECORDS -->
     <div id="tab-content-all" class="att-tab-pane">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.85rem; padding:0.6rem 0.9rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; flex-wrap:wrap; gap:8px;">
+        <span style="font-weight:700; color:#1e293b; font-size:0.9rem; display:inline-flex; align-items:center; gap:6px;">
+          <span>📅</span> Attendance Records for <strong>{{ \Carbon\Carbon::parse(($selectedMonth && $selectedMonth !== 'all' ? $selectedMonth : date('Y-m')) . '-01')->format('F Y') }}</strong>
+          <span style="background:#e2e8f0; color:#334155; font-size:0.75rem; padding:1px 8px; border-radius:10px; font-weight:600;">{{ $recentSubmissions->count() }} date(s)</span>
+        </span>
+        <span style="font-size:0.8rem; color:#64748b;">
+          Ordered by date
+        </span>
+      </div>
       @if(isset($recentSubmissions) && $recentSubmissions->count() > 0)
       <div style="overflow-x:auto;">
         <table style="width:100%; border-collapse:collapse; text-align:left;">
@@ -362,6 +379,15 @@
 
     <!-- TAB 3: SUBMITTED RECORDS -->
     <div id="tab-content-submitted" class="att-tab-pane" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.85rem; padding:0.6rem 0.9rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; flex-wrap:wrap; gap:8px;">
+        <span style="font-weight:700; color:#1e293b; font-size:0.9rem; display:inline-flex; align-items:center; gap:6px;">
+          <span>🔒</span> Submitted Records for <strong>{{ \Carbon\Carbon::parse(($selectedMonth && $selectedMonth !== 'all' ? $selectedMonth : date('Y-m')) . '-01')->format('F Y') }}</strong>
+          <span style="background:#fee2e2; color:#b91c1c; font-size:0.75rem; padding:1px 8px; border-radius:10px; font-weight:600;">{{ $submittedSubmissions->count() }} date(s)</span>
+        </span>
+        <span style="font-size:0.8rem; color:#64748b;">
+          Ordered by date
+        </span>
+      </div>
       @if(isset($submittedSubmissions) && $submittedSubmissions->count() > 0)
       <div style="overflow-x:auto;">
         <table style="width:100%; border-collapse:collapse; text-align:left;">
