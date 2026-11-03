@@ -184,7 +184,7 @@
     <div id="tab-content-pending" class="att-tab-pane" style="display:none;">
       @if(isset($pendingSubmissions) && $pendingSubmissions->count() > 0)
       <div style="background:#fffbeb; border:1px solid #fef3c7; color:#92400e; padding:0.75rem 1rem; border-radius:8px; margin-bottom:1rem; font-size:0.88rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-        <span>⚠️ <strong>{{ $pendingSubmissions->count() }} pending attendance date(s)</strong> for {{ \Carbon\Carbon::parse(($selectedMonth ?? date('Y-m')) . '-01')->format('F Y') }} require entry or final submission.</span>
+        <span>⚠️ <strong>{{ $pendingSubmissions->count() }} pending attendance date(s)</strong> for {{ ($selectedMonth && $selectedMonth !== 'all') ? \Carbon\Carbon::parse($selectedMonth . '-01')->format('F Y') : 'All Months' }} require entry or final submission.</span>
         @if($userHasEditPermission)
           <span style="font-size:0.8rem; color:#b45309;">Click "Open & Fill" to complete attendance</span>
         @else
@@ -301,7 +301,7 @@
     <div id="tab-content-all" class="att-tab-pane">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.85rem; padding:0.6rem 0.9rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; flex-wrap:wrap; gap:8px;">
         <span style="font-weight:700; color:#1e293b; font-size:0.9rem; display:inline-flex; align-items:center; gap:6px;">
-          <span>📅</span> Attendance Records for <strong>{{ \Carbon\Carbon::parse(($selectedMonth && $selectedMonth !== 'all' ? $selectedMonth : date('Y-m')) . '-01')->format('F Y') }}</strong>
+          <span>📅</span> Attendance Records for <strong>{{ ($selectedMonth && $selectedMonth !== 'all') ? \Carbon\Carbon::parse($selectedMonth . '-01')->format('F Y') : 'All Months' }}</strong>
           <span style="background:#e2e8f0; color:#334155; font-size:0.75rem; padding:1px 8px; border-radius:10px; font-weight:600;">{{ $recentSubmissions->count() }} date(s)</span>
         </span>
         <span style="font-size:0.8rem; color:#64748b;">
@@ -327,8 +327,13 @@
               $subDate = \Carbon\Carbon::parse($sub->attendance_date);
               $subDateStr = $subDate->format('Y-m-d');
             @endphp
-            <tr style="border-bottom:1px solid #f1f5f9;">
-              <td style="padding:0.75rem; font-weight:bold; color:#0f172a;">{{ $subDate->format('d-m-Y') }}</td>
+            <tr style="border-bottom:1px solid #f1f5f9; {{ $subDate->isToday() ? 'background:#fefce8;' : '' }}">
+              <td style="padding:0.75rem; font-weight:bold; color:#0f172a;">
+                {{ $subDate->format('d-m-Y') }}
+                @if($subDate->isToday())
+                  <span style="background:#fef08a; color:#854d0e; font-size:0.7rem; padding:2px 6px; border-radius:4px; margin-left:4px; font-weight:700;">TODAY</span>
+                @endif
+              </td>
               <td style="padding:0.75rem; color:#475569;">{{ $subDate->format('l') }}</td>
               <td style="padding:0.75rem;">
                 @if($sub->status === 'SUBMITTED')
@@ -381,7 +386,7 @@
     <div id="tab-content-submitted" class="att-tab-pane" style="display:none;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.85rem; padding:0.6rem 0.9rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; flex-wrap:wrap; gap:8px;">
         <span style="font-weight:700; color:#1e293b; font-size:0.9rem; display:inline-flex; align-items:center; gap:6px;">
-          <span>🔒</span> Submitted Records for <strong>{{ \Carbon\Carbon::parse(($selectedMonth && $selectedMonth !== 'all' ? $selectedMonth : date('Y-m')) . '-01')->format('F Y') }}</strong>
+          <span>🔒</span> Submitted Records for <strong>{{ ($selectedMonth && $selectedMonth !== 'all') ? \Carbon\Carbon::parse($selectedMonth . '-01')->format('F Y') : 'All Months' }}</strong>
           <span style="background:#fee2e2; color:#b91c1c; font-size:0.75rem; padding:1px 8px; border-radius:10px; font-weight:600;">{{ $submittedSubmissions->count() }} date(s)</span>
         </span>
         <span style="font-size:0.8rem; color:#64748b;">
@@ -407,8 +412,13 @@
               $subDate = \Carbon\Carbon::parse($sub->attendance_date);
               $subDateStr = $subDate->format('Y-m-d');
             @endphp
-            <tr style="border-bottom:1px solid #f1f5f9;">
-              <td style="padding:0.75rem; font-weight:bold; color:#0f172a;">{{ $subDate->format('d-m-Y') }}</td>
+            <tr style="border-bottom:1px solid #f1f5f9; {{ $subDate->isToday() ? 'background:#fefce8;' : '' }}">
+              <td style="padding:0.75rem; font-weight:bold; color:#0f172a;">
+                {{ $subDate->format('d-m-Y') }}
+                @if($subDate->isToday())
+                  <span style="background:#fef08a; color:#854d0e; font-size:0.7rem; padding:2px 6px; border-radius:4px; margin-left:4px; font-weight:700;">TODAY</span>
+                @endif
+              </td>
               <td style="padding:0.75rem; color:#475569;">{{ $subDate->format('l') }}</td>
               <td style="padding:0.75rem;">
                 <span style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; padding:4px 8px; border-radius:4px; font-size:0.8rem; font-weight:bold;">🔒 SUBMITTED</span>

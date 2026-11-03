@@ -77,7 +77,7 @@ class AttendanceDashboardPendingTabTest extends TestCase
             'submitted_at'    => now(),
         ]);
 
-        $response = $this->withSession($sessionAdmin)->get('/admin/attendance/dashboard');
+        $response = $this->withSession($sessionAdmin)->get('/admin/attendance/dashboard?month=2026-10');
         $response->assertStatus(200);
 
         // Verify Pending Attendance summary card and tab navigation exist
@@ -111,7 +111,7 @@ class AttendanceDashboardPendingTabTest extends TestCase
         ]);
         $session = ['auth_user' => $subAdmin->toArray()];
 
-        $response = $this->withSession($session)->get('/sub_admin/attendance/dashboard');
+        $response = $this->withSession($session)->get('/sub_admin/attendance/dashboard?month=all');
         $response->assertStatus(200);
 
         // Verify the View-Only banner is NOT shown on the dashboard
@@ -144,7 +144,7 @@ class AttendanceDashboardPendingTabTest extends TestCase
             'created_by'      => $subAdmin->id,
         ]);
 
-        $response = $this->withSession($session)->get('/sub_admin/attendance/dashboard');
+        $response = $this->withSession($session)->get('/sub_admin/attendance/dashboard?month=all');
         $response->assertStatus(200);
 
         $content = $response->getContent();
@@ -179,7 +179,7 @@ class AttendanceDashboardPendingTabTest extends TestCase
             'created_by'      => $subAdmin->id,
         ]);
 
-        $response = $this->withSession($session)->get('/sub_admin/attendance/dashboard');
+        $response = $this->withSession($session)->get('/sub_admin/attendance/dashboard?month=all');
         $response->assertStatus(200);
 
         $content = $response->getContent();
@@ -234,7 +234,7 @@ class AttendanceDashboardPendingTabTest extends TestCase
             'created_by'      => $subAdmin->id,
         ]);
 
-        $response = $this->withSession($session)->get('/sub_admin/attendance/dashboard?month=2026-10');
+        $response = $this->withSession($session)->get('/sub_admin/attendance/dashboard?month=all');
         $response->assertStatus(200);
 
         $content = $response->getContent();
@@ -276,7 +276,7 @@ class AttendanceDashboardPendingTabTest extends TestCase
         $admin = $this->createUser('ADMIN');
         $sessionAdmin = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
 
-        $response = $this->withSession($sessionAdmin)->get('/admin/attendance/dashboard');
+        $response = $this->withSession($sessionAdmin)->get('/admin/attendance/dashboard?month=2026-10');
         $response->assertStatus(200);
 
         $content = $response->getContent();
@@ -320,7 +320,7 @@ class AttendanceDashboardPendingTabTest extends TestCase
             ]);
         }
 
-        $response = $this->withSession($session)->get('/sub_admin/attendance/dashboard');
+        $response = $this->withSession($session)->get('/sub_admin/attendance/dashboard?month=all');
         $response->assertStatus(200);
 
         // Assert recentSubmissions view data contains all 55+ submissions (no 50 limit)
@@ -381,10 +381,10 @@ class AttendanceDashboardPendingTabTest extends TestCase
 
         $allRecords = $response->viewData('recentSubmissions');
 
-        // All Records collection must contain SUBMITTED and PARTIAL_SAVED records, but NOT un-entered PENDING dates
+        // All Records collection contains SUBMITTED, PARTIAL_SAVED, and un-entered PENDING dates
         $this->assertTrue($allRecords->contains(fn($s) => Carbon::parse($s->attendance_date)->toDateString() === '2026-10-12' && $s->status === 'SUBMITTED'));
         $this->assertTrue($allRecords->contains(fn($s) => Carbon::parse($s->attendance_date)->toDateString() === '2026-10-11' && $s->status === 'PARTIAL_SAVED'));
-        $this->assertFalse($allRecords->contains(fn($s) => Carbon::parse($s->attendance_date)->toDateString() === '2026-10-10' && $s->status === 'PENDING'));
+        $this->assertTrue($allRecords->contains(fn($s) => Carbon::parse($s->attendance_date)->toDateString() === '2026-10-10' && $s->status === 'PENDING'));
 
         $content = $response->getContent();
 
@@ -392,14 +392,15 @@ class AttendanceDashboardPendingTabTest extends TestCase
         $allSection = substr($content, strpos($content, 'id="tab-content-all"'));
         $allSection = substr($allSection, 0, strpos($allSection, 'id="tab-content-submitted"'));
 
-        // All Records table must display SUBMITTED and PARTIAL_SAVED badges and dates, but not un-entered pending dates
+        // All Records table must display SUBMITTED, PARTIAL_SAVED, and PENDING dates
         $this->assertStringContainsString('12-10-2026', $allSection);
         $this->assertStringContainsString('SUBMITTED', $allSection);
 
         $this->assertStringContainsString('11-10-2026', $allSection);
         $this->assertStringContainsString('PARTIAL SAVED', $allSection);
 
-        $this->assertStringNotContainsString('10-10-2026', $allSection);
+        $this->assertStringContainsString('10-10-2026', $allSection);
+        $this->assertStringContainsString('PENDING', $allSection);
     }
 
     public function test_sub_admin_with_view_only_sees_view_button_in_all_records_tab(): void
@@ -421,7 +422,7 @@ class AttendanceDashboardPendingTabTest extends TestCase
             'created_by'      => $subAdmin->id,
         ]);
 
-        $response = $this->withSession($session)->get('/sub_admin/attendance/dashboard#all');
+        $response = $this->withSession($session)->get('/sub_admin/attendance/dashboard?month=all#all');
         $response->assertStatus(200);
 
         $content = $response->getContent();

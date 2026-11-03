@@ -128,7 +128,7 @@ class ClearAttendanceDataCommandTest extends TestCase
 
         $session = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
 
-        $responseBefore = $this->withSession($session)->get('/admin/attendance/dashboard');
+        $responseBefore = $this->withSession($session)->get('/admin/attendance/dashboard?month=all');
         $responseBefore->assertStatus(200);
         $responseBefore->assertSee('PARTIAL SAVED');
 
@@ -140,7 +140,7 @@ class ClearAttendanceDataCommandTest extends TestCase
         $this->assertDatabaseCount('attendance_submissions', 0);
         $this->assertDatabaseCount('workers', 1);
 
-        $responseAfter = $this->withSession($session)->get('/admin/attendance/dashboard');
+        $responseAfter = $this->withSession($session)->get('/admin/attendance/dashboard?month=all');
         $responseAfter->assertStatus(200);
         $responseAfter->assertDontSee('PARTIAL SAVED');
         $responseAfter->assertSee('No recent attendance records found.');
