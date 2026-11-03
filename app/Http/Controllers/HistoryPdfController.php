@@ -679,8 +679,9 @@ class HistoryPdfController extends Controller
             ELSE '9999-12-30'
         END";
 
+        $latestDispatchDateSub = "(SELECT MAX(created_at) FROM dispatch_logs WHERE dispatch_logs.order_id = orders.id)";
         $completedDateSort = "CASE 
-            WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN COALESCE(orders.date, orders.created_at)
+            WHEN orders.dispatch_status IN ('DONE', 'COMPLETED', 'FULLY_DISPATCHED', 'FULLY DISPATCHED', 'CLOSED') THEN COALESCE({$latestDispatchDateSub}, orders.date, orders.created_at)
             ELSE '1970-01-01'
         END";
 

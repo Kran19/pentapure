@@ -1342,23 +1342,27 @@ class DispatchController extends Controller
             }
 
             // Resolve dispatch date & logs
-            $sortedLogs = $o->dispatchLogs ? $o->dispatchLogs->sortByDesc('created_at')->values() : collect();
+            $sortedLogs = $o->dispatchLogs ? $o->dispatchLogs->sortByDesc(fn($l) => $l->created_at ? $l->created_at->timestamp : $l->id)->values() : collect();
             $latestDispatchLog = $sortedLogs->first();
             $dispatchDate = null;
             $dispatchDateTime = null;
+            $rawDispatchDate = null;
 
             if ($latestDispatchLog && $latestDispatchLog->created_at) {
                 $dispatchDate = $latestDispatchLog->created_at->timezone('Asia/Kolkata')->format('d-m-Y');
                 $dispatchDateTime = $latestDispatchLog->created_at->timezone('Asia/Kolkata')->format('d-m-Y, h:i A');
+                $rawDispatchDate = $latestDispatchLog->created_at->toISOString();
             } elseif ($latestDispatchLog && !empty($latestDispatchLog->date)) {
                 $dCarbon = \Carbon\Carbon::parse($latestDispatchLog->date)->timezone('Asia/Kolkata');
                 $dispatchDate = $dCarbon->format('d-m-Y');
                 $dispatchDateTime = $dCarbon->format('d-m-Y, h:i A');
+                $rawDispatchDate = $dCarbon->toISOString();
             } elseif ($isFullyDispatched || $dispatchedQty > 0) {
                 $fallbackDate = $o->updated_at ?? $o->created_at;
                 if ($fallbackDate) {
                     $dispatchDate = $fallbackDate->timezone('Asia/Kolkata')->format('d-m-Y');
                     $dispatchDateTime = $fallbackDate->timezone('Asia/Kolkata')->format('d-m-Y, h:i A');
+                    $rawDispatchDate = $fallbackDate->toISOString();
                 }
             }
 
@@ -1368,6 +1372,7 @@ class DispatchController extends Controller
                     'dispatchId'   => 'DSP-' . str_pad($dl->id, 4, '0', STR_PAD_LEFT),
                     'date'         => $dl->created_at ? $dl->created_at->timezone('Asia/Kolkata')->format('d-m-Y') : null,
                     'dateTime'     => $dl->created_at ? $dl->created_at->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') : null,
+                    'rawDate'      => $dl->created_at ? $dl->created_at->toISOString() : null,
                     'dispatchedBy' => $dl->user?->name ?? 'System',
                 ];
             })->values()->toArray();
@@ -1385,6 +1390,7 @@ class DispatchController extends Controller
                 'dispatchStatus' => $dispatchStatus,
                 'dispatchDate'   => $dispatchDate,
                 'dispatchDateTime' => $dispatchDateTime,
+                'rawDispatchDate' => $rawDispatchDate,
                 'dispatchLogs'   => $dispatchLogsData,
                 'date'           => $o->created_at ? $o->created_at->toISOString() : ($o->date ? \Carbon\Carbon::parse($o->date)->toISOString() : now()->toISOString()),
                 'dueDate'        => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
@@ -1435,8 +1441,9 @@ class DispatchController extends Controller
                 // NO DUE DATE -> Group 3
                 return sprintf('3_%010d', 9999999999 - (int)($d['id'] ?? 0));
             } elseif ($isDone) {
-                // COMPLETED -> Group 4
-                return sprintf('4_%012d_%010d', 999999999999 - strtotime($d['date']), 9999999999 - (int)($d['id'] ?? 0));
+                // COMPLETED -> Group 4 (Sorted by latest dispatch date descending: 3rd Nov on top, 2nd Nov below, etc.)
+                $dispTime = !empty($d['rawDispatchDate']) ? strtotime($d['rawDispatchDate']) : (!empty($d['dispatchDate']) ? strtotime($d['dispatchDate']) : strtotime($d['date']));
+                return sprintf('4_%012d_%010d', 999999999999 - $dispTime, 9999999999 - (int)($d['id'] ?? 0));
             } else {
                 // CANCELLED -> Group 5
                 return sprintf('5_%012d_%010d', 999999999999 - strtotime($d['date']), 9999999999 - (int)($d['id'] ?? 0));

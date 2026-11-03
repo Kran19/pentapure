@@ -100,11 +100,11 @@
       $target = strtoupper(trim(str_replace('_', ' ', $statusFilter)));
       
       if (in_array($target, ['FULLY DISPATCHED', 'FULLY DISPATCH', 'DONE'])) {
-        return in_array($st, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED']) ||
-               ((float)($o['totalQty'] ?? 0) > 0 && (float)($o['remainingQty'] ?? 0) <= 0);
+        return in_array($st, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED', 'FULLY_DISPATCHED']) ||
+               ((float)($o['totalQty'] ?? 0) > 0 && (float)($o['remainingQty'] ?? 0) <= 0.001);
       }
       if ($target === 'PARTIAL') {
-        $notDone = !in_array($st, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED']) && !((float)($o['totalQty'] ?? 0) > 0 && (float)($o['remainingQty'] ?? 0) <= 0);
+        $notDone = !in_array($st, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED', 'FULLY_DISPATCHED']) && !((float)($o['totalQty'] ?? 0) > 0 && (float)($o['remainingQty'] ?? 0) <= 0.001);
         return $notDone && (in_array($st, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIAL PENDING']) || ((float)($o['dispatchedQty'] ?? 0) > 0 && (float)($o['remainingQty'] ?? 0) > 0));
       }
       if ($target === 'PENDING') {
@@ -119,7 +119,7 @@
   $filtered = $filtered->sortBy(function($d) use ($today) {
     $st = strtoupper(trim(str_replace('_', ' ', (string)($d['dispatchStatus'] ?? $d['status'] ?? ''))));
     $isDone = in_array($st, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED', 'FULLY_DISPATCHED']) ||
-              ((float)($d['totalQty'] ?? 0) > 0 && (float)($d['remainingQty'] ?? 0) <= 0);
+              ((float)($d['totalQty'] ?? 0) > 0 && (float)($d['remainingQty'] ?? 0) <= 0.001);
 
     $rawDueDate = $d['rawDueDate'] ?? (!empty($d['dueDate']) && $d['dueDate'] !== 'Not Specified' ? \Carbon\Carbon::parse($d['dueDate'], 'Asia/Kolkata')->format('Y-m-d') : null);
     $diffDays = null;
@@ -141,8 +141,22 @@
       // Active with no due date -> Group 3
       return sprintf('3_%010d', 9999999999 - (int)($d['id'] ?? 0));
     } elseif ($isDone) {
-      // Completed -> Group 4
-      return sprintf('4_%012d_%010d', 999999999999 - strtotime($d['date']), 9999999999 - (int)($d['id'] ?? 0));
+      // Completed -> Group 4 (Sorted by dispatch date, newest first: 3rd Nov on top, 2nd Nov below, etc.)
+      $dispTime = 0;
+      if (!empty($d['rawDispatchDate'])) {
+        $dispTime = strtotime($d['rawDispatchDate']);
+      } elseif (!empty($d['dispatchLogs']) && count($d['dispatchLogs']) > 0 && !empty($d['dispatchLogs'][0]['rawDate'])) {
+        $dispTime = strtotime($d['dispatchLogs'][0]['rawDate']);
+      } elseif (!empty($d['dispatchDate'])) {
+        try {
+          $dispTime = \Carbon\Carbon::parse($d['dispatchDate'], 'Asia/Kolkata')->timestamp;
+        } catch (\Throwable $e) {
+          $dispTime = strtotime($d['dispatchDate']);
+        }
+      } else {
+        $dispTime = strtotime($d['date'] ?? 'now');
+      }
+      return sprintf('4_%012d_%010d', 999999999999 - $dispTime, 9999999999 - (int)($d['id'] ?? 0));
     } else {
       // Cancelled -> Group 5
       return sprintf('5_%012d_%010d', 999999999999 - strtotime($d['date']), 9999999999 - (int)($d['id'] ?? 0));
