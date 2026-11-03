@@ -103,9 +103,9 @@
   color: #ffffff;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 768px) {
   .dispatch-item-badges {
-    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-columns: repeat(2, 1fr) !important;
     width: 100% !important;
   }
   .dispatch-filter-row {
@@ -588,7 +588,9 @@ html.dark-mode .highlight-dispatch-date,
                     $tot = (float)($item->quantity ?? 0);
                     $disp = (float)($item->dispatched_qty ?? 0);
                     $rem = max(0, (float)$item->remainingQty());
+                    $rate = (float)($item->price > 0 ? $item->price : ($item->product?->rate ?? 0));
                     $fmtQty = fn($val) => (floor($val) == $val ? number_format($val, 0) : number_format($val, 2)) . ' kg';
+                    $fmtRate = fn($val) => '₹' . (floor($val) == $val ? number_format($val, 0) : number_format($val, 2));
                   @endphp
                   <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f3f4f6; font-size:0.88rem; flex-wrap:wrap; gap:12px;">
                     <div style="flex:1; min-width:200px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
@@ -598,7 +600,11 @@ html.dark-mode .highlight-dispatch-date,
                       @endif
                       <span style="color:#6b7280; font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
                     </div>
-                    <div class="dispatch-item-badges" style="display:grid; grid-template-columns:135px 145px 145px; gap:8px; align-items:center; flex-shrink:0;">
+                    <div class="dispatch-item-badges" style="display:grid; grid-template-columns:120px 130px 140px 140px; gap:8px; align-items:center; flex-shrink:0;">
+                      <span style="background:rgba(59,130,246,0.08); padding:4px 8px; border-radius:6px; border:1px solid rgba(59,130,246,0.25); font-weight:700; color:#1d4ed8; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                        <span style="color:#64748b; font-size:0.72rem; font-weight:700;">RATE:</span>
+                        <strong style="color:#1e40af;">{{ $fmtRate($rate) }}</strong>
+                      </span>
                       <span style="background:#f9fafb; padding:4px 8px; border-radius:6px; border:1px solid #e5e7eb; font-weight:600; color:#111827; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
                         <span style="color:#6b7280; font-size:0.72rem; font-weight:700;">ORDER:</span>
                         <strong style="color:var(--primary, #D88A00);">{{ $fmtQty($tot) }}</strong>

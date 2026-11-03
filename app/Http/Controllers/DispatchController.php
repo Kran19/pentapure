@@ -235,6 +235,8 @@ class DispatchController extends Controller
                     'dispatchedQty' => (float) $i->dispatched_qty,
                     'remainingQty'  => (float) max(0, (float)$i->quantity - (float)$i->dispatched_qty),
                     'grade'         => $i->grade,
+                    'price'         => (float) ($i->price > 0 ? $i->price : ($i->product?->rate ?? 0)),
+                    'rate'          => (float) ($i->price > 0 ? $i->price : ($i->product?->rate ?? 0)),
                 ]),
             ]),
             'companies'           => Company::all(['id', 'name']),
@@ -1400,6 +1402,8 @@ class DispatchController extends Controller
                     'quantity'      => (float) $i->quantity,
                     'dispatchedQty' => (float) $i->dispatched_qty,
                     'remainingQty'  => (float) $i->remainingQty(),
+                    'price'         => (float) ($i->price > 0 ? $i->price : ($i->product?->rate ?? 0)),
+                    'rate'          => (float) ($i->price > 0 ? $i->price : ($i->product?->rate ?? 0)),
                 ])->values(),
             ]);
         }
