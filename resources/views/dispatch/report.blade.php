@@ -577,12 +577,6 @@ html.dark-mode .highlight-dispatch-date,
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Amount</div>
             <div style="font-weight:700; font-size:0.95rem; color:var(--primary, #D88A00);">₹{{ number_format($d['orderTotal'] ?? 0, 2) }}</div>
           </div>
-          <div>
-            <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Sales Note</div>
-            <div style="font-weight:600; font-size:0.88rem; color:{{ !empty(trim((string)($d['notes'] ?? ''))) ? 'var(--primary, #D88A00)' : 'var(--text-muted)' }};">
-              {{ !empty(trim((string)($d['notes'] ?? ''))) ? $d['notes'] : '—' }}
-            </div>
-          </div>
         </div>
 
         <!-- Sales Note / Special Instructions -->

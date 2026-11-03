@@ -511,12 +511,6 @@ html.dark-mode .highlight-dispatch-date,
                 <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Remaining Qty</div>
                 <div style="font-weight:700; font-size:0.95rem; color:#ef4444;">{{ number_format($totalRemainingQty, 3) }} kg</div>
               </div>
-              <div>
-                <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Sales Note</div>
-                <div style="font-weight:600; font-size:0.88rem; color:{{ !empty(trim((string)$order->notes)) ? 'var(--primary, #D88A00)' : 'var(--text-muted)' }};">
-                  {{ !empty(trim((string)$order->notes)) ? $order->notes : '—' }}
-                </div>
-              </div>
             </div>
 
             @if($sortedLogs->count() > 1)
