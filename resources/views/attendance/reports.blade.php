@@ -65,7 +65,7 @@
             <th>Salary</th>
             <th class="no-print">Action</th>
             <th>Total Present</th>
-            <th>Total OT Hrs</th>
+            <th>Total OT / UT Hrs</th>
             <th>Advance (₹)</th>
             <th>Total Payable (₹)</th>
             <th style="min-width:220px;">Mark as Paid</th>
@@ -86,6 +86,7 @@
             @php
               $deptTotalPresent = array_sum(array_column($workers, 'present'));
               $deptTotalOt = array_sum(array_column($workers, 'total_ot'));
+              $deptTotalUt = array_sum(array_column($workers, 'total_ut'));
               $deptTotalAdvance = array_sum(array_column($workers, 'advance'));
               $deptTotalPayable = array_sum(array_map(fn($w) => (float)($w['payable_salary'] ?? $w['total_wage']), $workers));
               $deptWorkerCount = count($workers);
@@ -96,7 +97,12 @@
                 📂 {{ strtoupper($deptName) }} <span style="font-size:0.8rem; font-weight:600; opacity:0.85; margin-left:0.4rem; color:var(--text-color);">(Total Workers: {{ $deptWorkerCount }})</span>
               </td>
               <td style="font-weight:bold; color:#000000; font-size:0.95rem;">{{ $deptTotalPresent > 0 ? (floor($deptTotalPresent) == $deptTotalPresent ? number_format($deptTotalPresent, 0) : number_format($deptTotalPresent, 1)) : 0 }}</td>
-              <td style="font-weight:bold; font-size:0.9rem;">{{ number_format($deptTotalOt, 1) }}</td>
+              <td style="font-weight:bold; font-size:0.9rem;">
+                {{ number_format($deptTotalOt, 1) }}
+                @if($deptTotalUt > 0)
+                  <span style="color:#ea580c; font-size:0.8rem; margin-left:4px;">(-{{ number_format($deptTotalUt, 1) }} UT)</span>
+                @endif
+              </td>
               <td style="font-weight:bold; font-size:0.95rem; color:#dc2626;" data-csv-value="{{ number_format($deptTotalAdvance, 2, '.', '') }}">{{ $deptTotalAdvance > 0 ? '₹' . number_format($deptTotalAdvance, 0) : '—' }}</td>
               <td style="font-weight:bold; color:var(--primary-light); font-size:1.05rem;" data-csv-value="{{ number_format($deptTotalPayable, 2, '.', '') }}">₹{{ number_format($deptTotalPayable, 2) }}</td>
               <td></td>
@@ -145,7 +151,18 @@
                   <a href="{{ $reportUrl }}?month={{ $month }}" class="btn btn-sm" style="width:auto; padding:0.2rem 0.6rem; font-size:0.7rem; text-transform:uppercase;">View Sheet</a>
                 </td>
                 <td style="color:#000000; font-weight:bold;">{{ $data['present'] }}</td>
-                <td style="font-weight:bold;">{{ number_format($data['total_ot'], 1) }}</td>
+                <td style="font-weight:bold;" data-csv-value="{{ number_format(($data['total_ot'] ?? 0) - ($data['total_ut'] ?? 0), 1, '.', '') }}">
+                  @if(($data['total_ot'] ?? 0) > 0 && ($data['total_ut'] ?? 0) > 0)
+                    <span style="color:#16a34a;">+{{ number_format($data['total_ot'], 1) }} OT</span>
+                    <br><span style="color:#ea580c; font-size:0.75rem;">-{{ number_format($data['total_ut'], 1) }} UT</span>
+                  @elseif(($data['total_ut'] ?? 0) > 0)
+                    <span style="color:#ea580c;">-{{ number_format($data['total_ut'], 1) }} UT</span>
+                  @elseif(($data['total_ot'] ?? 0) > 0)
+                    <span style="color:#16a34a;">+{{ number_format($data['total_ot'], 1) }} OT</span>
+                  @else
+                    <span style="color:var(--text-muted); opacity:0.6;">0.0</span>
+                  @endif
+                </td>
                 <td style="font-weight:bold; color:{{ ($data['advance'] ?? 0) > 0 ? '#dc2626' : 'var(--text-muted)' }}; font-size:0.95rem;" data-csv-value="{{ number_format($data['advance'] ?? 0, 2, '.', '') }}">
                   @if(($data['advance'] ?? 0) > 0)
                     ₹{{ number_format($data['advance'], 0) }}
@@ -160,8 +177,13 @@
                     @if(($data['ot_amount'] ?? 0) > 0)
                       <span style="color:#16a34a;"> + OT: ₹{{ number_format($data['ot_amount'], 0) }}</span>
                     @endif
+                    @if(($data['ut_amount'] ?? 0) > 0)
+                      <span style="color:#ea580c;"> - UT: ₹{{ number_format($data['ut_amount'], 0) }}</span>
+                    @endif
                     @if(($data['allowance'] ?? 0) > 0)
-                      <span style="color:#2563eb;"> + Allw: ₹{{ number_format($data['allowance'], 0) }}</span>
+                      <span style="color:#2563eb;"> + {{ $data['allowance_label'] ?? 'Allw' }}: ₹{{ number_format($data['allowance'], 0) }}</span>
+                    @elseif(($data['allowance'] ?? 0) < 0)
+                      <span style="color:#dc2626;"> - {{ $data['deduction_label'] ?? 'Other' }}: ₹{{ number_format(abs($data['allowance']), 0) }}</span>
                     @endif
                     @if(($data['advance'] ?? 0) > 0)
                       <span style="color:#dc2626;"> - Adv: ₹{{ number_format($data['advance'], 0) }}</span>

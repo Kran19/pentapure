@@ -265,7 +265,15 @@
         </tr>
         <tr>
           <td style="border:2px solid #000; padding:8px; text-align:center;">ADD OT / DEDUCT UT</td>
-          <td style="border:2px solid #000; padding:8px; text-align:center;">{{ number_format($totalOT ?? 0, 1) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:center;">
+            @if(($totalOT ?? 0) > 0 && ($totalUT ?? 0) > 0)
+              +{{ number_format($totalOT, 1) }} / -{{ number_format($totalUT, 1) }}
+            @elseif(($totalUT ?? 0) > 0)
+              -{{ number_format($totalUT, 1) }}
+            @else
+              {{ number_format($totalOT ?? 0, 1) }}
+            @endif
+          </td>
           <td style="border:2px solid #000; padding:8px; text-align:center;">PER HOUR</td>
           <td style="border:2px solid #000; padding:8px; text-align:center;">{{ number_format($hourlyRate, 2) }}</td>
           <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format(round($otUtAdjustment), 2) }}</td>
@@ -337,7 +345,15 @@
         <!-- Row 3 -->
         <tr>
           <td style="border:2px solid #000; padding:8px; text-align:center;">ADD OT / DEDUCT UT</td>
-          <td style="border:2px solid #000; padding:8px; text-align:center;">{{ number_format($totalOT ?? 0, 1) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:center;">
+            @if(($totalOT ?? 0) > 0 && ($totalUT ?? 0) > 0)
+              +{{ number_format($totalOT, 1) }} / -{{ number_format($totalUT, 1) }}
+            @elseif(($totalUT ?? 0) > 0)
+              -{{ number_format($totalUT, 1) }}
+            @else
+              {{ number_format($totalOT ?? 0, 1) }}
+            @endif
+          </td>
           <td style="border:2px solid #000; padding:8px; text-align:center;">PER HOUR</td>
           <td style="border:2px solid #000; padding:8px; text-align:center;">{{ number_format($hourlyRate, 2) }}</td>
           <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format(round($otUtAdjustment), 2) }}</td>

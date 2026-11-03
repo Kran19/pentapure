@@ -111,7 +111,7 @@
                 <th style="width:15%; text-align:left;">DEPARTMENT</th>
                 <th style="width:14%; text-align:left;">SALARY</th>
                 <th style="width:10%; text-align:center;">PRESENT</th>
-                <th style="width:10%; text-align:center;">TOTAL OT</th>
+                <th style="width:10%; text-align:center;">TOTAL OT / UT</th>
                 <th style="width:13%; text-align:right;">PAYABLE (₹)</th>
                 <th style="width:8%; text-align:center;">STATUS</th>
             </tr>
@@ -121,6 +121,7 @@
                 @php
                     $deptTotalPresent = array_sum(array_column($workers, 'present'));
                     $deptTotalOt = array_sum(array_column($workers, 'total_ot'));
+                    $deptTotalUt = array_sum(array_column($workers, 'total_ut'));
                     $deptTotalPayable = array_sum(array_map(fn($w) => (float)($w['payable_salary'] ?? $w['total_wage']), $workers));
                     $deptWorkerCount = count($workers);
                 @endphp
@@ -129,7 +130,12 @@
                         DEPARTMENT: {{ strtoupper($deptName) }} <span style="font-size:8.5px; font-weight:normal; opacity:0.85;">(Workers: {{ $deptWorkerCount }})</span>
                     </td>
                     <td style="text-align:center;">{{ $deptTotalPresent > 0 ? (floor($deptTotalPresent) == $deptTotalPresent ? number_format($deptTotalPresent, 0) : number_format($deptTotalPresent, 1)) : 0 }}</td>
-                    <td style="text-align:center;">{{ number_format($deptTotalOt, 1) }}</td>
+                    <td style="text-align:center;">
+                        {{ number_format($deptTotalOt, 1) }}
+                        @if($deptTotalUt > 0)
+                            <span style="font-size:7px; color:#c2410c;">(-{{ number_format($deptTotalUt, 1) }} UT)</span>
+                        @endif
+                    </td>
                     <td style="text-align:right;">₹{{ number_format($deptTotalPayable, 2) }}</td>
                     <td></td>
                 </tr>
@@ -165,14 +171,25 @@
                             @endif
                         </td>
                         <td style="text-align:center; font-weight:bold; color:#0f172a;">{{ $data['present'] }}</td>
-                        <td style="text-align:center; font-weight:bold; color:#0f172a;">{{ number_format($data['total_ot'], 1) }}</td>
+                        <td style="text-align:center; font-weight:bold; color:#0f172a;">
+                            @if(($data['total_ot'] ?? 0) > 0 && ($data['total_ut'] ?? 0) > 0)
+                                {{ number_format($data['total_ot'], 1) }} OT
+                                <div style="font-size:7px; color:#c2410c;">-{{ number_format($data['total_ut'], 1) }} UT</div>
+                            @elseif(($data['total_ut'] ?? 0) > 0)
+                                <span style="color:#c2410c;">-{{ number_format($data['total_ut'], 1) }} UT</span>
+                            @else
+                                {{ number_format($data['total_ot'] ?? 0, 1) }}
+                            @endif
+                        </td>
                         <td style="text-align:right; font-weight:bold; color:#0f172a;">
                             <div>₹{{ number_format($payable, 2) }}</div>
-                            @if(($data['advance'] ?? 0) > 0 || ($data['ot_amount'] ?? 0) > 0 || ($data['allowance'] ?? 0) > 0)
+                            @if(($data['advance'] ?? 0) > 0 || ($data['ot_amount'] ?? 0) > 0 || ($data['ut_amount'] ?? 0) > 0 || ($data['allowance'] ?? 0) != 0)
                                 <div style="font-size:7px; font-weight:normal; color:#64748b; margin-top:1px;">
                                     Earned: ₹{{ number_format($data['attendance_salary'] ?? 0, 0) }}
                                     @if(($data['ot_amount'] ?? 0) > 0) +OT:₹{{ number_format($data['ot_amount'], 0) }}@endif
-                                    @if(($data['allowance'] ?? 0) > 0) +Allw:₹{{ number_format($data['allowance'], 0) }}@endif
+                                    @if(($data['ut_amount'] ?? 0) > 0) -UT:₹{{ number_format($data['ut_amount'], 0) }}@endif
+                                    @if(($data['allowance'] ?? 0) > 0) +{{ $data['allowance_label'] ?? 'Allw' }}:₹{{ number_format($data['allowance'], 0) }}@endif
+                                    @if(($data['allowance'] ?? 0) < 0) -{{ $data['deduction_label'] ?? 'Other' }}:₹{{ number_format(abs($data['allowance']), 0) }}@endif
                                     @if(($data['advance'] ?? 0) > 0) -Adv:₹{{ number_format($data['advance'], 0) }}@endif
                                 </div>
                             @endif

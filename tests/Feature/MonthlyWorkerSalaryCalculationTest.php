@@ -209,5 +209,88 @@ class MonthlyWorkerSalaryCalculationTest extends TestCase
         $pdfResponse = $this->withSession($session)->get('/admin/attendance/reports/summary/pdf?month=2026-09');
         $pdfResponse->assertStatus(200);
     }
+
+    public function test_monthly_reports_shows_ut_undertime_and_other_minus_deduction(): void
+    {
+        $admin = $this->createAdmin();
+        $session = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
+
+        $dept = Department::create(['name' => 'PRODUCTION']);
+        
+        // Worker 1: has UT (Under Time)
+        $workerUt = Worker::create([
+            'name'          => 'Ramesh Patel',
+            'department_id' => $dept->id,
+            'role'          => 'Operator',
+            'shift_type'    => 'DAY',
+            'salary_type'   => 'DAILY',
+            'salary_amount' => 600.00, // 600 / 12 = 50/hr
+            'status'        => 'ACTIVE',
+        ]);
+
+        // Present 10 days
+        for ($d = 1; $d <= 10; $d++) {
+            \App\Models\Attendance::create([
+                'worker_id' => $workerUt->id,
+                'date' => sprintf('2026-10-%02d', $d),
+                'status' => 'PRESENT',
+                'overtime_hours' => 0,
+            ]);
+        }
+
+        // On day 11, has 2 hours under time (UT)
+        \App\Models\Attendance::create([
+            'worker_id' => $workerUt->id,
+            'date' => '2026-10-11',
+            'status' => 'PRESENT',
+            'ot_ut' => 'UT',
+            'ot_ut_hours' => 2.0,
+            'overtime_hours' => -2.0,
+        ]);
+
+        // Worker 2: has other minus deduction (e.g. -1500)
+        $workerDeduct = Worker::create([
+            'name'          => 'Suresh Kumar',
+            'department_id' => $dept->id,
+            'role'          => 'Helper',
+            'shift_type'    => 'DAY',
+            'salary_type'   => 'DAILY',
+            'salary_amount' => 500.00,
+            'status'        => 'ACTIVE',
+        ]);
+
+        for ($d = 1; $d <= 10; $d++) {
+            \App\Models\Attendance::create([
+                'worker_id' => $workerDeduct->id,
+                'date' => sprintf('2026-10-%02d', $d),
+                'status' => 'PRESENT',
+                'overtime_hours' => 0,
+            ]);
+        }
+
+        // Negative adjustment (other minus deduction)
+        \App\Models\WorkerMonthlyAdjustment::create([
+            'worker_id' => $workerDeduct->id,
+            'month' => '2026-10',
+            'petrol_food_amount' => -1500.00,
+            'other_allowance_label' => 'DAMAGE DEDUCTION',
+        ]);
+
+        $response = $this->withSession($session)->get('/admin/attendance/reports?month=2026-10');
+        $response->assertStatus(200);
+
+        $content = $response->getContent();
+
+        // Verify UT (Under Time) shows in column and breakdown
+        $this->assertStringContainsString('- UT: ₹100', $content); // 2 hrs * 50 = 100
+        $this->assertStringContainsString('UT', $content);
+
+        // Verify other minus deduction shows with label or Other and minus sign
+        $this->assertStringContainsString('- DAMAGE DEDUCTION: ₹1,500', $content);
+
+        // Verify Summary PDF also contains UT and other deduction
+        $pdfResponse = $this->withSession($session)->get('/admin/attendance/reports/summary/pdf?month=2026-10');
+        $pdfResponse->assertStatus(200);
+    }
 }
 
