@@ -123,6 +123,7 @@
                     $deptTotalOt = array_sum(array_column($workers, 'total_ot'));
                     $deptTotalUt = array_sum(array_column($workers, 'total_ut'));
                     $deptNetOtUt = $deptTotalOt - $deptTotalUt;
+                    $deptTotalEarned = array_sum(array_column($workers, 'attendance_salary'));
                     $deptTotalPayable = array_sum(array_map(fn($w) => (float)($w['payable_salary'] ?? $w['total_wage']), $workers));
                     $deptWorkerCount = count($workers);
                 @endphp
@@ -130,7 +131,14 @@
                     <td colspan="4" style="text-align:left;">
                         DEPARTMENT: {{ strtoupper($deptName) }} <span style="font-size:8.5px; font-weight:normal; opacity:0.85;">(Workers: {{ $deptWorkerCount }})</span>
                     </td>
-                    <td style="text-align:center;">{{ $deptTotalPresent > 0 ? (floor($deptTotalPresent) == $deptTotalPresent ? number_format($deptTotalPresent, 0) : number_format($deptTotalPresent, 1)) : 0 }}</td>
+                    <td style="text-align:center;">
+                        <div>{{ $deptTotalPresent > 0 ? (floor($deptTotalPresent) == $deptTotalPresent ? number_format($deptTotalPresent, 0) : number_format($deptTotalPresent, 1)) : 0 }}</div>
+                        @if($deptTotalEarned > 0)
+                            <div style="font-size:7px; font-weight:bold; color:#0f172a; margin-top:1px;">
+                                Earned: ₹{{ number_format($deptTotalEarned, 0) }}
+                            </div>
+                        @endif
+                    </td>
                     <td style="text-align:center;">
                         @if($deptNetOtUt > 0)
                             {{ number_format($deptNetOtUt, 1) }}
@@ -176,7 +184,12 @@
                                 <div style="font-size:7.5px; color:#64748b;">{{ strtoupper(str_replace('_', ' ', $effType ?? '')) }}</div>
                             @endif
                         </td>
-                        <td style="text-align:center; font-weight:bold; color:#0f172a;">{{ $data['present'] }}</td>
+                        <td style="text-align:center; font-weight:bold; color:#0f172a;">
+                            <div>{{ $data['present'] }}</div>
+                            <div style="font-size:7px; font-weight:bold; color:#0f172a; margin-top:1px;">
+                                Earned: ₹{{ number_format($data['attendance_salary'] ?? 0, 0) }}
+                            </div>
+                        </td>
                         <td style="text-align:center; font-weight:bold; color:#0f172a;">
                             @php
                                 $wOt = (float)($data['total_ot'] ?? 0);
@@ -195,7 +208,6 @@
                             <div>₹{{ number_format($payable, 2) }}</div>
                             @if(($data['advance'] ?? 0) > 0 || ($data['ot_amount'] ?? 0) > 0 || ($data['ut_amount'] ?? 0) > 0 || ($data['allowance'] ?? 0) != 0)
                                 <div style="font-size:7px; font-weight:normal; color:#64748b; margin-top:1px;">
-                                    Earned: ₹{{ number_format($data['attendance_salary'] ?? 0, 0) }}
                                     @if(($data['ot_amount'] ?? 0) > 0) +OT:₹{{ number_format($data['ot_amount'], 0) }}@endif
                                     @if(($data['ut_amount'] ?? 0) > 0) -UT:₹{{ number_format($data['ut_amount'], 0) }}@endif
                                     @if(($data['allowance'] ?? 0) > 0) +{{ $data['allowance_label'] ?? 'Allw' }}:₹{{ number_format($data['allowance'], 0) }}@endif
@@ -215,9 +227,21 @@
                 @endforeach
             @endforeach
 
+            @php
+                $grandTotalPresent = array_sum(array_column($reportData, 'present'));
+                $grandTotalEarned = array_sum(array_column($reportData, 'attendance_salary'));
+            @endphp
             <tr class="grand-total-row">
                 <td colspan="4" style="text-align:right; text-transform:uppercase;">Grand Total Payroll Liability:</td>
-                <td colspan="2"></td>
+                <td style="text-align:center; color:#0f172a;">
+                    <div>{{ $grandTotalPresent > 0 ? (floor($grandTotalPresent) == $grandTotalPresent ? number_format($grandTotalPresent, 0) : number_format($grandTotalPresent, 1)) : 0 }}</div>
+                    @if($grandTotalEarned > 0)
+                        <div style="font-size:7px; font-weight:bold; color:#0f172a; margin-top:1px;">
+                            Earned: ₹{{ number_format($grandTotalEarned, 0) }}
+                        </div>
+                    @endif
+                </td>
+                <td></td>
                 <td style="text-align:right; color:#0f172a;">₹{{ number_format($grandTotal, 2) }}</td>
                 <td></td>
             </tr>
