@@ -98,6 +98,10 @@
                 📂 {{ strtoupper($deptName) }} <span style="font-size:0.8rem; font-weight:600; opacity:0.85; margin-left:0.4rem; color:var(--text-color);">(Total Workers: {{ $deptWorkerCount }})</span>
               </td>
               <td style="font-weight:bold; color:#000000; font-size:0.95rem;">{{ $deptTotalPresent > 0 ? (floor($deptTotalPresent) == $deptTotalPresent ? number_format($deptTotalPresent, 0) : number_format($deptTotalPresent, 1)) : 0 }}</td>
+              <td style="font-weight:bold; font-size:0.9rem;">
+                {{ number_format($deptTotalOt, 1) }}
+                @if($deptTotalUt > 0)
+                  <span style="color:#ea580c; font-size:0.8rem; margin-left:4px;">(-{{ number_format($deptTotalUt, 1) }} UT)</span>
               <td style="font-weight:bold; font-size:0.9rem;" title="Total OT: {{ number_format($deptTotalOt, 1) }} | Total UT: {{ number_format($deptTotalUt, 1) }}">
                 @if($deptNetOtUt > 0)
                   {{ number_format($deptNetOtUt, 1) }}
@@ -171,6 +175,13 @@
                 </td>
                 <td style="color:#000000; font-weight:bold;">{{ $data['present'] }}</td>
                 <td style="font-weight:bold;" data-csv-value="{{ number_format(($data['total_ot'] ?? 0) - ($data['total_ut'] ?? 0), 1, '.', '') }}">
+                  @if(($data['total_ot'] ?? 0) > 0 && ($data['total_ut'] ?? 0) > 0)
+                    <span style="color:#16a34a;">+{{ number_format($data['total_ot'], 1) }} OT</span>
+                    <br><span style="color:#ea580c; font-size:0.75rem;">-{{ number_format($data['total_ut'], 1) }} UT</span>
+                  @elseif(($data['total_ut'] ?? 0) > 0)
+                    <span style="color:#ea580c;">-{{ number_format($data['total_ut'], 1) }} UT</span>
+                  @elseif(($data['total_ot'] ?? 0) > 0)
+                    <span style="color:#16a34a;">+{{ number_format($data['total_ot'], 1) }} OT</span>
                   @php
                     $wOt = (float)($data['total_ot'] ?? 0);
                     $wUt = (float)($data['total_ut'] ?? 0);
