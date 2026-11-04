@@ -157,9 +157,9 @@
                         @if($deptTotalAllowance != 0)
                             <div style="font-size:7px; font-weight:normal; color:#64748b; margin-top:1px;">
                                 @if($deptTotalAllowance > 0)
-                                    Other:₹{{ number_format($deptTotalAllowance, 0) }}
+                                    OTHER:₹{{ number_format($deptTotalAllowance, 0) }}
                                 @else
-                                    -Other:₹{{ number_format(abs($deptTotalAllowance), 0) }}
+                                    -OTHER:₹{{ number_format(abs($deptTotalAllowance), 0) }}
                                 @endif
                             </div>
                         @endif
@@ -224,9 +224,9 @@
                             @if(($data['allowance'] ?? 0) != 0)
                                 <div style="font-size:7px; font-weight:normal; color:#64748b; margin-top:1px;">
                                     @if(($data['allowance'] ?? 0) > 0)
-                                        Other:₹{{ number_format($data['allowance'], 0) }}
+                                        {{ $data['allowance_label'] ?? 'OTHER' }}:₹{{ number_format($data['allowance'], 0) }}
                                     @else
-                                        -Other:₹{{ number_format(abs($data['allowance']), 0) }}
+                                        -{{ $data['deduction_label'] ?? 'OTHER' }}:₹{{ number_format(abs($data['allowance']), 0) }}
                                     @endif
                                 </div>
                             @endif
@@ -265,9 +265,9 @@
                     @if(!empty($reportData) && $grandTotalAllowance != 0)
                         <div style="font-size:7px; font-weight:normal; color:#64748b; margin-top:1px;">
                             @if($grandTotalAllowance > 0)
-                                Other:₹{{ number_format($grandTotalAllowance, 0) }}
+                                OTHER:₹{{ number_format($grandTotalAllowance, 0) }}
                             @else
-                                -Other:₹{{ number_format(abs($grandTotalAllowance), 0) }}
+                                -OTHER:₹{{ number_format(abs($grandTotalAllowance), 0) }}
                             @endif
                         </div>
                     @endif

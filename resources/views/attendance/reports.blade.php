@@ -121,9 +121,9 @@
                 @if($deptTotalAllowance != 0)
                   <div style="font-size:0.7rem; font-weight:600; margin-top:3px; line-height:1.35; white-space:nowrap;">
                     @if($deptTotalAllowance > 0)
-                      <span style="color:#2563eb;">Other: ₹{{ number_format($deptTotalAllowance, 0) }}</span>
+                      <span style="color:#2563eb;">OTHER: ₹{{ number_format($deptTotalAllowance, 0) }}</span>
                     @else
-                      <span style="color:#dc2626;">- Other: ₹{{ number_format(abs($deptTotalAllowance), 0) }}</span>
+                      <span style="color:#dc2626;">- OTHER: ₹{{ number_format(abs($deptTotalAllowance), 0) }}</span>
                     @endif
                   </div>
                 @endif
@@ -218,14 +218,11 @@
                 <td style="font-weight:bold; color:var(--primary-light); font-size:1.05rem;" data-csv-value="{{ number_format($payable, 2, '.', '') }}">
                   <div>₹{{ number_format($payable, 2) }}</div>
                   @if(($data['allowance'] ?? 0) != 0)
-                    @php
-                      $otherCustomLabel = !empty($data['allowance_label']) && !in_array(strtoupper($data['allowance_label']), ['OTHER', 'PETROL / FOODS']) ? $data['allowance_label'] : (!empty($data['deduction_label']) && !in_array(strtoupper($data['deduction_label']), ['OTHER', 'PETROL / FOODS']) ? $data['deduction_label'] : null);
-                    @endphp
                     <div style="font-size:0.7rem; font-weight:600; margin-top:3px; line-height:1.35; white-space:nowrap;">
                       @if(($data['allowance'] ?? 0) > 0)
-                        <span style="color:#2563eb;" @if($otherCustomLabel) title="{{ $otherCustomLabel }}" @endif>Other: ₹{{ number_format($data['allowance'], 0) }}</span>
+                        <span style="color:#2563eb;">{{ $data['allowance_label'] ?? 'OTHER' }}: ₹{{ number_format($data['allowance'], 0) }}</span>
                       @else
-                        <span style="color:#dc2626;" @if($otherCustomLabel) title="{{ $otherCustomLabel }}" @endif>- Other: ₹{{ number_format(abs($data['allowance']), 0) }}</span>
+                        <span style="color:#dc2626;">- {{ $data['deduction_label'] ?? 'OTHER' }}: ₹{{ number_format(abs($data['allowance']), 0) }}</span>
                       @endif
                     </div>
                   @endif
@@ -299,9 +296,9 @@
                 @if(!empty($reportData) && $grandTotalAllowance != 0)
                   <div style="font-size:0.75rem; font-weight:600; margin-top:3px; line-height:1.35; white-space:nowrap;">
                     @if($grandTotalAllowance > 0)
-                      <span style="color:#2563eb;">Other: ₹{{ number_format($grandTotalAllowance, 0) }}</span>
+                      <span style="color:#2563eb;">OTHER: ₹{{ number_format($grandTotalAllowance, 0) }}</span>
                     @else
-                      <span style="color:#dc2626;">- Other: ₹{{ number_format(abs($grandTotalAllowance), 0) }}</span>
+                      <span style="color:#dc2626;">- OTHER: ₹{{ number_format(abs($grandTotalAllowance), 0) }}</span>
                     @endif
                   </div>
                 @endif

@@ -284,9 +284,8 @@ class MonthlyWorkerSalaryCalculationTest extends TestCase
         // Verify UT (Under Time) shows in column
         $this->assertStringContainsString('UT', $content);
 
-        // Verify other minus deduction shows with Other and minus sign, and label in tooltip
-        $this->assertStringContainsString('- Other: ₹1,500', $content);
-        $this->assertStringContainsString('title="DAMAGE DEDUCTION"', $content);
+        // Verify other minus deduction shows with label and minus sign
+        $this->assertStringContainsString('- DAMAGE DEDUCTION: ₹1,500', $content);
 
         // Verify Summary PDF also contains UT and other deduction
         $pdfResponse = $this->withSession($session)->get('/admin/attendance/reports/summary/pdf?month=2026-10');
@@ -503,14 +502,14 @@ class MonthlyWorkerSalaryCalculationTest extends TestCase
 
         // Worker 1: 10 days * 500 = 5000 attendance salary
         $this->assertStringContainsString('Earned: ₹5,000', $content);
-        $this->assertStringContainsString('Other: ₹1,200', $content);
-        $this->assertStringContainsString('title="LOAD PETE"', $content);
+        $this->assertStringContainsString('LOAD PETE: ₹1,200', $content);
+        $this->assertStringNotContainsString('+ LOAD PETE:', $content);
         $this->assertStringNotContainsString('- Adv:', $content);
         $this->assertStringNotContainsString('+ OT:', $content);
 
         // Worker 2: 5 days * 400 = 2000 attendance salary
         $this->assertStringContainsString('Earned: ₹2,000', $content);
-        $this->assertStringContainsString('- Other: ₹450', $content);
+        $this->assertStringContainsString('- LOAD PETE: ₹450', $content);
 
         // Summary PDF check
         $pdfResponse = $this->withSession($session)->get('/admin/attendance/reports/summary/pdf?month=2026-10');
