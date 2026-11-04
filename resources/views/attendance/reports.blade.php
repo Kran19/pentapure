@@ -187,6 +187,23 @@
                 </td>
                 <td style="font-weight:bold; color:var(--primary-light); font-size:1.05rem;" data-csv-value="{{ number_format($payable, 2, '.', '') }}">
                   <div>₹{{ number_format($payable, 2) }}</div>
+                  <div style="font-size:0.7rem; font-weight:600; color:var(--text-muted); margin-top:3px; line-height:1.35; white-space:nowrap;">
+                    <span style="color:var(--text-main, #334155);">Earned: ₹{{ number_format($data['attendance_salary'] ?? 0, 0) }}</span>
+                    @if(($data['ot_amount'] ?? 0) > 0)
+                      <span style="color:#16a34a; margin-left:3px;">+ OT: ₹{{ number_format($data['ot_amount'], 0) }}</span>
+                    @endif
+                    @if(($data['ut_amount'] ?? 0) > 0)
+                      <span style="color:#ea580c; margin-left:3px;">- UT: ₹{{ number_format($data['ut_amount'], 0) }}</span>
+                    @endif
+                    @if(($data['allowance'] ?? 0) > 0)
+                      <span style="color:#2563eb; margin-left:3px;">+ {{ $data['allowance_label'] ?? 'Allw' }}: ₹{{ number_format($data['allowance'], 0) }}</span>
+                    @elseif(($data['allowance'] ?? 0) < 0)
+                      <span style="color:#dc2626; margin-left:3px;">- {{ $data['deduction_label'] ?? 'Other' }}: ₹{{ number_format(abs($data['allowance']), 0) }}</span>
+                    @endif
+                    @if(($data['advance'] ?? 0) > 0)
+                      <span style="color:#dc2626; margin-left:3px;">- Adv: ₹{{ number_format($data['advance'], 0) }}</span>
+                    @endif
+                  </div>
                 </td>
                 <td>
                   @if(empty($isReadOnly))
@@ -217,29 +234,6 @@
                   <div id="paid-badge-{{ $data['worker']->id }}" style="margin-top:3px; font-size:0.75rem; font-weight:bold; color:{{ $isPaid ? '#22c55e' : '#ef4444' }};">
                     {{ $isPaid ? '✓ PAID' . ($paidDate ? ' (' . \Carbon\Carbon::parse($paidDate)->format('d-m-Y') . ')' : '') : '✕ UNPAID' }}
                   </div>
-                </td>
-              </tr>
-              <tr class="report-breakdown-row" 
-                  id="breakdown-worker-{{ $data['worker']->id }}"
-                  data-worker-id="{{ $data['worker']->id }}"
-                  data-dept-group="{{ $deptSlug }}">
-                <td colspan="10" style="padding:2px 16px 8px 36px; font-size:0.75rem; font-weight:600; line-height:1.4; color:var(--text-muted); background:rgba(248, 250, 252, 0.45); border-bottom:1px solid var(--border-soft, #e2e8f0);">
-                  <span style="opacity:0.6; margin-right:5px; font-size:0.85rem;">↳</span>
-                  <span style="color:var(--text-main, #334155); font-weight:700;">Earned: ₹{{ number_format($data['attendance_salary'] ?? 0, 0) }}</span>
-                  @if(($data['ot_amount'] ?? 0) > 0)
-                    <span style="color:#16a34a; font-weight:700; margin-left:6px;"> + OT: ₹{{ number_format($data['ot_amount'], 0) }}</span>
-                  @endif
-                  @if(($data['ut_amount'] ?? 0) > 0)
-                    <span style="color:#ea580c; font-weight:700; margin-left:6px;"> - UT: ₹{{ number_format($data['ut_amount'], 0) }}</span>
-                  @endif
-                  @if(($data['allowance'] ?? 0) > 0)
-                    <span style="color:#2563eb; font-weight:700; margin-left:6px;"> + {{ $data['allowance_label'] ?? 'Allw' }}: ₹{{ number_format($data['allowance'], 0) }}</span>
-                  @elseif(($data['allowance'] ?? 0) < 0)
-                    <span style="color:#dc2626; font-weight:700; margin-left:6px;"> - {{ $data['deduction_label'] ?? 'Other' }}: ₹{{ number_format(abs($data['allowance']), 0) }}</span>
-                  @endif
-                  @if(($data['advance'] ?? 0) > 0)
-                    <span style="color:#dc2626; font-weight:700; margin-left:6px;"> - Adv: ₹{{ number_format($data['advance'], 0) }}</span>
-                  @endif
                 </td>
               </tr>
             @endforeach
@@ -494,12 +488,9 @@ function filterReportsTable() {
 
     rows.forEach(row => {
         const group = row.getAttribute('data-dept-group');
-        const workerId = row.getAttribute('data-worker-id');
-        const breakdownRow = workerId ? document.getElementById('breakdown-worker-' + workerId) : null;
 
         if (!query) {
             row.style.display = '';
-            if (breakdownRow) breakdownRow.style.display = '';
             totalVisible++;
             if (group) deptMatchCounts[group] = (deptMatchCounts[group] || 0) + 1;
             return;
@@ -508,8 +499,7 @@ function filterReportsTable() {
         const name = row.getAttribute('data-name') || '';
         const dept = row.getAttribute('data-dept') || '';
         const status = row.getAttribute('data-status') || '';
-        const breakdownText = breakdownRow ? (breakdownRow.textContent || '').toLowerCase() : '';
-        const fullText = (row.textContent || '').toLowerCase() + ' ' + breakdownText;
+        const fullText = (row.textContent || '').toLowerCase();
 
         const matches = name.includes(query) || 
                         dept.includes(query) || 
@@ -518,12 +508,10 @@ function filterReportsTable() {
 
         if (matches) {
             row.style.display = '';
-            if (breakdownRow) breakdownRow.style.display = '';
             totalVisible++;
             if (group) deptMatchCounts[group] = (deptMatchCounts[group] || 0) + 1;
         } else {
             row.style.display = 'none';
-            if (breakdownRow) breakdownRow.style.display = 'none';
         }
     });
 
@@ -603,25 +591,6 @@ document.addEventListener('DOMContentLoaded', function() {
   content: none !important;
 }
 
-.report-row td {
-  border-bottom: none !important;
-  padding-bottom: 4px !important;
-}
-
-.report-breakdown-row td {
-  border-top: none !important;
-  border-bottom: 1px solid var(--border-soft, #e2e8f0) !important;
-  padding-top: 2px !important;
-  padding-bottom: 8px !important;
-  white-space: normal !important;
-}
-
-.report-row:hover td,
-.report-row:hover + .report-breakdown-row td,
-.report-breakdown-row:hover td {
-  background: rgba(59, 130, 246, 0.05) !important;
-}
-
 @media print {
   @page { margin: 10mm; size: auto; }
   body * { visibility: hidden !important; }
@@ -641,11 +610,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   #printable-report tr {
     page-break-inside: avoid;
-  }
-  .report-breakdown-row td {
-    padding-top: 1px !important;
-    padding-bottom: 4px !important;
-    font-size: 7.5pt !important;
   }
   .no-print, .filter-bar, .table-pagination-footer { display: none !important; }
   .admin-sidebar, .admin-mobile-header { display: none !important; }
