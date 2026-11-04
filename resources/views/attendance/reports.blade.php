@@ -174,20 +174,7 @@
                     $effType   = $data['salary_type'] ?? $data['worker']->salary_type;
                     $isMukadam = ($effType === 'LABOUR_MUKADAM' || stripos($data['worker']->department->name ?? '', 'MUKADAM') !== false);
                   @endphp
-                  <div style="display:flex; align-items:center; gap:6px;">
-                    <div style="font-weight:bold; font-size:0.95rem;">₹{{ number_format($effSalary, 0) }}</div>
-                    @if(empty($isReadOnly))
-                      <button type="button" 
-                              onclick="editMonthlySalary({{ $data['worker']->id }}, '{{ addslashes($data['worker']->name) }}', {{ (float)$effSalary }}, '{{ $month }}')"
-                              class="no-print"
-                              style="background:none; border:none; cursor:pointer; font-size:0.85rem; padding:0 2px; opacity:0.6; transition:opacity 0.2s;"
-                              onmouseover="this.style.opacity='1'" 
-                              onmouseout="this.style.opacity='0.6'"
-                              title="Click to edit {{ \Carbon\Carbon::parse($month)->format('M Y') }} salary">
-                        ✏️
-                      </button>
-                    @endif
-                  </div>
+                  <div style="font-weight:bold; font-size:0.95rem;">₹{{ number_format($effSalary, 0) }}</div>
                   @if($isMukadam)
                     <div style="font-size:0.65rem; font-weight:bold; color:#000000;">PER LABOUR SALARY</div>
                   @else
