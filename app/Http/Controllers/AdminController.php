@@ -964,90 +964,7 @@ class AdminController extends Controller
     {
         $this->cleanupDuplicateProductsAndLimits();
 
-        $stageNormExpr = "CASE 
-            WHEN UPPER(TRIM(stocks.stage)) IN ('FG', 'FINISHED') THEN 'FINISHED'
-            WHEN UPPER(TRIM(stocks.stage)) IN ('PKG', 'PM', 'PACKAGING') THEN 'PACKAGING'
-            WHEN UPPER(TRIM(stocks.stage)) = 'SEMI' THEN 'SEMI'
-            WHEN UPPER(TRIM(stocks.stage)) = 'RAW' THEN 'RAW'
-            ELSE UPPER(TRIM(stocks.stage))
-        END";
-
-        $gradeNormExpr = "CASE 
-            WHEN stocks.grade IS NULL OR UPPER(TRIM(stocks.grade)) IN ('', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-') THEN 'NONE' 
-            ELSE UPPER(TRIM(stocks.grade)) 
-        END";
-
-        $stockAgg = DB::table('stocks')
-            ->selectRaw("
-                stocks.product_id,
-                {$stageNormExpr} as norm_stage,
-                {$gradeNormExpr} as norm_grade,
-                SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
-            ")
-            ->groupBy('stocks.product_id', DB::raw("{$stageNormExpr}"), DB::raw("{$gradeNormExpr}"));
-
-        $allStock = DB::table(DB::raw("({$stockAgg->toSql()}) as aggregated_stocks"))
-            ->mergeBindings($stockAgg)
-            ->join('products', 'aggregated_stocks.product_id', '=', 'products.id')
-            ->selectRaw("
-                aggregated_stocks.product_id as productId,
-                products.name,
-                products.unit,
-                products.threshold,
-                products.rate as product_rate,
-                products.rate,
-                products.sort_order,
-                aggregated_stocks.norm_stage as stage,
-                aggregated_stocks.norm_grade as grade,
-                COALESCE(products.threshold, 0) as alert_limit,
-                aggregated_stocks.quantity
-            ")
-            ->where('aggregated_stocks.quantity', '>=', 0)
-            ->orderBy('aggregated_stocks.norm_stage')
-            ->orderBy('products.name', 'asc')
-            ->orderBy('aggregated_stocks.norm_grade', 'asc')
-            ->get();
-
-        // Attach limits and rates cleanly in PHP to avoid any SQL ONLY_FULL_GROUP_BY issues
-        $hasLimitRate = $this->hasStockLimitsRateColumn();
-        $limits = DB::table('stock_limits')->get();
-        $limitsMap = [];
-        foreach ($limits as $l) {
-            $st = strtoupper(trim((string)$l->stage));
-            if (in_array($st, ['FG', 'FINISHED'])) $st = 'FINISHED';
-            elseif (in_array($st, ['PKG', 'PM', 'PACKAGING'])) $st = 'PACKAGING';
-            elseif ($st === 'SEMI') $st = 'SEMI';
-            elseif ($st === 'RAW') $st = 'RAW';
-
-            $gr = strtoupper(trim((string)($l->grade ?? '')));
-            if (in_array($gr, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-'])) $gr = 'NONE';
-
-            $key = "{$l->product_id}_{$st}_{$gr}";
-            if (!isset($limitsMap[$key])) {
-                $limitsMap[$key] = $l;
-            } else {
-                if (($l->alert_limit ?? 0) > ($limitsMap[$key]->alert_limit ?? 0)) {
-                    $limitsMap[$key]->alert_limit = $l->alert_limit;
-                }
-                if ($hasLimitRate && isset($l->rate) && ($l->rate ?? 0) > ($limitsMap[$key]->rate ?? 0)) {
-                    $limitsMap[$key]->rate = $l->rate;
-                }
-            }
-        }
-
-        foreach ($allStock as $item) {
-            $key = "{$item->productId}_{$item->stage}_{$item->grade}";
-            $lim = $limitsMap[$key] ?? null;
-            $limitRate = $hasLimitRate && $lim ? (float)($lim->rate ?? 0) : 0;
-            $item->rate = $limitRate > 0 ? $limitRate : (float)($item->product_rate ?? $item->rate ?? 0);
-
-            $alertLim = $lim ? (float)($lim->alert_limit ?? 0) : 0;
-            $thresh = (float)($item->threshold ?? 0);
-            $item->alert_limit = $alertLim > 0 ? $alertLim : $thresh;
-        }
-
-        // Enforce uniqueness per product_id + stage + grade
-        $allStock = $allStock->unique(fn($item) => "{$item->productId}_{$item->stage}_{$item->grade}")->values();
+        $allStock = $this->getAggregatedLiveStock();
 
         $allProducts = Product::with('grades')
             ->orderBy('name', 'asc')
@@ -1076,54 +993,7 @@ class AdminController extends Controller
         $allLocations = Location::orderBy('name')->get(['id', 'name']);
         $primaryLocName = $allLocations->first(fn($l) => in_array(strtoupper(trim($l->name)), ['MAIN WAREHOUSE', 'DEFAULT', 'GENERAL', 'WAREHOUSE', 'MAIN']))?->name ?: $allLocations->first()?->name;
 
-        // Fetch location mappings from DB with normalized stage and grade
-        $locationStock = DB::table('stocks')
-            ->join('locations', 'stocks.location_id', '=', 'locations.id')
-            ->selectRaw("
-                stocks.product_id,
-                {$stageNormExpr} as norm_stage,
-                {$gradeNormExpr} as norm_grade,
-                locations.name as location_name,
-                SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity
-            ")
-            ->groupBy('stocks.product_id', DB::raw('norm_stage'), DB::raw('norm_grade'), 'locations.name')
-            ->havingRaw("quantity > 0")
-            ->get();
-
-        $unassignedStock = DB::table('stocks')
-            ->whereNull('stocks.location_id')
-            ->selectRaw("
-                stocks.product_id,
-                {$stageNormExpr} as norm_stage,
-                {$gradeNormExpr} as norm_grade,
-                SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity
-            ")
-            ->groupBy('stocks.product_id', DB::raw('norm_stage'), DB::raw('norm_grade'))
-            ->havingRaw("quantity > 0")
-            ->get();
-
-        $locationMappings = [];
-        foreach ($locationStock as $ls) {
-            $normG = $ls->norm_grade;
-            $normStage = $ls->norm_stage;
-            $qty = (float) $ls->quantity;
-
-            foreach (["{$ls->product_id}_{$normG}_{$normStage}", "{$ls->product_id}__{$normStage}"] as $k) {
-                $locationMappings[$k][$ls->location_name] = ($locationMappings[$k][$ls->location_name] ?? 0) + $qty;
-            }
-        }
-
-        if ($primaryLocName) {
-            foreach ($unassignedStock as $us) {
-                $normG = $us->norm_grade;
-                $normStage = $us->norm_stage;
-                $qty = (float) $us->quantity;
-
-                foreach (["{$us->product_id}_{$normG}_{$normStage}", "{$us->product_id}__{$normStage}"] as $k) {
-                    $locationMappings[$k][$primaryLocName] = ($locationMappings[$k][$primaryLocName] ?? 0) + $qty;
-                }
-            }
-        }
+        $locationMappings = $this->getLocationAndUnassignedMappings($primaryLocName);
 
         $pageData = [
             'allStock' => $allStock,
@@ -1133,6 +1003,191 @@ class AdminController extends Controller
             'allLocations' => $allLocations,
         ];
         return view('admin.stock', compact('pageData'));
+    }
+
+    /**
+     * Helper to get aggregated live stock cleanly across all SQL modes.
+     * Groups strictly by table columns to guarantee 100% ONLY_FULL_GROUP_BY compliance on all MySQL/MariaDB engines.
+     */
+    protected function getAggregatedLiveStock(): \Illuminate\Support\Collection
+    {
+        $rawStockAgg = DB::table('stocks')
+            ->selectRaw("
+                stocks.product_id,
+                stocks.stage,
+                stocks.grade,
+                SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
+            ")
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade')
+            ->get();
+
+        $stockAggMap = [];
+        foreach ($rawStockAgg as $row) {
+            $st = strtoupper(trim((string)$row->stage));
+            if (in_array($st, ['FG', 'FINISHED'])) $st = 'FINISHED';
+            elseif (in_array($st, ['PKG', 'PM', 'PACKAGING'])) $st = 'PACKAGING';
+            elseif ($st === 'SEMI') $st = 'SEMI';
+            elseif ($st === 'RAW') $st = 'RAW';
+
+            $gr = strtoupper(trim((string)($row->grade ?? '')));
+            if (in_array($gr, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-'])) $gr = 'NONE';
+
+            $key = "{$row->product_id}_{$st}_{$gr}";
+            if (!isset($stockAggMap[$key])) {
+                $stockAggMap[$key] = [
+                    'product_id' => $row->product_id,
+                    'stage'      => $st,
+                    'grade'      => $gr,
+                    'quantity'   => (float) $row->quantity,
+                ];
+            } else {
+                $stockAggMap[$key]['quantity'] += (float) $row->quantity;
+            }
+        }
+
+        $products = DB::table('products')->get()->keyBy('id');
+        $hasLimitRate = $this->hasStockLimitsRateColumn();
+        $limits = DB::table('stock_limits')->get();
+        $limitsMap = [];
+        foreach ($limits as $l) {
+            $st = strtoupper(trim((string)$l->stage));
+            if (in_array($st, ['FG', 'FINISHED'])) $st = 'FINISHED';
+            elseif (in_array($st, ['PKG', 'PM', 'PACKAGING'])) $st = 'PACKAGING';
+            elseif ($st === 'SEMI') $st = 'SEMI';
+            elseif ($st === 'RAW') $st = 'RAW';
+
+            $gr = strtoupper(trim((string)($l->grade ?? '')));
+            if (in_array($gr, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-'])) $gr = 'NONE';
+
+            $key = "{$l->product_id}_{$st}_{$gr}";
+            if (!isset($limitsMap[$key])) {
+                $limitsMap[$key] = $l;
+            } else {
+                if (($l->alert_limit ?? 0) > ($limitsMap[$key]->alert_limit ?? 0)) {
+                    $limitsMap[$key]->alert_limit = $l->alert_limit;
+                }
+                if ($hasLimitRate && isset($l->rate) && ($l->rate ?? 0) > ($limitsMap[$key]->rate ?? 0)) {
+                    $limitsMap[$key]->rate = $l->rate;
+                }
+            }
+        }
+
+        $allStock = collect();
+        foreach ($stockAggMap as $key => $agg) {
+            if ($agg['quantity'] < 0) {
+                continue;
+            }
+
+            $product = $products->get($agg['product_id']);
+            if (!$product) {
+                continue;
+            }
+
+            $lim = $limitsMap[$key] ?? null;
+            $limitRate = $hasLimitRate && $lim ? (float)($lim->rate ?? 0) : 0;
+            $rate = $limitRate > 0 ? $limitRate : (float)($product->rate ?? 0);
+
+            $alertLim = $lim ? (float)($lim->alert_limit ?? 0) : 0;
+            $thresh = (float)($product->threshold ?? 0);
+            $alertLimit = $alertLim > 0 ? $alertLim : $thresh;
+
+            $item = (object) [
+                'productId'    => $agg['product_id'],
+                'name'         => $product->name,
+                'type'         => $product->type ?? null,
+                'unit'         => $product->unit,
+                'threshold'    => $product->threshold,
+                'product_rate' => $product->rate,
+                'rate'         => $rate,
+                'sort_order'   => $product->sort_order ?? 0,
+                'stage'        => $agg['stage'],
+                'grade'        => $agg['grade'],
+                'alert_limit'  => $alertLimit,
+                'quantity'     => $agg['quantity'],
+            ];
+
+            $allStock->push($item);
+        }
+
+        return $allStock->sort(function ($a, $b) {
+            $stageCmp = strcmp($a->stage, $b->stage);
+            if ($stageCmp !== 0) return $stageCmp;
+
+            $nameCmp = strcasecmp($a->name, $b->name);
+            if ($nameCmp !== 0) return $nameCmp;
+
+            return strcmp($a->grade, $b->grade);
+        })->values();
+    }
+
+    /**
+     * Helper to get location and unassigned mappings cleanly across all SQL modes.
+     */
+    protected function getLocationAndUnassignedMappings(?string $primaryLocName): array
+    {
+        $rawLocationStock = DB::table('stocks')
+            ->join('locations', 'stocks.location_id', '=', 'locations.id')
+            ->selectRaw("
+                stocks.product_id,
+                stocks.stage,
+                stocks.grade,
+                locations.name as location_name,
+                SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
+            ")
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade', 'locations.name')
+            ->havingRaw("quantity > 0")
+            ->get();
+
+        $rawUnassignedStock = DB::table('stocks')
+            ->whereNull('stocks.location_id')
+            ->selectRaw("
+                stocks.product_id,
+                stocks.stage,
+                stocks.grade,
+                SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
+            ")
+            ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade')
+            ->havingRaw("quantity > 0")
+            ->get();
+
+        $locationMappings = [];
+        foreach ($rawLocationStock as $ls) {
+            $normStage = strtoupper(trim((string)$ls->stage));
+            if (in_array($normStage, ['FG', 'FINISHED'])) $normStage = 'FINISHED';
+            elseif (in_array($normStage, ['PKG', 'PM', 'PACKAGING'])) $normStage = 'PACKAGING';
+            elseif ($normStage === 'SEMI') $normStage = 'SEMI';
+            elseif ($normStage === 'RAW') $normStage = 'RAW';
+
+            $normG = strtoupper(trim((string)($ls->grade ?? '')));
+            if (in_array($normG, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-'])) $normG = 'NONE';
+
+            $qty = (float) $ls->quantity;
+
+            foreach (["{$ls->product_id}_{$normG}_{$normStage}", "{$ls->product_id}__{$normStage}"] as $k) {
+                $locationMappings[$k][$ls->location_name] = ($locationMappings[$k][$ls->location_name] ?? 0) + $qty;
+            }
+        }
+
+        if ($primaryLocName) {
+            foreach ($rawUnassignedStock as $us) {
+                $normStage = strtoupper(trim((string)$us->stage));
+                if (in_array($normStage, ['FG', 'FINISHED'])) $normStage = 'FINISHED';
+                elseif (in_array($normStage, ['PKG', 'PM', 'PACKAGING'])) $normStage = 'PACKAGING';
+                elseif ($normStage === 'SEMI') $normStage = 'SEMI';
+                elseif ($normStage === 'RAW') $normStage = 'RAW';
+
+                $normG = strtoupper(trim((string)($us->grade ?? '')));
+                if (in_array($normG, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-'])) $normG = 'NONE';
+
+                $qty = (float) $us->quantity;
+
+                foreach (["{$us->product_id}_{$normG}_{$normStage}", "{$us->product_id}__{$normStage}"] as $k) {
+                    $locationMappings[$k][$primaryLocName] = ($locationMappings[$k][$primaryLocName] ?? 0) + $qty;
+                }
+            }
+        }
+
+        return $locationMappings;
     }
 
     public function clearStock(Request $request)
@@ -1623,143 +1678,12 @@ class AdminController extends Controller
 
     public function liveStockApi()
     {
-        $hasLimitRate = $this->hasStockLimitsRateColumn();
-
-        $stageNormExpr = "CASE 
-            WHEN UPPER(TRIM(stocks.stage)) IN ('FG', 'FINISHED') THEN 'FINISHED'
-            WHEN UPPER(TRIM(stocks.stage)) IN ('PKG', 'PM', 'PACKAGING') THEN 'PACKAGING'
-            WHEN UPPER(TRIM(stocks.stage)) = 'SEMI' THEN 'SEMI'
-            WHEN UPPER(TRIM(stocks.stage)) = 'RAW' THEN 'RAW'
-            ELSE UPPER(TRIM(stocks.stage))
-        END";
-
-        $gradeNormExpr = "CASE 
-            WHEN stocks.grade IS NULL OR UPPER(TRIM(stocks.grade)) IN ('', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-') THEN 'NONE' 
-            ELSE UPPER(TRIM(stocks.grade)) 
-        END";
-
-        $stockAgg = DB::table('stocks')
-            ->selectRaw("
-                stocks.product_id,
-                {$stageNormExpr} as norm_stage,
-                {$gradeNormExpr} as norm_grade,
-                SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
-            ")
-            ->groupBy('stocks.product_id', DB::raw('norm_stage'), DB::raw('norm_grade'));
-
-        $allStock = DB::table(DB::raw("({$stockAgg->toSql()}) as aggregated_stocks"))
-            ->mergeBindings($stockAgg)
-            ->join('products', 'aggregated_stocks.product_id', '=', 'products.id')
-            ->selectRaw("
-                aggregated_stocks.product_id as productId,
-                products.name,
-                products.type,
-                products.unit,
-                products.rate as product_rate,
-                products.rate,
-                products.threshold,
-                products.sort_order,
-                aggregated_stocks.norm_stage as stage,
-                aggregated_stocks.norm_grade as grade,
-                COALESCE(products.threshold, 0) as alert_limit,
-                aggregated_stocks.quantity
-            ")
-            ->where('aggregated_stocks.quantity', '>=', 0)
-            ->orderBy('aggregated_stocks.norm_stage')
-            ->orderBy('products.name', 'asc')
-            ->orderBy('aggregated_stocks.norm_grade', 'asc')
-            ->get();
-
-        // Attach limits and rates cleanly in PHP
-        $limits = DB::table('stock_limits')->get();
-        $limitsMap = [];
-        foreach ($limits as $l) {
-            $st = strtoupper(trim((string)$l->stage));
-            if (in_array($st, ['FG', 'FINISHED'])) $st = 'FINISHED';
-            elseif (in_array($st, ['PKG', 'PM', 'PACKAGING'])) $st = 'PACKAGING';
-            elseif ($st === 'SEMI') $st = 'SEMI';
-            elseif ($st === 'RAW') $st = 'RAW';
-
-            $gr = strtoupper(trim((string)($l->grade ?? '')));
-            if (in_array($gr, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-'])) $gr = 'NONE';
-
-            $key = "{$l->product_id}_{$st}_{$gr}";
-            if (!isset($limitsMap[$key])) {
-                $limitsMap[$key] = $l;
-            } else {
-                if (($l->alert_limit ?? 0) > ($limitsMap[$key]->alert_limit ?? 0)) {
-                    $limitsMap[$key]->alert_limit = $l->alert_limit;
-                }
-                if ($hasLimitRate && isset($l->rate) && ($l->rate ?? 0) > ($limitsMap[$key]->rate ?? 0)) {
-                    $limitsMap[$key]->rate = $l->rate;
-                }
-            }
-        }
-
-        foreach ($allStock as $item) {
-            $key = "{$item->productId}_{$item->stage}_{$item->grade}";
-            $lim = $limitsMap[$key] ?? null;
-            $limitRate = $hasLimitRate && $lim ? (float)($lim->rate ?? 0) : 0;
-            $item->rate = $limitRate > 0 ? $limitRate : (float)($item->product_rate ?? $item->rate ?? 0);
-
-            $alertLim = $lim ? (float)($lim->alert_limit ?? 0) : 0;
-            $thresh = (float)($item->threshold ?? 0);
-            $item->alert_limit = $alertLim > 0 ? $alertLim : $thresh;
-        }
-
-        $allStock = $allStock->unique(fn($item) => "{$item->productId}_{$item->stage}_{$item->grade}")->values();
+        $allStock = $this->getAggregatedLiveStock();
 
         $allLocations = Location::orderBy('name')->get(['id', 'name']);
         $primaryLocName = $allLocations->first(fn($l) => in_array(strtoupper(trim($l->name)), ['MAIN WAREHOUSE', 'DEFAULT', 'GENERAL', 'WAREHOUSE', 'MAIN']))?->name ?: $allLocations->first()?->name;
 
-        // Fetch location mappings from DB with normalized stage and grade
-        $locationStock = DB::table('stocks')
-            ->join('locations', 'stocks.location_id', '=', 'locations.id')
-            ->selectRaw("
-                stocks.product_id,
-                {$stageNormExpr} as norm_stage,
-                {$gradeNormExpr} as norm_grade,
-                locations.name as location_name,
-                SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity
-            ")
-            ->groupBy('stocks.product_id', DB::raw('norm_stage'), DB::raw('norm_grade'), 'locations.name')
-            ->havingRaw("quantity > 0")
-            ->get();
-
-        $unassignedStock = DB::table('stocks')
-            ->whereNull('stocks.location_id')
-            ->selectRaw("
-                stocks.product_id,
-                {$stageNormExpr} as norm_stage,
-                {$gradeNormExpr} as norm_grade,
-                SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as quantity
-            ")
-            ->groupBy('stocks.product_id', DB::raw('norm_stage'), DB::raw('norm_grade'))
-            ->havingRaw("quantity > 0")
-            ->get();
-
-        $locationMappings = [];
-        foreach ($locationStock as $ls) {
-            $normG = $ls->norm_grade;
-            $normStage = $ls->norm_stage;
-            $qty = (float) $ls->quantity;
-
-            foreach (["{$ls->product_id}_{$normG}_{$normStage}", "{$ls->product_id}__{$normStage}"] as $k) {
-                $locationMappings[$k][$ls->location_name] = ($locationMappings[$k][$ls->location_name] ?? 0) + $qty;
-            }
-        }
-
-        if ($primaryLocName) {
-            foreach ($unassignedStock as $us) {
-                $normG = $us->norm_grade;
-                $normStage = $us->norm_stage;
-                $qty = (float) $us->quantity;
-
-                foreach (["{$us->product_id}_{$normG}_{$normStage}", "{$us->product_id}__{$normStage}"] as $k) {
-                    $locationMappings[$k][$primaryLocName] = ($locationMappings[$k][$primaryLocName] ?? 0) + $qty;
-                }
-            }
-        }
+        $locationMappings = $this->getLocationAndUnassignedMappings($primaryLocName);
 
         return response()->json([
             'success' => true,

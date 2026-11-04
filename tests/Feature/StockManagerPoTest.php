@@ -42,7 +42,7 @@ class StockManagerPoTest extends TestCase
             'id' => $this->stockManagerUser->id,
             'name' => $this->stockManagerUser->name,
             'role' => 'STOCK_MANAGER',
-            'permissions' => ['view_stock_manager_po'],
+            'permissions' => ['view_stock_manager_po', 'edit_stock_manager_po'],
         ]];
 
         $response = $this->withSession($session)->get('/stock_manager/po');
@@ -62,7 +62,7 @@ class StockManagerPoTest extends TestCase
             'id' => $this->stockManagerUser->id,
             'name' => $this->stockManagerUser->name,
             'role' => 'STOCK_MANAGER',
-            'permissions' => ['view_stock_manager_po'],
+            'permissions' => ['view_stock_manager_po', 'edit_stock_manager_po'],
         ]];
 
         $response = $this->withSession($session)->post('/stock_manager/po', [
@@ -87,7 +87,7 @@ class StockManagerPoTest extends TestCase
             'id' => $this->stockManagerUser->id,
             'name' => $this->stockManagerUser->name,
             'role' => 'STOCK_MANAGER',
-            'permissions' => ['view_stock_manager_po'],
+            'permissions' => ['view_stock_manager_po', 'edit_stock_manager_po'],
         ]];
 
         $response = $this->withSession($session)->post('/stock_manager/po', [
@@ -111,7 +111,7 @@ class StockManagerPoTest extends TestCase
             'id' => $this->stockManagerUser->id,
             'name' => $this->stockManagerUser->name,
             'role' => 'STOCK_MANAGER',
-            'permissions' => ['view_stock_manager_po'],
+            'permissions' => ['view_stock_manager_po', 'edit_stock_manager_po'],
         ]];
 
         $response = $this->withSession($session)->postJson('/stock_manager/po/receive', [
@@ -147,7 +147,7 @@ class StockManagerPoTest extends TestCase
             'id' => $this->stockManagerUser->id,
             'name' => $this->stockManagerUser->name,
             'role' => 'STOCK_MANAGER',
-            'permissions' => ['view_stock_manager_po'],
+            'permissions' => ['view_stock_manager_po', 'edit_stock_manager_po'],
         ]];
 
         $response = $this->withSession($session)->get('/stock_manager/po');

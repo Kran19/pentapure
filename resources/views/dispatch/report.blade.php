@@ -179,7 +179,9 @@
 
   $authUserRole = strtoupper(session('auth_user')['role'] ?? auth()->user()->role ?? '');
   // Do NOT show rate to DISPATCH user (or when accessing the dispatch portal)
-  $showRate = in_array($authUserRole, ['ADMIN', 'SUB_ADMIN']) && !str_starts_with(strtolower(request()->segment(1)), 'dispatch');
+  $isDispatchRoute = str_contains(strtolower(request()->path()), 'dispatch');
+  $isDispatchUser = in_array($authUserRole, ['DISPATCH', 'DISPATCH_USER', 'DISPATCHER', 'DISPATCH_MANAGER']);
+  $showRate = in_array($authUserRole, ['ADMIN', 'SUB_ADMIN']) && !$isDispatchRoute && !$isDispatchUser;
 @endphp
 <style>
 .status-tabs-wrapper {
@@ -525,7 +527,9 @@ html.dark-mode .highlight-dispatch-date,
         </div>
         <div style="display:flex; align-items:center; gap:10px; text-align:right; flex-wrap:nowrap;">
           <div style="display:flex; flex-direction:column; gap:5px; align-items:flex-end;">
+            @if($showRate)
             <div style="font-weight:700; font-size:1.1rem; color:var(--primary, #D88A00);">₹{{ number_format($d['orderTotal'] ?? 0, 2) }}</div>
+            @endif
             <a href="{{ url(request()->segment(1) . '/sales/order/pdf/' . ($d['orderId'] ?? $d['id'])) }}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm" style="width:auto; padding:0.3rem 0.75rem; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-weight:600; background:var(--primary, #D88A00); color:#000; white-space:nowrap;">
               📄 Order PDF
             </a>
@@ -591,10 +595,12 @@ html.dark-mode .highlight-dispatch-date,
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Remaining Qty</div>
             <div style="font-weight:700; font-size:0.95rem; color:#ef4444;">{{ number_format($d['remainingQty'] ?? 0, 3) }} kg</div>
           </div>
+          @if($showRate)
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Amount</div>
             <div style="font-weight:700; font-size:0.95rem; color:var(--primary, #D88A00);">₹{{ number_format($d['orderTotal'] ?? 0, 2) }}</div>
           </div>
+          @endif
         </div>
 
         <!-- Sales Note / Special Instructions -->

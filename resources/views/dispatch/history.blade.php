@@ -146,6 +146,11 @@
     ? request()->segment(1)
     : (session('auth_user')['login_slug'] ?? strtolower(session('auth_user')['role'] ?? 'dispatch'));
   $pdfUrl = route('history.pdf', ['user_slug' => $userSlug, 'panel' => 'dispatch']) . '?range=' . $dateRange . '&start=' . $startDate . '&end=' . $endDate . '&company_id=' . $companyId . '&status=' . ($statusFilter === 'ALL' ? '' : $statusFilter) . '&q=' . $q;
+
+  $authUserRole = strtoupper(session('auth_user')['role'] ?? auth()->user()->role ?? '');
+  $isDispatchRoute = str_contains(strtolower(request()->path()), 'dispatch');
+  $isDispatchUser = in_array($authUserRole, ['DISPATCH', 'DISPATCH_USER', 'DISPATCHER', 'DISPATCH_MANAGER']);
+  $showRate = in_array($authUserRole, ['ADMIN', 'SUB_ADMIN']) && !$isDispatchRoute && !$isDispatchUser;
 @endphp
 <style>
 /* Dispatch Item Badges */
@@ -580,10 +585,12 @@
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Pending Qty</div>
             <div style="font-weight:700; font-size:0.95rem; color:#b91c1c;">{{ $fmtQty($d['totalRemainingQty'] ?? 0) }}</div>
           </div>
+          @if($showRate)
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">Order Value</div>
             <div style="font-weight:700; font-size:1.1rem; color:var(--primary, #D88A00);">₹{{ number_format($d['orderTotal'] ?? 0, 2) }}</div>
           </div>
+          @endif
           <div>
             <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:3px;">LR Status</div>
             <div>{!! $lrStatus !!}</div>

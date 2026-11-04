@@ -175,8 +175,8 @@ class AdminStockBulkAddTest extends TestCase
 
         $this->assertStringContainsString('window.adminMasterLocations =', $content);
         $this->assertStringContainsString('Custom Cold Storage', $content);
-        $this->assertStringContainsString('swal-adj-loc', $content);
-        $this->assertStringContainsString('swal-single-qty-input', $content);
+        $this->assertStringContainsString('swal-locations-table-body', $content);
+        $this->assertStringContainsString('swal-new-total-stock', $content);
     }
 
     public function test_adjust_stock_set_override_exact_quantity(): void

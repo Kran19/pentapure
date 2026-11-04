@@ -59,7 +59,9 @@
 
   $authUserRole = strtoupper(session('auth_user')['role'] ?? auth()->user()->role ?? '');
   // Do NOT show rate to DISPATCH user (or when accessing the dispatch portal)
-  $showRate = in_array($authUserRole, ['ADMIN', 'SUB_ADMIN']) && !str_starts_with(strtolower(request()->segment(1)), 'dispatch');
+  $isDispatchRoute = str_contains(strtolower(request()->path()), 'dispatch');
+  $isDispatchUser = in_array($authUserRole, ['DISPATCH', 'DISPATCH_USER', 'DISPATCHER', 'DISPATCH_MANAGER']);
+  $showRate = in_array($authUserRole, ['ADMIN', 'SUB_ADMIN']) && !$isDispatchRoute && !$isDispatchUser;
 @endphp
 
 <style>
