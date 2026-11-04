@@ -299,6 +299,16 @@ class MonthlyWorkerSalaryCalculationTest extends TestCase
         $session = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
 
         $dept = Department::create(['name' => 'PACKING_DEPT']);
+        $activeWorker = Worker::create([
+            'name'           => 'Active Worker A',
+            'department_id'  => $dept->id,
+            'role'           => 'Operator',
+            'shift_type'     => 'DAY',
+            'salary_type'    => 'DAILY',
+            'salary_amount'  => 600.00,
+            'daily_salary'   => 600.00,
+            'status'         => 'ACTIVE',
+        ]);
         $worker = Worker::create([
             'name'           => 'Ramesh Patel',
             'department_id'  => $dept->id,
@@ -317,6 +327,7 @@ class MonthlyWorkerSalaryCalculationTest extends TestCase
         $contentOct = $responseOct->getContent();
 
         $reportDataOct = $responseOct->original->getData()['reportData'] ?? [];
+        $this->assertArrayHasKey($worker->id, $reportDataOct);
         $this->assertFalse($reportDataOct[$worker->id]['is_inactive']);
 
         // Row should have data-status="active"
@@ -332,24 +343,45 @@ class MonthlyWorkerSalaryCalculationTest extends TestCase
         $pdfOct = $this->withSession($session)->get('/admin/attendance/reports/summary/pdf?month=2026-10');
         $pdfOct->assertStatus(200);
 
-        // In November 2026, worker IS INACTIVE
+        // In November 2026 (the next month): Ramesh Patel is INACTIVE and has NO attendance in November.
+        // He should NOT be shown in November reports or PDFs at all!
         $responseNov = $this->withSession($session)->get('/admin/attendance/reports?month=2026-11');
         $responseNov->assertStatus(200);
         $contentNov = $responseNov->getContent();
 
         $reportDataNov = $responseNov->original->getData()['reportData'] ?? [];
-        $this->assertTrue($reportDataNov[$worker->id]['is_inactive']);
-
-        // Row should have data-status="inactive"
-        $this->assertStringContainsString('data-status="inactive"', $contentNov);
-        $this->assertMatchesRegularExpression('/Ramesh Patel\s*<span[^>]*>INACTIVE<\/span>/i', $contentNov);
-
-        // November Summary PDF blade should show (INACTIVE)
-        $summaryHtmlNov = view('pdf.monthly-payroll-summary', ['reportData' => $reportDataNov, 'month' => '2026-11'])->render();
-        $this->assertMatchesRegularExpression('/RAMESH PATEL\s*<span[^>]*>\(INACTIVE\)<\/span>/i', $summaryHtmlNov);
+        $this->assertArrayNotHasKey($worker->id, $reportDataNov);
+        $this->assertArrayHasKey($activeWorker->id, $reportDataNov);
+        $this->assertStringNotContainsString('data-name="ramesh patel"', $contentNov);
+        $this->assertStringContainsString('data-name="active worker a"', $contentNov);
 
         $pdfNov = $this->withSession($session)->get('/admin/attendance/reports/summary/pdf?month=2026-11');
         $pdfNov->assertStatus(200);
+
+        // If an inactive worker DOES have attendance records in a month (e.g. worked before inactivation):
+        \App\Models\Attendance::create([
+            'worker_id' => $worker->id,
+            'date' => '2026-11-01',
+            'status' => 'PRESENT',
+            'overtime_hours' => 0,
+        ]);
+
+        $responseNovWithAtt = $this->withSession($session)->get('/admin/attendance/reports?month=2026-11');
+        $responseNovWithAtt->assertStatus(200);
+        $contentNovWithAtt = $responseNovWithAtt->getContent();
+        $reportDataNovWithAtt = $responseNovWithAtt->original->getData()['reportData'] ?? [];
+
+        // Now he shows up with his earned attendance and INACTIVE badge
+        $this->assertArrayHasKey($worker->id, $reportDataNovWithAtt);
+        $this->assertTrue($reportDataNovWithAtt[$worker->id]['is_inactive']);
+        $this->assertStringContainsString('data-status="inactive"', $contentNovWithAtt);
+        $this->assertMatchesRegularExpression('/Ramesh Patel\s*<span[^>]*>INACTIVE<\/span>/i', $contentNovWithAtt);
+
+        // But in December 2026 (where he has 0 attendance), he again does NOT show
+        $responseDec = $this->withSession($session)->get('/admin/attendance/reports?month=2026-12');
+        $responseDec->assertStatus(200);
+        $reportDataDec = $responseDec->original->getData()['reportData'] ?? [];
+        $this->assertArrayNotHasKey($worker->id, $reportDataDec);
     }
 }
 

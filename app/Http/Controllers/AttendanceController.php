@@ -1206,6 +1206,9 @@ class AttendanceController extends Controller
         $reportData = [];
         foreach ($workers as $w) {
             $adj = $adjustments->get($w->id);
+            if (!$this->shouldIncludeWorkerInMonthlyReport($w, $month, $w->attendances, $adj)) {
+                continue;
+            }
             $reportData[$w->id] = $this->calculateWorkerMonthlyPayroll(
                 $w,
                 $w->attendances,
@@ -1344,7 +1347,9 @@ class AttendanceController extends Controller
         $startDate = Carbon::parse($month)->startOfMonth()->toDateString();
         $endDate   = Carbon::parse($month)->endOfMonth()->toDateString();
 
-        $workersQuery = Worker::with('department');
+        $workersQuery = Worker::with(['department', 'attendances' => function($q) use ($startDate, $endDate) {
+            $q->whereBetween('date', [$startDate, $endDate]);
+        }]);
 
         $allowedDeptIds = $this->getAllowedDeptIds();
         if (!empty($allowedDeptIds)) {
@@ -1353,8 +1358,14 @@ class AttendanceController extends Controller
 
         $workers = $workersQuery->orderBy('name')->get();
 
+        $adjustments = WorkerMonthlyAdjustment::where('month', $month)->get()->keyBy('worker_id');
+
         $allData = [];
         foreach($workers as $worker) {
+            $adj = $adjustments->get($worker->id);
+            if (!$this->shouldIncludeWorkerInMonthlyReport($worker, $month, $worker->attendances, $adj)) {
+                continue;
+            }
             $allData[] = $this->prepareWorkerReportData($request, $worker->id);
         }
 
@@ -1398,6 +1409,9 @@ class AttendanceController extends Controller
         $reportData = [];
         foreach ($workers as $w) {
             $adj = $adjustments->get($w->id);
+            if (!$this->shouldIncludeWorkerInMonthlyReport($w, $month, $w->attendances, $adj)) {
+                continue;
+            }
             $reportData[$w->id] = $this->calculateWorkerMonthlyPayroll(
                 $w,
                 $w->attendances,
@@ -1627,6 +1641,73 @@ class AttendanceController extends Controller
             'payable_salary'    => $payableSalary,
             'adjustment'        => $adjustment
         ];
+    }
+
+    /**
+     * Determine if a worker should be included in a given month's report / PDF.
+     * Active workers are always included.
+     * Inactive workers are included if:
+     * 1) They were inactivated after this month (i.e. they were active throughout this month), OR
+     * 2) They have attendance records in this month, OR
+     * 3) They have a non-zero adjustment/advance or paid status in this month.
+     * Inactive workers with zero attendance and zero adjustments are excluded.
+     */
+    protected function shouldIncludeWorkerInMonthlyReport(Worker $worker, string $month, $attendances = null, ?WorkerMonthlyAdjustment $adj = null): bool
+    {
+        if ($worker->status === 'ACTIVE') {
+            return true;
+        }
+
+        $monthEnd = Carbon::parse($month)->endOfMonth()->toDateString();
+        $inactivatedAtStr = !empty($worker->inactivated_at)
+            ? Carbon::parse($worker->inactivated_at)->toDateString()
+            : null;
+
+        // If inactivated after the end of this month, worker was active during this month
+        if ($inactivatedAtStr && $inactivatedAtStr > $monthEnd) {
+            return true;
+        }
+
+        // Check if worker has attendances in this month
+        if ($attendances !== null) {
+            if ($attendances instanceof \Illuminate\Support\Collection || is_array($attendances)) {
+                if (count($attendances) > 0) {
+                    return true;
+                }
+            }
+        } else {
+            $monthStart = Carbon::parse($month)->startOfMonth()->toDateString();
+            $hasAtt = Attendance::where('worker_id', $worker->id)
+                ->whereBetween('date', [$monthStart, $monthEnd])
+                ->exists();
+            if ($hasAtt) {
+                return true;
+            }
+        }
+
+        // Check if worker has any monthly adjustment/payment in this month
+        if ($adj) {
+            $hasAdj = ((float)($adj->advance ?? 0) != 0)
+                   || ((float)($adj->petrol_food_amount ?? 0) != 0)
+                   || !empty($adj->is_paid);
+            if ($hasAdj) {
+                return true;
+            }
+        } else {
+            $hasAdj = WorkerMonthlyAdjustment::where('worker_id', $worker->id)
+                ->where('month', $month)
+                ->where(function($q) {
+                    $q->where('advance', '!=', 0)
+                      ->orWhere('petrol_food_amount', '!=', 0)
+                      ->orWhere('is_paid', true);
+                })
+                ->exists();
+            if ($hasAdj) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function profile(Request $request)
