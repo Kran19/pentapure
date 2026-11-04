@@ -124,7 +124,7 @@
                 @if($deptTotalAllowance != 0)
                   <div style="font-size:0.7rem; font-weight:600; margin-top:3px; line-height:1.35; white-space:nowrap;">
                     @if($deptTotalAllowance > 0)
-                      <span style="color:#2563eb;">OTHER: ₹{{ number_format($deptTotalAllowance, 0) }}</span>
+                      <span style="color:#16a34a;">OTHER: ₹{{ number_format($deptTotalAllowance, 0) }}</span>
                     @else
                       <span style="color:#dc2626;">- OTHER: ₹{{ number_format(abs($deptTotalAllowance), 0) }}</span>
                     @endif
@@ -226,7 +226,7 @@
                     @endphp
                     <div style="font-size:0.7rem; font-weight:600; margin-top:3px; line-height:1.35; white-space:nowrap;">
                       @if(($data['allowance'] ?? 0) > 0)
-                        <span style="color:#2563eb;" @if($otherTooltip) title="{{ $otherTooltip }}" @endif>OTHER: ₹{{ number_format($data['allowance'], 0) }}</span>
+                        <span style="color:#16a34a;" @if($otherTooltip) title="{{ $otherTooltip }}" @endif>OTHER: ₹{{ number_format($data['allowance'], 0) }}</span>
                       @else
                         <span style="color:#dc2626;" @if($otherTooltip) title="{{ $otherTooltip }}" @endif>- OTHER: ₹{{ number_format(abs($data['allowance']), 0) }}</span>
                       @endif
@@ -302,7 +302,7 @@
                 @if(!empty($reportData) && $grandTotalAllowance != 0)
                   <div style="font-size:0.75rem; font-weight:600; margin-top:3px; line-height:1.35; white-space:nowrap;">
                     @if($grandTotalAllowance > 0)
-                      <span style="color:#2563eb;">OTHER: ₹{{ number_format($grandTotalAllowance, 0) }}</span>
+                      <span style="color:#16a34a;">OTHER: ₹{{ number_format($grandTotalAllowance, 0) }}</span>
                     @else
                       <span style="color:#dc2626;">- OTHER: ₹{{ number_format(abs($grandTotalAllowance), 0) }}</span>
                     @endif

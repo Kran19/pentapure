@@ -155,11 +155,11 @@
                             $deptTotalAllowance = array_sum(array_column($workers, 'allowance'));
                         @endphp
                         @if($deptTotalAllowance != 0)
-                            <div style="font-size:7px; font-weight:normal; color:#64748b; margin-top:1px;">
+                            <div style="font-size:7px; font-weight:normal; margin-top:1px;">
                                 @if($deptTotalAllowance > 0)
-                                    OTHER:₹{{ number_format($deptTotalAllowance, 0) }}
+                                    <span style="color:#16a34a;">OTHER:₹{{ number_format($deptTotalAllowance, 0) }}</span>
                                 @else
-                                    -OTHER:₹{{ number_format(abs($deptTotalAllowance), 0) }}
+                                    <span style="color:#c2410c;">-OTHER:₹{{ number_format(abs($deptTotalAllowance), 0) }}</span>
                                 @endif
                             </div>
                         @endif
@@ -222,11 +222,11 @@
                         <td style="text-align:right; font-weight:bold; color:#0f172a;">
                             <div>₹{{ number_format($payable, 2) }}</div>
                             @if(($data['allowance'] ?? 0) != 0)
-                                <div style="font-size:7px; font-weight:normal; color:#64748b; margin-top:1px;">
+                                <div style="font-size:7px; font-weight:normal; margin-top:1px;">
                                     @if(($data['allowance'] ?? 0) > 0)
-                                        OTHER:₹{{ number_format($data['allowance'], 0) }}
+                                        <span style="color:#16a34a;">OTHER:₹{{ number_format($data['allowance'], 0) }}</span>
                                     @else
-                                        -OTHER:₹{{ number_format(abs($data['allowance']), 0) }}
+                                        <span style="color:#c2410c;">-OTHER:₹{{ number_format(abs($data['allowance']), 0) }}</span>
                                     @endif
                                 </div>
                             @endif
@@ -263,11 +263,11 @@
                         $grandTotalAllowance = array_sum(array_column($reportData, 'allowance'));
                     @endphp
                     @if(!empty($reportData) && $grandTotalAllowance != 0)
-                        <div style="font-size:7px; font-weight:normal; color:#64748b; margin-top:1px;">
+                        <div style="font-size:7px; font-weight:normal; margin-top:1px;">
                             @if($grandTotalAllowance > 0)
-                                OTHER:₹{{ number_format($grandTotalAllowance, 0) }}
+                                <span style="color:#16a34a;">OTHER:₹{{ number_format($grandTotalAllowance, 0) }}</span>
                             @else
-                                -OTHER:₹{{ number_format(abs($grandTotalAllowance), 0) }}
+                                <span style="color:#c2410c;">-OTHER:₹{{ number_format(abs($grandTotalAllowance), 0) }}</span>
                             @endif
                         </div>
                     @endif
