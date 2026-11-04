@@ -94,7 +94,7 @@
               $deptWorkerCount = count($workers);
               $deptSlug = \Illuminate\Support\Str::slug($deptName ?: 'other');
             @endphp
-            <tr class="dept-header-row" data-dept-group="{{ $deptSlug }}" style="background:var(--table-hover, #FFF9EC); border-top:2px solid var(--border-soft, #e5e7eb); border-bottom:1px solid var(--border-soft, #e5e7eb);">
+            <tr class="dept-header-row" data-dept-group="{{ $deptSlug }}" style="background:var(--table-selected, #FFE7A8); border-top:2px solid var(--border-soft, #e5e7eb); border-bottom:1px solid var(--border-soft, #e5e7eb);">
               <td colspan="5" style="font-weight:bold; color:var(--secondary); font-size:0.92rem;">
                 📂 {{ strtoupper($deptName) }} <span style="font-size:0.8rem; font-weight:600; opacity:0.85; margin-left:0.4rem; color:var(--text-color);">(Total Workers: {{ $deptWorkerCount }})</span>
               </td>
@@ -281,7 +281,7 @@
               $grandTotalEarned = array_sum(array_column($reportData, 'attendance_salary'));
               $grandTotalAllowance = array_sum(array_column($reportData, 'allowance'));
             @endphp
-            <tr class="payroll-grand-total-row" style="background:var(--glass-bg); font-weight:bold;">
+            <tr class="payroll-grand-total-row" style="background:var(--table-selected, #FFE7A8); font-weight:bold;">
               <td colspan="4" style="text-align:right;">Grand Total Payroll Liability:</td>
               <td class="no-print"></td>
               <td style="color:#000000; font-size:0.95rem; font-weight:bold;" data-csv-value="{{ $grandTotalPresent }}">
@@ -641,8 +641,8 @@ document.addEventListener('DOMContentLoaded', function() {
 /* Department Group Header Rows Highlight */
 #printable-report table tbody tr.dept-header-row,
 #printable-report table tbody tr.dept-header-row td {
-  background: var(--table-hover, #FFF9EC) !important;
-  background-color: var(--table-hover, #FFF9EC) !important;
+  background: var(--table-selected, #FFE7A8) !important;
+  background-color: var(--table-selected, #FFE7A8) !important;
 }
 
 #printable-report table tbody tr.dept-header-row:hover,
@@ -654,8 +654,8 @@ document.addEventListener('DOMContentLoaded', function() {
 /* Grand Total Row Highlight */
 #printable-report table tbody tr.payroll-grand-total-row,
 #printable-report table tbody tr.payroll-grand-total-row td {
-  background: var(--table-hover, #FFF9EC) !important;
-  background-color: var(--table-hover, #FFF9EC) !important;
+  background: var(--table-selected, #FFE7A8) !important;
+  background-color: var(--table-selected, #FFE7A8) !important;
 }
 
 #printable-report table tbody tr.payroll-grand-total-row:hover,

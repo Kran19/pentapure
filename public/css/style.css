@@ -1559,8 +1559,8 @@ tr:hover td {
 
 .dept-header-row,
 .dept-header-row td {
-  background: var(--table-hover) !important;
-  background-color: var(--table-hover) !important;
+  background: var(--table-selected) !important;
+  background-color: var(--table-selected) !important;
 }
 
 .dept-header-row:hover,
