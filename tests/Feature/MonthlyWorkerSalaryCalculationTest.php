@@ -383,5 +383,53 @@ class MonthlyWorkerSalaryCalculationTest extends TestCase
         $reportDataDec = $responseDec->original->getData()['reportData'] ?? [];
         $this->assertArrayNotHasKey($worker->id, $reportDataDec);
     }
+
+    public function test_reports_shows_net_ot_when_ot_higher_and_net_ut_when_ut_higher(): void
+    {
+        $admin = $this->createAdmin();
+        $session = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
+
+        $dept = Department::create(['name' => 'PACKAGING']);
+
+        // Worker 1: OT is higher (142.5 OT, 18.0 UT -> Net +124.5 OT)
+        $workerOtHigh = Worker::create([
+            'name'          => 'Worker OT High',
+            'department_id' => $dept->id,
+            'role'          => 'Operator',
+            'shift_type'    => 'DAY',
+            'salary_type'   => 'DAILY',
+            'salary_amount' => 600.00,
+            'status'        => 'ACTIVE',
+        ]);
+
+        \App\Models\Attendance::create([
+            'worker_id' => $workerOtHigh->id,
+            'date' => '2026-10-01',
+            'status' => 'PRESENT',
+            'ot_ut' => 'OT',
+            'ot_ut_hours' => 142.5,
+            'overtime_hours' => 142.5,
+        ]);
+        \App\Models\Attendance::create([
+            'worker_id' => $workerOtHigh->id,
+            'date' => '2026-10-02',
+            'status' => 'PRESENT',
+            'ot_ut' => 'UT',
+            'ot_ut_hours' => 18.0,
+            'overtime_hours' => -18.0,
+        ]);
+
+        $response = $this->withSession($session)->get('/admin/attendance/reports?month=2026-10');
+        $response->assertStatus(200);
+        $content = $response->getContent();
+
+        // Must show net +124.5 OT, NOT both +142.5 OT and -18.0 UT
+        $this->assertStringContainsString('+124.5 OT', $content);
+        $this->assertStringNotContainsString('+142.5 OT', $content);
+
+        // Verify PDF summary also reflects net
+        $pdfResponse = $this->withSession($session)->get('/admin/attendance/reports/summary/pdf?month=2026-10');
+        $pdfResponse->assertStatus(200);
+    }
 }
 
