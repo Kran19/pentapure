@@ -1704,7 +1704,7 @@ class AttendanceController extends Controller
         $totalWageRound        = round($attendanceSalaryRound + $netOtUtAdjustment + $allowanceVal);
         $payableSalary         = round($totalWageRound - $totalAdvance);
 
-        $otherLabel = ($adjustment?->other_allowance_label && !in_array($adjustment->other_allowance_label, ['PETROL / FOODS', 'OTHER'])) 
+        $otherLabel = ($adjustment?->other_allowance_label && !in_array(strtoupper(trim($adjustment->other_allowance_label)), ['PETROL / FOODS', 'OTHER'])) 
             ? trim($adjustment->other_allowance_label) 
             : null;
 
@@ -1730,8 +1730,8 @@ class AttendanceController extends Controller
             'allowance'         => $allowanceVal,
             'allowance_amount'  => max(0, $allowanceVal),
             'other_deduction'   => abs(min(0, $allowanceVal)),
-            'allowance_label'   => $otherLabel ?: 'Allw',
-            'deduction_label'   => $otherLabel ?: 'Other',
+            'allowance_label'   => $otherLabel ? strtoupper($otherLabel) : 'OTHER',
+            'deduction_label'   => $otherLabel ? strtoupper($otherLabel) : 'OTHER',
             'daily_advance'     => $dailyAdvanceTotal,
             'advance'           => $totalAdvance,
             'total_wage'        => $totalWageRound,

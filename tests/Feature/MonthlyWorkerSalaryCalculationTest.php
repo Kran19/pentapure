@@ -431,5 +431,88 @@ class MonthlyWorkerSalaryCalculationTest extends TestCase
         $pdfResponse = $this->withSession($session)->get('/admin/attendance/reports/summary/pdf?month=2026-10');
         $pdfResponse->assertStatus(200);
     }
+
+    public function test_reports_shows_load_pete_and_full_calculation_in_total_payable_column(): void
+    {
+        $admin = $this->createAdmin();
+        $session = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
+
+        $dept = Department::create(['name' => 'MUKADAM']);
+
+        // Worker with LOAD PETE allowance (+1200)
+        $workerLoadAdd = Worker::create([
+            'name'          => 'Mukadam Worker 1',
+            'department_id' => $dept->id,
+            'role'          => 'Labour',
+            'shift_type'    => 'DAY',
+            'salary_type'   => 'DAILY',
+            'salary_amount' => 500.00,
+            'status'        => 'ACTIVE',
+        ]);
+
+        for ($d = 1; $d <= 10; $d++) {
+            \App\Models\Attendance::create([
+                'worker_id' => $workerLoadAdd->id,
+                'date' => sprintf('2026-10-%02d', $d),
+                'status' => 'PRESENT',
+                'ot_ut' => ($d === 1) ? 'OT' : 'NONE',
+                'ot_ut_hours' => ($d === 1) ? 2.0 : 0,
+                'overtime_hours' => ($d === 1) ? 2.0 : 0,
+            ]);
+        }
+
+        \App\Models\WorkerMonthlyAdjustment::create([
+            'worker_id' => $workerLoadAdd->id,
+            'month' => '2026-10',
+            'petrol_food_amount' => 1200.00,
+            'other_allowance_label' => 'LOAD PETE',
+            'advance' => 300.00,
+        ]);
+
+        // Worker with LOAD PETE deduction (-450)
+        $workerLoadDeduct = Worker::create([
+            'name'          => 'Mukadam Worker 2',
+            'department_id' => $dept->id,
+            'role'          => 'Labour',
+            'shift_type'    => 'DAY',
+            'salary_type'   => 'DAILY',
+            'salary_amount' => 400.00,
+            'status'        => 'ACTIVE',
+        ]);
+
+        for ($d = 1; $d <= 5; $d++) {
+            \App\Models\Attendance::create([
+                'worker_id' => $workerLoadDeduct->id,
+                'date' => sprintf('2026-10-%02d', $d),
+                'status' => 'PRESENT',
+                'ot_ut' => 'NONE',
+            ]);
+        }
+
+        \App\Models\WorkerMonthlyAdjustment::create([
+            'worker_id' => $workerLoadDeduct->id,
+            'month' => '2026-10',
+            'petrol_food_amount' => -450.00,
+            'other_allowance_label' => 'LOAD PETE',
+        ]);
+
+        $response = $this->withSession($session)->get('/admin/attendance/reports?month=2026-10');
+        $response->assertStatus(200);
+
+        $content = $response->getContent();
+
+        // Worker 1: 10 days * 500 = 5000 attendance salary
+        $this->assertStringContainsString('Earned: ₹5,000', $content);
+        $this->assertStringContainsString('+ LOAD PETE: ₹1,200', $content);
+        $this->assertStringContainsString('- Adv: ₹300', $content);
+
+        // Worker 2: 5 days * 400 = 2000 attendance salary
+        $this->assertStringContainsString('Earned: ₹2,000', $content);
+        $this->assertStringContainsString('- LOAD PETE: ₹450', $content);
+
+        // Summary PDF check
+        $pdfResponse = $this->withSession($session)->get('/admin/attendance/reports/summary/pdf?month=2026-10');
+        $pdfResponse->assertStatus(200);
+    }
 }
 

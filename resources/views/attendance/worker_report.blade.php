@@ -590,14 +590,14 @@ function quickSaveAllowance(label, amount) {
     if (label !== null) {
         formData.append('other_allowance_label', label);
     } else {
-        const modalLabel = document.querySelector('input[name="other_allowance_label"]');
+        const modalLabel = document.querySelector('input[name="other_allowance_label"]') || document.querySelector('.allowance-label-input');
         formData.append('other_allowance_label', modalLabel ? modalLabel.value : '');
     }
 
     if (amount !== null) {
         formData.append('petrol_food_amount', amount);
     } else {
-        const modalAmount = document.querySelector('input[name="petrol_food_amount"]');
+        const modalAmount = document.querySelector('input[name="petrol_food_amount"]') || document.querySelector('.allowance-amount-input');
         formData.append('petrol_food_amount', modalAmount ? modalAmount.value : 0);
     }
 
