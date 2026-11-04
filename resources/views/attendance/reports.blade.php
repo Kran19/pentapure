@@ -88,6 +88,7 @@
               $deptTotalOt = array_sum(array_column($workers, 'total_ot'));
               $deptTotalUt = array_sum(array_column($workers, 'total_ut'));
               $deptNetOtUt = $deptTotalOt - $deptTotalUt;
+              $deptNetOtUtAmount = array_sum(array_column($workers, 'ot_ut_adjustment'));
               $deptTotalAdvance = array_sum(array_column($workers, 'advance'));
               $deptTotalEarned = array_sum(array_column($workers, 'attendance_salary'));
               $deptTotalPayable = array_sum(array_map(fn($w) => (float)($w['payable_salary'] ?? $w['total_wage']), $workers));
@@ -108,9 +109,19 @@
               </td>
               <td style="font-weight:bold; font-size:0.9rem;" title="Total OT: {{ number_format($deptTotalOt, 1) }} | Total UT: {{ number_format($deptTotalUt, 1) }}" data-csv-value="{{ number_format($deptNetOtUt, 1, '.', '') }}">
                 @if($deptNetOtUt > 0)
-                  <span style="color:#16a34a;">+{{ number_format($deptNetOtUt, 1) }} OT</span>
+                  <div style="color:#16a34a;">+{{ number_format($deptNetOtUt, 1) }} OT</div>
+                  @if($deptNetOtUtAmount > 0)
+                    <div style="font-size:0.72rem; font-weight:700; color:#16a34a; margin-top:2px; white-space:nowrap;">
+                      ₹{{ number_format($deptNetOtUtAmount, 0) }}
+                    </div>
+                  @endif
                 @elseif($deptNetOtUt < 0)
-                  <span style="color:#ea580c;">-{{ number_format(abs($deptNetOtUt), 1) }} UT</span>
+                  <div style="color:#ea580c;">-{{ number_format(abs($deptNetOtUt), 1) }} UT</div>
+                  @if($deptNetOtUtAmount < 0)
+                    <div style="font-size:0.72rem; font-weight:700; color:#ea580c; margin-top:2px; white-space:nowrap;">
+                      -₹{{ number_format(abs($deptNetOtUtAmount), 0) }}
+                    </div>
+                  @endif
                 @else
                   <span style="color:var(--text-muted); opacity:0.6;">0.0</span>
                 @endif
@@ -202,11 +213,22 @@
                     $wOt = (float)($data['total_ot'] ?? 0);
                     $wUt = (float)($data['total_ut'] ?? 0);
                     $wNet = $wOt - $wUt;
+                    $wOtUtAmount = (float)($data['ot_ut_adjustment'] ?? (($data['ot_amount'] ?? 0) - ($data['ut_amount'] ?? 0)));
                   @endphp
                   @if($wNet > 0)
-                    <span style="color:#16a34a;" title="OT: {{ number_format($wOt, 1) }} | UT: {{ number_format($wUt, 1) }}">+{{ number_format($wNet, 1) }} OT</span>
+                    <div style="color:#16a34a;" title="OT: {{ number_format($wOt, 1) }} | UT: {{ number_format($wUt, 1) }}">+{{ number_format($wNet, 1) }} OT</div>
+                    @if($wOtUtAmount > 0)
+                      <div style="font-size:0.72rem; font-weight:700; color:#16a34a; margin-top:2px; white-space:nowrap;">
+                        ₹{{ number_format($wOtUtAmount, 0) }}
+                      </div>
+                    @endif
                   @elseif($wNet < 0)
-                    <span style="color:#ea580c;" title="OT: {{ number_format($wOt, 1) }} | UT: {{ number_format($wUt, 1) }}">-{{ number_format(abs($wNet), 1) }} UT</span>
+                    <div style="color:#ea580c;" title="OT: {{ number_format($wOt, 1) }} | UT: {{ number_format($wUt, 1) }}">-{{ number_format(abs($wNet), 1) }} UT</div>
+                    @if($wOtUtAmount < 0)
+                      <div style="font-size:0.72rem; font-weight:700; color:#ea580c; margin-top:2px; white-space:nowrap;">
+                        -₹{{ number_format(abs($wOtUtAmount), 0) }}
+                      </div>
+                    @endif
                   @else
                     <span style="color:var(--text-muted); opacity:0.6;">0.0</span>
                   @endif
@@ -283,6 +305,10 @@
               $grandTotalPresent = array_sum(array_column($reportData, 'present'));
               $grandTotalEarned = array_sum(array_column($reportData, 'attendance_salary'));
               $grandTotalAllowance = array_sum(array_column($reportData, 'allowance'));
+              $grandTotalOt = array_sum(array_column($reportData, 'total_ot'));
+              $grandTotalUt = array_sum(array_column($reportData, 'total_ut'));
+              $grandNetOtUtHours = $grandTotalOt - $grandTotalUt;
+              $grandNetOtUtAmount = array_sum(array_column($reportData, 'ot_ut_adjustment'));
             @endphp
             <tr class="payroll-grand-total-row" style="background:var(--table-selected, #FFE7A8); font-weight:bold;">
               <td colspan="4" style="text-align:right;">Grand Total Payroll Liability:</td>
@@ -295,7 +321,25 @@
                   </div>
                 @endif
               </td>
-              <td></td>
+              <td style="color:#000000; font-size:0.95rem; font-weight:bold;" data-csv-value="{{ number_format($grandNetOtUtHours, 1, '.', '') }}">
+                @if($grandNetOtUtHours > 0)
+                  <div style="color:#16a34a;">+{{ number_format($grandNetOtUtHours, 1) }} OT</div>
+                  @if($grandNetOtUtAmount > 0)
+                    <div style="font-size:0.72rem; font-weight:700; color:#16a34a; margin-top:2px; white-space:nowrap;">
+                      ₹{{ number_format($grandNetOtUtAmount, 0) }}
+                    </div>
+                  @endif
+                @elseif($grandNetOtUtHours < 0)
+                  <div style="color:#ea580c;">-{{ number_format(abs($grandNetOtUtHours), 1) }} UT</div>
+                  @if($grandNetOtUtAmount < 0)
+                    <div style="font-size:0.72rem; font-weight:700; color:#ea580c; margin-top:2px; white-space:nowrap;">
+                      -₹{{ number_format(abs($grandNetOtUtAmount), 0) }}
+                    </div>
+                  @endif
+                @else
+                  <span style="color:var(--text-muted); opacity:0.6;">0.0</span>
+                @endif
+              </td>
               <td style="color:#dc2626; font-size:1.05rem;" data-csv-value="{{ number_format($grandTotalAdvance, 2, '.', '') }}">{{ $grandTotalAdvance > 0 ? '₹' . number_format($grandTotalAdvance, 0) : '—' }}</td>
               <td style="color:var(--secondary); font-size:1.2rem;" data-csv-value="{{ number_format($grandTotal, 2, '.', '') }}">
                 <div>₹{{ number_format($grandTotal, 2) }}</div>
