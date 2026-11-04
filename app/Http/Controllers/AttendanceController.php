@@ -1464,6 +1464,7 @@ class AttendanceController extends Controller
             $workerNumber
         );
 
+        $isInactive         = $payroll['is_inactive'] ?? false;
         $presentDays        = $payroll['present'];
         $totalOT            = $payroll['total_ot'];
         $totalUT            = $payroll['total_ut'] ?? 0;
@@ -1478,7 +1479,7 @@ class AttendanceController extends Controller
         $payableSalary      = $payroll['payable_salary'];
 
         return compact(
-            'worker', 'workerNumber', 'attendances', 'month', 'start', 'end', 'daysInMonth',
+            'worker', 'workerNumber', 'isInactive', 'attendances', 'month', 'start', 'end', 'daysInMonth',
             'adjustment', 'presentDays', 'perDaySalary', 'attendanceSalary',
             'totalOT', 'totalUT', 'netOtHours', 'hourlyRate', 'otUtAdjustment', 'totalWage', 'dailyAdvanceTotal', 'totalAdvance', 'payableSalary'
         );
@@ -1487,6 +1488,15 @@ class AttendanceController extends Controller
     public function calculateWorkerMonthlyPayroll(Worker $worker, $attendances, ?WorkerMonthlyAdjustment $adjustment, string $month, ?int $workerNumber = null): array
     {
         $daysInMonth = Carbon::parse($month)->daysInMonth;
+        $monthEnd    = Carbon::parse($month)->endOfMonth()->toDateString();
+        $isInactive  = false;
+        if ($worker->status === 'INACTIVE') {
+            $inactivatedAtStr = !empty($worker->inactivated_at) 
+                ? Carbon::parse($worker->inactivated_at)->toDateString() 
+                : null;
+            $isInactive = empty($inactivatedAtStr) || $inactivatedAtStr <= $monthEnd;
+        }
+
         $totalOT = 0;
         $totalUT = 0;
         $dailyAdvanceTotal = 0;
@@ -1593,6 +1603,7 @@ class AttendanceController extends Controller
         return [
             'worker'            => $worker,
             'worker_number'     => $workerNumber,
+            'is_inactive'       => $isInactive,
             'present'           => $presentDays,
             'absent'            => $absentDays,
             'half'              => $halfDays,

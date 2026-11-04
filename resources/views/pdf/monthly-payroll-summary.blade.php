@@ -153,7 +153,7 @@
                         <td style="text-align:center; color:#64748b; font-weight:bold;">{{ $data['worker_number'] ?? '-' }}</td>
                         <td style="font-weight:bold; color:#0f172a;">
                             {{ strtoupper($data['worker']->name) }}
-                            @if($data['worker']->status === 'INACTIVE')
+                            @if(!empty($data['is_inactive']))
                                 <span style="font-size:7px; color:#b91c1c; font-weight:bold;">(INACTIVE)</span>
                             @endif
                         </td>

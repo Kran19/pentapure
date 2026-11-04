@@ -121,11 +121,11 @@
                   data-dept-group="{{ $deptSlug }}"
                   data-name="{{ strtolower($data['worker']->name) }}"
                   data-dept="{{ strtolower($deptName) }}"
-                  data-status="{{ strtolower($data['worker']->status ?? 'active') }}">
+                  data-status="{{ ($data['is_inactive'] ?? false) ? 'inactive' : 'active' }}">
                 <td style="font-weight:bold; color:var(--text-muted);">{{ $data['worker_number'] ?? '-' }}</td>
                 <td style="font-weight:600;">
                   {{ $data['worker']->name }}
-                  @if($data['worker']->status === 'INACTIVE')
+                  @if(!empty($data['is_inactive']))
                     <span style="font-size:0.65rem; background:rgba(239, 68, 68, 0.15); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.3); padding:1px 5px; border-radius:4px; font-weight:700; margin-left:4px; vertical-align:middle;">INACTIVE</span>
                   @endif
                 </td>

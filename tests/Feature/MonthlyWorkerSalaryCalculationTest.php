@@ -292,5 +292,64 @@ class MonthlyWorkerSalaryCalculationTest extends TestCase
         $pdfResponse = $this->withSession($session)->get('/admin/attendance/reports/summary/pdf?month=2026-10');
         $pdfResponse->assertStatus(200);
     }
+
+    public function test_worker_inactivated_in_november_does_not_show_as_inactive_in_october_reports(): void
+    {
+        $admin = $this->createAdmin();
+        $session = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
+
+        $dept = Department::create(['name' => 'PACKING_DEPT']);
+        $worker = Worker::create([
+            'name'           => 'Ramesh Patel',
+            'department_id'  => $dept->id,
+            'role'           => 'Helper',
+            'shift_type'     => 'DAY',
+            'salary_type'    => 'DAILY',
+            'salary_amount'  => 500.00,
+            'daily_salary'   => 500.00,
+            'status'         => 'INACTIVE',
+            'inactivated_at' => '2026-11-02',
+        ]);
+
+        // In October 2026, worker was ACTIVE (inactivation happened in November)
+        $responseOct = $this->withSession($session)->get('/admin/attendance/reports?month=2026-10');
+        $responseOct->assertStatus(200);
+        $contentOct = $responseOct->getContent();
+
+        $reportDataOct = $responseOct->original->getData()['reportData'] ?? [];
+        $this->assertFalse($reportDataOct[$worker->id]['is_inactive']);
+
+        // Row should have data-status="active"
+        $this->assertStringContainsString('data-name="ramesh patel"', $contentOct);
+        $this->assertStringContainsString('data-status="active"', $contentOct);
+        // The red INACTIVE badge should NOT be shown for Ramesh Patel in October
+        $this->assertDoesNotMatchRegularExpression('/Ramesh Patel\s*<span[^>]*>INACTIVE<\/span>/i', $contentOct);
+
+        // October Summary PDF blade should not show (INACTIVE)
+        $summaryHtmlOct = view('pdf.monthly-payroll-summary', ['reportData' => $reportDataOct, 'month' => '2026-10'])->render();
+        $this->assertDoesNotMatchRegularExpression('/RAMESH PATEL\s*<span[^>]*>\(INACTIVE\)<\/span>/i', $summaryHtmlOct);
+
+        $pdfOct = $this->withSession($session)->get('/admin/attendance/reports/summary/pdf?month=2026-10');
+        $pdfOct->assertStatus(200);
+
+        // In November 2026, worker IS INACTIVE
+        $responseNov = $this->withSession($session)->get('/admin/attendance/reports?month=2026-11');
+        $responseNov->assertStatus(200);
+        $contentNov = $responseNov->getContent();
+
+        $reportDataNov = $responseNov->original->getData()['reportData'] ?? [];
+        $this->assertTrue($reportDataNov[$worker->id]['is_inactive']);
+
+        // Row should have data-status="inactive"
+        $this->assertStringContainsString('data-status="inactive"', $contentNov);
+        $this->assertMatchesRegularExpression('/Ramesh Patel\s*<span[^>]*>INACTIVE<\/span>/i', $contentNov);
+
+        // November Summary PDF blade should show (INACTIVE)
+        $summaryHtmlNov = view('pdf.monthly-payroll-summary', ['reportData' => $reportDataNov, 'month' => '2026-11'])->render();
+        $this->assertMatchesRegularExpression('/RAMESH PATEL\s*<span[^>]*>\(INACTIVE\)<\/span>/i', $summaryHtmlNov);
+
+        $pdfNov = $this->withSession($session)->get('/admin/attendance/reports/summary/pdf?month=2026-11');
+        $pdfNov->assertStatus(200);
+    }
 }
 
