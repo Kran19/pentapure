@@ -67,7 +67,7 @@ class StockManagerPoTest extends TestCase
 
         $response = $this->withSession($session)->post('/stock_manager/po', [
             'product_id' => $this->product->id,
-            'quantity'   => 150.5,
+            'quantity'   => 150.5, this
             'note'       => 'Urgent procurement for batch A-102',
         ]);
 
