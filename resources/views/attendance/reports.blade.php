@@ -106,10 +106,13 @@
                   </div>
                 @endif
               </td>
-              <td style="font-weight:bold; font-size:0.9rem;" title="Total OT: {{ number_format($deptTotalOt, 1) }} | Total UT: {{ number_format($deptTotalUt, 1) }}">
-                {{ number_format($deptTotalOt, 1) }}
-                @if($deptTotalUt > 0)
-                  <span style="color:#ea580c; font-size:0.8rem; margin-left:4px;">(-{{ number_format($deptTotalUt, 1) }} UT)</span>
+              <td style="font-weight:bold; font-size:0.9rem;" title="Total OT: {{ number_format($deptTotalOt, 1) }} | Total UT: {{ number_format($deptTotalUt, 1) }}" data-csv-value="{{ number_format($deptNetOtUt, 1, '.', '') }}">
+                @if($deptNetOtUt > 0)
+                  <span style="color:#16a34a;">+{{ number_format($deptNetOtUt, 1) }} OT</span>
+                @elseif($deptNetOtUt < 0)
+                  <span style="color:#ea580c;">-{{ number_format(abs($deptNetOtUt), 1) }} UT</span>
+                @else
+                  <span style="color:var(--text-muted); opacity:0.6;">0.0</span>
                 @endif
               </td>
               <td style="font-weight:bold; font-size:0.95rem; color:#dc2626;" data-csv-value="{{ number_format($deptTotalAdvance, 2, '.', '') }}">{{ $deptTotalAdvance > 0 ? '₹' . number_format($deptTotalAdvance, 0) : '—' }}</td>

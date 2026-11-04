@@ -426,6 +426,7 @@ class MonthlyWorkerSalaryCalculationTest extends TestCase
         // Must show net +124.5 OT, NOT both +142.5 OT and -18.0 UT
         $this->assertStringContainsString('+124.5 OT', $content);
         $this->assertStringNotContainsString('+142.5 OT', $content);
+        $this->assertStringNotContainsString('(-18.0 UT)', $content);
 
         // Verify PDF summary also reflects net
         $pdfResponse = $this->withSession($session)->get('/admin/attendance/reports/summary/pdf?month=2026-10');

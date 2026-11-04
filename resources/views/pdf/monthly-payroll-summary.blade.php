@@ -142,7 +142,7 @@
                     </td>
                     <td style="text-align:center;">
                         @if($deptNetOtUt > 0)
-                            {{ number_format($deptNetOtUt, 1) }}
+                            +{{ number_format($deptNetOtUt, 1) }} OT
                         @elseif($deptNetOtUt < 0)
                             <span style="font-size:7px; color:#c2410c;">-{{ number_format(abs($deptNetOtUt), 1) }} UT</span>
                         @else
