@@ -94,7 +94,7 @@
               $deptWorkerCount = count($workers);
               $deptSlug = \Illuminate\Support\Str::slug($deptName ?: 'other');
             @endphp
-            <tr class="dept-header-row" data-dept-group="{{ $deptSlug }}" style="background:rgba(255,255,255,0.07); border-top:2px solid var(--border-soft, #e5e7eb);">
+            <tr class="dept-header-row" data-dept-group="{{ $deptSlug }}" style="background:var(--table-hover, #FFF9EC); border-top:2px solid var(--border-soft, #e5e7eb); border-bottom:1px solid var(--border-soft, #e5e7eb);">
               <td colspan="5" style="font-weight:bold; color:var(--secondary); font-size:0.92rem;">
                 📂 {{ strtoupper($deptName) }} <span style="font-size:0.8rem; font-weight:600; opacity:0.85; margin-left:0.4rem; color:var(--text-color);">(Total Workers: {{ $deptWorkerCount }})</span>
               </td>
@@ -636,6 +636,32 @@ document.addEventListener('DOMContentLoaded', function() {
 #printable-report table thead th.sorted-desc::after {
   display: none !important;
   content: none !important;
+}
+
+/* Department Group Header Rows Highlight */
+#printable-report table tbody tr.dept-header-row,
+#printable-report table tbody tr.dept-header-row td {
+  background: var(--table-hover, #FFF9EC) !important;
+  background-color: var(--table-hover, #FFF9EC) !important;
+}
+
+#printable-report table tbody tr.dept-header-row:hover,
+#printable-report table tbody tr.dept-header-row:hover td {
+  background: var(--table-selected, #FFE7A8) !important;
+  background-color: var(--table-selected, #FFE7A8) !important;
+}
+
+/* Grand Total Row Highlight */
+#printable-report table tbody tr.payroll-grand-total-row,
+#printable-report table tbody tr.payroll-grand-total-row td {
+  background: var(--table-hover, #FFF9EC) !important;
+  background-color: var(--table-hover, #FFF9EC) !important;
+}
+
+#printable-report table tbody tr.payroll-grand-total-row:hover,
+#printable-report table tbody tr.payroll-grand-total-row:hover td {
+  background: var(--table-selected, #FFE7A8) !important;
+  background-color: var(--table-selected, #FFE7A8) !important;
 }
 
 @media print {

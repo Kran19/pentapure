@@ -1557,6 +1557,18 @@ tr:hover td {
   background: var(--table-hover);
 }
 
+.dept-header-row,
+.dept-header-row td {
+  background: var(--table-hover) !important;
+  background-color: var(--table-hover) !important;
+}
+
+.dept-header-row:hover,
+.dept-header-row:hover td {
+  background: var(--table-selected) !important;
+  background-color: var(--table-selected) !important;
+}
+
 .filter-bar {
   display: flex;
   gap: 1rem;
