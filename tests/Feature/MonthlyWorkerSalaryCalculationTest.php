@@ -502,7 +502,8 @@ class MonthlyWorkerSalaryCalculationTest extends TestCase
 
         // Worker 1: 10 days * 500 = 5000 attendance salary
         $this->assertStringContainsString('Earned: ₹5,000', $content);
-        $this->assertStringContainsString('+ LOAD PETE: ₹1,200', $content);
+        $this->assertStringContainsString('LOAD PETE: ₹1,200', $content);
+        $this->assertStringNotContainsString('+ LOAD PETE:', $content);
         $this->assertStringNotContainsString('- Adv:', $content);
         $this->assertStringNotContainsString('+ OT:', $content);
 
