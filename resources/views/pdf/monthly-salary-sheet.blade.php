@@ -203,7 +203,7 @@
       <table class="summary-table" style="width:100%; border:2px solid #000; border-collapse:collapse; font-size:12px; font-weight:bold;">
         <tr>
           <td style="border:2px solid #000; padding:6px; width:75%;">FIX MONTHLY SALARY</td>
-          <td style="border:2px solid #000; padding:6px; text-align:right; width:25%;">{{ number_format($worker->salary_amount, 2) }}</td>
+          <td style="border:2px solid #000; padding:6px; text-align:right; width:25%;">{{ number_format($effectiveSalary ?? ($adjustment?->salary_amount ?: $worker->salary_amount), 2) }}</td>
         </tr>
         <tr>
           <td style="border:2px solid #000; padding:6px;">
@@ -233,7 +233,7 @@
       <table class="summary-table" style="width:100%; border:2px solid #000; border-collapse:collapse; font-size:12px; font-weight:bold;">
         <tr>
           <td colspan="4" style="border:2px solid #000; padding:6px; text-align:center;">PER LABOUR SALARY</td>
-          <td style="border:2px solid #000; padding:6px; text-align:right; width:25%;">{{ number_format($worker->salary_amount, 2) }}</td>
+          <td style="border:2px solid #000; padding:6px; text-align:right; width:25%;">{{ number_format($effectiveSalary ?? ($adjustment?->salary_amount ?: $worker->salary_amount), 2) }}</td>
         </tr>
         <tr>
           <td style="border:2px solid #000; padding:6px; text-align:center; width:25%;">TOTAL LABOUR</td>
@@ -280,7 +280,7 @@
         <!-- Row 1 -->
         <tr>
           <td colspan="4" style="border:2px solid #000; padding:6px; text-align:center;">{{ $worker->salary_type === 'DAILY' ? 'PER DAY SALARY' : 'MONTHLY SALARY' }}</td>
-          <td style="border:2px solid #000; padding:6px; text-align:right; width:25%;">{{ number_format($worker->salary_type === 'DAILY' ? $worker->salary_amount : ($worker->salary_type === 'MONTHLY' || $worker->salary_type === 'FIXED_MONTHLY' ? $worker->salary_amount : ($worker->daily_salary * 30)), 2) }}</td>
+          <td style="border:2px solid #000; padding:6px; text-align:right; width:25%;">{{ number_format($effectiveSalary ?? ($adjustment?->salary_amount ?: ($worker->salary_type === 'DAILY' ? $worker->salary_amount : ($worker->salary_type === 'MONTHLY' || $worker->salary_type === 'FIXED_MONTHLY' ? $worker->salary_amount : ($worker->daily_salary * 30)))), 2) }}</td>
         </tr>
         <!-- Row 2 -->
         <tr>

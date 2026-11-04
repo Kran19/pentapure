@@ -715,6 +715,49 @@ class AttendanceController extends Controller
             } elseif ($request->status === 'ACTIVE') {
                 $data['inactivated_at'] = null;
             }
+
+            $oldSalary = (float) $existing->salary_amount;
+            $newSalary = (float) $request->salary_amount;
+            $currentMonth = date('Y-m');
+
+            if (abs($oldSalary - $newSalary) > 0.001) {
+                // Snapshot past months so historical payroll reports (October, etc.) remain intact!
+                try {
+                    $pastMonths = \App\Models\Attendance::where('worker_id', $existing->id)
+                        ->where('date', '<', $currentMonth . '-01')
+                        ->selectRaw("DISTINCT DATE_FORMAT(date, '%Y-%m') as m")
+                        ->pluck('m')
+                        ->toArray();
+
+                    foreach ($pastMonths as $pastM) {
+                        $pastAdj = WorkerMonthlyAdjustment::firstOrNew([
+                            'worker_id' => $existing->id,
+                            'month'     => $pastM,
+                        ]);
+                        if ($pastAdj->salary_amount === null || (float)$pastAdj->salary_amount <= 0) {
+                            $pastAdj->salary_amount = $oldSalary;
+                            $pastAdj->salary_type = $existing->salary_type;
+                            $pastAdj->per_hour_salary = $existing->per_hour_salary;
+                            $pastAdj->save();
+                        }
+                    }
+
+                    // Record the new salary for the current month
+                    $currAdj = WorkerMonthlyAdjustment::firstOrNew([
+                        'worker_id' => $existing->id,
+                        'month'     => $currentMonth,
+                    ]);
+                    $currAdj->salary_amount = $newSalary;
+                    $currAdj->salary_type = $data['salary_type'] ?? $existing->salary_type;
+                    if (isset($data['per_hour_salary'])) {
+                        $currAdj->per_hour_salary = $data['per_hour_salary'];
+                    }
+                    $currAdj->save();
+                } catch (\Throwable $e) {
+                    \Log::warning('Could not snapshot monthly salary on worker update: ' . $e->getMessage());
+                }
+            }
+
             $existing->update($data);
             return response()->json(['success' => true, 'message' => 'Worker updated']);
         }
@@ -1288,20 +1331,29 @@ class AttendanceController extends Controller
     public function updateMonthlyAdjustment(Request $request, $id)
     {
         if (!$this->canEditModule('attendance_reports')) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized. You have View-Only permissions for Reports & Payroll.'], 403);
+            }
             abort(403, 'Unauthorized. You have View-Only permissions for Reports & Payroll.');
         }
 
         $request->validate([
-            'month' => 'required|date_format:Y-m',
-            'petrol_food_amount' => 'nullable|numeric',
+            'month'                 => 'required|date_format:Y-m',
+            'salary_amount'         => 'nullable|numeric|min:0',
+            'per_hour_salary'       => 'nullable|numeric|min:0',
+            'salary_type'           => 'nullable|string|max:50',
+            'petrol_food_amount'    => 'nullable|numeric',
             'other_allowance_label' => 'nullable|string|max:100',
-            'advance' => 'nullable|numeric',
-            'remark' => 'nullable|string'
+            'advance'               => 'nullable|numeric',
+            'remark'                => 'nullable|string'
         ]);
 
         $worker = Worker::findOrFail($id);
         $allowedDeptIds = $this->getAllowedDeptIds();
         if (!empty($allowedDeptIds) && !in_array((int)$worker->department_id, $allowedDeptIds, true)) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized department.'], 403);
+            }
             abort(403, 'Unauthorized department.');
         }
 
@@ -1310,15 +1362,42 @@ class AttendanceController extends Controller
             $label = null;
         }
 
-        $adj = WorkerMonthlyAdjustment::updateOrCreate(
-            ['worker_id' => $id, 'month' => $request->month],
-            [
-                'petrol_food_amount' => $request->petrol_food_amount ?? 0,
-                'other_allowance_label' => $label,
-                'advance' => $request->advance ?? 0,
-                'remark' => $request->remark
-            ]
-        );
+        $adj = WorkerMonthlyAdjustment::firstOrNew([
+            'worker_id' => $id,
+            'month'     => $request->month,
+        ]);
+
+        if ($request->has('salary_amount') && $request->salary_amount !== null && $request->salary_amount !== '') {
+            $adj->salary_amount = (float) $request->salary_amount;
+        }
+        if ($request->has('per_hour_salary') && $request->per_hour_salary !== null && $request->per_hour_salary !== '') {
+            $adj->per_hour_salary = (float) $request->per_hour_salary;
+        }
+        if ($request->has('salary_type') && !empty($request->salary_type)) {
+            $adj->salary_type = $request->salary_type;
+        }
+        if ($request->has('petrol_food_amount') && $request->petrol_food_amount !== null && $request->petrol_food_amount !== '') {
+            $adj->petrol_food_amount = (float) $request->petrol_food_amount;
+        }
+        if ($request->has('other_allowance_label')) {
+            $adj->other_allowance_label = $label;
+        }
+        if ($request->has('advance') && $request->advance !== null && $request->advance !== '') {
+            $adj->advance = (float) $request->advance;
+        }
+        if ($request->has('remark')) {
+            $adj->remark = $request->remark;
+        }
+
+        $adj->save();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Monthly adjustments saved successfully.',
+                'adjustment' => $adj
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Monthly adjustments saved successfully');
     }
@@ -1491,11 +1570,14 @@ class AttendanceController extends Controller
         $dailyAdvanceTotal  = $payroll['daily_advance'];
         $totalAdvance       = $payroll['advance'];
         $payableSalary      = $payroll['payable_salary'];
+        $effectiveSalary    = $payroll['salary_amount'] ?? $worker->salary_amount;
+        $effectiveSalaryType = $payroll['salary_type'] ?? $worker->salary_type;
 
         return compact(
             'worker', 'workerNumber', 'isInactive', 'attendances', 'month', 'start', 'end', 'daysInMonth',
             'adjustment', 'presentDays', 'perDaySalary', 'attendanceSalary',
-            'totalOT', 'totalUT', 'netOtHours', 'hourlyRate', 'otUtAdjustment', 'totalWage', 'dailyAdvanceTotal', 'totalAdvance', 'payableSalary'
+            'totalOT', 'totalUT', 'netOtHours', 'hourlyRate', 'otUtAdjustment', 'totalWage', 'dailyAdvanceTotal', 'totalAdvance', 'payableSalary',
+            'payroll', 'effectiveSalary', 'effectiveSalaryType'
         );
     }
 
@@ -1550,43 +1632,55 @@ class AttendanceController extends Controller
             }
         }
 
+        $effectiveSalaryAmount = ($adjustment && $adjustment->salary_amount !== null && (float)$adjustment->salary_amount > 0)
+            ? (float) $adjustment->salary_amount
+            : (float) $worker->salary_amount;
+
+        $effectiveSalaryType = ($adjustment && !empty($adjustment->salary_type))
+            ? $adjustment->salary_type
+            : $worker->salary_type;
+
+        $effectivePerHourSalary = ($adjustment && $adjustment->per_hour_salary !== null && (float)$adjustment->per_hour_salary > 0)
+            ? (float) $adjustment->per_hour_salary
+            : (float) ($worker->per_hour_salary ?? 0);
+
         $attendanceSalary = 0;
         $otAmount = 0;
         $utAmount = 0;
         $hourlyRate = 0;
         $perDaySalary = 0;
 
-        if ($worker->salary_type === 'FIXED_MONTHLY') {
-            $perDaySalary = (float) ($worker->salary_amount / $daysInMonth);
+        if ($effectiveSalaryType === 'FIXED_MONTHLY') {
+            $perDaySalary = (float) ($effectiveSalaryAmount / $daysInMonth);
             if ($presentDays > $daysInMonth) {
-                $attendanceSalary = (float) ($worker->salary_amount + (($presentDays - $daysInMonth) * $perDaySalary));
+                $attendanceSalary = (float) ($effectiveSalaryAmount + (($presentDays - $daysInMonth) * $perDaySalary));
             } else {
-                $attendanceSalary = (float) $worker->salary_amount;
+                $attendanceSalary = (float) $effectiveSalaryAmount;
             }
             $otAmount = 0;
             $utAmount = 0;
-        } elseif ($worker->salary_type === 'LABOUR_MUKADAM') {
-            $perDaySalary = (float) ($worker->salary_amount ?? 0);
+        } elseif ($effectiveSalaryType === 'LABOUR_MUKADAM') {
+            $perDaySalary = (float) ($effectiveSalaryAmount ?? 0);
             $attendanceSalary = $presentDays * $perDaySalary;
-            $hourlyRate = (float) ($worker->per_hour_salary ?? 0);
+            $hourlyRate = (float) ($effectivePerHourSalary ?? 0);
             $otAmount = $totalOT * $hourlyRate;
             $utAmount = $totalUT * $hourlyRate;
-        } elseif ($worker->salary_type === 'MONTHLY') {
-            $perDaySalary = (float) ($worker->salary_amount / $daysInMonth);
+        } elseif ($effectiveSalaryType === 'MONTHLY') {
+            $perDaySalary = (float) ($effectiveSalaryAmount / $daysInMonth);
             if (abs($presentDays - $daysInMonth) < 0.001) {
-                $attendanceSalary = (float) $worker->salary_amount;
+                $attendanceSalary = (float) $effectiveSalaryAmount;
             } elseif ($presentDays > $daysInMonth) {
-                $attendanceSalary = (float) ($worker->salary_amount + (($presentDays - $daysInMonth) * $perDaySalary));
+                $attendanceSalary = (float) ($effectiveSalaryAmount + (($presentDays - $daysInMonth) * $perDaySalary));
             } else {
                 $attendanceSalary = (float) ($presentDays * $perDaySalary);
             }
-            $hourlyRate = (float) ($worker->per_hour_salary > 0 ? $worker->per_hour_salary : ($perDaySalary / 12));
+            $hourlyRate = (float) ($effectivePerHourSalary > 0 ? $effectivePerHourSalary : ($perDaySalary / 12));
             $otAmount = $totalOT * $hourlyRate;
             $utAmount = $totalUT * $hourlyRate;
-        } elseif ($worker->salary_type === 'DAILY') {
-            $perDaySalary = (float) ($worker->salary_amount ?? 0);
+        } elseif ($effectiveSalaryType === 'DAILY') {
+            $perDaySalary = (float) ($effectiveSalaryAmount ?? 0);
             $attendanceSalary = $presentDays * $perDaySalary;
-            $hourlyRate = (float) ($worker->per_hour_salary > 0 ? $worker->per_hour_salary : ($perDaySalary / 12));
+            $hourlyRate = (float) ($effectivePerHourSalary > 0 ? $effectivePerHourSalary : ($perDaySalary / 12));
             $otAmount = $totalOT * $hourlyRate;
             $utAmount = $totalUT * $hourlyRate;
         } else {
@@ -1594,7 +1688,7 @@ class AttendanceController extends Controller
                 $attendanceSalary += (float) ($att->calculated_wage ?? 0);
             }
             $perDaySalary = (float) ($worker->daily_salary ?? 0);
-            $hourlyRate = (float) ($worker->per_hour_salary > 0 ? $worker->per_hour_salary : ($perDaySalary / 12));
+            $hourlyRate = (float) ($effectivePerHourSalary > 0 ? $effectivePerHourSalary : ($perDaySalary / 12));
             $otAmount = $totalOT * $hourlyRate;
             $utAmount = $totalUT * $hourlyRate;
         }
@@ -1618,6 +1712,9 @@ class AttendanceController extends Controller
             'worker'            => $worker,
             'worker_number'     => $workerNumber,
             'is_inactive'       => $isInactive,
+            'salary_amount'     => $effectiveSalaryAmount,
+            'salary_type'       => $effectiveSalaryType,
+            'per_hour_salary'   => $effectivePerHourSalary,
             'present'           => $presentDays,
             'absent'            => $absentDays,
             'half'              => $halfDays,

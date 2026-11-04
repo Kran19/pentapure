@@ -133,14 +133,28 @@
                 <td>{{ $data['worker']->department->name }}</td>
                 <td>
                   @php
-                    $isMukadam = ($data['worker']->salary_type === 'LABOUR_MUKADAM' || stripos($data['worker']->department->name ?? '', 'MUKADAM') !== false);
+                    $effSalary = $data['salary_amount'] ?? $data['worker']->salary_amount;
+                    $effType   = $data['salary_type'] ?? $data['worker']->salary_type;
+                    $isMukadam = ($effType === 'LABOUR_MUKADAM' || stripos($data['worker']->department->name ?? '', 'MUKADAM') !== false);
                   @endphp
+                  <div style="display:flex; align-items:center; gap:6px;">
+                    <div style="font-weight:bold; font-size:0.95rem;">₹{{ number_format($effSalary, 0) }}</div>
+                    @if(empty($isReadOnly))
+                      <button type="button" 
+                              onclick="editMonthlySalary({{ $data['worker']->id }}, '{{ addslashes($data['worker']->name) }}', {{ (float)$effSalary }}, '{{ $month }}')"
+                              class="no-print"
+                              style="background:none; border:none; cursor:pointer; font-size:0.85rem; padding:0 2px; opacity:0.6; transition:opacity 0.2s;"
+                              onmouseover="this.style.opacity='1'" 
+                              onmouseout="this.style.opacity='0.6'"
+                              title="Click to edit {{ \Carbon\Carbon::parse($month)->format('M Y') }} salary">
+                        ✏️
+                      </button>
+                    @endif
+                  </div>
                   @if($isMukadam)
-                    <div style="font-weight:bold;">₹{{ number_format($data['worker']->salary_amount, 0) }}</div>
                     <div style="font-size:0.65rem; font-weight:bold; color:#000000;">PER LABOUR SALARY</div>
                   @else
-                    <div style="font-weight:bold;">₹{{ number_format($data['worker']->salary_amount, 0) }}</div>
-                    <div style="font-size:0.65rem; opacity:0.7;">{{ $data['worker']->salary_type }}</div>
+                    <div style="font-size:0.65rem; opacity:0.7;">{{ $effType }}</div>
                   @endif
                 </td>
                 <td class="no-print">
@@ -336,6 +350,76 @@ function sendPaidStatusUpdate(workerId, isPaid, paidDate) {
             }
         }
     }).catch(err => console.error('Error updating paid status:', err));
+}
+
+function editMonthlySalary(workerId, workerName, currentSalary, monthStr) {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Edit Salary (' + monthStr + ')',
+            html: '<div style="margin-bottom:8px; font-weight:600; color:var(--text-color);">' + workerName + '</div>' +
+                  '<div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">This salary change applies specifically to <b>' + monthStr + '</b> without altering past or other months.</div>',
+            input: 'number',
+            inputValue: currentSalary,
+            inputAttributes: {
+                step: '0.01',
+                min: '0',
+                style: 'font-size:1.15rem; font-weight:bold; text-align:center;'
+            },
+            showCancelButton: true,
+            confirmButtonText: 'Save Salary',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#3b82f6',
+            preConfirm: (value) => {
+                if (value === '' || isNaN(value) || parseFloat(value) < 0) {
+                    Swal.showValidationMessage('Please enter a valid salary amount');
+                    return false;
+                }
+                return value;
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                saveMonthlySalary(workerId, result.value, monthStr);
+            }
+        });
+    } else {
+        const val = prompt('Enter ' + monthStr + ' salary for ' + workerName + ' (₹):', currentSalary);
+        if (val !== null && val.trim() !== '' && !isNaN(val)) {
+            saveMonthlySalary(workerId, val.trim(), monthStr);
+        }
+    }
+}
+
+function saveMonthlySalary(workerId, salaryVal, monthStr) {
+    const postUrl = "{{ str_contains(request()->path(), 'admin') ? url(str_replace('reports', 'reports', request()->path()) . '/worker/') : url(request()->path() . '/worker/') }}/" + workerId + "/adjust";
+    const formData = new FormData();
+    formData.append('_token', '{{ csrf_token() }}');
+    formData.append('month', monthStr);
+    formData.append('salary_amount', salaryVal);
+
+    fetch(postUrl, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    }).then(r => r.json()).then(d => {
+        if (d.success) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Saved!',
+                    text: 'Salary for ' + monthStr + ' updated.',
+                    timer: 1200,
+                    showConfirmButton: false
+                }).then(() => location.reload());
+            } else {
+                location.reload();
+            }
+        } else {
+            alert(d.message || 'Failed to update salary');
+        }
+    }).catch(err => {
+        console.error('Error saving salary:', err);
+        location.reload();
+    });
 }
 
 function exportToExcel() {

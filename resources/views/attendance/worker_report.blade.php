@@ -194,7 +194,20 @@
       <table data-filterable="false" style="width:100%; border:2px solid #000; border-collapse:collapse; font-size:0.95rem; font-weight:bold;">
         <tr>
           <td style="border:2px solid #000; padding:8px; width:75%;">FIX MONTHLY SALARY</td>
-          <td style="border:2px solid #000; padding:8px; text-align:right; width:25%;">{{ number_format($worker->salary_amount, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right; width:25%;">
+            @if(empty($isReadOnly))
+            <div style="display:inline-flex; align-items:center; justify-content:flex-end; gap:6px; width:100%;">
+                <span class="pencil-icon">✏️</span>
+                <input type="number" step="0.01" class="salary-amount-input" 
+                       value="{{ number_format($effectiveSalary ?? ($adjustment?->salary_amount ?: $worker->salary_amount), 2, '.', '') }}" 
+                       onchange="quickSaveSalary(this.value)"
+                       style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:3px 10px; font-weight:bold; font-size:0.9rem; text-align:right; width:110px; color:#0f172a; outline:none;"
+                       title="Click to edit salary for {{ \Carbon\Carbon::parse($month)->format('F Y') }}">
+            </div>
+            @else
+            {{ number_format($effectiveSalary ?? ($adjustment?->salary_amount ?: $worker->salary_amount), 2) }}
+            @endif
+          </td>
         </tr>
         <tr>
           <td style="border:2px solid #000; padding:8px;">
@@ -254,7 +267,20 @@
       <table data-filterable="false" style="width:100%; border:2px solid #000; border-collapse:collapse; font-size:0.95rem; font-weight:bold;">
         <tr>
           <td colspan="4" style="border:2px solid #000; padding:8px; text-align:center;">PER LABOUR SALARY</td>
-          <td style="border:2px solid #000; padding:8px; text-align:right; width:25%;">{{ number_format($worker->salary_amount, 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right; width:25%;">
+            @if(empty($isReadOnly))
+            <div style="display:inline-flex; align-items:center; justify-content:flex-end; gap:6px; width:100%;">
+                <span class="pencil-icon">✏️</span>
+                <input type="number" step="0.01" class="salary-amount-input" 
+                       value="{{ number_format($effectiveSalary ?? ($adjustment?->salary_amount ?: $worker->salary_amount), 2, '.', '') }}" 
+                       onchange="quickSaveSalary(this.value)"
+                       style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:3px 10px; font-weight:bold; font-size:0.9rem; text-align:right; width:110px; color:#0f172a; outline:none;"
+                       title="Click to edit per-labour salary for {{ \Carbon\Carbon::parse($month)->format('F Y') }}">
+            </div>
+            @else
+            {{ number_format($effectiveSalary ?? ($adjustment?->salary_amount ?: $worker->salary_amount), 2) }}
+            @endif
+          </td>
         </tr>
         <tr>
           <td style="border:2px solid #000; padding:8px; text-align:center; width:25%;">TOTAL LABOUR</td>
@@ -332,7 +358,20 @@
         <!-- Row 1 -->
         <tr>
           <td colspan="4" style="border:2px solid #000; padding:8px; text-align:center;">{{ $worker->salary_type === 'DAILY' ? 'PER DAY SALARY' : 'MONTHLY SALARY' }}</td>
-          <td style="border:2px solid #000; padding:8px; text-align:right; width:25%;">{{ number_format($worker->salary_type === 'DAILY' ? $worker->salary_amount : ($worker->salary_type === 'MONTHLY' || $worker->salary_type === 'FIXED_MONTHLY' ? $worker->salary_amount : ($worker->daily_salary * 30)), 2) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:right; width:25%;">
+            @if(empty($isReadOnly))
+            <div style="display:inline-flex; align-items:center; justify-content:flex-end; gap:6px; width:100%;">
+                <span class="pencil-icon">✏️</span>
+                <input type="number" step="0.01" class="salary-amount-input" 
+                       value="{{ number_format($effectiveSalary ?? ($adjustment?->salary_amount ?: ($worker->salary_type === 'DAILY' ? $worker->salary_amount : ($worker->salary_type === 'MONTHLY' || $worker->salary_type === 'FIXED_MONTHLY' ? $worker->salary_amount : ($worker->daily_salary * 30)))), 2, '.', '') }}" 
+                       onchange="quickSaveSalary(this.value)"
+                       style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:3px 10px; font-weight:bold; font-size:0.9rem; text-align:right; width:110px; color:#0f172a; outline:none;"
+                       title="Click to edit salary for {{ \Carbon\Carbon::parse($month)->format('F Y') }}">
+            </div>
+            @else
+            {{ number_format($effectiveSalary ?? ($adjustment?->salary_amount ?: ($worker->salary_type === 'DAILY' ? $worker->salary_amount : ($worker->salary_type === 'MONTHLY' || $worker->salary_type === 'FIXED_MONTHLY' ? $worker->salary_amount : ($worker->daily_salary * 30)))), 2) }}
+            @endif
+          </td>
         </tr>
         <!-- Row 2 -->
         <tr>
@@ -447,6 +486,11 @@
             @csrf
             <input type="hidden" name="month" value="{{ $month }}">
             <div class="form-group mb-3">
+                <label style="color:#000; font-weight:bold;">Base Salary (₹) - {{ \Carbon\Carbon::parse($month)->format('M Y') }} only</label>
+                <input type="number" step="0.01" name="salary_amount" class="form-control" value="{{ $effectiveSalary ?? ($adjustment?->salary_amount ?: $worker->salary_amount) }}">
+                <small style="color:#64748b; font-size:0.75rem;">Changing this updates salary ONLY for this month without altering other months.</small>
+            </div>
+            <div class="form-group mb-3">
                 <label style="color:#000; font-weight:bold;">Allowance / Expense Name</label>
                 <input type="text" name="other_allowance_label" class="form-control" value="{{ ($adjustment?->other_allowance_label && !in_array($adjustment->other_allowance_label, ['PETROL / FOODS', 'OTHER'])) ? $adjustment->other_allowance_label : '' }}" placeholder="e.g. INCENTIVE, BONUS">
             </div>
@@ -508,6 +552,31 @@ function exportToExcel() {
     link.href = URL.createObjectURL(blob);
     link.setAttribute("download", "{{ $worker->name }}_Attendance_{{ $month }}.csv");
     link.click();
+}
+
+function quickSaveSalary(val) {
+    if (window.isReadOnly) return;
+    if (val === '' || isNaN(val) || parseFloat(val) < 0) return;
+    const postUrl = "{{ str_contains(request()->path(), 'admin') ? url(str_replace('reports', 'reports', request()->path()) . '/adjust') : url(request()->path() . '/adjust') }}";
+    const formData = new FormData();
+    formData.append('_token', '{{ csrf_token() }}');
+    formData.append('month', '{{ $month }}');
+    formData.append('salary_amount', val);
+
+    fetch(postUrl, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    }).then(res => {
+        if (res.ok) {
+            window.location.reload();
+        } else {
+            res.json().then(d => alert(d.message || 'Error updating monthly salary')).catch(() => window.location.reload());
+        }
+    }).catch(err => {
+        console.error('Quick save salary error:', err);
+        window.location.reload();
+    });
 }
 
 function quickSaveAllowance(label, amount) {

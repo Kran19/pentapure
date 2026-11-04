@@ -160,14 +160,16 @@
                         <td style="color:#334155;">{{ strtoupper($data['worker']->department->name ?? '-') }}</td>
                         <td>
                             @php
-                                $isMukadam = ($data['worker']->salary_type === 'LABOUR_MUKADAM' || stripos($data['worker']->department->name ?? '', 'MUKADAM') !== false);
+                                $effSalary = $data['salary_amount'] ?? $data['worker']->salary_amount;
+                                $effType = $data['salary_type'] ?? $data['worker']->salary_type;
+                                $isMukadam = ($effType === 'LABOUR_MUKADAM' || stripos($data['worker']->department->name ?? '', 'MUKADAM') !== false);
                             @endphp
                             @if($isMukadam)
-                                <div style="font-weight:bold; color:#0f172a;">₹{{ number_format($data['worker']->salary_amount, 0) }}</div>
+                                <div style="font-weight:bold; color:#0f172a;">₹{{ number_format($effSalary, 0) }}</div>
                                 <div style="font-size:7px; color:#1e40af; font-weight:bold;">PER LABOUR SALARY</div>
                             @else
-                                <div style="font-weight:bold; color:#0f172a;">₹{{ number_format($data['worker']->salary_amount, 0) }}</div>
-                                <div style="font-size:7.5px; color:#64748b;">{{ strtoupper(str_replace('_', ' ', $data['worker']->salary_type ?? '')) }}</div>
+                                <div style="font-weight:bold; color:#0f172a;">₹{{ number_format($effSalary, 0) }}</div>
+                                <div style="font-size:7.5px; color:#64748b;">{{ strtoupper(str_replace('_', ' ', $effType ?? '')) }}</div>
                             @endif
                         </td>
                         <td style="text-align:center; font-weight:bold; color:#0f172a;">{{ $data['present'] }}</td>
