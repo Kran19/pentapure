@@ -224,9 +224,9 @@
                             @if(($data['allowance'] ?? 0) != 0)
                                 <div style="font-size:7px; font-weight:normal; color:#64748b; margin-top:1px;">
                                     @if(($data['allowance'] ?? 0) > 0)
-                                        {{ $data['allowance_label'] ?? 'OTHER' }}:₹{{ number_format($data['allowance'], 0) }}
+                                        OTHER:₹{{ number_format($data['allowance'], 0) }}
                                     @else
-                                        -{{ $data['deduction_label'] ?? 'OTHER' }}:₹{{ number_format(abs($data['allowance']), 0) }}
+                                        -OTHER:₹{{ number_format(abs($data['allowance']), 0) }}
                                     @endif
                                 </div>
                             @endif
