@@ -152,18 +152,17 @@
                     <td style="text-align:right;">
                         <div>₹{{ number_format($deptTotalPayable, 2) }}</div>
                         @php
-                            $deptTotalOtAmount = array_sum(array_column($workers, 'ot_amount'));
-                            $deptTotalUtAmount = array_sum(array_column($workers, 'ut_amount'));
                             $deptTotalAllowance = array_sum(array_column($workers, 'allowance'));
                         @endphp
-                        <div style="font-size:7px; font-weight:normal; color:#64748b; margin-top:1px;">
-                            Earned: ₹{{ number_format($deptTotalEarned, 0) }}
-                            @if($deptTotalOtAmount > 0) +OT:₹{{ number_format($deptTotalOtAmount, 0) }}@endif
-                            @if($deptTotalUtAmount > 0) -UT:₹{{ number_format($deptTotalUtAmount, 0) }}@endif
-                            @if($deptTotalAllowance > 0) +Other:₹{{ number_format($deptTotalAllowance, 0) }}@endif
-                            @if($deptTotalAllowance < 0) -Other:₹{{ number_format(abs($deptTotalAllowance), 0) }}@endif
-                            @if($deptTotalAdvance > 0) -Adv:₹{{ number_format($deptTotalAdvance, 0) }}@endif
-                        </div>
+                        @if($deptTotalAllowance != 0)
+                            <div style="font-size:7px; font-weight:normal; color:#64748b; margin-top:1px;">
+                                @if($deptTotalAllowance > 0)
+                                    +Other:₹{{ number_format($deptTotalAllowance, 0) }}
+                                @else
+                                    -Other:₹{{ number_format(abs($deptTotalAllowance), 0) }}
+                                @endif
+                            </div>
+                        @endif
                     </td>
                     <td></td>
                 </tr>
@@ -222,14 +221,15 @@
                         </td>
                         <td style="text-align:right; font-weight:bold; color:#0f172a;">
                             <div>₹{{ number_format($payable, 2) }}</div>
-                            <div style="font-size:7px; font-weight:normal; color:#64748b; margin-top:1px;">
-                                Earned: ₹{{ number_format($data['attendance_salary'] ?? 0, 0) }}
-                                @if(($data['ot_amount'] ?? 0) > 0) +OT:₹{{ number_format($data['ot_amount'], 0) }}@endif
-                                @if(($data['ut_amount'] ?? 0) > 0) -UT:₹{{ number_format($data['ut_amount'], 0) }}@endif
-                                @if(($data['allowance'] ?? 0) > 0) +{{ $data['allowance_label'] ?? 'OTHER' }}:₹{{ number_format($data['allowance'], 0) }}@endif
-                                @if(($data['allowance'] ?? 0) < 0) -{{ $data['deduction_label'] ?? 'OTHER' }}:₹{{ number_format(abs($data['allowance']), 0) }}@endif
-                                @if(($data['advance'] ?? 0) > 0) -Adv:₹{{ number_format($data['advance'], 0) }}@endif
-                            </div>
+                            @if(($data['allowance'] ?? 0) != 0)
+                                <div style="font-size:7px; font-weight:normal; color:#64748b; margin-top:1px;">
+                                    @if(($data['allowance'] ?? 0) > 0)
+                                        +{{ $data['allowance_label'] ?? 'OTHER' }}:₹{{ number_format($data['allowance'], 0) }}
+                                    @else
+                                        -{{ $data['deduction_label'] ?? 'OTHER' }}:₹{{ number_format(abs($data['allowance']), 0) }}
+                                    @endif
+                                </div>
+                            @endif
                         </td>
                         <td style="text-align:center;">
                             @if($isPaid)
@@ -260,19 +260,17 @@
                 <td style="text-align:right; color:#0f172a;">
                     <div>₹{{ number_format($grandTotal, 2) }}</div>
                     @php
-                        $grandTotalOtAmount = array_sum(array_column($reportData, 'ot_amount'));
-                        $grandTotalUtAmount = array_sum(array_column($reportData, 'ut_amount'));
                         $grandTotalAllowance = array_sum(array_column($reportData, 'allowance'));
-                        $grandTotalAdvance = array_sum(array_column($reportData, 'advance'));
                     @endphp
-                    <div style="font-size:7px; font-weight:normal; color:#64748b; margin-top:1px;">
-                        Earned: ₹{{ number_format($grandTotalEarned, 0) }}
-                        @if($grandTotalOtAmount > 0) +OT:₹{{ number_format($grandTotalOtAmount, 0) }}@endif
-                        @if($grandTotalUtAmount > 0) -UT:₹{{ number_format($grandTotalUtAmount, 0) }}@endif
-                        @if($grandTotalAllowance > 0) +Other:₹{{ number_format($grandTotalAllowance, 0) }}@endif
-                        @if($grandTotalAllowance < 0) -Other:₹{{ number_format(abs($grandTotalAllowance), 0) }}@endif
-                        @if($grandTotalAdvance > 0) -Adv:₹{{ number_format($grandTotalAdvance, 0) }}@endif
-                    </div>
+                    @if(!empty($reportData) && $grandTotalAllowance != 0)
+                        <div style="font-size:7px; font-weight:normal; color:#64748b; margin-top:1px;">
+                            @if($grandTotalAllowance > 0)
+                                +Other:₹{{ number_format($grandTotalAllowance, 0) }}
+                            @else
+                                -Other:₹{{ number_format(abs($grandTotalAllowance), 0) }}
+                            @endif
+                        </div>
+                    @endif
                 </td>
                 <td></td>
             </tr>
