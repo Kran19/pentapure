@@ -132,9 +132,6 @@
                     </td>
                     <td style="text-align:center;">{{ $deptTotalPresent > 0 ? (floor($deptTotalPresent) == $deptTotalPresent ? number_format($deptTotalPresent, 0) : number_format($deptTotalPresent, 1)) : 0 }}</td>
                     <td style="text-align:center;">
-                        {{ number_format($deptTotalOt, 1) }}
-                        @if($deptTotalUt > 0)
-                            <span style="font-size:7px; color:#c2410c;">(-{{ number_format($deptTotalUt, 1) }} UT)</span>
                         @if($deptNetOtUt > 0)
                             {{ number_format($deptNetOtUt, 1) }}
                         @elseif($deptNetOtUt < 0)
@@ -181,11 +178,6 @@
                         </td>
                         <td style="text-align:center; font-weight:bold; color:#0f172a;">{{ $data['present'] }}</td>
                         <td style="text-align:center; font-weight:bold; color:#0f172a;">
-                            @if(($data['total_ot'] ?? 0) > 0 && ($data['total_ut'] ?? 0) > 0)
-                                {{ number_format($data['total_ot'], 1) }} OT
-                                <div style="font-size:7px; color:#c2410c;">-{{ number_format($data['total_ut'], 1) }} UT</div>
-                            @elseif(($data['total_ut'] ?? 0) > 0)
-                                <span style="color:#c2410c;">-{{ number_format($data['total_ut'], 1) }} UT</span>
                             @php
                                 $wOt = (float)($data['total_ot'] ?? 0);
                                 $wUt = (float)($data['total_ut'] ?? 0);
@@ -196,7 +188,6 @@
                             @elseif($wNet < 0)
                                 <span style="color:#c2410c;">-{{ number_format(abs($wNet), 1) }} UT</span>
                             @else
-                                {{ number_format($data['total_ot'] ?? 0, 1) }}
                                 0.0
                             @endif
                         </td>
