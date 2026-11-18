@@ -108,6 +108,9 @@ class AuthMiddleware
                 'sales_history' => ['sales_history'],
                 'dispatch_history' => ['dispatch_history', 'dispatch_report'],
                 'dispatch_report' => ['dispatch_report', 'dispatch_history'],
+                'dispatch_update_lr' => ['dispatch_history', 'dispatch_action', 'dispatch_report', 'admin_dispatch_activity'],
+                'dispatch_revert' => ['dispatch_history', 'dispatch_action', 'admin_dispatch_activity'],
+                'dispatch_update' => ['dispatch_history', 'dispatch_action', 'admin_dispatch_activity'],
                 'attendance_dashboard' => ['attendance_dashboard', 'attendance_home', 'attendance'],
                 'attendance_daily' => ['attendance_daily', 'daily', 'attendance_entry'],
                 'attendance_departments' => ['attendance_departments', 'attendance_department', 'departments'],
@@ -294,7 +297,7 @@ class AuthMiddleware
             if (in_array($salesSub, ['home', 'dashboard', ''])) return 'sales_home';
             if ($salesSub === 'order' && ($subaction === 'pdf' || in_array('pdf', $segments))) return 'sales_order_pdf';
             if (in_array($salesSub, ['action', 'order', 'company', 'transport'])) return 'sales_action';
-            if (in_array($salesSub, ['history', 'download-lr', 'download-multiple-lr'])) return 'sales_history';
+            if (in_array($salesSub, ['history', 'download-lr', 'download-multiple-lr', 'view-lr'])) return 'sales_history';
             return 'sales_action';
         }
         if (in_array($section, ['order', 'company', 'transport'])) {
@@ -306,11 +309,18 @@ class AuthMiddleware
             $dispSub = ($section === 'dispatch') ? $action : $section;
             if ($dispSub === 'order' && in_array('pdf', $segments)) return 'sales_order_pdf';
             if (in_array($dispSub, ['home', 'dashboard', ''])) return 'dispatch_home';
-            if (in_array($dispSub, ['action', 'update-lr', 'revert'])) return 'dispatch_action';
-            if (in_array($dispSub, ['history', 'pdf', 'download-lr', 'download-multiple-lr'])) return 'dispatch_history';
+            if ($dispSub === 'update-lr') return 'dispatch_update_lr';
+            if ($dispSub === 'revert') return 'dispatch_revert';
+            if (in_array($dispSub, ['update', 'dispatch-update'])) return 'dispatch_update';
+            if (in_array($dispSub, ['action'])) return 'dispatch_action';
+            if (in_array($dispSub, ['history', 'pdf', 'download-lr', 'download-multiple-lr', 'view-lr'])) return 'dispatch_history';
             if (in_array($dispSub, ['report'])) return 'dispatch_report';
             return 'dispatch_action';
         }
+
+        if ($section === 'update-lr') return 'dispatch_update_lr';
+        if ($section === 'revert') return 'dispatch_revert';
+        if (in_array($section, ['download-lr', 'download-multiple-lr', 'view-lr'])) return 'dispatch_history';
 
         // 5. Stock Manager panel routes
         if (in_array($section, ['stock-manager', 'stock_manager']) || $prefix === 'stock_manager') {

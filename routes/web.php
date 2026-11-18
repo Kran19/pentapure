@@ -590,6 +590,8 @@ foreach ($adminSlugs as $slug) {
     Route::post('/dispatch/revert/{id}', [DispatchController::class, 'revertDispatch']);
     Route::post('/dispatch/update-lr',   [DispatchController::class, 'updateLR']);
     Route::post('/update-lr',            [DispatchController::class, 'updateLR']);
+    Route::get('/dispatch/view-lr/{id}',     [DispatchController::class, 'viewLR'])->name($slug.'.dispatch.view_lr');
+    Route::get('/view-lr/{id}',              [DispatchController::class, 'viewLR']);
     Route::get('/dispatch/download-lr/{id}', [DispatchController::class, 'downloadLR'])->name($slug.'.dispatch.download_lr');
     Route::get('/download-lr/{id}',          [DispatchController::class, 'downloadLR']);
     Route::get('/dispatch/download-multiple-lr', [DispatchController::class, 'downloadMultipleLR'])->name($slug.'.dispatch.download_multiple_lr');
@@ -729,6 +731,12 @@ Route::middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTE
     Route::get('/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill']);
     Route::get('/{user_slug}/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill']);
     Route::get('/{user_slug}/cashier/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill']);
+    Route::get('/view-lr/{id}', [DispatchController::class, 'viewLR']);
+    Route::get('/sales/view-lr/{id}', [DispatchController::class, 'viewLR']);
+    Route::get('/dispatch/view-lr/{id}', [DispatchController::class, 'viewLR']);
+    Route::get('/{user_slug}/view-lr/{id}', [DispatchController::class, 'viewLR']);
+    Route::get('/{user_slug}/sales/view-lr/{id}', [DispatchController::class, 'viewLR']);
+    Route::get('/{user_slug}/dispatch/view-lr/{id}', [DispatchController::class, 'viewLR']);
     Route::get('/download-lr/{id}', [DispatchController::class, 'downloadLR']);
     Route::get('/sales/download-lr/{id}', [DispatchController::class, 'downloadLR']);
     Route::get('/dispatch/download-lr/{id}', [DispatchController::class, 'downloadLR']);

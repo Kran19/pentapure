@@ -2596,20 +2596,9 @@ const app = {
       .then(async r => {
         let res = null;
         try { res = await r.json(); } catch(e) {}
-        if (!res && !r.ok) {
-          const altEndpoint = endpoint.includes('/dispatch/update-lr')
-            ? endpoint.replace('/dispatch/update-lr', '/update-lr')
-            : endpoint.replace('/update-lr', '/dispatch/update-lr');
-          const r2 = await fetch(altEndpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'X-CSRF-TOKEN': window.csrfToken || ''
-            },
-            body: JSON.stringify({ log_id: logId, lr_image: dataUrl })
-          });
-          res = await r2.json();
+        if (!r.ok) {
+          const errMsg = (res && res.message) ? res.message : `HTTP ${r.status}: Failed to update LR copy`;
+          throw new Error(errMsg);
         }
         return res;
       })
@@ -2621,7 +2610,7 @@ const app = {
           this.toast((res && res.message) ? res.message : 'Failed to update LR copy', 'error');
         }
       })
-      .catch(() => this.toast('Network error uploading LR copy.', 'error'));
+      .catch(err => this.toast(err.message || 'Network error uploading LR copy.', 'error'));
     };
 
     if (window.ImageCropper) {
@@ -2637,8 +2626,33 @@ const app = {
         }
       });
     } else {
+      // Automatic client-side compression fallback
       const reader = new FileReader();
-      reader.onload = () => doUpload(reader.result);
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 2048;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          doUpload(canvas.toDataURL('image/jpeg', 0.88));
+        };
+        img.onerror = () => doUpload(e.target.result);
+        img.src = e.target.result;
+      };
       reader.readAsDataURL(file);
     }
   },

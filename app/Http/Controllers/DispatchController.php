@@ -516,13 +516,7 @@ class DispatchController extends Controller
             // Handle LR image
             $lrPath = null;
             if ($request->lr_image) {
-                $dir = public_path('lr_images');
-                if (!file_exists($dir)) {
-                    @mkdir($dir, 0777, true);
-                }
-                $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->lr_image));
-                $lrPath    = 'lr_images/' . uniqid('LR_') . '.jpg';
-                @file_put_contents(public_path($lrPath), $imageData);
+                $lrPath = self::saveLrImagePayload($request->lr_image);
             }
             $dispatchTransporterId = $request->transporter_id ?? $order->transporter_id;
             if (!$dispatchTransporterId) {
@@ -921,30 +915,145 @@ class DispatchController extends Controller
             ], 404);
         }
 
-        // Handle LR image - save base64 as file
-        $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->lr_image));
-        $dir = public_path('lr_images');
-        if (!file_exists($dir)) {
-            @mkdir($dir, 0777, true);
+        // Handle LR image - decode and save to public and hostinger storage safely
+        $lrPath = self::saveLrImagePayload($request->lr_image);
+        if (!$lrPath) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to save LR image to server disk. Please check image data and storage permissions.',
+            ], 500);
         }
-        $lrPath = 'lr_images/' . uniqid('LR_') . '.jpg';
-        file_put_contents(public_path($lrPath), $imageData);
 
-        // Delete old image if exists
-        if ($log->lr_image_path && file_exists(public_path($log->lr_image_path))) {
-            @unlink(public_path($log->lr_image_path));
+        // Delete old physical image if exists
+        if ($log->lr_image_path) {
+            $oldPhysical = self::resolveLocalFilePath($log->lr_image_path);
+            if ($oldPhysical && file_exists($oldPhysical)) {
+                @unlink($oldPhysical);
+            }
         }
 
         DB::transaction(function() use ($log, $lrPath) {
             $log->update(['lr_image_path' => $lrPath]);
         });
 
+        $userSlug = request()->segment(1) ?: 'dispatch';
+
         return response()->json([
-            'success' => true, 
-            'message' => 'LR Copy updated successfully for Order #' . $log->order_id . '!',
-            'lr_url'  => asset($lrPath),
-            'order_id'=> $log->order_id,
-            'log_id'  => $log->id,
+            'success'  => true, 
+            'message'  => 'LR Copy updated successfully for Order #' . $log->order_id . '!',
+            'lr_url'   => asset($lrPath),
+            'view_url' => url($userSlug . '/dispatch/view-lr/' . $log->id),
+            'order_id' => $log->order_id,
+            'log_id'   => $log->id,
+        ]);
+    }
+
+    /**
+     * Helper to reliably decode and save a base64 LR image to disk storage.
+     * Writes to public_path, Hostinger public_html directories, and storage fallback.
+     */
+    public static function saveLrImagePayload(string $base64Data): ?string
+    {
+        if (empty($base64Data)) {
+            return null;
+        }
+
+        $cleanData = preg_replace('#^data:image/\w+;base64,#i', '', $base64Data);
+        $imageData = base64_decode($cleanData, true);
+        if (!$imageData || strlen($imageData) < 20) {
+            return null;
+        }
+
+        $filename = uniqid('LR_') . '.jpg';
+        $relativeDir = 'lr_images';
+        $relativeFilePath = $relativeDir . '/' . $filename;
+
+        $targetDirs = [
+            public_path($relativeDir),
+            base_path('../public_html/' . $relativeDir),
+            base_path('../public_html/penta-pure/' . $relativeDir),
+            base_path('public/' . $relativeDir),
+            storage_path('app/public/' . $relativeDir),
+        ];
+
+        $savedCount = 0;
+        foreach ($targetDirs as $dir) {
+            $parent = dirname($dir);
+            if (file_exists($parent) && is_dir($parent)) {
+                if (!file_exists($dir)) {
+                    @mkdir($dir, 0775, true);
+                }
+                if (file_exists($dir) && is_dir($dir)) {
+                    $targetFile = $dir . DIRECTORY_SEPARATOR . $filename;
+                    $bytes = @file_put_contents($targetFile, $imageData);
+                    if ($bytes !== false && $bytes > 0) {
+                        $savedCount++;
+                    }
+                }
+            }
+        }
+
+        if ($savedCount === 0) {
+            // Fallback attempt into storage
+            $storageDir = storage_path('app/public/' . $relativeDir);
+            if (!file_exists($storageDir)) {
+                @mkdir($storageDir, 0775, true);
+            }
+            $targetFile = $storageDir . DIRECTORY_SEPARATOR . $filename;
+            $bytes = @file_put_contents($targetFile, $imageData);
+            if ($bytes !== false && $bytes > 0) {
+                $savedCount++;
+            }
+        }
+
+        return $savedCount > 0 ? $relativeFilePath : null;
+    }
+
+    /**
+     * View / stream LR copy image for a specific dispatch log.
+     */
+    public function viewLR($param1, $param2 = null)
+    {
+        $id = ($param2 !== null && !is_object($param2)) ? $param2 : $param1;
+        if (is_object($param1)) {
+            $id = $param2;
+        }
+
+        $log = DispatchLog::find($id);
+        if (!$log) {
+            abort(404, 'Dispatch log record not found.');
+        }
+
+        $rawPaths = self::getLrImagePaths($log);
+        if (empty($rawPaths) && $log->order && $log->order->dispatchLogs) {
+            $otherLog = $log->order->dispatchLogs->first(fn($ol) => !empty($ol->lr_image_path));
+            if ($otherLog) {
+                $rawPaths = self::getLrImagePaths($otherLog);
+                $log = $otherLog;
+            }
+        }
+
+        if (empty($rawPaths)) {
+            abort(404, 'No LR image attached to this dispatch record.');
+        }
+
+        $fullPath = null;
+        foreach ($rawPaths as $rp) {
+            $resolved = self::resolveLocalFilePath($rp);
+            if ($resolved) {
+                $fullPath = $resolved;
+                break;
+            }
+        }
+
+        if (!$fullPath || !file_exists($fullPath)) {
+            abort(404, 'LR image file not found on server disk.');
+        }
+
+        $mime = mime_content_type($fullPath) ?: 'image/jpeg';
+        return response()->file($fullPath, [
+            'Content-Type'  => $mime,
+            'Cache-Control' => 'public, max-age=86400',
         ]);
     }
 
@@ -985,22 +1094,28 @@ class DispatchController extends Controller
             storage_path('app/public/' . $relative),
             storage_path($relative),
             base_path($relative),
+            base_path('../public_html/' . $relative),
+            base_path('../public_html/penta-pure/' . $relative),
+            base_path('public/' . $relative),
         ];
 
         if (str_starts_with($relative, 'public/')) {
             $sub = substr($relative, 7);
             $candidates[] = public_path($sub);
             $candidates[] = storage_path('app/public/' . $sub);
+            $candidates[] = base_path('../public_html/' . $sub);
+            $candidates[] = base_path('../public_html/penta-pure/' . $sub);
         }
 
         if (str_starts_with($relative, 'storage/')) {
             $sub = substr($relative, 8);
             $candidates[] = storage_path('app/public/' . $sub);
             $candidates[] = public_path($sub);
+            $candidates[] = base_path('../public_html/storage/' . $sub);
         }
 
         foreach ($candidates as $cand) {
-            if (file_exists($cand) && is_file($cand)) {
+            if ($cand && file_exists($cand) && is_file($cand)) {
                 return $cand;
             }
         }
@@ -1188,8 +1303,16 @@ class DispatchController extends Controller
             }
         }
 
-        $logsData = $logs->map(function($d) {
+        $userSlug = request()->segment(1) ?: 'dispatch';
+        $logsData = $logs->map(function($d) use ($userSlug) {
             $rawPaths = self::getLrImagePaths($d);
+            $hasPhysicalFile = false;
+            foreach ($rawPaths as $rp) {
+                if (self::resolveLocalFilePath($rp)) {
+                    $hasPhysicalFile = true;
+                    break;
+                }
+            }
             $lrImages = array_map(fn($p) => ['path' => $p, 'url' => asset($p)], $rawPaths);
             $ownLr = !empty($lrImages) ? $lrImages[0]['url'] : null;
 
@@ -1279,6 +1402,8 @@ class DispatchController extends Controller
                 'salesBy'                   => $d->order?->creator?->name ?? 'N/A',
                 'dispatchedBy'              => $d->user?->name,
                 'lrImage'                   => $effectiveLr,
+                'lrViewUrl'                 => url($userSlug . '/dispatch/view-lr/' . $d->id),
+                'hasPhysicalLr'             => $hasPhysicalFile,
                 'ownLrImage'                => $ownLr,
                 'isOrderLrCopy'             => empty($ownLr) && !empty($effectiveLr),
                 'lrImages'                  => $lrImages,

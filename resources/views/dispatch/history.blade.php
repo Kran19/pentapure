@@ -672,8 +672,22 @@
                 📥 Download LR Copy
               </a>
             </div>
+            @php
+              $dispSlug = request()->segment(1) ?: 'dispatch';
+              $lrStreamUrl = url($dispSlug . '/dispatch/view-lr/' . $d['id']);
+              $lrDownloadUrl = url($dispSlug . '/dispatch/download-lr/' . $d['id']);
+            @endphp
             <div style="background:#ffffff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
-              <img src="{{ $d['lrImage'] }}" style="max-width:100%; width:auto; border-radius:6px; max-height:300px; object-fit:contain; cursor:pointer; background:#ffffff; display:inline-block;" onclick="app.viewImage(this.src)" title="Click to view full image for Order #{{ $d['orderId'] }}">
+              <img src="{{ $lrStreamUrl }}" 
+                   data-fallback="{{ $d['lrImage'] }}" 
+                   onerror="if(this.dataset.fallback && this.src !== this.dataset.fallback){ this.src = this.dataset.fallback; } else { this.style.display='none'; const fb = this.nextElementSibling; if(fb) fb.style.display='block'; }" 
+                   style="max-width:100%; width:auto; border-radius:6px; max-height:300px; object-fit:contain; cursor:pointer; background:#ffffff; display:inline-block;" 
+                   onclick="app.viewImage(this.src, '{{ $lrDownloadUrl }}')" 
+                   title="Click to view full image for Order #{{ $d['orderId'] }}">
+              <div style="display:none; padding:1.2rem; background:#fff1f2; border:1px dashed #f43f5e; border-radius:8px; margin:4px 0;">
+                <div style="color:#e11d48; font-weight:700; font-size:0.85rem; margin-bottom:4px;">⚠️ LR Copy Image Not Found on Server Disk</div>
+                <div style="color:#64748b; font-size:0.78rem;">The database has an LR record, but the image file is missing. Please click &quot;Change/Update This Order's LR&quot; below to re-upload.</div>
+              </div>
             </div>
             <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
               <a href="{{ url(request()->segment(1) . '/dispatch/download-lr/' . $d['id']) }}" download class="btn btn-sm" style="font-size:0.78rem; padding:0.45rem 0.8rem; background:#059669; color:#fff !important; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:6px;">
