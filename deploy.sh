@@ -18,7 +18,9 @@ composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev -
 # npm run build
 
 # 4. Clear and cache Laravel configurations
-echo "Caching configuration..."
+echo "Caching configuration, routes, and views..."
+php artisan view:clear
+php artisan cache:clear
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
@@ -34,6 +36,6 @@ php artisan migrate --force
 
 # 7. Sync public assets to public_html
 echo "Syncing public assets to live web directory..."
-rsync -av --exclude='index.php' --exclude='.htaccess' public/ ../public_html/penta-pure/
+rsync -av --exclude='index.php' --exclude='.htaccess' public/ ../public_html/
 
 echo "Application deployed successfully!"
