@@ -13,6 +13,10 @@ class Attendance extends Model
         'num_workers', 'remark'
     ];
 
+    protected $casts = [
+        'num_workers' => 'float',
+    ];
+
     public function worker()
     {
         return $this->belongsTo(Worker::class);

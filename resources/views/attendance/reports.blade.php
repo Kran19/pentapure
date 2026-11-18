@@ -100,7 +100,7 @@
                 📂 {{ strtoupper($deptName) }} <span style="font-size:0.8rem; font-weight:600; opacity:0.85; margin-left:0.4rem; color:var(--text-color);">(Total Workers: {{ $deptWorkerCount }})</span>
               </td>
               <td style="font-weight:bold; color:#000000; font-size:0.95rem;" data-csv-value="{{ $deptTotalPresent }}">
-                <div>{{ $deptTotalPresent > 0 ? (floor($deptTotalPresent) == $deptTotalPresent ? number_format($deptTotalPresent, 0) : number_format($deptTotalPresent, 1)) : 0 }}</div>
+                <div>{{ $deptTotalPresent > 0 ? rtrim(rtrim(number_format((float)$deptTotalPresent, 2, '.', ','), '0'), '.') : 0 }}</div>
                 @if($deptTotalEarned > 0)
                   <div style="font-size:0.72rem; font-weight:700; color:#000000; margin-top:2px; white-space:nowrap;">
                     Earned: ₹{{ number_format($deptTotalEarned, 0) }}
@@ -190,7 +190,7 @@
                   <a href="{{ $reportUrl }}?month={{ $month }}" class="btn btn-sm" style="width:auto; padding:0.2rem 0.6rem; font-size:0.7rem; text-transform:uppercase;">View Sheet</a>
                 </td>
                 <td style="color:#000000; font-weight:bold;" data-csv-value="{{ $data['present'] }}">
-                  <div>{{ $data['present'] }}</div>
+                  <div>{{ ($data['present'] ?? 0) > 0 ? rtrim(rtrim(number_format((float)$data['present'], 2, '.', ','), '0'), '.') : 0 }}</div>
                   <div style="font-size:0.72rem; font-weight:700; color:#000000; margin-top:2px; white-space:nowrap;">
                     Earned: ₹{{ number_format($data['attendance_salary'] ?? 0, 0) }}
                   </div>

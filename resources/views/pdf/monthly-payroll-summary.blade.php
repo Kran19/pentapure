@@ -134,7 +134,7 @@
                         DEPARTMENT: {{ strtoupper($deptName) }} <span style="font-size:8.5px; font-weight:normal; opacity:0.85;">(Workers: {{ $deptWorkerCount }})</span>
                     </td>
                     <td style="text-align:center;">
-                        <div>{{ $deptTotalPresent > 0 ? (floor($deptTotalPresent) == $deptTotalPresent ? number_format($deptTotalPresent, 0) : number_format($deptTotalPresent, 1)) : 0 }}</div>
+                        <div>{{ $deptTotalPresent > 0 ? rtrim(rtrim(number_format((float)$deptTotalPresent, 2, '.', ','), '0'), '.') : 0 }}</div>
                         @if($deptTotalEarned > 0)
                             <div style="font-size:7px; font-weight:bold; color:#0f172a; margin-top:1px;">
                                 Earned: ₹{{ number_format($deptTotalEarned, 0) }}
@@ -207,7 +207,7 @@
                             @endif
                         </td>
                         <td style="text-align:center; font-weight:bold; color:#0f172a;">
-                            <div>{{ $data['present'] }}</div>
+                            <div>{{ ($data['present'] ?? 0) > 0 ? rtrim(rtrim(number_format((float)$data['present'], 2, '.', ','), '0'), '.') : 0 }}</div>
                             <div style="font-size:7px; font-weight:bold; color:#0f172a; margin-top:1px;">
                                 Earned: ₹{{ number_format($data['attendance_salary'] ?? 0, 0) }}
                             </div>

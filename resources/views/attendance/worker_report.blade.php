@@ -284,7 +284,7 @@
         </tr>
         <tr>
           <td style="border:2px solid #000; padding:8px; text-align:center; width:25%;">TOTAL LABOUR</td>
-          <td style="border:2px solid #000; padding:8px; text-align:center; width:12.5%;">{{ number_format($presentDays, 1) }}</td>
+          <td style="border:2px solid #000; padding:8px; text-align:center; width:12.5%;">{{ ($presentDays ?? 0) > 0 ? rtrim(rtrim(number_format((float)$presentDays, 2, '.', ','), '0'), '.') : '0' }}</td>
           <td style="border:2px solid #000; padding:8px; text-align:center; width:20%;">PER LABOUR</td>
           <td style="border:2px solid #000; padding:8px; text-align:center; width:17.5%;">{{ number_format($perDaySalary, 2) }}</td>
           <td style="border:2px solid #000; padding:8px; text-align:right;">{{ number_format(round($attendanceSalary), 2) }}</td>

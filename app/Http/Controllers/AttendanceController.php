@@ -963,7 +963,7 @@ class AttendanceController extends Controller
             'attendances.*.ot_ut'       => 'nullable|in:NONE,OT,UT',
             'attendances.*.ot_ut_hours' => 'nullable|numeric',
             'attendances.*.advance'     => 'nullable|numeric',
-            'attendances.*.num_workers' => 'nullable|integer|min:0',
+            'attendances.*.num_workers' => 'nullable|numeric|min:0',
             'attendances.*.remark'      => 'nullable|string',
             'attendances.*.is_finished' => 'nullable|boolean',
         ]);
@@ -1031,7 +1031,7 @@ class AttendanceController extends Controller
         }
 
         foreach ($request->attendances as $rec) {
-            $worker      = Worker::find($rec['worker_id']);
+            $worker      = Worker::with('department')->find($rec['worker_id']);
             $totalHours  = 0;
             $overtimeHrs = 0;
             $wage        = 0;
@@ -1081,9 +1081,10 @@ class AttendanceController extends Controller
             if ($rec['status'] === 'ABSENT') {
                 $wage = 0;
             } else {
-                if ($worker->salary_type === 'LABOUR_MUKADAM') {
-                    $numWorkers = isset($rec['num_workers']) && $rec['num_workers'] !== '' ? (int)$rec['num_workers'] : 0;
-                    $wage = ($worker->daily_salary ?? 0) * $numWorkers;
+                if ($worker->salary_type === 'LABOUR_MUKADAM' || stripos($worker->department->name ?? '', 'MUKADAM') !== false) {
+                    $numWorkers = isset($rec['num_workers']) && $rec['num_workers'] !== '' ? round((float)$rec['num_workers'], 2) : 0;
+                    $perLabourRate = (float) ($worker->salary_amount ?: ($worker->daily_salary ?? 0));
+                    $wage = $perLabourRate * $numWorkers;
                 } else {
                     if ($totalHours > 0) {
                         $normalHrs = min($totalHours, $std);
@@ -1114,7 +1115,7 @@ class AttendanceController extends Controller
                     'ot_ut'           => $isFixedSalary ? 'NONE' : ($rec['ot_ut'] ?? 'NONE'),
                     'ot_ut_hours'     => $isFixedSalary ? 0 : (float)($rec['ot_ut_hours'] ?? 0),
                     'advance'         => (float)($rec['advance'] ?? 0),
-                    'num_workers'     => isset($rec['num_workers']) && $rec['num_workers'] !== '' ? (int)$rec['num_workers'] : null,
+                    'num_workers'     => isset($rec['num_workers']) && $rec['num_workers'] !== '' ? round((float)$rec['num_workers'], 2) : null,
                     'remark'          => $rec['remark'] ?? null,
                     'is_finished'     => !empty($rec['is_finished']),
                 ]
@@ -1593,6 +1594,18 @@ class AttendanceController extends Controller
             $isInactive = empty($inactivatedAtStr) || $inactivatedAtStr <= $monthEnd;
         }
 
+        $effectiveSalaryAmount = ($adjustment && $adjustment->salary_amount !== null && (float)$adjustment->salary_amount > 0)
+            ? (float) $adjustment->salary_amount
+            : (float) $worker->salary_amount;
+
+        $effectiveSalaryType = ($adjustment && !empty($adjustment->salary_type))
+            ? $adjustment->salary_type
+            : $worker->salary_type;
+
+        $effectivePerHourSalary = ($adjustment && $adjustment->per_hour_salary !== null && (float)$adjustment->per_hour_salary > 0)
+            ? (float) $adjustment->per_hour_salary
+            : (float) ($worker->per_hour_salary ?? 0);
+
         $totalOT = 0;
         $totalUT = 0;
         $dailyAdvanceTotal = 0;
@@ -1617,8 +1630,8 @@ class AttendanceController extends Controller
                 $totalOT += $rawOtHrs;
             }
 
-            if ($worker->salary_type === 'LABOUR_MUKADAM') {
-                $presentDays += (int) ($att->num_workers ?? 0);
+            if ($effectiveSalaryType === 'LABOUR_MUKADAM' || $worker->salary_type === 'LABOUR_MUKADAM') {
+                $presentDays = round($presentDays + (float) ($att->num_workers ?? 0), 2);
             } else {
                 if ($att->status === 'ABSENT') {
                     $absentDays++;
@@ -1631,18 +1644,6 @@ class AttendanceController extends Controller
                 }
             }
         }
-
-        $effectiveSalaryAmount = ($adjustment && $adjustment->salary_amount !== null && (float)$adjustment->salary_amount > 0)
-            ? (float) $adjustment->salary_amount
-            : (float) $worker->salary_amount;
-
-        $effectiveSalaryType = ($adjustment && !empty($adjustment->salary_type))
-            ? $adjustment->salary_type
-            : $worker->salary_type;
-
-        $effectivePerHourSalary = ($adjustment && $adjustment->per_hour_salary !== null && (float)$adjustment->per_hour_salary > 0)
-            ? (float) $adjustment->per_hour_salary
-            : (float) ($worker->per_hour_salary ?? 0);
 
         $attendanceSalary = 0;
         $otAmount = 0;

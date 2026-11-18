@@ -169,7 +169,7 @@
             <input type="hidden" name="attendances[{{$index}}][status]" class="status-select" value="PRESENT">
             <div style="flex:1;">
               <label style="font-size:0.8rem; color:var(--text-muted); display:block;">No. of Workers *</label>
-              <input type="number" name="attendances[{{$index}}][num_workers]" value="{{ ($att && $att->num_workers > 0) ? $att->num_workers : '' }}" min="0" step="1" class="num-workers-input" placeholder="Enter count" onwheel="this.blur()" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
+              <input type="number" name="attendances[{{$index}}][num_workers]" value="{{ ($att && $att->num_workers > 0) ? $att->num_workers : '' }}" min="0" step="any" inputmode="decimal" class="num-workers-input" placeholder="Enter count" onwheel="this.blur()" {{ $disableInputs ? 'disabled' : '' }} style="width:100%; padding:0.4rem; border:1px solid #ccc; border-radius:4px;">
             </div>
             @else
             <div style="flex:1;">
