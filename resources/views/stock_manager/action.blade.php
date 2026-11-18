@@ -2,6 +2,10 @@
 
 @section('content')
 @php
+  $nowIst = \Carbon\Carbon::now('Asia/Kolkata');
+  $todayDateIst = $nowIst->format('Y-m-d');
+  $nowTimeIst = $nowIst->format('H:i');
+
   $productsJson = $pageData['products']->map(function($p) {
       $gradesList = $p->grades->pluck('name')->toArray();
       if (empty($gradesList)) $gradesList = ['NONE'];
@@ -132,6 +136,34 @@ input[type=number].no-spinners {
   border-radius: 8px !important;
   box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1) !important;
 }
+.sm-card input[type="date"],
+.sm-card input[type="time"] {
+  color-scheme: light;
+}
+.sm-dt-pill {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.32rem 0.7rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.sm-dt-pill:hover {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  color: #b45309;
+}
+.sm-dt-pill.is-active {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: #ffffff !important;
+}
 </style>
 
 <div class="sm-card">
@@ -140,6 +172,44 @@ input[type=number].no-spinners {
   </div>
 
   <form id="sm-action-form" onsubmit="submitSmAction(event)">
+    <!-- 0. Entry Date & Time * -->
+    <div class="sm-datetime-box" style="margin-bottom:1.25rem; padding:14px; background:#f9fafb; border-radius:10px; border:1px solid #e5e7eb;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span style="font-size:0.86rem; font-weight:700; color:#374151; text-transform:uppercase;">🕒 ENTRY DATE & TIME *</span>
+          <span id="sm-datetime-mode-badge" style="display:inline-flex; align-items:center; gap:5px; font-size:0.74rem; font-weight:700; padding:2px 9px; border-radius:999px; background:#dcfce7; color:#15803d;">
+            ● Live Current Time
+          </span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <button type="button" id="sm-btn-live-now" class="sm-dt-pill is-active" onclick="setSmEntryLiveNow()">
+            ⚡ Live (Now)
+          </button>
+          <button type="button" id="sm-btn-yesterday" class="sm-dt-pill" onclick="setSmEntryYesterday()">
+            ⏪ Yesterday
+          </button>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:0.75rem;">
+        <div>
+          <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.25rem; color:#6b7280; display:block;">ENTRY DATE *</label>
+          <input type="date" id="sm-entry-date" name="entry_date" value="{{ $todayDateIst }}" max="{{ $todayDateIst }}" required onchange="onSmDateTimeManualChange()" style="padding:0.62rem 0.75rem; width:100%; font-size:0.95rem; font-weight:700; cursor:pointer;">
+        </div>
+        <div>
+          <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.25rem; color:#6b7280; display:block;">ENTRY TIME *</label>
+          <input type="time" id="sm-entry-time" name="entry_time" value="{{ $nowTimeIst }}" required oninput="onSmDateTimeManualChange()" onchange="onSmDateTimeManualChange()" style="padding:0.62rem 0.75rem; width:100%; font-size:0.95rem; font-weight:700; cursor:pointer;">
+        </div>
+      </div>
+
+      <div id="sm-backdate-banner" style="display:none; margin-top:10px; padding:8px 12px; border-radius:8px; background:#fffbeb; border:1px solid #fcd34d; color:#92400e; font-size:0.82rem; font-weight:600; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+        <span id="sm-backdate-banner-text">⚠️ Custom Date/Time Entry</span>
+        <button type="button" onclick="setSmEntryLiveNow()" style="background:none; border:none; color:#b45309; font-weight:700; font-size:0.78rem; text-decoration:underline; cursor:pointer; padding:0;">
+          Reset to Live Now
+        </button>
+      </div>
+    </div>
+
     <!-- 1. Stage * -->
     <div class="form-group" style="margin-bottom:1.2rem;">
       <label>Stage *</label>
@@ -586,6 +656,123 @@ function onActionTypeChange(type) {
   recalcDropdownTotals();
 }
 
+window.smIsLiveTime = true;
+
+function getIstNowParts(offsetDays = 0) {
+  const targetMs = Date.now() + (offsetDays * 86400000);
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(new Date(targetMs));
+
+  const map = {};
+  parts.forEach(p => { map[p.type] = p.value; });
+  const hh = map.hour === '24' ? '00' : map.hour;
+  return {
+    date: `${map.year}-${map.month}-${map.day}`,
+    time: `${hh}:${map.minute}`
+  };
+}
+
+function formatSmHumanDateTime(dateStr, timeStr) {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-');
+  let formattedTime = timeStr || '';
+  if (timeStr && timeStr.includes(':')) {
+    const [hhRaw, mm] = timeStr.split(':');
+    let hh = parseInt(hhRaw, 10);
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    hh = hh % 12 || 12;
+    formattedTime = `${String(hh).padStart(2, '0')}:${mm} ${ampm}`;
+  }
+  return `${d}-${m}-${y}${formattedTime ? ', ' + formattedTime : ''}`;
+}
+
+function updateSmDateTimeUi() {
+  const dateInp = document.getElementById('sm-entry-date');
+  const timeInp = document.getElementById('sm-entry-time');
+  const badge = document.getElementById('sm-datetime-mode-badge');
+  const banner = document.getElementById('sm-backdate-banner');
+  const bannerText = document.getElementById('sm-backdate-banner-text');
+  const btnLive = document.getElementById('sm-btn-live-now');
+  const btnYesterday = document.getElementById('sm-btn-yesterday');
+  if (!dateInp || !timeInp) return;
+
+  const todayIst = getIstNowParts(0).date;
+  const yesterdayIst = getIstNowParts(-1).date;
+  dateInp.max = todayIst;
+
+  if (window.smIsLiveTime) {
+    if (btnLive) btnLive.classList.add('is-active');
+    if (btnYesterday) btnYesterday.classList.remove('is-active');
+    if (badge) {
+      badge.style.background = '#dcfce7';
+      badge.style.color = '#15803d';
+      badge.textContent = '● Live Current Time';
+    }
+    if (banner) banner.style.display = 'none';
+  } else {
+    if (btnLive) btnLive.classList.remove('is-active');
+    if (btnYesterday) {
+      if (dateInp.value === yesterdayIst) btnYesterday.classList.add('is-active');
+      else btnYesterday.classList.remove('is-active');
+    }
+    const isPastDay = dateInp.value && dateInp.value < todayIst;
+    const humanStr = formatSmHumanDateTime(dateInp.value, timeInp.value);
+    if (badge) {
+      badge.style.background = '#fef3c7';
+      badge.style.color = '#b45309';
+      badge.textContent = isPastDay ? '🕒 Backdated Entry' : '🕒 Custom Time Today';
+    }
+    if (banner && bannerText) {
+      banner.style.display = 'flex';
+      bannerText.textContent = isPastDay
+        ? `⚠️ Backdated Entry: Stock will be recorded for ${humanStr}`
+        : `🕒 Custom Time: Stock will be recorded for Today (${humanStr})`;
+    }
+  }
+}
+
+function syncSmLiveClock() {
+  if (!window.smIsLiveTime) return;
+  const dateInp = document.getElementById('sm-entry-date');
+  const timeInp = document.getElementById('sm-entry-time');
+  const nowIst = getIstNowParts(0);
+  if (dateInp) {
+    dateInp.max = nowIst.date;
+    dateInp.value = nowIst.date;
+  }
+  if (timeInp) {
+    timeInp.value = nowIst.time;
+  }
+  updateSmDateTimeUi();
+}
+
+function setSmEntryLiveNow() {
+  window.smIsLiveTime = true;
+  syncSmLiveClock();
+}
+
+function setSmEntryYesterday() {
+  window.smIsLiveTime = false;
+  const dateInp = document.getElementById('sm-entry-date');
+  const timeInp = document.getElementById('sm-entry-time');
+  const yesterdayIst = getIstNowParts(-1);
+  if (dateInp) dateInp.value = yesterdayIst.date;
+  if (timeInp && !timeInp.value) timeInp.value = yesterdayIst.time;
+  updateSmDateTimeUi();
+}
+
+function onSmDateTimeManualChange() {
+  window.smIsLiveTime = false;
+  updateSmDateTimeUi();
+}
+
 function submitSmAction(e) {
   e.preventDefault();
   const prodId = document.getElementById('sm-prod-id').value;
@@ -595,7 +782,31 @@ function submitSmAction(e) {
   const grade = document.getElementById('sm-grade').value;
   const actionType = document.getElementById('sm-action-type').value;
   const notes = document.getElementById('sm-notes').value;
+  const entryDate = document.getElementById('sm-entry-date')?.value || '';
+  const entryTime = document.getElementById('sm-entry-time')?.value || '';
   const btn = document.getElementById('sm-submit-btn');
+
+  if (!window.smIsLiveTime) {
+    if (!entryDate || !entryTime) {
+      if (typeof Swal !== 'undefined') Swal.fire('Missing Date/Time', 'Please select both Entry Date and Entry Time.', 'warning');
+      else alert('Please select both Entry Date and Entry Time.');
+      return;
+    }
+    const nowIst = getIstNowParts(0);
+    if (entryDate > nowIst.date || (entryDate === nowIst.date && entryTime > nowIst.time)) {
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Future Date/Time Not Allowed',
+          text: 'Entry Date & Time cannot be in the future. Please pick a valid past or current time, or click "Live (Now)".',
+          confirmButtonColor: '#f59e0b'
+        });
+      } else {
+        alert('Entry Date & Time cannot be in the future.');
+      }
+      return;
+    }
+  }
 
   if (!prodId) {
     if (typeof app !== 'undefined' && app.toast) app.toast('Please select a product', 'error');
@@ -678,9 +889,10 @@ function submitSmAction(e) {
   const userSlug = window.userSlug || 'stock_manager';
   const baseUrl = window.baseUrl || '';
   const isSmPrefixed = window.location.pathname.includes('/stock-manager');
+  const isSmUnderscorePrefixed = window.location.pathname.includes('/stock_manager');
   const targetUrl = actionType === 'INWARD'
-    ? (isSmPrefixed ? baseUrl + '/' + userSlug + '/stock-manager/action' : baseUrl + '/' + userSlug + '/action')
-    : (isSmPrefixed ? baseUrl + '/' + userSlug + '/stock-manager/outward' : baseUrl + '/' + userSlug + '/outward');
+    ? (isSmPrefixed ? baseUrl + '/' + userSlug + '/stock-manager/action' : (isSmUnderscorePrefixed ? baseUrl + '/' + userSlug + '/stock_manager/action' : baseUrl + '/' + userSlug + '/action'))
+    : (isSmPrefixed ? baseUrl + '/' + userSlug + '/stock-manager/outward' : (isSmUnderscorePrefixed ? baseUrl + '/' + userSlug + '/stock_manager/outward' : baseUrl + '/' + userSlug + '/outward'));
 
   fetch(targetUrl, {
     method: 'POST',
@@ -694,7 +906,10 @@ function submitSmAction(e) {
       stage: stage,
       grade: grade, 
       location_splits: locationSplits, 
-      notes: notes 
+      notes: notes,
+      entry_date: entryDate,
+      entry_time: entryTime,
+      is_live_time: Boolean(window.smIsLiveTime)
     })
   })
   .then(r => r.json())
@@ -742,6 +957,9 @@ function submitSmAction(e) {
 
 // Initialize Select2 & page components
 document.addEventListener('DOMContentLoaded', function() {
+  syncSmLiveClock();
+  setInterval(syncSmLiveClock, 15000);
+
   if (window.jQuery && $.fn.select2) {
     function matchCustom(params, data) {
       if ($.trim(params.term) === '') return data;

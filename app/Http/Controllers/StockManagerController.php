@@ -26,11 +26,13 @@ class StockManagerController extends Controller
         $totalItems = count($liveStock);
         $totalNetQty = array_sum(array_column($liveStock, 'quantity'));
 
-        $todayInward = Stock::whereDate('created_at', today())
+        $todayStr = Carbon::now('Asia/Kolkata')->toDateString();
+
+        $todayInward = Stock::whereRaw('DATE(COALESCE(date, created_at)) = ?', [$todayStr])
             ->where('transaction_type', 'IN')
             ->sum('quantity');
 
-        $todayOutward = Stock::whereDate('created_at', today())
+        $todayOutward = Stock::whereRaw('DATE(COALESCE(date, created_at)) = ?', [$todayStr])
             ->where('transaction_type', 'OUT')
             ->sum('quantity');
 
@@ -90,7 +92,54 @@ class StockManagerController extends Controller
         return view('stock_manager.action', compact('pageData'));
     }
 
-    // ── POST: Store Stock Inward ───────────────────────────────────────────
+    /**
+     * Resolve the effective Stock entry timestamp in Asia/Kolkata.
+     * Supports live current-time mode as well as backdated date & time selection.
+     */
+    private function resolveEntryDateTime(Request $request): Carbon
+    {
+        $nowIst = Carbon::now('Asia/Kolkata');
+
+        if ($request->boolean('is_live_time') || (!$request->filled('entry_date') && !$request->filled('entry_time'))) {
+            return $nowIst->copy();
+        }
+
+        $dateStr = trim((string) ($request->input('entry_date') ?: $nowIst->format('Y-m-d')));
+        $parsedDateOnly = Carbon::parse($dateStr, 'Asia/Kolkata')->startOfDay();
+
+        if ($parsedDateOnly->gt($nowIst->copy()->startOfDay())) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'entry_date' => ['Entry date cannot be in the future.'],
+            ]);
+        }
+
+        if ($request->filled('entry_time')) {
+            $timeStr = trim((string) $request->input('entry_time'));
+            if (strlen($timeStr) === 5) {
+                $seconds = ($dateStr === $nowIst->format('Y-m-d') && $timeStr === $nowIst->format('H:i'))
+                    ? $nowIst->format('s')
+                    : '00';
+                $timeStr .= ':' . $seconds;
+            }
+            $entryDateTime = Carbon::parse("{$dateStr} {$timeStr}", 'Asia/Kolkata');
+        } else {
+            $entryDateTime = Carbon::parse($dateStr, 'Asia/Kolkata')
+                ->setTime($nowIst->hour, $nowIst->minute, $nowIst->second);
+        }
+
+        if ($entryDateTime->gt($nowIst->copy()->addMinutes(2))) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'entry_time' => ['Entry date and time cannot be in the future.'],
+            ]);
+        }
+
+        if ($entryDateTime->gt($nowIst)) {
+            return $nowIst->copy();
+        }
+
+        return $entryDateTime;
+    }
+
     // ── POST: Store Stock Inward ───────────────────────────────────────────
     public function storeInward(Request $request)
     {
@@ -101,10 +150,17 @@ class StockManagerController extends Controller
             'grade'      => 'nullable|string|max:50',
             'location'   => 'nullable|string',
             'notes'      => 'nullable|string',
+            'entry_date' => 'nullable|date',
+            'entry_time' => ['nullable', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
+            'is_live_time' => 'nullable|boolean',
             'location_splits' => 'nullable|array',
             'location_splits.*.location' => 'required_with:location_splits|string',
             'location_splits.*.quantity' => 'required_with:location_splits|numeric|min:0.001',
         ]);
+
+        $entryDateTime = $this->resolveEntryDateTime($request);
+        $recordedAt = Carbon::now('Asia/Kolkata');
+        $hasRecordedAt = \Illuminate\Support\Facades\Schema::hasColumn('stocks', 'recorded_at');
 
         $user = $this->authUser();
         $product = Product::findOrFail($request->product_id);
@@ -121,7 +177,7 @@ class StockManagerController extends Controller
             return response()->json(['success' => false, 'message' => 'Please select at least one location and enter a valid quantity.'], 422);
         }
 
-        DB::transaction(function() use ($request, $user, $product, $stage, $locationSplits) {
+        DB::transaction(function() use ($request, $user, $product, $stage, $locationSplits, $entryDateTime, $recordedAt, $hasRecordedAt) {
             $notes = trim($request->notes ?? '');
             
             $refType = $request->reference_type;
@@ -143,7 +199,7 @@ class StockManagerController extends Controller
 
                 $locationId = Location::firstOrCreate(['name' => $locName])->id;
 
-                Stock::create([
+                $stock = new Stock([
                     'product_id'       => $product->id,
                     'user_id'          => $user['id'],
                     'stage'            => $stage,
@@ -151,8 +207,15 @@ class StockManagerController extends Controller
                     'location_id'      => $locationId,
                     'quantity'         => $qty,
                     'transaction_type' => 'IN',
+                    'date'             => $entryDateTime,
                     'notes'            => $notes,
                 ]);
+                if ($hasRecordedAt) {
+                    $stock->recorded_at = $recordedAt;
+                }
+                $stock->created_at = $entryDateTime;
+                $stock->updated_at = $recordedAt;
+                $stock->save();
             }
         });
 
@@ -173,10 +236,17 @@ class StockManagerController extends Controller
             'grade'      => 'nullable|string|max:50',
             'location'   => 'nullable|string',
             'notes'      => 'nullable|string',
+            'entry_date' => 'nullable|date',
+            'entry_time' => ['nullable', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
+            'is_live_time' => 'nullable|boolean',
             'location_splits' => 'nullable|array',
             'location_splits.*.location' => 'required_with:location_splits|string',
             'location_splits.*.quantity' => 'required_with:location_splits|numeric|min:0.001',
         ]);
+
+        $entryDateTime = $this->resolveEntryDateTime($request);
+        $recordedAt = Carbon::now('Asia/Kolkata');
+        $hasRecordedAt = \Illuminate\Support\Facades\Schema::hasColumn('stocks', 'recorded_at');
 
         $user = $this->authUser();
         $product = Product::findOrFail($request->product_id);
@@ -219,7 +289,7 @@ class StockManagerController extends Controller
             return response()->json(['success' => false, 'message' => "Insufficient {$stage} stock. Total requested: {$totalQtyToOutward} kg, Available: {$netStock} kg"], 400);
         }
 
-        DB::transaction(function() use ($request, $user, $stage, $grade, $locationSplits) {
+        DB::transaction(function() use ($request, $user, $stage, $grade, $locationSplits, $entryDateTime, $recordedAt, $hasRecordedAt) {
             $notes = trim($request->notes ?? '');
             if ($notes === '') {
                 $notes = 'OUTWARD BY STOCK MANAGER';
@@ -232,7 +302,7 @@ class StockManagerController extends Controller
 
                 $locationId = Location::firstOrCreate(['name' => $locName])->id;
 
-                Stock::create([
+                $stock = new Stock([
                     'product_id'       => $request->product_id,
                     'user_id'          => $user['id'],
                     'stage'            => $stage,
@@ -240,8 +310,15 @@ class StockManagerController extends Controller
                     'location_id'      => $locationId,
                     'quantity'         => $qty,
                     'transaction_type' => 'OUT',
+                    'date'             => $entryDateTime,
                     'notes'            => $notes,
                 ]);
+                if ($hasRecordedAt) {
+                    $stock->recorded_at = $recordedAt;
+                }
+                $stock->created_at = $entryDateTime;
+                $stock->updated_at = $recordedAt;
+                $stock->save();
             }
         });
 
@@ -262,7 +339,8 @@ class StockManagerController extends Controller
             ->get();
 
         $stockLogsByKey = Stock::with(['user:id,name', 'product:id,name,unit'])
-            ->latest()
+            ->orderByRaw('COALESCE(date, created_at) DESC')
+            ->orderByDesc('id')
             ->limit(500)
             ->get()
             ->groupBy(fn ($log) => "{$log->product_id}_{$log->grade}_{$log->stage}")
@@ -277,7 +355,8 @@ class StockManagerController extends Controller
                 'transaction_type' => $log->transaction_type,
                 'notes' => $log->notes,
                 'user_name' => $log->user?->name ?? 'Unknown',
-                'created_at' => optional($log->created_at)->timezone('Asia/Kolkata')->format('d M Y, h:i A'),
+                'date' => $log->date ? Carbon::parse($log->date)->timezone('Asia/Kolkata')->format('d M Y, h:i A') : optional($log->created_at)->timezone('Asia/Kolkata')->format('d M Y, h:i A'),
+                'created_at' => ($log->date ? Carbon::parse($log->date) : $log->created_at)?->timezone('Asia/Kolkata')->format('d M Y, h:i A'),
             ])->values());
 
         $allLocations = Location::orderBy('name')->get(['id', 'name']);
@@ -604,7 +683,8 @@ class StockManagerController extends Controller
     public function history()
     {
         $stocks = Stock::with(['product', 'user', 'location'])
-            ->orderByDesc('created_at')
+            ->orderByRaw('COALESCE(date, created_at) DESC')
+            ->orderByDesc('id')
             ->paginate(30);
 
         $pageData = [

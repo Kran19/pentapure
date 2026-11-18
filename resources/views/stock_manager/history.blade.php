@@ -30,10 +30,22 @@
         </thead>
         <tbody>
           @forelse($pageData['history'] as $s)
-          <tr id="history-row-{{ $s->id }}" class="history-row" data-name="{{ strtolower(($s->product?->name ?? '') . ' ' . ($s->notes ?? '') . ' ' . ($s->location?->name ?? '') . ' ' . ($s->stage ?? '') . ' ' . ($s->grade ?? '') . ' ' . ($s->user?->name ?? '') . ' ' . ($s->user?->username ?? '')) }}">
+          @php
+            $effectiveDt = ($s->date ? \Carbon\Carbon::parse($s->date) : $s->created_at)?->timezone('Asia/Kolkata');
+            $recordedDt  = $s->recorded_at ? \Carbon\Carbon::parse($s->recorded_at)->timezone('Asia/Kolkata') : null;
+            $isBackdated = $effectiveDt && $recordedDt && $effectiveDt->format('Y-m-d') !== $recordedDt->format('Y-m-d');
+          @endphp
+          <tr id="history-row-{{ $s->id }}" class="history-row" data-name="{{ strtolower(($s->product?->name ?? '') . ' ' . ($s->notes ?? '') . ' ' . ($s->location?->name ?? '') . ' ' . ($s->stage ?? '') . ' ' . ($s->grade ?? '') . ' ' . ($s->user?->name ?? '') . ' ' . ($s->user?->username ?? '') . ' ' . ($effectiveDt ? $effectiveDt->format('d-m-Y') : '')) }}">
             <td style="white-space: nowrap;">{{ $loop->iteration }}</td>
             <td style="font-size:0.85rem; color:var(--text-muted); white-space: nowrap;">
-              {{ $s->created_at ? $s->created_at->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') : '-' }}
+              <div style="font-weight:600; color:var(--text-main);">
+                {{ $effectiveDt ? $effectiveDt->format('d-m-Y, h:i A') : '-' }}
+              </div>
+              @if($isBackdated)
+                <div style="font-size:0.72rem; color:#d97706; font-weight:600; margin-top:2px;">
+                  Entered: {{ $recordedDt->format('d-m-Y, h:i A') }}
+                </div>
+              @endif
             </td>
             <td style="font-weight:600; color:var(--text-main); white-space: nowrap;">
               {{ $s->product?->name ?? 'Unknown' }}
