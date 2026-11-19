@@ -48,4 +48,8 @@ echo "Syncing public assets to live web directory..."
 rsync -av --exclude='index.php' --exclude='.htaccess' public/ ../public_html/
 rsync -au storage/app/public/lr_images/ ../public_html/lr_images/ 2>/dev/null || true
 
+# 9. Sync LR images bidirectionally with MySQL dispatch_lr_backups
+echo "Syncing LR backups in MySQL..."
+php artisan lr:sync-backups || true
+
 echo "Application deployed successfully!"

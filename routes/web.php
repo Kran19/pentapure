@@ -741,6 +741,14 @@ Route::middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTE
     Route::post('/dispatch/update-lr', [DispatchController::class, 'updateLR']);
     Route::post('/{user_slug}/update-lr', [DispatchController::class, 'updateLR']);
     Route::post('/{user_slug}/dispatch/update-lr', [DispatchController::class, 'updateLR']);
+    Route::post('/restore-lr-archive', [DispatchController::class, 'restoreLrArchive']);
+    Route::post('/dispatch/restore-lr-archive', [DispatchController::class, 'restoreLrArchive']);
+    Route::post('/{user_slug}/restore-lr-archive', [DispatchController::class, 'restoreLrArchive']);
+    Route::post('/{user_slug}/dispatch/restore-lr-archive', [DispatchController::class, 'restoreLrArchive']);
+    Route::post('/clear-missing-lr/{id}', [DispatchController::class, 'clearMissingLR']);
+    Route::post('/dispatch/clear-missing-lr/{id}', [DispatchController::class, 'clearMissingLR']);
+    Route::post('/{user_slug}/clear-missing-lr/{id}', [DispatchController::class, 'clearMissingLR']);
+    Route::post('/{user_slug}/dispatch/clear-missing-lr/{id}', [DispatchController::class, 'clearMissingLR']);
     Route::get('/download-lr/{id}', [DispatchController::class, 'downloadLR']);
     Route::get('/sales/download-lr/{id}', [DispatchController::class, 'downloadLR']);
     Route::get('/dispatch/download-lr/{id}', [DispatchController::class, 'downloadLR']);

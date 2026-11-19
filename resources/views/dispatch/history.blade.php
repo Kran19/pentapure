@@ -382,9 +382,18 @@
   color: #ffffff;
 }
 </style>
+@php
+  $missingLrCount = collect($pageData['dispatchLogs'] ?? [])->filter(fn($row) => empty($row['hasPhysicalLr']) && !empty($row['hasRecordLr']))->count();
+@endphp
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
   <h2 style="margin:0;">📦 Dispatch History</h2>
   <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    @if($missingLrCount > 0 && empty($isReadOnly))
+      <input type="file" id="bulk-restore-lr-input" accept=".zip,.jpg,.jpeg,.png,.webp,image/*" multiple style="display:none;" onchange="restoreLrArchiveUpload(event)">
+      <button type="button" class="btn btn-sm" style="width:auto; padding:0.5rem 1rem; background:#0284c7; color:#fff; font-weight:700; border:none; border-radius:6px; cursor:pointer;" onclick="document.getElementById('bulk-restore-lr-input').click()" title="Upload lr_images .zip or multiple LR_*.jpg files from backup to restore missing historical LRs automatically">
+        🔄 Restore Old LRs ({{ $missingLrCount }})
+      </button>
+    @endif
     <button type="button" class="btn btn-sm" style="width:auto; padding:0.5rem 1rem; background:#059669; color:#fff; font-weight:600; border:none; border-radius:6px; cursor:pointer;" onclick="app.toggleSelectAllLR()">
       ☑️ Select All LR
     </button>
@@ -711,12 +720,13 @@
           </div>
         @elseif($hasMissingLrFile)
           <div style="margin-bottom:1rem; padding:1.2rem; background:#fffbeb; border:1px dashed #f59e0b; border-radius:10px; text-align:center;">
-            <div style="color:#b45309; font-weight:700; font-size:0.88rem; margin-bottom:4px;">⚠️ Previous LR Image File Missing on Server for Order #{{ strtoupper((string)$d['orderId']) }}</div>
-            <div style="color:#64748b; font-size:0.78rem; margin-bottom:10px;">An older LR record exists in history, but its image file is missing from server storage. Re-upload once below to restore it permanently.</div>
+            <div style="color:#b45309; font-weight:700; font-size:0.88rem; margin-bottom:4px;">📷 Upload LR Copy for Order #{{ strtoupper((string)$d['orderId']) }}</div>
+            <div style="color:#64748b; font-size:0.78rem; margin-bottom:10px;">This pre-migration LR file is not yet in storage. Upload it below (or use <strong>Restore Old LRs</strong> at the top with a backup ZIP) to save it permanently.</div>
             @if(empty($isReadOnly))
-            <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
+            <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap; align-items:center;">
               <button type="button" class="btn btn-sm btn-media-camera" style="font-size:0.82rem; padding:0.5rem 0.9rem;" onclick="document.getElementById('late-lr-cam-{{ $d['id'] }}').click()">📷 Camera</button>
-              <button type="button" class="btn btn-sm btn-media-gallery" style="font-size:0.82rem; padding:0.5rem 0.9rem;" onclick="document.getElementById('late-lr-input-{{ $d['id'] }}').click()">📁 Re-Upload This Order's LR</button>
+              <button type="button" class="btn btn-sm btn-media-gallery" style="font-size:0.82rem; padding:0.5rem 0.9rem;" onclick="document.getElementById('late-lr-input-{{ $d['id'] }}').click()">📁 Upload This Order's LR</button>
+              <button type="button" class="btn btn-sm btn-secondary" style="font-size:0.78rem; padding:0.45rem 0.8rem; color:#64748b; border-color:#cbd5e1;" onclick="clearMissingLrRecord({{ $d['id'] }}, '{{ $d['orderId'] }}')" title="Reset status to LR Pending if old LR photo is unavailable">↺ Mark LR Pending</button>
             </div>
             @endif
           </div>
@@ -829,6 +839,66 @@
     form.appendChild(csrf);
     document.body.appendChild(form);
     form.submit();
+  }
+
+  async function restoreLrArchiveUpload(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+      formData.append('files[]', files[i]);
+    }
+
+    if (window.app && app.toast) {
+      app.toast('Restoring LR files to server & database...', 'info');
+    }
+
+    try {
+      const resp = await fetch('{{ url((request()->segment(1) ?: "dispatch") . "/dispatch/restore-lr-archive") }}', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: formData
+      });
+      const data = await resp.json();
+      if (resp.ok && data && data.success) {
+        if (window.app && app.toast) app.toast(data.message || 'LR files restored!');
+        setTimeout(() => window.location.reload(), 700);
+      } else {
+        if (window.app && app.toast) app.toast((data && data.message) ? data.message : 'Failed to restore LR files.', 'error');
+      }
+    } catch (err) {
+      if (window.app && app.toast) app.toast('Network error while uploading backup files.', 'error');
+    } finally {
+      event.target.value = '';
+    }
+  }
+
+  async function clearMissingLrRecord(logId, orderId) {
+    if (!confirm('Reset Order #' + orderId + ' status cleanly to LR PENDING?')) return;
+    try {
+      const resp = await fetch('{{ url((request()->segment(1) ?: "dispatch") . "/dispatch/clear-missing-lr") }}/' + logId, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({})
+      });
+      const data = await resp.json();
+      if (resp.ok && data && data.success) {
+        if (window.app && app.toast) app.toast(data.message || 'Updated to LR Pending.');
+        setTimeout(() => window.location.reload(), 500);
+      } else {
+        if (window.app && app.toast) app.toast((data && data.message) ? data.message : 'Could not update LR status.', 'error');
+      }
+    } catch (err) {
+      if (window.app && app.toast) app.toast('Network error.', 'error');
+    }
   }
 </script>
 <!-- Floating Batch Download Bar for Multiple Selected LRs -->

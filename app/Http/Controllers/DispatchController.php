@@ -560,6 +560,9 @@ class DispatchController extends Controller
                 $dispatchLogData['vehicle_no'] = $vehicleNo;
             }
             $dispatchLog = DispatchLog::create($dispatchLogData);
+            if ($lrPath) {
+                self::linkLrDbBackupToLog($lrPath, (int) $dispatchLog->id);
+            }
 
             // Process each item
             foreach ($request->items as $dispatchItem) {
@@ -915,8 +918,8 @@ class DispatchController extends Controller
             ], 404);
         }
 
-        // Handle LR image - decode and save to public and hostinger storage safely
-        $lrPath = self::saveLrImagePayload($request->lr_image);
+        // Handle LR image - decode and save to public, Hostinger storage, and MySQL backup safely
+        $lrPath = self::saveLrImagePayload($request->lr_image, (int) $log->id);
         if (!$lrPath) {
             return response()->json([
                 'success' => false,
@@ -924,10 +927,12 @@ class DispatchController extends Controller
             ], 500);
         }
 
-        // Delete old physical image copies if exists
+        // Delete old physical & backup image copies if exists (unless identical filename)
         if ($log->lr_image_path) {
             foreach (self::getLrImagePaths($log) as $oldRp) {
-                self::deletePhysicalLrCopies($oldRp);
+                if (basename($oldRp) !== basename($lrPath)) {
+                    self::deletePhysicalLrCopies($oldRp, true);
+                }
             }
         }
 
@@ -936,6 +941,8 @@ class DispatchController extends Controller
             $log->updated_at = now();
             $log->save();
         });
+
+        self::linkLrDbBackupToLog($lrPath, (int) $log->id);
 
         $userSlug = request()->segment(1) ?: 'dispatch';
         $ver = $log->updated_at?->timestamp ?? time();
@@ -951,10 +958,146 @@ class DispatchController extends Controller
     }
 
     /**
-     * Helper to reliably decode and save a base64 LR image to disk storage.
-     * Writes to public_path, Hostinger public_html directories, and persistent storage vault.
+     * Bulk restore historical LR images from an uploaded .zip archive or multiple image files.
      */
-    public static function saveLrImagePayload(string $base64Data): ?string
+    public function restoreLrArchive(Request $request)
+    {
+        $user = $this->authUser();
+        if (!empty($user['is_view_only'])) {
+            return response()->json(['success' => false, 'message' => 'View-only users cannot restore LR files.'], 403);
+        }
+
+        // Map known historical filenames -> dispatch_log_id
+        $logByFilename = [];
+        foreach (DispatchLog::whereNotNull('lr_image_path')->get(['id', 'order_id', 'lr_image_path']) as $dl) {
+            foreach (self::getLrImagePaths($dl) as $rp) {
+                $bn = basename(trim(str_replace('\\', '/', $rp)));
+                if ($bn) {
+                    $logByFilename[strtolower($bn)] = ['log_id' => (int) $dl->id, 'order_id' => (int) $dl->order_id, 'exact_name' => $bn];
+                }
+            }
+        }
+
+        $restoredCount = 0;
+        $matchedOrders = [];
+        $allowedExts = ['jpg', 'jpeg', 'png', 'webp'];
+
+        $processEntry = function (string $entryName, string $bytes) use (&$restoredCount, &$matchedOrders, $logByFilename, $allowedExts) {
+            $base = basename(str_replace('\\', '/', $entryName));
+            $ext = strtolower(pathinfo($base, PATHINFO_EXTENSION));
+            if (!$base || str_starts_with($base, '.') || !in_array($ext, $allowedExts, true) || strlen($bytes) < 20) {
+                return;
+            }
+            $lookup = strtolower($base);
+            $matched = $logByFilename[$lookup] ?? null;
+            if (!$matched && !str_starts_with($lookup, 'lr_')) {
+                return;
+            }
+            $targetFilename = $matched['exact_name'] ?? $base;
+            $relPath = 'lr_images/' . $targetFilename;
+            if (self::writeBinaryToLrDirectories($targetFilename, $bytes) > 0) {
+                self::storeLrDbBackup($relPath, $bytes, $matched['log_id'] ?? null);
+                $restoredCount++;
+                if ($matched) {
+                    $matchedOrders[] = '#' . $matched['order_id'];
+                }
+            }
+        };
+
+        $uploadedFiles = [];
+        if ($request->hasFile('files')) {
+            $rawFiles = $request->file('files');
+            $uploadedFiles = is_array($rawFiles) ? $rawFiles : [$rawFiles];
+        }
+        if ($request->hasFile('archive')) {
+            $uploadedFiles[] = $request->file('archive');
+        }
+
+        if (empty($uploadedFiles)) {
+            return response()->json(['success' => false, 'message' => 'Please select a .zip backup or LR image files to restore.'], 422);
+        }
+
+        foreach ($uploadedFiles as $uFile) {
+            if (!$uFile || !$uFile->isValid()) {
+                continue;
+            }
+            $origName = $uFile->getClientOriginalName();
+            $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+            if ($ext === 'zip' && class_exists('ZipArchive')) {
+                $zip = new \ZipArchive();
+                if ($zip->open($uFile->getRealPath()) === true) {
+                    for ($i = 0; $i < $zip->numFiles; $i++) {
+                        $stat = $zip->statIndex($i);
+                        if (!$stat || empty($stat['name']) || str_ends_with($stat['name'], '/')) {
+                            continue;
+                        }
+                        $content = $zip->getFromIndex($i);
+                        if ($content !== false) {
+                            $processEntry($stat['name'], $content);
+                        }
+                    }
+                    $zip->close();
+                }
+            } else {
+                $bytes = @file_get_contents($uFile->getRealPath());
+                if ($bytes !== false) {
+                    $processEntry($origName, $bytes);
+                }
+            }
+        }
+
+        $matchedOrders = array_values(array_unique($matchedOrders));
+        if ($restoredCount === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No matching LR_*.jpg files were found in the uploaded selection.',
+            ], 422);
+        }
+
+        $orderNote = !empty($matchedOrders) ? (' Matched Orders: ' . implode(', ', $matchedOrders) . '.') : '';
+        return response()->json([
+            'success'        => true,
+            'restored_count' => $restoredCount,
+            'matched_orders' => $matchedOrders,
+            'message'        => "Restored {$restoredCount} LR image file(s) permanently to disk and database!{$orderNote}",
+        ]);
+    }
+
+    /**
+     * Reset a missing historical LR path cleanly back to LR PENDING if the old paper file is unavailable.
+     */
+    public function clearMissingLR(Request $request, $param1, $param2 = null)
+    {
+        $user = $this->authUser();
+        if (!empty($user['is_view_only'])) {
+            return response()->json(['success' => false, 'message' => 'View-only users cannot modify LR records.'], 403);
+        }
+
+        $id = ($param2 !== null && !is_object($param2)) ? $param2 : $param1;
+        $log = DispatchLog::findOrFail($id);
+
+        foreach (self::getLrImagePaths($log) as $rp) {
+            if (self::resolveLocalFilePath($rp)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This LR image exists on disk and is not missing.',
+                ], 422);
+            }
+        }
+
+        $log->lr_image_path = null;
+        $log->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Marked Order #' . $log->order_id . ' cleanly as LR Pending.',
+        ]);
+    }
+
+    /**
+     * Helper to reliably decode and save a base64 LR image to disk storage AND MySQL backup table.
+     */
+    public static function saveLrImagePayload(string $base64Data, ?int $logId = null): ?string
     {
         if (empty($base64Data)) {
             return null;
@@ -968,9 +1111,28 @@ class DispatchController extends Controller
         }
 
         $filename = uniqid('LR_') . '.jpg';
-        $relativeDir = 'lr_images';
-        $relativeFilePath = $relativeDir . '/' . $filename;
+        $relativeFilePath = 'lr_images/' . $filename;
 
+        $savedCount = self::writeBinaryToLrDirectories($filename, $imageData);
+        if ($savedCount > 0) {
+            self::storeLrDbBackup($relativeFilePath, $imageData, $logId);
+            return $relativeFilePath;
+        }
+
+        return null;
+    }
+
+    /**
+     * Write raw image bytes into all candidate LR directories (public_html, public, storage, vault).
+     */
+    public static function writeBinaryToLrDirectories(string $filename, string $imageData): int
+    {
+        $base = basename(str_replace('\\', '/', $filename));
+        if (!$base || $base === '.' || $base === '..' || strlen($imageData) < 20) {
+            return 0;
+        }
+
+        $relativeDir = 'lr_images';
         $targetDirs = array_values(array_unique([
             storage_path('app/public/' . $relativeDir),
             storage_path('app/lr_vault'),
@@ -988,7 +1150,7 @@ class DispatchController extends Controller
                     @mkdir($dir, 0775, true);
                 }
                 if (file_exists($dir) && is_dir($dir)) {
-                    $targetFile = $dir . DIRECTORY_SEPARATOR . $filename;
+                    $targetFile = $dir . DIRECTORY_SEPARATOR . $base;
                     $bytes = @file_put_contents($targetFile, $imageData);
                     if ($bytes !== false && $bytes > 0) {
                         @chmod($targetFile, 0644);
@@ -999,12 +1161,11 @@ class DispatchController extends Controller
         }
 
         if ($savedCount === 0) {
-            // Fallback attempt into storage
             $storageDir = storage_path('app/public/' . $relativeDir);
             if (!file_exists($storageDir)) {
                 @mkdir($storageDir, 0775, true);
             }
-            $targetFile = $storageDir . DIRECTORY_SEPARATOR . $filename;
+            $targetFile = $storageDir . DIRECTORY_SEPARATOR . $base;
             $bytes = @file_put_contents($targetFile, $imageData);
             if ($bytes !== false && $bytes > 0) {
                 @chmod($targetFile, 0644);
@@ -1012,13 +1173,71 @@ class DispatchController extends Controller
             }
         }
 
-        return $savedCount > 0 ? $relativeFilePath : null;
+        return $savedCount;
     }
 
     /**
-     * Delete all physical copies of a given LR image path across candidate storage folders.
+     * Store or update an LR image backup inside MySQL dispatch_lr_backups so SQL dumps preserve LR images.
      */
-    public static function deletePhysicalLrCopies(string $rp): void
+    public static function storeLrDbBackup(string $relativeFilePath, string $imageData, ?int $logId = null): bool
+    {
+        $base = basename(str_replace('\\', '/', $relativeFilePath));
+        if (!$base || strlen($imageData) < 20) {
+            return false;
+        }
+
+        try {
+            $mime = 'image/jpeg';
+            if (function_exists('finfo_open')) {
+                $finfo = @finfo_open(FILEINFO_MIME_TYPE);
+                if ($finfo) {
+                    $detected = @finfo_buffer($finfo, $imageData);
+                    @finfo_close($finfo);
+                    if ($detected && str_starts_with($detected, 'image/')) {
+                        $mime = $detected;
+                    }
+                }
+            }
+
+            $attrs = [
+                'file_path'    => 'lr_images/' . $base,
+                'mime_type'    => $mime,
+                'image_base64' => base64_encode($imageData),
+            ];
+            if ($logId) {
+                $attrs['dispatch_log_id'] = $logId;
+            }
+
+            \App\Models\DispatchLrBackup::updateOrCreate(
+                ['file_name' => $base],
+                $attrs
+            );
+            return true;
+        } catch (\Throwable $ignored) {
+            return false;
+        }
+    }
+
+    /**
+     * Link a saved MySQL LR backup record to its DispatchLog ID.
+     */
+    public static function linkLrDbBackupToLog(string $relativeFilePath, int $logId): void
+    {
+        $base = basename(str_replace('\\', '/', $relativeFilePath));
+        if (!$base || $logId <= 0) {
+            return;
+        }
+        try {
+            \App\Models\DispatchLrBackup::where('file_name', $base)
+                ->whereNull('dispatch_log_id')
+                ->update(['dispatch_log_id' => $logId]);
+        } catch (\Throwable $ignored) {}
+    }
+
+    /**
+     * Delete all physical copies (and optionally DB backup) of a given LR image path.
+     */
+    public static function deletePhysicalLrCopies(string $rp, bool $alsoDeleteDbBackup = true): void
     {
         if (empty($rp)) {
             return;
@@ -1047,6 +1266,12 @@ class DispatchController extends Controller
             if ($p && file_exists($p) && is_file($p)) {
                 @unlink($p);
             }
+        }
+
+        if ($alsoDeleteDbBackup && $basename && $basename !== '.' && $basename !== '..') {
+            try {
+                \App\Models\DispatchLrBackup::where('file_name', $basename)->delete();
+            } catch (\Throwable $ignored) {}
         }
     }
 
@@ -1134,9 +1359,9 @@ class DispatchController extends Controller
     }
 
     /**
-     * Helper to resolve physical local file path for an image URL/relative path.
+     * Locate an existing LR file strictly on disk (without triggering DB self-heal).
      */
-    public static function resolveLocalFilePath(string $rp): ?string
+    public static function findExistingDiskFileOnly(string $rp): ?string
     {
         if (empty(trim($rp))) {
             return null;
@@ -1189,6 +1414,41 @@ class DispatchController extends Controller
                 return $cand;
             }
         }
+
+        return null;
+    }
+
+    /**
+     * Helper to resolve physical local file path for an image URL/relative path.
+     * Automatically self-heals missing disk files from MySQL dispatch_lr_backups when available.
+     */
+    public static function resolveLocalFilePath(string $rp): ?string
+    {
+        $existing = self::findExistingDiskFileOnly($rp);
+        if ($existing) {
+            return $existing;
+        }
+
+        $cleanRp = trim($rp);
+        if (str_starts_with($cleanRp, 'http://') || str_starts_with($cleanRp, 'https://')) {
+            $cleanRp = (string) parse_url($cleanRp, PHP_URL_PATH);
+        }
+        $basename = basename(ltrim(str_replace('\\', '/', $cleanRp), '/'));
+        if (!$basename || $basename === '.' || $basename === '..') {
+            return null;
+        }
+
+        try {
+            $backup = \App\Models\DispatchLrBackup::where('file_name', $basename)->first();
+            if ($backup && !empty($backup->image_base64)) {
+                $bytes = base64_decode($backup->image_base64, true);
+                if ($bytes && strlen($bytes) >= 20) {
+                    if (self::writeBinaryToLrDirectories($basename, $bytes) > 0) {
+                        return self::findExistingDiskFileOnly($rp);
+                    }
+                }
+            }
+        } catch (\Throwable $ignored) {}
 
         return null;
     }
