@@ -34,8 +34,18 @@ php artisan migrate --force
 # chown -R www-data:www-data storage bootstrap/cache
 # chmod -R 775 storage bootstrap/cache
 
-# 7. Sync public assets to public_html
+# 7. Preserve and sync uploaded LR images across storage, vault, and public_html before/after asset sync
+echo "Preserving and syncing LR images..."
+mkdir -p storage/app/public/lr_images storage/app/lr_vault public/lr_images ../public_html/lr_images
+rsync -au ../public_html/lr_images/ storage/app/public/lr_images/ 2>/dev/null || true
+rsync -au public/lr_images/ storage/app/public/lr_images/ 2>/dev/null || true
+rsync -au storage/app/lr_vault/ storage/app/public/lr_images/ 2>/dev/null || true
+rsync -au storage/app/public/lr_images/ storage/app/lr_vault/ 2>/dev/null || true
+rsync -au storage/app/public/lr_images/ public/lr_images/ 2>/dev/null || true
+
+# 8. Sync public assets to public_html
 echo "Syncing public assets to live web directory..."
 rsync -av --exclude='index.php' --exclude='.htaccess' public/ ../public_html/
+rsync -au storage/app/public/lr_images/ ../public_html/lr_images/ 2>/dev/null || true
 
 echo "Application deployed successfully!"

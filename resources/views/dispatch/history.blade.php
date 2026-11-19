@@ -468,8 +468,16 @@
 <div style="display:flex; flex-direction:column; gap:10px;">
   @forelse($paginated as $idx => $d)
     @php
-      $lrUploaded = !empty($d['lrImage']);
-      $lrStatus = $lrUploaded ? '<span class="badge badge-done" style="font-size:0.65rem;">LR UPLOADED</span>' : '<span class="badge" style="font-size:0.65rem; background:#dc2626 !important; color:#ffffff !important; font-weight:700; padding:3px 8px; border-radius:4px;">LR PENDING</span>';
+      $hasPhysicalLr = !empty($d['hasPhysicalLr']);
+      $hasMissingLrFile = !$hasPhysicalLr && !empty($d['hasRecordLr']);
+      $lrUploaded = $hasPhysicalLr;
+      if ($hasPhysicalLr) {
+        $lrStatus = '<span class="badge badge-done" style="font-size:0.65rem;">LR UPLOADED</span>';
+      } elseif ($hasMissingLrFile) {
+        $lrStatus = '<span class="badge" style="font-size:0.65rem; background:#d97706 !important; color:#ffffff !important; font-weight:700; padding:3px 8px; border-radius:4px;">LR FILE MISSING</span>';
+      } else {
+        $lrStatus = '<span class="badge" style="font-size:0.65rem; background:#dc2626 !important; color:#ffffff !important; font-weight:700; padding:3px 8px; border-radius:4px;">LR PENDING</span>';
+      }
 
       $rawSt = strtoupper(trim((string)($d['dispatchStatus'] ?? $d['status'] ?? 'PENDING')));
       if (in_array($rawSt, ['DONE', 'FULLY DISPATCHED', 'COMPLETED', 'CLOSED'])) {
@@ -657,26 +665,28 @@
               </a>
             @endif
           </div>
-        @elseif($lrUploaded)
+        @elseif($hasPhysicalLr)
+          @php
+            $dispSlug = request()->segment(1) ?: 'dispatch';
+            $effLogId = $d['effectiveLrLogId'] ?? $d['id'];
+            $lrVer = $d['lrVersion'] ?? 1;
+            $lrStreamUrl = $d['lrViewUrl'] ?? (url($dispSlug . '/dispatch/view-lr/' . $effLogId) . '?v=' . $lrVer);
+            $lrDownloadUrl = url($dispSlug . '/dispatch/download-lr/' . $effLogId);
+          @endphp
           <div style="margin-bottom:1rem;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:6px;">
               <span style="color:var(--text-muted, #6b7280); font-size:0.75rem; text-transform:uppercase; font-weight:700;">
                 📷 Particular LR Copy for Order #{{ strtoupper((string)$d['orderId']) }}
                 @if(!empty($d['isOrderLrCopy']))
-                  <span style="color:#0284c7; font-weight:600; font-size:0.7rem;">(From Order's Dispatch #{{ $d['orderLrCopies'][0]['logId'] ?? '' }})</span>
+                  <span style="color:#0284c7; font-weight:600; font-size:0.7rem;">(From Order's Dispatch #{{ $effLogId }})</span>
                 @else
                   <span style="color:#15803d; font-weight:600; font-size:0.7rem;">(Dispatch #{{ $d['id'] }})</span>
                 @endif
               </span>
-              <a href="{{ url(request()->segment(1) . '/dispatch/download-lr/' . $d['id']) }}" download class="btn btn-sm" style="font-size:0.75rem; padding:0.25rem 0.65rem; background:#059669; color:#fff !important; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:4px;">
+              <a href="{{ $lrDownloadUrl }}" download class="btn btn-sm" style="font-size:0.75rem; padding:0.25rem 0.65rem; background:#059669; color:#fff !important; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:4px;">
                 📥 Download LR Copy
               </a>
             </div>
-            @php
-              $dispSlug = request()->segment(1) ?: 'dispatch';
-              $lrStreamUrl = url($dispSlug . '/dispatch/view-lr/' . $d['id']);
-              $lrDownloadUrl = url($dispSlug . '/dispatch/download-lr/' . $d['id']);
-            @endphp
             <div style="background:#ffffff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
               <img src="{{ $lrStreamUrl }}" 
                    data-fallback="{{ $d['lrImage'] }}" 
@@ -690,7 +700,7 @@
               </div>
             </div>
             <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-              <a href="{{ url(request()->segment(1) . '/dispatch/download-lr/' . $d['id']) }}" download class="btn btn-sm" style="font-size:0.78rem; padding:0.45rem 0.8rem; background:#059669; color:#fff !important; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:6px;">
+              <a href="{{ $lrDownloadUrl }}" download class="btn btn-sm" style="font-size:0.78rem; padding:0.45rem 0.8rem; background:#059669; color:#fff !important; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:6px;">
                 📥 Download LR
               </a>
               @if(empty($isReadOnly))
@@ -698,6 +708,17 @@
               <button type="button" class="btn btn-sm btn-media-gallery" style="font-size:0.78rem; padding:0.45rem 0.8rem;" onclick="document.getElementById('late-lr-input-{{ $d['id'] }}').click()">📁 Change/Update This Order's LR</button>
               @endif
             </div>
+          </div>
+        @elseif($hasMissingLrFile)
+          <div style="margin-bottom:1rem; padding:1.2rem; background:#fffbeb; border:1px dashed #f59e0b; border-radius:10px; text-align:center;">
+            <div style="color:#b45309; font-weight:700; font-size:0.88rem; margin-bottom:4px;">⚠️ Previous LR Image File Missing on Server for Order #{{ strtoupper((string)$d['orderId']) }}</div>
+            <div style="color:#64748b; font-size:0.78rem; margin-bottom:10px;">An older LR record exists in history, but its image file is missing from server storage. Re-upload once below to restore it permanently.</div>
+            @if(empty($isReadOnly))
+            <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-sm btn-media-camera" style="font-size:0.82rem; padding:0.5rem 0.9rem;" onclick="document.getElementById('late-lr-cam-{{ $d['id'] }}').click()">📷 Camera</button>
+              <button type="button" class="btn btn-sm btn-media-gallery" style="font-size:0.82rem; padding:0.5rem 0.9rem;" onclick="document.getElementById('late-lr-input-{{ $d['id'] }}').click()">📁 Re-Upload This Order's LR</button>
+            </div>
+            @endif
           </div>
         @else
           <div style="margin-bottom:1rem; padding:1.2rem; background:rgba(220,38,38,0.06); border:1px dashed rgba(220,38,38,0.3); border-radius:10px; text-align:center;">
@@ -718,12 +739,15 @@
                 <span>📦 All LR Copies for Order #{{ strtoupper((string)$d['orderId']) }}</span>
                 <span class="badge" style="background:#0284c7; color:#fff; font-size:0.7rem; padding:2px 8px; border-radius:10px;">{{ count($d['orderLrCopies']) }} Copies</span>
               </div>
-              <a href="{{ url(request()->segment(1) . '/dispatch/download-multiple-lr?order_id=' . $d['orderId']) }}" download class="btn btn-sm" style="padding:0.35rem 0.85rem; font-size:0.75rem; background:#0284c7; color:#fff !important; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:700; border-radius:6px;">
+              <a href="{{ url((request()->segment(1) ?: 'dispatch') . '/dispatch/download-multiple-lr?order_id=' . $d['orderId']) }}" download class="btn btn-sm" style="padding:0.35rem 0.85rem; font-size:0.75rem; background:#0284c7; color:#fff !important; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:700; border-radius:6px;">
                 📥 Download All ({{ count($d['orderLrCopies']) }}) LRs (ZIP)
               </a>
             </div>
             <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:10px;">
               @foreach($d['orderLrCopies'] as $olr)
+                @php
+                  $olrDlUrl = url((request()->segment(1) ?: 'dispatch') . '/dispatch/download-lr/' . $olr['logId']);
+                @endphp
                 <div style="background:#ffffff; border:1px solid {{ $olr['isCurrent'] ? '#0284c7' : '#e5e7eb' }}; border-radius:8px; padding:8px; display:flex; flex-direction:column; gap:6px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
                   <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem;">
                     <span style="font-weight:700; color:#111827;">Dispatch #{{ $olr['logId'] }}</span>
@@ -731,14 +755,14 @@
                       <span style="color:#0284c7; font-weight:700; font-size:0.65rem;">(CURRENT)</span>
                     @endif
                   </div>
-                  <img src="{{ $olr['url'] }}" style="width:100%; height:90px; object-fit:contain; border-radius:6px; cursor:pointer; background:#ffffff; border:1px solid #f3f4f6;" onclick="app.viewImage(this.src)">
+                  <img src="{{ $olr['viewUrl'] ?? $olr['url'] }}" data-fallback="{{ $olr['url'] }}" onerror="if(this.dataset.fallback && this.src !== this.dataset.fallback){ this.src = this.dataset.fallback; }" style="width:100%; height:90px; object-fit:contain; border-radius:6px; cursor:pointer; background:#ffffff; border:1px solid #f3f4f6;" onclick="app.viewImage(this.src, '{{ $olrDlUrl }}')">
                   <div style="font-size:0.7rem; color:#6b7280; display:flex; justify-content:space-between; flex-wrap:wrap;">
                     <span>{{ $olr['date'] }}</span>
                     @if(!empty($olr['lrNo']))
                       <span style="font-weight:600; color:#111827;">LR: {{ $olr['lrNo'] }}</span>
                     @endif
                   </div>
-                  <a href="{{ url(request()->segment(1) . '/dispatch/download-lr/' . $olr['logId']) }}" download class="btn btn-sm" style="padding:0.25rem; font-size:0.72rem; background:#059669; color:#fff !important; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:4px; font-weight:600; border-radius:4px; margin-top:2px;">
+                  <a href="{{ $olrDlUrl }}" download class="btn btn-sm" style="padding:0.25rem; font-size:0.72rem; background:#059669; color:#fff !important; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:4px; font-weight:600; border-radius:4px; margin-top:2px;">
                     📥 Download
                   </a>
                 </div>

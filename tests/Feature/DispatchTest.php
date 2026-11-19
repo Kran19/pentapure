@@ -867,8 +867,15 @@ class DispatchTest extends TestCase
             'price'          => 160,
         ]);
 
-        // Dispatch Order 1 with LR Image A
+        // Dispatch Order 1 with LR Image A (physical file present on disk)
         $fakeImgA = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+        $rawPngBytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
+        if (!file_exists(public_path('lr_images'))) {
+            @mkdir(public_path('lr_images'), 0775, true);
+        }
+        file_put_contents(public_path('lr_images/test_order1_lr.jpg'), $rawPngBytes);
+        file_put_contents(public_path('lr_images/test_order2_lr.jpg'), $rawPngBytes);
+
         $log1 = DispatchLog::create([
             'order_id'       => $order1->id,
             'user_id'        => $subAdmin->id,
@@ -926,11 +933,13 @@ class DispatchTest extends TestCase
         // Clean up any test files
         $log1->refresh();
         $log2->refresh();
-        if ($log1->lr_image_path && file_exists(public_path($log1->lr_image_path))) {
-            @unlink(public_path($log1->lr_image_path));
+        \App\Http\Controllers\DispatchController::deletePhysicalLrCopies('lr_images/test_order1_lr.jpg');
+        \App\Http\Controllers\DispatchController::deletePhysicalLrCopies('lr_images/test_order2_lr.jpg');
+        if ($log1->lr_image_path) {
+            \App\Http\Controllers\DispatchController::deletePhysicalLrCopies($log1->lr_image_path);
         }
-        if ($log2->lr_image_path && file_exists(public_path($log2->lr_image_path))) {
-            @unlink(public_path($log2->lr_image_path));
+        if ($log2->lr_image_path) {
+            \App\Http\Controllers\DispatchController::deletePhysicalLrCopies($log2->lr_image_path);
         }
     }
 

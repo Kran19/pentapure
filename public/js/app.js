@@ -2576,7 +2576,11 @@ const app = {
 
     const doUpload = (dataUrl) => {
       const currentSlug = this.getCurrentSlug('dispatch');
-      const endpoint = (currentSlug === 'admin' || currentSlug.startsWith('sub_admin'))
+      const useDispatchSubpath = window.location.pathname.includes('/dispatch/')
+        || currentSlug === 'admin'
+        || currentSlug.startsWith('sub_admin')
+        || currentSlug.startsWith('stock_manager');
+      const endpoint = useDispatchSubpath
         ? `${this.getBaseUrl()}/${currentSlug}/dispatch/update-lr`
         : `${this.getBaseUrl()}/${currentSlug}/update-lr`;
 

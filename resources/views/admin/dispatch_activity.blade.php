@@ -546,10 +546,28 @@ html.dark-mode .highlight-dispatch-date,
                   <span style="color:var(--text-muted);">Dispatch Date & Time: <strong style="color:#16a34a;">{{ $lastLog->created_at->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }}</strong></span>
                 @endif
                 @if($lastLog->lr_image_path)
-                  <a href="javascript:void(0)" onclick="app.viewImage('{{ asset($lastLog->lr_image_path) }}')" style="color:var(--primary, #D88A00); font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                    View LR Copy
-                  </a>
+                  @php
+                    $actLrPaths = \App\Http\Controllers\DispatchController::getLrImagePaths($lastLog);
+                    $actHasLrFile = false;
+                    foreach ($actLrPaths as $arp) {
+                      if (\App\Http\Controllers\DispatchController::resolveLocalFilePath($arp)) {
+                        $actHasLrFile = true;
+                        break;
+                      }
+                    }
+                    $actSlug = request()->segment(1) ?: 'admin';
+                    $actLrVer = $lastLog->updated_at?->timestamp ?? ($lastLog->created_at?->timestamp ?? 1);
+                    $actLrStream = url($actSlug . '/dispatch/view-lr/' . $lastLog->id) . '?v=' . $actLrVer;
+                    $actLrDownload = url($actSlug . '/dispatch/download-lr/' . $lastLog->id);
+                  @endphp
+                  @if($actHasLrFile)
+                    <a href="javascript:void(0)" onclick="app.viewImage('{{ $actLrStream }}', '{{ $actLrDownload }}')" style="color:var(--primary, #D88A00); font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                      View LR Copy
+                    </a>
+                  @else
+                    <span style="color:#d97706; font-weight:600; font-size:0.78rem;">⚠️ LR File Missing (Re-upload in Dispatch History)</span>
+                  @endif
                 @endif
               </div>
             @endif

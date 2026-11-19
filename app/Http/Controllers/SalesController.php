@@ -675,17 +675,23 @@ class SalesController extends Controller
                     'lrCopies'       => $o->dispatchLogs ? $o->dispatchLogs->filter(fn($l) => !empty($l->lr_image_path))->flatMap(function($l) {
                         $rawPaths = \App\Http\Controllers\DispatchController::getLrImagePaths($l);
                         if (empty($rawPaths)) return [];
-                        return collect($rawPaths)->map(function($path, $idx) use ($l, $rawPaths) {
-                            $suffix = count($rawPaths) > 1 ? ' (' . ($idx + 1) . ')' : '';
-                            return [
-                                'id'         => $l->id,
-                                'dispatchId' => 'DSP-' . str_pad($l->id, 4, '0', STR_PAD_LEFT) . $suffix,
-                                'url'        => asset($path),
-                                'date'       => $l->created_at ? $l->created_at->timezone('Asia/Kolkata')->format('d M Y, h:i A') : '',
-                                'driverNo'   => $l->driver_no,
-                                'lrNo'       => $l->lr_no,
-                            ];
-                        });
+                        $slug = request()->segment(1) ?: 'sales';
+                        $ver = $l->updated_at?->timestamp ?? ($l->created_at?->timestamp ?? 1);
+                        $validEntries = [];
+                        foreach ($rawPaths as $idx => $path) {
+                            if (\App\Http\Controllers\DispatchController::resolveLocalFilePath($path)) {
+                                $suffix = count($rawPaths) > 1 ? ' (' . ($idx + 1) . ')' : '';
+                                $validEntries[] = [
+                                    'id'         => $l->id,
+                                    'dispatchId' => 'DSP-' . str_pad($l->id, 4, '0', STR_PAD_LEFT) . $suffix,
+                                    'url'        => url($slug . '/dispatch/view-lr/' . $l->id) . '?idx=' . $idx . '&v=' . $ver,
+                                    'date'       => $l->created_at ? $l->created_at->timezone('Asia/Kolkata')->format('d M Y, h:i A') : '',
+                                    'driverNo'   => $l->driver_no,
+                                    'lrNo'       => $l->lr_no,
+                                ];
+                            }
+                        }
+                        return $validEntries;
                     })->values()->toArray() : [],
                     'items'          => $o->items->map(fn($i)=>[
                         'id'            => $i->id,

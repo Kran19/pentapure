@@ -924,25 +924,27 @@ class DispatchController extends Controller
             ], 500);
         }
 
-        // Delete old physical image if exists
+        // Delete old physical image copies if exists
         if ($log->lr_image_path) {
-            $oldPhysical = self::resolveLocalFilePath($log->lr_image_path);
-            if ($oldPhysical && file_exists($oldPhysical)) {
-                @unlink($oldPhysical);
+            foreach (self::getLrImagePaths($log) as $oldRp) {
+                self::deletePhysicalLrCopies($oldRp);
             }
         }
 
         DB::transaction(function() use ($log, $lrPath) {
-            $log->update(['lr_image_path' => $lrPath]);
+            $log->lr_image_path = $lrPath;
+            $log->updated_at = now();
+            $log->save();
         });
 
         $userSlug = request()->segment(1) ?: 'dispatch';
+        $ver = $log->updated_at?->timestamp ?? time();
 
         return response()->json([
             'success'  => true, 
             'message'  => 'LR Copy updated successfully for Order #' . $log->order_id . '!',
-            'lr_url'   => asset($lrPath),
-            'view_url' => url($userSlug . '/dispatch/view-lr/' . $log->id),
+            'lr_url'   => asset($lrPath) . '?v=' . $ver,
+            'view_url' => url($userSlug . '/dispatch/view-lr/' . $log->id) . '?v=' . $ver,
             'order_id' => $log->order_id,
             'log_id'   => $log->id,
         ]);
@@ -950,7 +952,7 @@ class DispatchController extends Controller
 
     /**
      * Helper to reliably decode and save a base64 LR image to disk storage.
-     * Writes to public_path, Hostinger public_html directories, and storage fallback.
+     * Writes to public_path, Hostinger public_html directories, and persistent storage vault.
      */
     public static function saveLrImagePayload(string $base64Data): ?string
     {
@@ -958,7 +960,8 @@ class DispatchController extends Controller
             return null;
         }
 
-        $cleanData = preg_replace('#^data:image/\w+;base64,#i', '', $base64Data);
+        $cleanData = preg_replace('#^data:image/[\w+.-]+;base64,#i', '', $base64Data);
+        $cleanData = str_replace(' ', '+', trim($cleanData));
         $imageData = base64_decode($cleanData, true);
         if (!$imageData || strlen($imageData) < 20) {
             return null;
@@ -968,13 +971,14 @@ class DispatchController extends Controller
         $relativeDir = 'lr_images';
         $relativeFilePath = $relativeDir . '/' . $filename;
 
-        $targetDirs = [
+        $targetDirs = array_values(array_unique([
+            storage_path('app/public/' . $relativeDir),
+            storage_path('app/lr_vault'),
             public_path($relativeDir),
             base_path('../public_html/' . $relativeDir),
             base_path('../public_html/penta-pure/' . $relativeDir),
             base_path('public/' . $relativeDir),
-            storage_path('app/public/' . $relativeDir),
-        ];
+        ]));
 
         $savedCount = 0;
         foreach ($targetDirs as $dir) {
@@ -987,6 +991,7 @@ class DispatchController extends Controller
                     $targetFile = $dir . DIRECTORY_SEPARATOR . $filename;
                     $bytes = @file_put_contents($targetFile, $imageData);
                     if ($bytes !== false && $bytes > 0) {
+                        @chmod($targetFile, 0644);
                         $savedCount++;
                     }
                 }
@@ -1002,11 +1007,47 @@ class DispatchController extends Controller
             $targetFile = $storageDir . DIRECTORY_SEPARATOR . $filename;
             $bytes = @file_put_contents($targetFile, $imageData);
             if ($bytes !== false && $bytes > 0) {
+                @chmod($targetFile, 0644);
                 $savedCount++;
             }
         }
 
         return $savedCount > 0 ? $relativeFilePath : null;
+    }
+
+    /**
+     * Delete all physical copies of a given LR image path across candidate storage folders.
+     */
+    public static function deletePhysicalLrCopies(string $rp): void
+    {
+        if (empty($rp)) {
+            return;
+        }
+        $cleanRp = $rp;
+        if (str_starts_with($cleanRp, 'http://') || str_starts_with($cleanRp, 'https://')) {
+            $cleanRp = (string) parse_url($cleanRp, PHP_URL_PATH);
+        }
+        $relative = ltrim(str_replace('\\', '/', $cleanRp), '/');
+        $basename = basename($relative);
+
+        $paths = [
+            public_path($relative),
+            storage_path('app/public/' . $relative),
+            base_path('../public_html/' . $relative),
+            base_path('public/' . $relative),
+        ];
+        if ($basename && $basename !== '.' && $basename !== '..') {
+            $paths[] = public_path('lr_images/' . $basename);
+            $paths[] = base_path('../public_html/lr_images/' . $basename);
+            $paths[] = storage_path('app/public/lr_images/' . $basename);
+            $paths[] = storage_path('app/lr_vault/' . $basename);
+        }
+
+        foreach (array_unique($paths) as $p) {
+            if ($p && file_exists($p) && is_file($p)) {
+                @unlink($p);
+            }
+        }
     }
 
     /**
@@ -1019,41 +1060,55 @@ class DispatchController extends Controller
             $id = $param2;
         }
 
-        $log = DispatchLog::find($id);
+        $log = DispatchLog::with('order.dispatchLogs')->find($id);
         if (!$log) {
             abort(404, 'Dispatch log record not found.');
         }
 
         $rawPaths = self::getLrImagePaths($log);
-        if (empty($rawPaths) && $log->order && $log->order->dispatchLogs) {
-            $otherLog = $log->order->dispatchLogs->first(fn($ol) => !empty($ol->lr_image_path));
-            if ($otherLog) {
-                $rawPaths = self::getLrImagePaths($otherLog);
-                $log = $otherLog;
-            }
-        }
-
-        if (empty($rawPaths)) {
-            abort(404, 'No LR image attached to this dispatch record.');
-        }
-
-        $fullPath = null;
+        $validResolved = [];
         foreach ($rawPaths as $rp) {
             $resolved = self::resolveLocalFilePath($rp);
             if ($resolved) {
-                $fullPath = $resolved;
-                break;
+                $validResolved[] = $resolved;
             }
         }
+
+        if (empty($validResolved) && $log->order && $log->order->dispatchLogs) {
+            foreach ($log->order->dispatchLogs->sortByDesc('id') as $ol) {
+                if ($ol->id === $log->id || empty($ol->lr_image_path)) {
+                    continue;
+                }
+                foreach (self::getLrImagePaths($ol) as $orp) {
+                    $res = self::resolveLocalFilePath($orp);
+                    if ($res) {
+                        $validResolved[] = $res;
+                    }
+                }
+                if (!empty($validResolved)) {
+                    break;
+                }
+            }
+        }
+
+        if (empty($validResolved)) {
+            abort(404, 'LR image file not found on server disk.');
+        }
+
+        $reqIdx = max(0, (int) request()->query('idx', 0));
+        $fullPath = $validResolved[$reqIdx] ?? $validResolved[0];
 
         if (!$fullPath || !file_exists($fullPath)) {
             abort(404, 'LR image file not found on server disk.');
         }
 
-        $mime = mime_content_type($fullPath) ?: 'image/jpeg';
+        $mime = @mime_content_type($fullPath) ?: 'image/jpeg';
+        $mtime = @filemtime($fullPath) ?: time();
+
         return response()->file($fullPath, [
             'Content-Type'  => $mime,
-            'Cache-Control' => 'public, max-age=86400',
+            'Cache-Control' => 'private, no-cache, must-revalidate',
+            'ETag'          => '"' . md5($fullPath . '|' . $mtime) . '"',
         ]);
     }
 
@@ -1083,18 +1138,24 @@ class DispatchController extends Controller
      */
     public static function resolveLocalFilePath(string $rp): ?string
     {
-        $cleanRp = $rp;
+        if (empty(trim($rp))) {
+            return null;
+        }
+        $cleanRp = trim($rp);
         if (str_starts_with($cleanRp, 'http://') || str_starts_with($cleanRp, 'https://')) {
-            $cleanRp = parse_url($cleanRp, PHP_URL_PATH);
+            $cleanRp = (string) parse_url($cleanRp, PHP_URL_PATH);
         }
         $relative = ltrim(str_replace('\\', '/', $cleanRp), '/');
+        if ($relative === '') {
+            return null;
+        }
 
         $candidates = [
             public_path($relative),
+            base_path('../public_html/' . $relative),
             storage_path('app/public/' . $relative),
             storage_path($relative),
             base_path($relative),
-            base_path('../public_html/' . $relative),
             base_path('../public_html/penta-pure/' . $relative),
             base_path('public/' . $relative),
         ];
@@ -1102,8 +1163,8 @@ class DispatchController extends Controller
         if (str_starts_with($relative, 'public/')) {
             $sub = substr($relative, 7);
             $candidates[] = public_path($sub);
-            $candidates[] = storage_path('app/public/' . $sub);
             $candidates[] = base_path('../public_html/' . $sub);
+            $candidates[] = storage_path('app/public/' . $sub);
             $candidates[] = base_path('../public_html/penta-pure/' . $sub);
         }
 
@@ -1112,6 +1173,15 @@ class DispatchController extends Controller
             $candidates[] = storage_path('app/public/' . $sub);
             $candidates[] = public_path($sub);
             $candidates[] = base_path('../public_html/storage/' . $sub);
+        }
+
+        $basename = basename($relative);
+        if ($basename && $basename !== '.' && $basename !== '..') {
+            $candidates[] = public_path('lr_images/' . $basename);
+            $candidates[] = base_path('../public_html/lr_images/' . $basename);
+            $candidates[] = storage_path('app/public/lr_images/' . $basename);
+            $candidates[] = storage_path('app/lr_vault/' . $basename);
+            $candidates[] = base_path('../../../_fleet_vault/lr_images_backup/' . $basename);
         }
 
         foreach ($candidates as $cand) {
@@ -1126,22 +1196,15 @@ class DispatchController extends Controller
     /**
      * Download LR copy file for a specific dispatch log.
      */
-    public function downloadLR($id)
+    public function downloadLR($param1, $param2 = null)
     {
-        $log = DispatchLog::findOrFail($id);
+        $id = ($param2 !== null && !is_object($param2)) ? $param2 : $param1;
+        if (is_object($param1)) {
+            $id = $param2;
+        }
+
+        $log = DispatchLog::with('order.dispatchLogs')->findOrFail($id);
         $rawPaths = self::getLrImagePaths($log);
-
-        if (empty($rawPaths) && $log->order && $log->order->dispatchLogs) {
-            $otherLog = $log->order->dispatchLogs->first(fn($ol) => !empty($ol->lr_image_path));
-            if ($otherLog) {
-                $rawPaths = self::getLrImagePaths($otherLog);
-                $log = $otherLog;
-            }
-        }
-
-        if (empty($rawPaths)) {
-            return back()->with('error', 'No LR image attached to this dispatch record.');
-        }
 
         $validFiles = [];
         foreach ($rawPaths as $idx => $rp) {
@@ -1158,8 +1221,33 @@ class DispatchController extends Controller
             }
         }
 
+        if (empty($validFiles) && $log->order && $log->order->dispatchLogs) {
+            foreach ($log->order->dispatchLogs->sortByDesc('id') as $otherLog) {
+                if ($otherLog->id === $log->id || empty($otherLog->lr_image_path)) {
+                    continue;
+                }
+                $otherPaths = self::getLrImagePaths($otherLog);
+                foreach ($otherPaths as $idx => $orp) {
+                    $fullPath = self::resolveLocalFilePath($orp);
+                    if ($fullPath) {
+                        $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION) ?: 'jpg');
+                        $lrNo = $otherLog->lr_no ? '_' . preg_replace('/[^A-Za-z0-9_-]/', '', $otherLog->lr_no) : '';
+                        $suffix = count($otherPaths) > 1 ? "_img" . ($idx + 1) : '';
+                        $name = "LR_Order_{$otherLog->order_id}_Log_{$otherLog->id}{$lrNo}{$suffix}.{$ext}";
+                        $validFiles[] = [
+                            'path' => $fullPath,
+                            'name' => $name,
+                        ];
+                    }
+                }
+                if (!empty($validFiles)) {
+                    break;
+                }
+            }
+        }
+
         if (empty($validFiles)) {
-            return back()->with('error', 'LR image file not found on server.');
+            return back()->with('error', 'LR image file not found on server. Please re-upload the LR copy.');
         }
 
         if (count($validFiles) === 1) {
@@ -1306,43 +1394,56 @@ class DispatchController extends Controller
         $userSlug = request()->segment(1) ?: 'dispatch';
         $logsData = $logs->map(function($d) use ($userSlug) {
             $rawPaths = self::getLrImagePaths($d);
-            $hasPhysicalFile = false;
-            foreach ($rawPaths as $rp) {
+            $ver = $d->updated_at?->timestamp ?? ($d->created_at?->timestamp ?? 1);
+
+            $ownValidImages = [];
+            foreach ($rawPaths as $idx => $rp) {
                 if (self::resolveLocalFilePath($rp)) {
-                    $hasPhysicalFile = true;
-                    break;
+                    $ownValidImages[] = [
+                        'path'    => $rp,
+                        'url'     => asset($rp) . '?v=' . $ver,
+                        'viewUrl' => url($userSlug . '/dispatch/view-lr/' . $d->id) . '?idx=' . $idx . '&v=' . $ver,
+                    ];
                 }
             }
-            $lrImages = array_map(fn($p) => ['path' => $p, 'url' => asset($p)], $rawPaths);
-            $ownLr = !empty($lrImages) ? $lrImages[0]['url'] : null;
+            $ownLr = !empty($ownValidImages) ? $ownValidImages[0]['url'] : null;
+            $ownViewUrl = !empty($ownValidImages) ? $ownValidImages[0]['viewUrl'] : null;
 
-            // Collect all LR copies for this entire order (across all dispatch rounds, e.g. 2 or 3 rounds)
+            // Collect all physically existing LR copies for this entire order (across all dispatch rounds)
             $orderLrCopies = [];
+            $orderHasAnyRecordLr = false;
             if ($d->order && $d->order->dispatchLogs) {
                 foreach ($d->order->dispatchLogs as $ol) {
                     if ($ol->lr_image_path) {
+                        $orderHasAnyRecordLr = true;
+                        $olVer = $ol->updated_at?->timestamp ?? ($ol->created_at?->timestamp ?? 1);
                         $olPaths = self::getLrImagePaths($ol);
                         foreach ($olPaths as $idx => $olp) {
-                            $orderLrCopies[] = [
-                                'logId'      => $ol->id,
-                                'url'        => asset($olp),
-                                'path'       => $olp,
-                                'lrNo'       => $ol->lr_no,
-                                'date'       => $ol->created_at ? $ol->created_at->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') : '',
-                                'isCurrent'  => $ol->id === $d->id,
-                                'roundIndex' => $idx + 1,
-                            ];
+                            if (self::resolveLocalFilePath($olp)) {
+                                $orderLrCopies[] = [
+                                    'logId'      => $ol->id,
+                                    'url'        => asset($olp) . '?v=' . $olVer,
+                                    'viewUrl'    => url($userSlug . '/dispatch/view-lr/' . $ol->id) . '?idx=' . $idx . '&v=' . $olVer,
+                                    'path'       => $olp,
+                                    'lrNo'       => $ol->lr_no,
+                                    'date'       => $ol->created_at ? $ol->created_at->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') : '',
+                                    'isCurrent'  => $ol->id === $d->id,
+                                    'roundIndex' => $idx + 1,
+                                ];
+                            }
                         }
                     }
                 }
             }
 
-            // Fallback: if this specific round has no LR image, but the order has an LR uploaded on another round, use that order's LR
-            $orderLatestLr = null;
-            if (!$ownLr && !empty($orderLrCopies)) {
-                $orderLatestLr = $orderLrCopies[0]['url'] ?? null;
-            }
+            // Fallback: if this specific round has no physical LR image, but the order has a valid LR on another round, use that order's LR
+            $orderLatestLr = (!$ownLr && !empty($orderLrCopies)) ? ($orderLrCopies[0]['url'] ?? null) : null;
+            $orderLatestViewUrl = (!$ownViewUrl && !empty($orderLrCopies)) ? ($orderLrCopies[0]['viewUrl'] ?? null) : null;
             $effectiveLr = $ownLr ?: $orderLatestLr;
+            $effectiveViewUrl = $ownViewUrl ?: ($orderLatestViewUrl ?: (url($userSlug . '/dispatch/view-lr/' . $d->id) . '?v=' . $ver));
+            $hasPhysicalLr = !empty($ownValidImages) || !empty($orderLrCopies);
+            $hasRecordLr = !empty($rawPaths) || $orderHasAnyRecordLr;
+            $effectiveLrLogId = !empty($ownValidImages) ? $d->id : ($orderLrCopies[0]['logId'] ?? $d->id);
 
             $orderTotalQty = (float) ($d->order?->items?->sum('quantity') ?? 0);
             $orderRemainingQty = (float) ($d->order?->items?->sum(fn($i) => $i->remainingQty()) ?? 0);
@@ -1402,11 +1503,14 @@ class DispatchController extends Controller
                 'salesBy'                   => $d->order?->creator?->name ?? 'N/A',
                 'dispatchedBy'              => $d->user?->name,
                 'lrImage'                   => $effectiveLr,
-                'lrViewUrl'                 => url($userSlug . '/dispatch/view-lr/' . $d->id),
-                'hasPhysicalLr'             => $hasPhysicalFile,
+                'lrViewUrl'                 => $effectiveViewUrl,
+                'hasPhysicalLr'             => $hasPhysicalLr,
+                'hasRecordLr'               => $hasRecordLr,
+                'effectiveLrLogId'          => $effectiveLrLogId,
+                'lrVersion'                 => $ver,
                 'ownLrImage'                => $ownLr,
                 'isOrderLrCopy'             => empty($ownLr) && !empty($effectiveLr),
-                'lrImages'                  => $lrImages,
+                'lrImages'                  => $ownValidImages,
                 'orderLrCopies'             => $orderLrCopies,
                 'orderTotal'                => $d->order?->total,
                 'status'                    => $d->order?->status,
@@ -1591,8 +1695,9 @@ class DispatchController extends Controller
     {
         return view('dispatch.profile');
     }
-    public function revertDispatch(Request $request, $id)
+    public function revertDispatch(Request $request, $param1, $param2 = null)
     {
+        $id = ($param2 !== null && !is_object($param2)) ? $param2 : $param1;
         $log = DispatchLog::with('order.items', 'dispatchItems')->findOrFail($id);
         $order = $log->order;
 
@@ -1631,9 +1736,11 @@ class DispatchController extends Controller
             // Delete the dispatch log items
             \App\Models\DispatchLogItem::where('dispatch_log_id', $log->id)->delete();
 
-            // Delete the log image if exists
-            if ($log->lr_image_path && file_exists(public_path($log->lr_image_path))) {
-                @unlink(public_path($log->lr_image_path));
+            // Delete the log image copies if exists
+            if ($log->lr_image_path) {
+                foreach (self::getLrImagePaths($log) as $rp) {
+                    self::deletePhysicalLrCopies($rp);
+                }
             }
 
             // Delete the dispatch log itself

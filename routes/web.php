@@ -737,6 +737,10 @@ Route::middleware('auth.role:ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CASHIER,ATTE
     Route::get('/{user_slug}/view-lr/{id}', [DispatchController::class, 'viewLR']);
     Route::get('/{user_slug}/sales/view-lr/{id}', [DispatchController::class, 'viewLR']);
     Route::get('/{user_slug}/dispatch/view-lr/{id}', [DispatchController::class, 'viewLR']);
+    Route::post('/update-lr', [DispatchController::class, 'updateLR']);
+    Route::post('/dispatch/update-lr', [DispatchController::class, 'updateLR']);
+    Route::post('/{user_slug}/update-lr', [DispatchController::class, 'updateLR']);
+    Route::post('/{user_slug}/dispatch/update-lr', [DispatchController::class, 'updateLR']);
     Route::get('/download-lr/{id}', [DispatchController::class, 'downloadLR']);
     Route::get('/sales/download-lr/{id}', [DispatchController::class, 'downloadLR']);
     Route::get('/dispatch/download-lr/{id}', [DispatchController::class, 'downloadLR']);
