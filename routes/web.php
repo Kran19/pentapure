@@ -387,6 +387,12 @@ foreach ($roleSlugs['STOCK_MANAGER'] ?? [] as $slug) {
         Route::get('/action',      'action')->name($slug.'.action');
         Route::post('/action',     'storeInward')->name($slug.'.action.store');
         Route::post('/outward',    'storeOutward')->name($slug.'.action.outward');
+        Route::get('/stock-manager/action',   'action');
+        Route::post('/stock-manager/action',  'storeInward');
+        Route::post('/stock-manager/outward', 'storeOutward');
+        Route::get('/stock_manager/action',   'action');
+        Route::post('/stock_manager/action',  'storeInward');
+        Route::post('/stock_manager/outward', 'storeOutward');
         Route::get('/stock',       'stock')->name($slug.'.stock');
         Route::get('/admin/stock', [\App\Http\Controllers\AdminController::class, 'stock'])->name($slug.'.admin.stock');
         Route::post('/stock/pdf',  [\App\Http\Controllers\AdminController::class, 'downloadStockPdf'])->name($slug.'.stock.pdf');

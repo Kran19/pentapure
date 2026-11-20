@@ -17,7 +17,16 @@
           'grades' => $gradesList
       ];
   });
+
+  $smActionPrefix = (request()->segment(2) == 'stock-manager' || request()->segment(2) == 'stock_manager')
+      ? request()->segment(1) . '/' . request()->segment(2)
+      : request()->segment(1);
 @endphp
+
+<script>
+  window.smInwardUrl = "{{ url($smActionPrefix . '/action') }}";
+  window.smOutwardUrl = "{{ url($smActionPrefix . '/outward') }}";
+</script>
 
 <style>
 .sm-card {
@@ -887,12 +896,25 @@ function submitSmAction(e) {
   btn.innerText = 'Processing...';
 
   const userSlug = window.userSlug || 'stock_manager';
-  const baseUrl = window.baseUrl || '';
-  const isSmPrefixed = window.location.pathname.includes('/stock-manager');
-  const isSmUnderscorePrefixed = window.location.pathname.includes('/stock_manager');
+  const baseUrl = (window.baseUrl || '').replace(/\/+$/, '');
+  const pathname = window.location.pathname;
+
+  // Sub-panel prefix is only applicable when visiting under another role (e.g. /sub_admin/stock-manager/action)
+  const isSubPanel = (userSlug !== 'stock_manager' && userSlug !== 'stockmanager') && 
+                     (pathname.includes('/stock-manager') || pathname.includes('/stock_manager'));
+  const smSub = pathname.includes('/stock-manager') ? 'stock-manager' : 'stock_manager';
+
+  const defaultInward = isSubPanel 
+    ? (baseUrl ? `${baseUrl}/${userSlug}/${smSub}/action` : `/${userSlug}/${smSub}/action`)
+    : (baseUrl ? `${baseUrl}/${userSlug}/action` : `/${userSlug}/action`);
+
+  const defaultOutward = isSubPanel 
+    ? (baseUrl ? `${baseUrl}/${userSlug}/${smSub}/outward` : `/${userSlug}/${smSub}/outward`)
+    : (baseUrl ? `${baseUrl}/${userSlug}/outward` : `/${userSlug}/outward`);
+
   const targetUrl = actionType === 'INWARD'
-    ? (isSmPrefixed ? baseUrl + '/' + userSlug + '/stock-manager/action' : (isSmUnderscorePrefixed ? baseUrl + '/' + userSlug + '/stock_manager/action' : baseUrl + '/' + userSlug + '/action'))
-    : (isSmPrefixed ? baseUrl + '/' + userSlug + '/stock-manager/outward' : (isSmUnderscorePrefixed ? baseUrl + '/' + userSlug + '/stock_manager/outward' : baseUrl + '/' + userSlug + '/outward'));
+    ? (window.smInwardUrl || defaultInward)
+    : (window.smOutwardUrl || defaultOutward);
 
   fetch(targetUrl, {
     method: 'POST',
