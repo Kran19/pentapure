@@ -1155,4 +1155,3 @@ class DispatchTest extends TestCase
         $this->assertStringContainsString('NOT DISPATCHED', $reportHtml);
     }
 }
-
