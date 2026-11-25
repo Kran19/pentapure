@@ -33,14 +33,52 @@ class OrderItem extends Model
                     $this->dispatched_qty = $actual;
                 }
                 return $actual;
-            } elseif ($this->order && ($this->order->dispatchLogs()->exists() || in_array(strtoupper(trim((string)$this->order->dispatch_status)), ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'FULLY_DISPATCHED', 'DISPATCHED']) || $this->order->status === 'CLOSED')) {
-                // If parent order is dispatched/closed but no item-level breakdown exists, it's 100% dispatched
-                $actual = (float) $this->quantity;
-                if (abs((float)$this->dispatched_qty - $actual) > 0.001) {
-                    $this->update(['dispatched_qty' => $actual]);
-                    $this->dispatched_qty = $actual;
+            }
+
+            if ($this->order) {
+                $orderItemIds = $this->order->relationLoaded('items')
+                    ? $this->order->items->pluck('id')->all()
+                    : $this->order->items()->pluck('id')->all();
+
+                $orderHasAnyLogItems = !empty($orderItemIds)
+                    && DispatchLogItem::whereIn('order_item_id', $orderItemIds)->exists();
+
+                if ($orderHasAnyLogItems) {
+                    // Other items in this order have dispatch_log_items, so this item has not been dispatched yet (0)
+                    $actual = 0.0;
+                    if (abs((float)$this->dispatched_qty - $actual) > 0.001) {
+                        $this->update(['dispatched_qty' => $actual]);
+                        $this->dispatched_qty = $actual;
+                    }
+                    return $actual;
                 }
-                return $actual;
+
+                $rawOrderDispStatus = strtoupper(trim((string) $this->order->dispatch_status));
+                $isLegacyFullyDispatched = in_array($rawOrderDispStatus, ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'FULLY_DISPATCHED', 'DISPATCHED'], true)
+                    || strtoupper(trim((string) $this->order->status)) === 'CLOSED';
+
+                if ($isLegacyFullyDispatched) {
+                    // If parent order is dispatched/closed and no item-level breakdown exists anywhere on the order, it's 100% dispatched
+                    $actual = (float) $this->quantity;
+                    if (abs((float)$this->dispatched_qty - $actual) > 0.001) {
+                        $this->update(['dispatched_qty' => $actual]);
+                        $this->dispatched_qty = $actual;
+                    }
+                    return $actual;
+                }
+
+                $hasAnyOrderDispatchLogs = $this->order->relationLoaded('dispatchLogs')
+                    ? $this->order->dispatchLogs->isNotEmpty()
+                    : $this->order->dispatchLogs()->exists();
+
+                if (!$hasAnyOrderDispatchLogs && in_array($rawOrderDispStatus, ['', 'PENDING', 'OPEN', 'UNASSIGNED'], true)) {
+                    $actual = 0.0;
+                    if (abs((float)$this->dispatched_qty - $actual) > 0.001) {
+                        $this->update(['dispatched_qty' => $actual]);
+                        $this->dispatched_qty = $actual;
+                    }
+                    return $actual;
+                }
             }
         } catch (\Throwable $e) {}
         return (float) $this->dispatched_qty;

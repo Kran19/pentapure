@@ -631,6 +631,16 @@
                 $prev = (float)($item['prevDispatchedQty'] ?? 0);
                 $disp = (float)($item['dispatchedQty'] ?? 0);
                 $rem = (float)($item['remainingQty'] ?? 0);
+                if ($tot > 0 && $rem <= 0.001) {
+                  $histItemStLabel = 'DISPATCHED';
+                  $histItemStBg = '#16a34a';
+                } elseif (($prev + $disp) > 0.001) {
+                  $histItemStLabel = 'PARTIAL DISPATCH';
+                  $histItemStBg = '#f59e0b';
+                } else {
+                  $histItemStLabel = 'NOT DISPATCHED';
+                  $histItemStBg = '#ef4444';
+                }
               @endphp
               <div class="dispatch-item-row" style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f3f4f6; font-size:0.88rem; flex-wrap:wrap; gap:12px;">
                 <div class="dispatch-item-name" style="flex:1; min-width:200px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
@@ -639,6 +649,7 @@
                     <strong style="font-weight:800; color:var(--primary, #D88A00);">{{ $gName }}</strong>
                   @endif
                   <span style="color:#6b7280; font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
+                  <span class="badge" style="background:{{ $histItemStBg }}; color:#ffffff !important; font-size:0.65rem; font-weight:800; padding:2px 7px; border-radius:4px; letter-spacing:0.3px;">{{ $histItemStLabel }}</span>
                 </div>
                 <div class="dispatch-item-badges-wrap" style="display:flex; align-items:center;">
                   <div class="dispatch-item-badges">

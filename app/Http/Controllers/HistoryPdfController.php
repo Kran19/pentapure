@@ -450,25 +450,38 @@ class HistoryPdfController extends Controller
             'company',
             'transporter',
             'creator',
-            'items.product'
+            'items.product',
+            'dispatchLogs.dispatchItems.orderItem.product',
+            'dispatchLogs.user',
         ])->findOrFail($id);
 
-        $totalOrderedQty = 0;
-        $totalAmount = 0;
+        foreach ($order->items as $item) {
+            $item->syncDispatchedQty();
+        }
+
+        $totalOrderedQty = 0.0;
+        $totalDispatchedQty = 0.0;
+        $totalPendingQty = 0.0;
+        $totalAmount = 0.0;
 
         foreach ($order->items as $item) {
-            $totalOrderedQty += (float) $item->quantity;
-            $totalAmount += (float) ($item->price * $item->quantity);
+            $ordQ = (float) $item->quantity;
+            $dispQ = (float) $item->dispatched_qty;
+            $pendQ = max(0.0, $ordQ - $dispQ);
+            $totalOrderedQty += $ordQ;
+            $totalDispatchedQty += $dispQ;
+            $totalPendingQty += $pendQ;
+            $totalAmount += (float) ($item->price * $ordQ);
         }
 
         $rawSt = strtoupper(trim(str_replace('_', '-', (string)($order->dispatch_status ?? $order->status ?? 'PENDING'))));
-        if ($rawSt === 'DONE' || $rawSt === 'FULLY-DISPATCHED' || $rawSt === 'FULLY DISPATCHED') {
+        if (($totalOrderedQty > 0 && $totalPendingQty <= 0.001) || in_array($rawSt, ['DONE', 'FULLY-DISPATCHED', 'FULLY DISPATCHED', 'COMPLETED'], true)) {
             $statusTitle = 'FULLY DISPATCH ORDER';
             $statusSlug = 'FULLY-DISPATCH';
         } elseif ($rawSt === 'PARTIAL-PENDING' || $rawSt === 'PARTIAL PENDING') {
             $statusTitle = 'PARTIAL PENDING ORDER';
             $statusSlug = 'PARTIAL-PENDING';
-        } elseif ($rawSt === 'PARTIAL' || $rawSt === 'PARTIAL-DISPATCH' || $rawSt === 'PARTIAL DISPATCH') {
+        } elseif ($totalDispatchedQty > 0.001 || in_array($rawSt, ['PARTIAL', 'PARTIAL-DISPATCH', 'PARTIAL DISPATCH'], true)) {
             $statusTitle = 'PARTIAL DISPATCH ORDER';
             $statusSlug = 'PARTIAL-DISPATCH';
         } else {
@@ -476,13 +489,22 @@ class HistoryPdfController extends Controller
             $statusSlug = 'PENDING';
         }
 
+        $dispatchHistory = $order->dispatchLogs
+            ? $order->dispatchLogs->sortBy('id')->values()
+            : collect();
+
+        $orderCreatedAt = $order->created_at
+            ? Carbon::parse($order->created_at)
+            : ($order->date ? Carbon::parse($order->date) : now());
+
         $data = [
             'order' => $order,
             'company' => $order->company,
             'transporter' => $order->transporter ?? (object)[],
             'items' => $order->items,
+            'dispatchHistory' => $dispatchHistory,
             'orderNo' => 'ORD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT),
-            'orderDate' => $order->created_at->format('d-m-Y'),
+            'orderDate' => $orderCreatedAt->format('d-m-Y'),
             'dueDate' => $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : null,
             'generatedOn' => now()->timezone('Asia/Kolkata')->format('d-m-Y h:i A'),
             'generatedBy' => $this->authUser()['name'] ?? 'System',
@@ -491,12 +513,14 @@ class HistoryPdfController extends Controller
             'statusTitle' => $statusTitle,
             'remarks' => $order->notes ?? '',
             'totalOrderedQty' => $totalOrderedQty,
+            'totalDispatchedQty' => $totalDispatchedQty,
+            'totalPendingQty' => $totalPendingQty,
             'totalAmount' => $totalAmount,
             'totalItems' => count($order->items),
         ];
 
         $companyNameClean = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $order->company?->name ?? 'COMPANY'));
-        $createdDateStr = $order->created_at ? $order->created_at->format('d-m-Y') : now()->format('d-m-Y');
+        $createdDateStr = $orderCreatedAt->format('d-m-Y');
         $pdfFilename = 'DISPATCH_' . strtoupper($data['orderNo']) . '_' . $companyNameClean . '_' . $statusSlug . '_' . $createdDateStr . '.pdf';
 
         $pdf = Pdf::loadView('pdf.sales-order', $data)->setPaper('A4', 'portrait');
@@ -506,24 +530,20 @@ class HistoryPdfController extends Controller
     public function dispatchNotePdf(Request $request, ...$args)
     {
         $id = $request->route('id') ?? (count($args) > 0 ? end($args) : null);
-        $log = DispatchLog::with([
+        $withRelations = [
             'order.company',
             'order.transporter',
             'order.creator',
+            'order.items.product',
+            'order.dispatchLogs.dispatchItems',
             'user',
             'transporter',
-            'dispatchItems.orderItem.product'
-        ])->find($id);
+            'dispatchItems.orderItem.product',
+        ];
+        $log = DispatchLog::with($withRelations)->find($id);
 
         if (!$log) {
-            $log = DispatchLog::with([
-                'order.company',
-                'order.transporter',
-                'order.creator',
-                'user',
-                'transporter',
-                'dispatchItems.orderItem.product'
-            ])->where('order_id', $id)->latest()->first();
+            $log = DispatchLog::with($withRelations)->where('order_id', $id)->latest()->first();
         }
 
         if (!$log) {
@@ -535,24 +555,74 @@ class HistoryPdfController extends Controller
         }
 
         $order = $log->order;
-        
-        $totalOrderedQty = 0;
-        $totalPrevDispatchedQty = 0;
-        $totalDispatchedQty = 0;
-        $totalPendingQty = 0;
-        $totalAmount = 0;
+        foreach ($order->items as $oi) {
+            $oi->syncDispatchedQty();
+        }
 
-        foreach ($log->dispatchItems as $di) {
-            $orderItem = $di->orderItem;
-            if ($orderItem && $orderItem->order_id == $log->order_id) {
-                $totalOrderedQty += (float) $orderItem->quantity;
-                $totalDispatchedQty += (float) $di->quantity;
-                $prevDispatched = (float) $orderItem->dispatched_qty - (float) $di->quantity;
-                $totalPrevDispatchedQty += $prevDispatched;
-                // Pending quantity after this dispatch log round
-                $totalPendingQty += (float) max(0, $orderItem->quantity - $orderItem->dispatched_qty);
-                $totalAmount += (float) ($orderItem->price * $di->quantity);
+        $totalOrderedQty = 0.0;
+        $totalPrevDispatchedQty = 0.0;
+        $totalDispatchedQty = 0.0;
+        $totalPendingQty = 0.0;
+        $totalAmount = 0.0;
+
+        $hasAnyRoundBreakdown = $log->dispatchItems->isNotEmpty()
+            || ($order->dispatchLogs && $order->dispatchLogs->contains(fn($dl) => $dl->dispatchItems && $dl->dispatchItems->isNotEmpty()));
+
+        $noteItems = collect();
+        foreach ($order->items as $orderItem) {
+            $orderedQty = (float) $orderItem->quantity;
+            $prevDispatched = 0.0;
+            $currentDispatched = 0.0;
+
+            if ($hasAnyRoundBreakdown) {
+                if ($order->dispatchLogs) {
+                    foreach ($order->dispatchLogs as $priorLog) {
+                        if ($priorLog->id === $log->id) {
+                            continue;
+                        }
+                        $isPrior = ($priorLog->created_at && $log->created_at)
+                            ? ($priorLog->created_at < $log->created_at || ($priorLog->created_at == $log->created_at && $priorLog->id < $log->id))
+                            : ($priorLog->id < $log->id);
+                        if ($isPrior && $priorLog->dispatchItems) {
+                            foreach ($priorLog->dispatchItems as $pdi) {
+                                if ((int) $pdi->order_item_id === (int) $orderItem->id) {
+                                    $prevDispatched += (float) $pdi->quantity;
+                                }
+                            }
+                        }
+                    }
+                }
+                $currentDispatched = (float) $log->dispatchItems
+                    ->where('order_item_id', $orderItem->id)
+                    ->sum('quantity');
+            } else {
+                $currentDispatched = (float) ($orderItem->dispatched_qty > 0 ? $orderItem->dispatched_qty : $orderedQty);
             }
+
+            $cumulativeDispatched = $prevDispatched + $currentDispatched;
+            $pendingQty = max(0.0, $orderedQty - $cumulativeDispatched);
+
+            if ($orderedQty > 0 && $pendingQty <= 0.001) {
+                $itemStatus = 'DISPATCHED';
+            } elseif ($cumulativeDispatched > 0.001) {
+                $itemStatus = 'PARTIAL DISPATCH';
+            } else {
+                $itemStatus = 'NOT DISPATCHED';
+            }
+
+            $totalOrderedQty += $orderedQty;
+            $totalPrevDispatchedQty += $prevDispatched;
+            $totalDispatchedQty += $currentDispatched;
+            $totalPendingQty += $pendingQty;
+            $totalAmount += (float) ($orderItem->price * $currentDispatched);
+
+            $noteItems->push((object) [
+                'orderItem' => $orderItem,
+                'quantity' => $currentDispatched,
+                'prev_dispatched_qty' => $prevDispatched,
+                'pending_qty' => $pendingQty,
+                'status_label' => $itemStatus,
+            ]);
         }
 
         $dispatchHistory = DispatchLog::with(['dispatchItems.orderItem.product', 'user'])
@@ -561,33 +631,40 @@ class HistoryPdfController extends Controller
             ->orderBy('created_at', 'asc')
             ->get();
 
+        $orderCreatedAt = $order->created_at
+            ? Carbon::parse($order->created_at)
+            : ($order->date ? Carbon::parse($order->date) : now());
+        $logCreatedAt = $log->created_at
+            ? Carbon::parse($log->created_at)
+            : now();
+
         $data = [
             'log' => $log,
             'order' => $order,
             'company' => $order->company,
             'transporter' => $log->transporter ?? $order->transporter,
-            'items' => $log->dispatchItems,
+            'items' => $noteItems,
             'dispatchHistory' => $dispatchHistory,
             'dispatchNo' => 'DSP-' . str_pad($log->id, 4, '0', STR_PAD_LEFT),
             'orderNo' => 'ORD-' . str_pad($log->order_id, 4, '0', STR_PAD_LEFT),
-            'orderDate' => $order->created_at->format('d-m-Y'),
-            'dispatchDate' => $log->created_at->format('d-m-Y'),
-            'generatedOn' => $log->created_at->timezone('Asia/Kolkata')->format('d-m-Y h:i A'),
+            'orderDate' => $orderCreatedAt->format('d-m-Y'),
+            'dispatchDate' => $logCreatedAt->format('d-m-Y'),
+            'generatedOn' => $logCreatedAt->copy()->timezone('Asia/Kolkata')->format('d-m-Y h:i A'),
             'generatedBy' => $log->user?->name ?? 'System',
             'orderGeneratedBy' => $order->creator?->name ?? 'N/A',
-            'status' => 'DISPATCHED',
+            'status' => ($totalOrderedQty > 0 && $totalPendingQty <= 0.001) ? 'DISPATCHED' : 'PARTIAL DISPATCH',
             'remarks' => $log->notes ?: ($order->notes ?? ''),
             'totalOrderedQty' => $totalOrderedQty,
             'totalPrevDispatchedQty' => $totalPrevDispatchedQty,
             'totalDispatchedQty' => $totalDispatchedQty,
             'totalPendingQty' => $totalPendingQty,
             'totalAmount' => $totalAmount,
-            'totalItems' => count($log->dispatchItems),
-            'dispatchType' => ($totalPendingQty <= 0) ? 'Full Dispatch' : 'Partial Dispatch',
+            'totalItems' => count($noteItems),
+            'dispatchType' => ($totalOrderedQty > 0 && $totalPendingQty <= 0.001) ? 'Full Dispatch' : 'Partial Dispatch',
         ];
 
         $companyNameClean = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $order->company?->name ?? 'COMPANY'));
-        $dispatchDateStr = $log->created_at ? $log->created_at->format('d-m-Y') : now()->format('d-m-Y');
+        $dispatchDateStr = $logCreatedAt->format('d-m-Y');
         $rawSt = strtoupper(trim(str_replace('_', '-', (string)($order->dispatch_status ?? 'DISPATCHED'))));
         $noteFilename = strtoupper($data['dispatchNo']) . '_' . strtoupper($data['orderNo']) . '_' . $companyNameClean . '_' . $rawSt . '_' . $dispatchDateStr . '.pdf';
 
@@ -708,6 +785,10 @@ class HistoryPdfController extends Controller
         $formatQty = fn($q, $u) => number_format($q, floor($q) == $q ? 0 : 2) . ' ' . $u;
 
         foreach ($orders as $order) {
+            foreach ($order->items as $syncIt) {
+                $syncIt->syncDispatchedQty();
+            }
+
             $rawSt = strtoupper(trim(str_replace('_', ' ', (string)($order->dispatch_status ?? 'PENDING'))));
             if ($order->status === 'CANCELLED') {
                 $orderStatus = 'CANCELLED';
@@ -745,6 +826,16 @@ class HistoryPdfController extends Controller
                 $amount = $orderedQty * $rate;
                 $unit = strtoupper($item->product?->unit ?? 'KG');
 
+                if ($order->status === 'CANCELLED') {
+                    $itemStatus = 'CANCELLED';
+                } elseif ($orderedQty > 0 && $pendingQty <= 0.001) {
+                    $itemStatus = 'DISPATCHED';
+                } elseif ($dispatchedQty > 0.001) {
+                    $itemStatus = 'PARTIAL DISPATCH';
+                } else {
+                    $itemStatus = 'NOT DISPATCHED';
+                }
+
                 $totalOrderedQty += $orderedQty;
                 $totalQuantity += $dispatchedQty;
                 $totalPendingQty += $pendingQty;
@@ -777,6 +868,7 @@ class HistoryPdfController extends Controller
                     'dispatch_qty_formatted' => $formatQty($dispatchedQty, $unit),
                     'pending_qty' => $pendingQty,
                     'pending_qty_formatted' => $formatQty($pendingQty, $unit),
+                    'item_status' => $itemStatus,
                     'amount' => $amount,
                     'rate' => $rate,
                     'unit' => $unit,

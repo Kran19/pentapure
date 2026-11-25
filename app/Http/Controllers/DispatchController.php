@@ -73,10 +73,24 @@ class DispatchController extends Controller
         ->get();
     }
 
+    private function resolveItemDispatchStatus(float $orderedQty, float $dispatchedQty): string
+    {
+        $remaining = max(0.0, $orderedQty - $dispatchedQty);
+        if ($orderedQty > 0 && $remaining <= 0.001) {
+            return 'DISPATCHED';
+        }
+        if ($dispatchedQty > 0.001) {
+            return 'PARTIAL DISPATCH';
+        }
+        return 'NOT DISPATCHED';
+    }
+
     private function calculateOrderReadiness($order, array $stockMap): array
     {
         $items = $order->items->map(function($i) use ($stockMap) {
-            $needed = max(0, (float)$i->quantity - (float)$i->dispatched_qty);
+            $qty = (float) $i->quantity;
+            $disp = (float) $i->dispatched_qty;
+            $needed = max(0, $qty - $disp);
             $rawType = strtoupper(trim((string)($i->product?->type ?? 'FINISHED')));
             $itemStage = match($rawType) {
                 'FG', 'FINISHED' => 'FINISHED',
@@ -92,17 +106,18 @@ class DispatchController extends Controller
             $key = $i->product_id . '_' . $itemStage . '_' . $itemGrade;
             $avail = max(0, (float)($stockMap[$key] ?? 0));
             return [
-                'id'            => $i->id,
-                'productId'     => $i->product_id,
-                'rawProductName'=> $i->product?->name ?? 'Unknown',
-                'productName'   => $i->product?->name ?? 'Unknown',
-                'formattedName' => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
-                'productType'   => $i->product?->type,
-                'quantity'      => (float) $i->quantity,
-                'dispatchedQty' => (float) $i->dispatched_qty,
-                'remainingQty'  => $needed,
-                'availStock'    => $avail,
-                'grade'         => $i->grade,
+                'id'                 => $i->id,
+                'productId'          => $i->product_id,
+                'rawProductName'     => $i->product?->name ?? 'Unknown',
+                'productName'        => $i->product?->name ?? 'Unknown',
+                'formattedName'      => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
+                'productType'        => $i->product?->type,
+                'quantity'           => $qty,
+                'dispatchedQty'      => $disp,
+                'remainingQty'       => $needed,
+                'availStock'         => $avail,
+                'grade'              => $i->grade,
+                'itemDispatchStatus' => $this->resolveItemDispatchStatus($qty, $disp),
             ];
         });
 
@@ -139,7 +154,7 @@ class DispatchController extends Controller
 
     public function home()
     {
-        $pending   = Order::with(['company', 'transporter', 'items.product', 'creator'])
+        $pending   = Order::with(['company', 'transporter', 'items.product', 'creator', 'dispatchLogs:id,order_id'])
             ->where(function($q) {
                 $q->whereNotIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY DISPATCHED'])
                   ->orWhereNull('dispatch_status');
@@ -150,7 +165,7 @@ class DispatchController extends Controller
             })
             ->orderByDesc('created_at')
             ->get();
-        $completed = Order::with(['company', 'transporter', 'creator', 'items.product'])
+        $completed = Order::with(['company', 'transporter', 'creator', 'items.product', 'dispatchLogs:id,order_id'])
             ->whereIn('dispatch_status', ['DONE', 'COMPLETED', 'FULLY DISPATCHED'])
             ->where(function($q) {
                 $q->where('status', '!=', 'CANCELLED')
@@ -158,6 +173,17 @@ class DispatchController extends Controller
             })
             ->orderByDesc('created_at')
             ->get();
+
+        foreach ($pending as $po) {
+            foreach ($po->items as $pi) {
+                $pi->syncDispatchedQty();
+            }
+        }
+        foreach ($completed as $co) {
+            foreach ($co->items as $ci) {
+                $ci->syncDispatchedQty();
+            }
+        }
 
         $rawStock       = $this->getStageStock(['RAW']);
         $semiStock      = $this->getStageStock(['SEMI']);
@@ -169,25 +195,27 @@ class DispatchController extends Controller
         $today = now()->timezone('Asia/Kolkata')->startOfDay();
         $pendingMapped = $pending->map(function($o) use ($stockMap) {
             [$readiness, $items] = $this->calculateOrderReadiness($o, $stockMap);
+            $latestLogId = $o->dispatchLogs ? $o->dispatchLogs->sortByDesc('id')->first()?->id : null;
 
             return [
-                'id'           => $o->id,
-                'companyId'    => $o->company_id,
-                'companyName'  => $o->company?->name,
-                'transportId'  => $o->transporter_id,
-                'transporterName' => $o->transporter?->name,
-                'salesPerson'  => $o->creator?->name ?? 'N/A',
-                'total'        => $o->total,
-                'date'         => $o->created_at ? $o->created_at->toISOString() : ($o->date ? \Carbon\Carbon::parse($o->date)->toISOString() : now()->toISOString()),
-                'dueDate'      => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
-                'rawDueDate'   => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('Y-m-d') : null,
-                'totalQty'     => $o->items->sum('quantity'),
-                'dispatchedQty'=> $o->items->sum('dispatched_qty'),
-                'dispatchStatus' => $o->dispatch_status,
-                'status'       => $o->status,
-                'readiness'    => $readiness,
-                'notes'        => $o->notes,
-                'items'        => $items,
+                'id'                  => $o->id,
+                'latestDispatchLogId' => $latestLogId,
+                'companyId'           => $o->company_id,
+                'companyName'         => $o->company?->name,
+                'transportId'         => $o->transporter_id,
+                'transporterName'     => $o->transporter?->name,
+                'salesPerson'         => $o->creator?->name ?? 'N/A',
+                'total'               => $o->total,
+                'date'                => $o->created_at ? $o->created_at->toISOString() : ($o->date ? \Carbon\Carbon::parse($o->date)->toISOString() : now()->toISOString()),
+                'dueDate'             => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
+                'rawDueDate'          => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('Y-m-d') : null,
+                'totalQty'            => $o->items->sum('quantity'),
+                'dispatchedQty'       => $o->items->sum('dispatched_qty'),
+                'dispatchStatus'      => $o->dispatch_status,
+                'status'              => $o->status,
+                'readiness'           => $readiness,
+                'notes'               => $o->notes,
+                'items'               => $items,
             ];
         })->sortBy(function($o) use ($today) {
             $rawDueDate = $o['rawDueDate'] ?? null;
@@ -212,31 +240,35 @@ class DispatchController extends Controller
             'packagingStock'  => $packagingStock,
             'pendingOrders'   => $pendingMapped,
             'completedOrders' => $completed->map(fn($o) => [
-                'id'           => $o->id,
-                'companyId'    => $o->company_id,
-                'companyName'  => $o->company?->name,
-                'transportId'  => $o->transporter_id,
-                'transporterName' => $o->transporter?->name,
-                'salesPerson'  => $o->creator?->name ?? 'N/A',
-                'total'        => $o->total,
-                'date'         => $o->created_at ? $o->created_at->toISOString() : ($o->date ? \Carbon\Carbon::parse($o->date)->toISOString() : now()->toISOString()),
-                'dueDate'      => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
-                'rawDueDate'   => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('Y-m-d') : null,
-                'status'       => $o->status,
-                'notes'        => $o->notes,
-                'items'        => $o->items->map(fn($i) => [
-                    'id'            => $i->id,
-                    'productId'     => $i->product_id,
-                    'rawProductName'=> $i->product?->name ?? 'Unknown',
-                    'productName'   => $i->product?->name ?? 'Unknown',
-                    'formattedName' => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
-                    'productType'   => $i->product?->type,
-                    'quantity'      => (float) $i->quantity,
-                    'dispatchedQty' => (float) $i->dispatched_qty,
-                    'remainingQty'  => (float) max(0, (float)$i->quantity - (float)$i->dispatched_qty),
-                    'grade'         => $i->grade,
-                    'price'         => (float) ($i->price > 0 ? $i->price : ($i->product?->rate ?? 0)),
-                    'rate'          => (float) ($i->price > 0 ? $i->price : ($i->product?->rate ?? 0)),
+                'id'                  => $o->id,
+                'latestDispatchLogId' => $o->dispatchLogs ? $o->dispatchLogs->sortByDesc('id')->first()?->id : null,
+                'companyId'           => $o->company_id,
+                'companyName'         => $o->company?->name,
+                'transportId'         => $o->transporter_id,
+                'transporterName'     => $o->transporter?->name,
+                'salesPerson'         => $o->creator?->name ?? 'N/A',
+                'total'               => $o->total,
+                'totalQty'            => $o->items->sum('quantity'),
+                'dispatchedQty'       => $o->items->sum('dispatched_qty'),
+                'date'                => $o->created_at ? $o->created_at->toISOString() : ($o->date ? \Carbon\Carbon::parse($o->date)->toISOString() : now()->toISOString()),
+                'dueDate'             => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
+                'rawDueDate'          => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('Y-m-d') : null,
+                'status'              => $o->status,
+                'notes'               => $o->notes,
+                'items'               => $o->items->map(fn($i) => [
+                    'id'                 => $i->id,
+                    'productId'          => $i->product_id,
+                    'rawProductName'     => $i->product?->name ?? 'Unknown',
+                    'productName'        => $i->product?->name ?? 'Unknown',
+                    'formattedName'      => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
+                    'productType'        => $i->product?->type,
+                    'quantity'           => (float) $i->quantity,
+                    'dispatchedQty'      => (float) $i->dispatched_qty,
+                    'remainingQty'       => (float) max(0, (float)$i->quantity - (float)$i->dispatched_qty),
+                    'itemDispatchStatus' => $this->resolveItemDispatchStatus((float) $i->quantity, (float) $i->dispatched_qty),
+                    'grade'              => $i->grade,
+                    'price'              => (float) ($i->price > 0 ? $i->price : ($i->product?->rate ?? 0)),
+                    'rate'               => (float) ($i->price > 0 ? $i->price : ($i->product?->rate ?? 0)),
                 ]),
             ]),
             'companies'           => Company::all(['id', 'name']),
@@ -1731,19 +1763,23 @@ class DispatchController extends Controller
                 }
                 $totalPrevDispatched += $prevDispatched;
 
+                $totItemQty = (float) ($di->orderItem?->quantity ?? 0);
+                $cumDispQty = (float) $prevDispatched + (float) $di->quantity;
+
                 return [
-                    'id'                => $di->id,
-                    'dispatchItemId'    => $di->id,
-                    'orderItemId'       => $di->order_item_id,
-                    'productName'       => $di->orderItem?->product?->name ?? 'Unknown',
-                    'rawProductName'    => $di->orderItem?->product?->name ?? 'Unknown',
-                    'formattedName'     => $di->orderItem?->product ? $di->orderItem->product->formatName($di->orderItem->grade) : 'Unknown',
-                    'grade'             => $di->orderItem?->grade,
-                    'productType'       => $di->orderItem?->product?->type,
-                    'totalQty'          => (float) ($di->orderItem?->quantity ?? 0),
-                    'prevDispatchedQty' => (float) $prevDispatched,
-                    'dispatchedQty'     => (float) $di->quantity,
-                    'remainingQty'      => (float) max(0, ($di->orderItem?->quantity ?? 0) - ($prevDispatched + (float) $di->quantity)),
+                    'id'                 => $di->id,
+                    'dispatchItemId'     => $di->id,
+                    'orderItemId'        => $di->order_item_id,
+                    'productName'        => $di->orderItem?->product?->name ?? 'Unknown',
+                    'rawProductName'     => $di->orderItem?->product?->name ?? 'Unknown',
+                    'formattedName'      => $di->orderItem?->product ? $di->orderItem->product->formatName($di->orderItem->grade) : 'Unknown',
+                    'grade'              => $di->orderItem?->grade,
+                    'productType'        => $di->orderItem?->product?->type,
+                    'totalQty'           => $totItemQty,
+                    'prevDispatchedQty'  => (float) $prevDispatched,
+                    'dispatchedQty'      => (float) $di->quantity,
+                    'remainingQty'       => (float) max(0, $totItemQty - $cumDispQty),
+                    'itemDispatchStatus' => $this->resolveItemDispatchStatus($totItemQty, $cumDispQty),
                 ];
             })->values();
 
@@ -1815,6 +1851,10 @@ class DispatchController extends Controller
         $reportOrders = collect();
 
         foreach ($orders as $o) {
+            foreach ($o->items as $oi) {
+                $oi->syncDispatchedQty();
+            }
+
             $totalQty = (float) $o->items->sum('quantity');
             $dispatchedQty = (float) $o->items->sum('dispatched_qty');
             $remainingQty = (float) $o->items->sum(fn($i) => $i->remainingQty());
@@ -1867,39 +1907,41 @@ class DispatchController extends Controller
             })->values()->toArray();
 
             $reportOrders->push([
-                'id'             => $o->id,
-                'orderId'        => $o->id,
-                'companyId'      => $o->company_id,
-                'companyName'    => $o->company?->name,
-                'transportName'  => $o->transporter?->name,
-                'salesPerson'    => $o->creator?->name ?? 'N/A',
-                'salesBy'        => $o->creator?->name ?? 'N/A',
-                'orderTotal'     => $o->total,
-                'status'         => $o->status,
-                'dispatchStatus' => $dispatchStatus,
-                'dispatchDate'   => $dispatchDate,
-                'dispatchDateTime' => $dispatchDateTime,
-                'rawDispatchDate' => $rawDispatchDate,
-                'dispatchLogs'   => $dispatchLogsData,
-                'date'           => $o->created_at ? $o->created_at->toISOString() : ($o->date ? \Carbon\Carbon::parse($o->date)->toISOString() : now()->toISOString()),
-                'dueDate'        => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
-                'rawDueDate'     => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('Y-m-d') : null,
-                'notes'          => $o->notes,
-                'totalQty'       => $totalQty,
-                'dispatchedQty'  => $dispatchedQty,
-                'remainingQty'   => $remainingQty,
-                'items'          => $o->items->map(fn($i) => [
-                    'id'            => $i->id,
-                    'productName'   => $i->product?->name ?? 'Unknown',
-                    'rawProductName'=> $i->product?->name ?? 'Unknown',
-                    'formattedName' => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
-                    'grade'         => $i->grade,
-                    'productType'   => $i->product?->type,
-                    'quantity'      => (float) $i->quantity,
-                    'dispatchedQty' => (float) $i->dispatched_qty,
-                    'remainingQty'  => (float) $i->remainingQty(),
-                    'price'         => (float) ($i->price > 0 ? $i->price : ($i->product?->rate ?? 0)),
-                    'rate'          => (float) ($i->price > 0 ? $i->price : ($i->product?->rate ?? 0)),
+                'id'                  => $o->id,
+                'orderId'             => $o->id,
+                'latestDispatchLogId' => $latestDispatchLog?->id,
+                'companyId'           => $o->company_id,
+                'companyName'         => $o->company?->name,
+                'transportName'       => $o->transporter?->name,
+                'salesPerson'         => $o->creator?->name ?? 'N/A',
+                'salesBy'             => $o->creator?->name ?? 'N/A',
+                'orderTotal'          => $o->total,
+                'status'              => $o->status,
+                'dispatchStatus'      => $dispatchStatus,
+                'dispatchDate'        => $dispatchDate,
+                'dispatchDateTime'    => $dispatchDateTime,
+                'rawDispatchDate'     => $rawDispatchDate,
+                'dispatchLogs'        => $dispatchLogsData,
+                'date'                => $o->created_at ? $o->created_at->toISOString() : ($o->date ? \Carbon\Carbon::parse($o->date)->toISOString() : now()->toISOString()),
+                'dueDate'             => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('d-m-Y') : null,
+                'rawDueDate'          => $o->due_date ? \Carbon\Carbon::parse($o->due_date)->format('Y-m-d') : null,
+                'notes'               => $o->notes,
+                'totalQty'            => $totalQty,
+                'dispatchedQty'       => $dispatchedQty,
+                'remainingQty'        => $remainingQty,
+                'items'               => $o->items->map(fn($i) => [
+                    'id'                 => $i->id,
+                    'productName'        => $i->product?->name ?? 'Unknown',
+                    'rawProductName'     => $i->product?->name ?? 'Unknown',
+                    'formattedName'      => $i->product ? $i->product->formatName($i->grade) : 'Unknown',
+                    'grade'              => $i->grade,
+                    'productType'        => $i->product?->type,
+                    'quantity'           => (float) $i->quantity,
+                    'dispatchedQty'      => (float) $i->dispatched_qty,
+                    'remainingQty'       => (float) $i->remainingQty(),
+                    'itemDispatchStatus' => $this->resolveItemDispatchStatus((float) $i->quantity, (float) $i->dispatched_qty),
+                    'price'              => (float) ($i->price > 0 ? $i->price : ($i->product?->rate ?? 0)),
+                    'rate'               => (float) ($i->price > 0 ? $i->price : ($i->product?->rate ?? 0)),
                 ])->values(),
             ]);
         }

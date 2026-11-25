@@ -25,9 +25,10 @@
         .meta-value { color: #101828; }
         
         /* Badges */
-        .badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-weight: bold; font-size: 9px; text-transform: uppercase; }
+        .badge { display: inline-block; padding: 2px 5px; border-radius: 3px; font-weight: bold; font-size: 8px; text-transform: uppercase; white-space: nowrap; }
         .badge-dispatched { background: #ecfdf3; color: #027a48; border: 1px solid #abefc6; }
-        .badge-pending { background: #fffaeb; color: #b54708; border: 1px solid #fedf89; }
+        .badge-pending, .badge-partial { background: #fffaeb; color: #b54708; border: 1px solid #fedf89; }
+        .badge-not-dispatched { background: #fef3f2; color: #b42318; border: 1px solid #fecdca; }
         
         /* Details Grid: Customer & Transport */
         .details-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
@@ -161,24 +162,49 @@
     <table class="items-table">
         <thead>
             <tr>
-                <th style="width: 5%;" class="text-center">No.</th>
-                <th style="width: 45%;">Product Name</th>
-                <th style="width: 15%;" class="text-right">Qty</th>
-                <th style="width: 15%;" class="text-right">Rate (₹)</th>
-                <th style="width: 20%;" class="text-right">Amount (₹)</th>
+                <th style="width: 4%;" class="text-center">No.</th>
+                <th style="width: 26%;">Product Name</th>
+                <th style="width: 12%;" class="text-right">Ordered Qty</th>
+                <th style="width: 12%;" class="text-right">Dispatched Qty</th>
+                <th style="width: 11%;" class="text-right">Pending Qty</th>
+                <th style="width: 10%;" class="text-right">Rate (&#8377;)</th>
+                <th style="width: 11%;" class="text-right">Amount (&#8377;)</th>
+                <th style="width: 14%;" class="text-center">Status</th>
             </tr>
         </thead>
         <tbody>
+            @php
+                $fmtOrdPdfQty = fn($v) => floor((float)$v) == (float)$v ? number_format((float)$v, 0) : number_format((float)$v, 2);
+                $calcTotalDisp = (float) ($totalDispatchedQty ?? collect($items)->sum('dispatched_qty'));
+                $calcTotalPend = (float) ($totalPendingQty ?? collect($items)->sum(fn($it) => max(0, (float)$it->quantity - (float)$it->dispatched_qty)));
+            @endphp
             @foreach($items as $idx => $item)
+                @php
+                    $ordQ = (float) ($item->quantity ?? 0);
+                    $dispQ = (float) ($item->dispatched_qty ?? 0);
+                    $pendQ = max(0.0, $ordQ - $dispQ);
+                    if ($ordQ > 0 && $pendQ <= 0.001) {
+                        $soItemStatus = 'DISPATCHED';
+                        $soItemBadge = 'badge-dispatched';
+                    } elseif ($dispQ > 0.001) {
+                        $soItemStatus = 'PARTIAL DISPATCH';
+                        $soItemBadge = 'badge-partial';
+                    } else {
+                        $soItemStatus = 'NOT DISPATCHED';
+                        $soItemBadge = 'badge-not-dispatched';
+                    }
+                @endphp
                 <tr>
                     <td class="text-center">{{ $idx + 1 }}</td>
                     <td>
                         <strong>{{ $item->product ? $item->product->formatName($item->grade) : 'Unknown' }}</strong>
                     </td>
-                    <td class="text-right text-green">{{ number_format($item->quantity) }} KG</td>
+                    <td class="text-right text-green">{{ $fmtOrdPdfQty($ordQ) }} KG</td>
+                    <td class="text-right"><strong>{{ $fmtOrdPdfQty($dispQ) }} KG</strong></td>
+                    <td class="text-right text-red">{{ $fmtOrdPdfQty($pendQ) }} KG</td>
                     <td class="text-right">
                         @if($item->price > 0)
-                            ₹{{ number_format($item->price, 2) }}
+                            &#8377;{{ number_format($item->price, 2) }}
                         @else
                             -
                         @endif
@@ -186,19 +212,25 @@
                     <td class="text-right">
                         <strong>
                             @if($item->price > 0)
-                                ₹{{ number_format($item->price * $item->quantity, 2) }}
+                                &#8377;{{ number_format($item->price * $ordQ, 2) }}
                             @else
                                 -
                             @endif
                         </strong>
                     </td>
+                    <td class="text-center">
+                        <span class="badge {{ $soItemBadge }}">{{ $soItemStatus }}</span>
+                    </td>
                 </tr>
             @endforeach
             <tr class="total-row">
                 <td colspan="2" class="text-right">TOTAL</td>
-                <td class="text-right text-green">{{ number_format($totalOrderedQty) }} KG</td>
+                <td class="text-right text-green">{{ $fmtOrdPdfQty($totalOrderedQty) }} KG</td>
+                <td class="text-right">{{ $fmtOrdPdfQty($calcTotalDisp) }} KG</td>
+                <td class="text-right text-red">{{ $fmtOrdPdfQty($calcTotalPend) }} KG</td>
                 <td class="text-right"></td>
-                <td class="text-right text-red">₹{{ number_format($totalAmount, 2) }}</td>
+                <td class="text-right text-red">&#8377;{{ number_format($totalAmount, 2) }}</td>
+                <td class="text-center"></td>
             </tr>
         </tbody>
     </table>

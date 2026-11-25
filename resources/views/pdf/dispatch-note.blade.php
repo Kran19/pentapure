@@ -37,9 +37,10 @@
         .meta-colon { width: 12px; color: #475467; text-align: center; font-weight: bold; white-space: nowrap; }
         .meta-val { color: #101828; white-space: nowrap; }
         
-        .badge { display: inline-block; padding: 2px 6px; font-size: 9px; font-weight: 700; border-radius: 4px; text-transform: uppercase; }
+        .badge { display: inline-block; padding: 2px 5px; font-size: 7.5px; font-weight: 700; border-radius: 4px; text-transform: uppercase; white-space: nowrap; }
         .badge-dispatched { background: #ecfdf3; color: #027a48; border: 1px solid #abefc6; }
-        .badge-pending { background: #fffaeb; color: #b54708; border: 1px solid #fedf89; }
+        .badge-pending, .badge-partial { background: #fffaeb; color: #b54708; border: 1px solid #fedf89; }
+        .badge-not-dispatched { background: #fef3f2; color: #b42318; border: 1px solid #fecdca; }
         
         /* Details Grid: Customer & Transport */
         .details-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
@@ -219,30 +220,48 @@
         <thead>
             <tr>
                 <th style="width: 4%; text-align: center;" class="text-center">No.</th>
-                <th style="width: 25%;">Product Name</th>
-                <th style="width: 12%; text-align: right;" class="text-right">Ordered<br>Qty</th>
-                <th style="width: 12%; text-align: right;" class="text-right">Prev. Disp.<br>Qty.</th>
-                <th style="width: 13%; text-align: right;" class="text-right">Current Disp.<br>Qty.</th>
-                <th style="width: 10%; text-align: right;" class="text-right">Rate<br>(&#8377;)</th>
-                <th style="width: 12%; text-align: right;" class="text-right">Amount<br>(&#8377;)</th>
-                <th style="width: 12%; text-align: right;" class="text-right">Pending<br>Qty</th>
+                <th style="width: 21%;">Product Name</th>
+                <th style="width: 10%; text-align: right;" class="text-right">Ordered<br>Qty</th>
+                <th style="width: 10%; text-align: right;" class="text-right">Prev. Disp.<br>Qty.</th>
+                <th style="width: 11%; text-align: right;" class="text-right">Current Disp.<br>Qty.</th>
+                <th style="width: 9%; text-align: right;" class="text-right">Rate<br>(&#8377;)</th>
+                <th style="width: 11%; text-align: right;" class="text-right">Amount<br>(&#8377;)</th>
+                <th style="width: 10%; text-align: right;" class="text-right">Pending<br>Qty</th>
+                <th style="width: 14%; text-align: center;" class="text-center">Status</th>
             </tr>
         </thead>
         <tbody>
+            @php
+                $fmtPdfQty = fn($v) => floor((float)$v) == (float)$v ? number_format((float)$v, 0) : number_format((float)$v, 2);
+            @endphp
             @foreach($items as $idx => $di)
                 @php
                     $orderItem = $di->orderItem;
-                    $pendingQty = max(0, $orderItem->quantity - $orderItem->dispatched_qty);
-                    $prevDispatched = max(0, (float)$orderItem->dispatched_qty - (float)$di->quantity);
+                    $orderedQtyVal = (float) ($orderItem->quantity ?? 0);
+                    $currDispVal = (float) ($di->quantity ?? 0);
+                    $prevDispatched = isset($di->prev_dispatched_qty)
+                        ? (float) $di->prev_dispatched_qty
+                        : max(0, (float)($orderItem->dispatched_qty ?? 0) - $currDispVal);
+                    $pendingQty = isset($di->pending_qty)
+                        ? (float) $di->pending_qty
+                        : max(0, $orderedQtyVal - ($prevDispatched + $currDispVal));
+                    $itemStatusLabel = $di->status_label ?? (
+                        ($orderedQtyVal > 0 && $pendingQty <= 0.001)
+                            ? 'DISPATCHED'
+                            : ((($prevDispatched + $currDispVal) > 0.001) ? 'PARTIAL DISPATCH' : 'NOT DISPATCHED')
+                    );
+                    $itemBadgeClass = $itemStatusLabel === 'DISPATCHED'
+                        ? 'badge-dispatched'
+                        : ($itemStatusLabel === 'PARTIAL DISPATCH' ? 'badge-partial' : 'badge-not-dispatched');
                 @endphp
                 <tr>
                     <td class="text-center">{{ $idx + 1 }}</td>
                     <td>
                         <strong>{{ $orderItem->product ? $orderItem->product->formatName($orderItem->grade) : 'Unknown' }}</strong>
                     </td>
-                    <td class="text-right text-green">{{ number_format($orderItem->quantity) }} KG</td>
-                    <td class="text-right">{{ number_format($prevDispatched) }} KG</td>
-                    <td class="text-right"><strong>{{ number_format($di->quantity) }} KG</strong></td>
+                    <td class="text-right text-green">{{ $fmtPdfQty($orderedQtyVal) }} KG</td>
+                    <td class="text-right">{{ $fmtPdfQty($prevDispatched) }} KG</td>
+                    <td class="text-right"><strong>{{ $fmtPdfQty($currDispVal) }} KG</strong></td>
                     <td class="text-right">
                         @if($orderItem->price > 0)
                             &#8377;{{ number_format($orderItem->price, 2) }}
@@ -252,22 +271,26 @@
                     </td>
                     <td class="text-right">
                         @if($orderItem->price > 0)
-                            &#8377;{{ number_format($orderItem->price * $di->quantity, 2) }}
+                            &#8377;{{ number_format($orderItem->price * $currDispVal, 2) }}
                         @else
                             <span class="text-red">&#8377;0.00</span>
                         @endif
                     </td>
-                    <td class="text-right text-red">{{ number_format($pendingQty) }} KG</td>
+                    <td class="text-right text-red">{{ $fmtPdfQty($pendingQty) }} KG</td>
+                    <td class="text-center">
+                        <span class="badge {{ $itemBadgeClass }}">{{ $itemStatusLabel }}</span>
+                    </td>
                 </tr>
             @endforeach
             <tr class="total-row">
                 <td colspan="2" style="text-align: right; padding-right: 8px;">TOTAL</td>
-                <td class="text-right text-green" style="text-align: right;">{{ number_format($totalOrderedQty) }}&nbsp;KG</td>
-                <td class="text-right" style="text-align: right;">{{ number_format($totalPrevDispatchedQty) }}&nbsp;KG</td>
-                <td class="text-right" style="text-align: right;"><strong>{{ number_format($totalDispatchedQty) }}&nbsp;KG</strong></td>
+                <td class="text-right text-green" style="text-align: right;">{{ $fmtPdfQty($totalOrderedQty) }}&nbsp;KG</td>
+                <td class="text-right" style="text-align: right;">{{ $fmtPdfQty($totalPrevDispatchedQty) }}&nbsp;KG</td>
+                <td class="text-right" style="text-align: right;"><strong>{{ $fmtPdfQty($totalDispatchedQty) }}&nbsp;KG</strong></td>
                 <td class="text-right"></td>
                 <td class="text-right" style="text-align: right;">&#8377;{{ number_format($totalAmount, 2) }}</td>
-                <td class="text-right text-red" style="text-align: right;">{{ number_format($totalPendingQty) }}&nbsp;KG</td>
+                <td class="text-right text-red" style="text-align: right;">{{ $fmtPdfQty($totalPendingQty) }}&nbsp;KG</td>
+                <td class="text-center"></td>
             </tr>
         </tbody>
     </table>

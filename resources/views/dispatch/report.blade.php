@@ -653,6 +653,16 @@ html.dark-mode .highlight-dispatch-date,
                 $rate = (float)($item['price'] ?? $item['rate'] ?? 0);
                 $fmtQty = fn($val) => (floor($val) == $val ? number_format($val, 0) : number_format($val, 2)) . ' kg';
                 $fmtRate = fn($val) => '₹' . (floor($val) == $val ? number_format($val, 0) : number_format($val, 2));
+                if ($tot > 0 && $rem <= 0.001) {
+                  $repItemStLabel = 'DISPATCHED';
+                  $repItemStBg = '#16a34a';
+                } elseif ($disp > 0.001) {
+                  $repItemStLabel = 'PARTIAL DISPATCH';
+                  $repItemStBg = '#f59e0b';
+                } else {
+                  $repItemStLabel = 'NOT DISPATCHED';
+                  $repItemStBg = '#ef4444';
+                }
               @endphp
               <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f3f4f6; font-size:0.88rem; flex-wrap:wrap; gap:12px;">
                 <div style="flex:1; min-width:200px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
@@ -661,6 +671,7 @@ html.dark-mode .highlight-dispatch-date,
                     <strong style="font-weight:800; color:var(--primary, #D88A00);">{{ $gName }}</strong>
                   @endif
                   <span style="color:#6b7280; font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
+                  <span class="badge" style="background:{{ $repItemStBg }}; color:#ffffff !important; font-size:0.65rem; font-weight:800; padding:2px 7px; border-radius:4px; letter-spacing:0.3px;">{{ $repItemStLabel }}</span>
                 </div>
                 <div class="dispatch-item-badges" style="display:grid; grid-template-columns:{{ $showRate ? '130px 140px 140px 120px' : '130px 140px 140px' }}; gap:8px; align-items:center; flex-shrink:0;">
                   <span style="background:#f9fafb; padding:4px 8px; border-radius:6px; border:1px solid #e5e7eb; font-weight:600; color:#111827; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">

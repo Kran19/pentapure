@@ -138,14 +138,31 @@
                     <td>
                         <ul class="items-list" style="margin: 0; padding-left: 15px; list-style-type: none; padding: 0;">
                         @foreach($order->items as $item)
+                            @php
+                                $actOrdQ = (float) ($item->quantity ?? 0);
+                                $actDispQ = (float) ($item->dispatched_qty ?? 0);
+                                $actPendQ = max(0, $actOrdQ - $actDispQ);
+                                if ($isCancelled) {
+                                    $actItemSt = 'CANCELLED';
+                                    $actItemCls = 'badge-cancelled';
+                                } elseif ($actOrdQ > 0 && $actPendQ <= 0.001) {
+                                    $actItemSt = 'DISPATCHED';
+                                    $actItemCls = 'badge-done';
+                                } elseif ($actDispQ > 0.001) {
+                                    $actItemSt = 'PARTIAL DISPATCH';
+                                    $actItemCls = 'badge-pending';
+                                } else {
+                                    $actItemSt = 'NOT DISPATCHED';
+                                    $actItemCls = 'badge-cancelled';
+                                }
+                            @endphp
                             <li style="margin-bottom: 5px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
                                 - {{ $item->product ? $item->product->formatName($item->grade) : 'Unknown' }}: <strong>{{ $item->quantity }} {{ $item->product?->unit }}</strong>
-                                @if(in_array($order->dispatch_status, ['PARTIAL', 'PARTIAL_PENDING', 'PARTIAL PENDING']) || (in_array($order->dispatch_status, ['DONE', 'FULLY_DISPATCHED']) && $order->dispatch_logs_count > 1))
-                                    <div style="font-size:10px; color:#555; padding-left: 10px;">
-                                        Dispatched: {{ $item->dispatched_qty ?? 0 }} {{ $item->product?->unit }} |
-                                        Pending: {{ max(0, $item->quantity - ($item->dispatched_qty ?? 0)) }} {{ $item->product?->unit }}
-                                    </div>
-                                @endif
+                                <span class="badge {{ $actItemCls }}" style="font-size:8px; margin-left:4px;">{{ $actItemSt }}</span>
+                                <div style="font-size:10px; color:#555; padding-left: 10px;">
+                                    Dispatched: {{ $actDispQ }} {{ $item->product?->unit }} |
+                                    Pending: {{ $actPendQ }} {{ $item->product?->unit }}
+                                </div>
                             </li>
                         @endforeach
                         </ul>

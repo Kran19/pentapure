@@ -2103,14 +2103,42 @@ const app = {
         }
         if (detailsDiv) detailsDiv.style.display = 'block';
 
-        const validItems = (orderData.items || []).filter(i => {
+        const allOrderItems = orderData.items || [];
+        const completedItems = allOrderItems.filter(i => {
           const remaining = i.remainingQty ?? (i.quantity - (i.dispatchedQty || 0));
-          return remaining > 0;
+          return (Number(i.quantity) || 0) > 0 && remaining <= 0.001;
         });
+        const validItems = allOrderItems.filter(i => {
+          const remaining = i.remainingQty ?? (i.quantity - (i.dispatchedQty || 0));
+          return remaining > 0.001;
+        });
+
+        const completedItemsHtml = completedItems.map(i => {
+          const baseName = (i.rawProductName || i.productName || 'Unknown')
+            .replace(/\s+(PURE|PREMIUM|COMMERCIAL|NONE|\b[A-Za-z0-9_-]+\b)\s*\((fg|raw|semi)\)$/i, '')
+            .replace(/\s*\((fg|raw|semi)\)$/i, '')
+            .trim();
+          const displayGrade = (i.grade && i.grade !== 'NONE' && i.grade !== 'N/A') ? i.grade : '';
+          const displayType = (i.productType === 'FINISHED') ? 'FG' : (i.productType ? String(i.productType).toUpperCase() : 'N/A');
+          return `
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; padding:8px 12px; margin-bottom:8px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px;">
+              <span style="font-weight:700; font-size:0.9rem; color:#111827;">
+                ${baseName} ${displayGrade ? `<strong style="font-weight:800; color:var(--primary, #D88A00);">${displayGrade}</strong> ` : ''}(${displayType})
+              </span>
+              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <span style="font-size:0.78rem; color:#15803d; font-weight:700;">${i.dispatchedQty || i.quantity} / ${i.quantity} kg</span>
+                <span style="background:#16a34a; color:#ffffff; padding:3px 9px; border-radius:4px; font-weight:800; font-size:0.7rem;">DISPATCHED</span>
+              </div>
+            </div>
+          `;
+        }).join('');
 
         const itemRows = validItems.map((i, idx) => {
           const remaining = i.remainingQty ?? (i.quantity - (i.dispatchedQty || 0));
-          const alreadyDispatched = i.dispatchedQty || 0;
+          const alreadyDispatched = Number(i.dispatchedQty || 0);
+          const itemStatusBadge = alreadyDispatched > 0.001
+            ? `<span style="background:#f59e0b; color:#ffffff; padding:3px 8px; border-radius:4px; font-weight:800; font-size:0.68rem;">PARTIAL DISPATCH</span>`
+            : `<span style="background:#ef4444; color:#ffffff; padding:3px 8px; border-radius:4px; font-weight:800; font-size:0.68rem;">NOT DISPATCHED</span>`;
 
           const baseName = (i.rawProductName || i.productName || 'Unknown')
             .replace(/\s+(PURE|PREMIUM|COMMERCIAL|NONE|\b[A-Za-z0-9_-]+\b)\s*\((fg|raw|semi)\)$/i, '')
@@ -2127,13 +2155,18 @@ const app = {
           return `
           <div style="display:flex; flex-direction:column; gap:8px; padding:12px 0;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-              <span style="font-weight:700; font-size:0.95rem; color:#111827;">
-                ${baseName} ${displayGrade ? `<strong style="font-weight:800; color:var(--primary, #D88A00);">${displayGrade}</strong> ` : ''}(${displayType})
+              <span style="font-weight:700; font-size:0.95rem; color:#111827; display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <span>${baseName} ${displayGrade ? `<strong style="font-weight:800; color:var(--primary, #D88A00);">${displayGrade}</strong> ` : ''}(${displayType})</span>
+                ${itemStatusBadge}
               </span>
               <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                 <span style="background:#fef3c7; border:1px solid #fde68a; color:#b45309; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.8rem;">
                   Total Order Qty: <span style="color:#111827;">${i.quantity} kg</span>
                 </span>
+                ${alreadyDispatched > 0.001 ? `
+                <span style="background:#dcfce7; border:1px solid #86efac; color:#15803d; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.8rem;">
+                  Dispatched: <span style="color:#111827;">${alreadyDispatched} kg</span>
+                </span>` : ''}
                 <span id="pending-badge-${i.id}" style="background:#fee2e2; border:1px solid #fecaca; color:#b91c1c; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.8rem;">
                   Pending Order: <span style="color:#111827;">${remaining} kg</span>
                 </span>
@@ -2226,6 +2259,7 @@ const app = {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
                   Items to Dispatch (Edit quantities for partial dispatch)
                 </div>
+                ${completedItemsHtml}
                 ${itemRows || '<div class="text-center py-2" style="color:#16a34a; font-weight:700;">✅ All items for this order have already been dispatched!</div>'}
               </div>
             </div>

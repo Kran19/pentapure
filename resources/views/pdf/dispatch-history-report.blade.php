@@ -382,12 +382,33 @@
                     <td class="text-right {{ $itemClass }} nowrap" style="vertical-align: top; text-align: right; white-space: nowrap; padding-right: 6px;">
                         <strong>Rs.&nbsp;{{ number_format($item['amount'], 2) }}</strong>
                     </td>
-                    <td class="text-center {{ $orderClass }} nowrap" style="vertical-align: top; text-align: center;">
-                        @if($isFirst)
-                            <span class="badge {{ $badgeClass }}">
-                                {{ $displayStatus }}
-                            </span>
-                        @endif
+                    @php
+                        $itemStatusLabel = strtoupper(trim((string)($item['item_status'] ?? '')));
+                        if ($itemStatusLabel === '') {
+                            $iOrd = (float)($item['ordered_qty'] ?? 0);
+                            $iDisp = (float)($item['qty'] ?? 0);
+                            $iPend = (float)($item['pending_qty'] ?? max(0, $iOrd - $iDisp));
+                            if ($rawStatus === 'CANCELLED') {
+                                $itemStatusLabel = 'CANCELLED';
+                            } elseif ($iOrd > 0 && $iPend <= 0.001) {
+                                $itemStatusLabel = 'DISPATCHED';
+                            } elseif ($iDisp > 0.001) {
+                                $itemStatusLabel = 'PARTIAL DISPATCH';
+                            } else {
+                                $itemStatusLabel = 'NOT DISPATCHED';
+                            }
+                        }
+                        $itemBadgeClass = match($itemStatusLabel) {
+                            'DISPATCHED', 'FULLY DISPATCHED' => 'badge-fully-dispatched',
+                            'PARTIAL DISPATCH', 'PARTIAL' => 'badge-partial-pending',
+                            'CANCELLED' => 'badge-cancelled',
+                            default => 'badge-pending',
+                        };
+                    @endphp
+                    <td class="text-center {{ $itemClass }} nowrap" style="vertical-align: top; text-align: center;">
+                        <span class="badge {{ $itemBadgeClass }}">
+                            {{ $itemStatusLabel }}
+                        </span>
                     </td>
                 </tr>
             @endforeach

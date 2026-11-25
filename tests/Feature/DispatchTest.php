@@ -1019,5 +1019,140 @@ class DispatchTest extends TestCase
         $clearResp = $this->withSession($session)->post('/sub_admin/dispatch/history/clear');
         $clearResp->assertStatus(403);
     }
+
+    public function test_multi_product_order_dispatch_status_on_home_and_all_pdfs(): void
+    {
+        $session = ['auth_user' => [
+            'id'   => $this->dispatchUser->id,
+            'name' => $this->dispatchUser->name,
+            'role' => 'DISPATCH',
+        ]];
+
+        $prodFull = Product::create(['name' => 'Masala Sev', 'type' => 'FINISHED', 'unit' => 'kg', 'is_active' => true]);
+        $prodPartial = Product::create(['name' => 'Aloo Bhujia', 'type' => 'FINISHED', 'unit' => 'kg', 'is_active' => true]);
+        $prodNone = Product::create(['name' => 'Khatta Meetha', 'type' => 'FINISHED', 'unit' => 'kg', 'is_active' => true]);
+
+        foreach ([$prodFull, $prodPartial, $prodNone] as $p) {
+            Stock::create([
+                'product_id'       => $p->id,
+                'user_id'          => $this->dispatchUser->id,
+                'stage'            => 'FINISHED',
+                'grade'            => 'NONE',
+                'location_id'      => $this->location->id,
+                'quantity'         => 500,
+                'transaction_type' => 'IN',
+            ]);
+        }
+
+        $multiOrder = Order::create([
+            'created_by'      => $this->dispatchUser->id,
+            'company_id'      => $this->company->id,
+            'transporter_id'  => $this->transporter->id,
+            'total'           => 27500,
+            'status'          => 'OPEN',
+            'dispatch_status' => 'PENDING',
+        ]);
+
+        $itemFull = OrderItem::create([
+            'order_id'       => $multiOrder->id,
+            'product_id'     => $prodFull->id,
+            'grade'          => 'NONE',
+            'quantity'       => 75,
+            'price'          => 100,
+            'dispatched_qty' => 0,
+        ]);
+        $itemPartial = OrderItem::create([
+            'order_id'       => $multiOrder->id,
+            'product_id'     => $prodPartial->id,
+            'grade'          => 'NONE',
+            'quantity'       => 100,
+            'price'          => 100,
+            'dispatched_qty' => 0,
+        ]);
+        $itemNone = OrderItem::create([
+            'order_id'       => $multiOrder->id,
+            'product_id'     => $prodNone->id,
+            'grade'          => 'NONE',
+            'quantity'       => 100,
+            'price'          => 100,
+            'dispatched_qty' => 0,
+        ]);
+
+        // Dispatch full of Product 1 (75/75), partial of Product 2 (40/100), and do NOT select Product 3 (0/100)
+        $postResp = $this->withSession($session)->postJson('/dispatch/action', [
+            'order_id' => $multiOrder->id,
+            'items'    => [
+                ['order_item_id' => $itemFull->id, 'quantity' => 75],
+                ['order_item_id' => $itemPartial->id, 'quantity' => 40],
+            ],
+        ]);
+        $postResp->assertStatus(200)->assertJson(['success' => true]);
+
+        // 1. Verify syncDispatchedQty preserves 0 on unselected itemNone (zero data loss / no overwrite)
+        $itemFull->refresh();
+        $itemPartial->refresh();
+        $itemNone->refresh();
+        $this->assertEquals(75.0, $itemFull->syncDispatchedQty());
+        $this->assertEquals(40.0, $itemPartial->syncDispatchedQty());
+        $this->assertEquals(0.0, $itemNone->syncDispatchedQty());
+
+        // 2. Verify /dispatch/home shows all 3 products with DISPATCHED, PARTIAL DISPATCH, and NOT DISPATCHED
+        $homeResp = $this->withSession($session)->get('/dispatch/home');
+        $homeResp->assertStatus(200);
+        $homeHtml = $homeResp->getContent();
+        $this->assertStringContainsString('Masala Sev', $homeHtml);
+        $this->assertStringContainsString('Aloo Bhujia', $homeHtml);
+        $this->assertStringContainsString('Khatta Meetha', $homeHtml);
+        $this->assertStringContainsString('DISPATCHED', $homeHtml);
+        $this->assertStringContainsString('PARTIAL DISPATCH', $homeHtml);
+        $this->assertStringContainsString('NOT DISPATCHED', $homeHtml);
+
+        // 3. Verify Dispatch Note PDF (/dispatch/pdf/{logId}) renders all 3 products with exact statuses
+        $log = DispatchLog::where('order_id', $multiOrder->id)->latest('id')->first();
+        $this->assertNotNull($log);
+
+        $capturedNoteHtml = '';
+        \Illuminate\Support\Facades\View::composer('pdf.dispatch-note', function ($view) use (&$capturedNoteHtml) {
+            $capturedNoteHtml = var_export($view->getData()['items']->map(fn($x) => [
+                'name' => $x->orderItem->product->name ?? '',
+                'qty' => $x->quantity,
+                'pending' => $x->pending_qty,
+                'status' => $x->status_label,
+            ])->all(), true);
+        });
+
+        $notePdfResp = $this->withSession($session)->get("/dispatch/pdf/{$log->id}");
+        $notePdfResp->assertStatus(200);
+        $notePdfResp->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringContainsString('Masala Sev', $capturedNoteHtml);
+        $this->assertStringContainsString('Aloo Bhujia', $capturedNoteHtml);
+        $this->assertStringContainsString('Khatta Meetha', $capturedNoteHtml);
+        $this->assertStringContainsString("'status' => 'DISPATCHED'", $capturedNoteHtml);
+        $this->assertStringContainsString("'status' => 'PARTIAL DISPATCH'", $capturedNoteHtml);
+        $this->assertStringContainsString("'status' => 'NOT DISPATCHED'", $capturedNoteHtml);
+
+        $orderPdfResp = $this->withSession($session)->get("/dispatch/order/pdf/{$multiOrder->id}");
+        $orderPdfResp->assertStatus(200);
+        $orderPdfResp->assertHeader('Content-Type', 'application/pdf');
+
+        $historyPdfResp = $this->withSession($session)->get('/dispatch/history/pdf?range=all');
+        $historyPdfResp->assertStatus(200);
+        $historyPdfResp->assertHeader('Content-Type', 'application/pdf');
+
+        // Inspect buildDispatchReportData view HTML for all 3 statuses
+        $controller = app(\App\Http\Controllers\HistoryPdfController::class);
+        $reflection = new \ReflectionClass($controller);
+        $method = $reflection->getMethod('buildDispatchReportData');
+        $method->setAccessible(true);
+        $reportData = $method->invoke($controller, \Illuminate\Http\Request::create('/dispatch/history/pdf', 'GET', ['range' => 'all']));
+        $reportHtml = view('pdf.dispatch-history-report', $reportData)->render();
+
+        $this->assertStringContainsString('MASALA SEV', $reportHtml);
+        $this->assertStringContainsString('ALOO BHUJIA', $reportHtml);
+        $this->assertStringContainsString('KHATTA MEETHA', $reportHtml);
+        $this->assertStringContainsString('DISPATCHED', $reportHtml);
+        $this->assertStringContainsString('PARTIAL DISPATCH', $reportHtml);
+        $this->assertStringContainsString('NOT DISPATCHED', $reportHtml);
+    }
 }
 

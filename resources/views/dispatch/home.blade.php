@@ -214,6 +214,16 @@
     background: rgba(255, 255, 255, 0.03) !important;
     border-color: rgba(255, 255, 255, 0.1) !important;
   }
+  html.dark-mode .home-card-product-statuses > div[style*="background:#f8fafc"] {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+  html.dark-mode .home-card-product-statuses span[style*="color:#111827"] {
+    color: #f8fafc !important;
+  }
+  html.dark-mode .home-card-product-statuses span[style*="color:#475569"] {
+    color: #cbd5e1 !important;
+  }
 </style>
 
 <div class="flex-between mb-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
@@ -364,7 +374,7 @@
           }
 
           $pendingItemsSearch = collect($o['items'] ?? [])->map(function($it) {
-              return ($it['rawProductName'] ?? '') . ' ' . ($it['productName'] ?? '') . ' ' . ($it['grade'] ?? '') . ' ' . ($it['productType'] ?? '');
+              return ($it['rawProductName'] ?? '') . ' ' . ($it['productName'] ?? '') . ' ' . ($it['grade'] ?? '') . ' ' . ($it['productType'] ?? '') . ' ' . ($it['itemDispatchStatus'] ?? '');
           })->implode(' ');
           $pendingSearchTokens = strtolower(implode(' ', array_filter([
               $o['id'],
@@ -379,6 +389,9 @@
               $readinessLabel ?? '',
               $pendingItemsSearch
           ])));
+          $homePdfUrl = !empty($o['latestDispatchLogId'])
+              ? url($roleSlug . '/dispatch/pdf/' . $o['latestDispatchLogId'])
+              : url($roleSlug . '/order/pdf/' . $o['id']);
         @endphp
         <div class="card dispatch-order-card dispatch-home-order-card" data-order-id="{{ $o['id'] }}" data-search="{{ $pendingSearchTokens }}" style="border-left: 4px solid {{ $progressColor }}; background:#ffffff; box-shadow:0 2px 10px rgba(0,0,0,0.04); transition: transform 0.2s; margin-bottom: 0; padding:0; overflow:hidden; border-radius:12px; border:1px solid #e2e8f0; {{ $isDueToday ? 'box-shadow: 0 4px 14px rgba(216, 138, 0, 0.15); border-color: rgba(216, 138, 0, 0.4);' : '' }}">
           <!-- Clickable Header Row -->
@@ -435,6 +448,55 @@
                 <div style="background:{{ $progressColor }}; height:100%; width:{{ $pct }}%; border-radius:6px; transition:width 0.3s;"></div>
               </div>
             </div>
+
+            @if(!empty($o['items']) && count($o['items']) > 0)
+              <div class="home-card-product-statuses" style="margin-top:10px; padding-top:10px; border-top:1px dashed #e2e8f0; display:flex; flex-direction:column; gap:6px;">
+                <div style="font-size:0.7rem; font-weight:800; color:var(--text-muted, #64748b); text-transform:uppercase; letter-spacing:0.4px;">Product Dispatch Status</div>
+                @foreach($o['items'] as $cardItem)
+                  @php
+                    $cRawName = $cardItem['rawProductName'] ?? $cardItem['productName'] ?? 'Unknown';
+                    $cPName = trim(preg_replace('/\s*\((FG|SEMI|RAW|FINISHED|PM|PKG)\)$/i', '', $cRawName));
+                    $cGName = ($cardItem['grade'] && $cardItem['grade'] !== 'NONE' && $cardItem['grade'] !== 'N/A') ? trim($cardItem['grade']) : '';
+                    if ($cGName) {
+                      $cPName = trim(preg_replace('/\s+' . preg_quote($cGName, '/') . '$/i', '', $cPName));
+                    }
+                    $cRawType = strtoupper((string)($cardItem['productType'] ?? 'FINISHED'));
+                    $cTName = ($cRawType === 'FINISHED' || $cRawType === 'FG') ? 'FG' : ($cRawType === 'SEMI' ? 'SEMI' : ($cRawType === 'RAW' ? 'RAW' : ($cRawType === 'PACKAGING' ? 'PM' : $cRawType)));
+                    $cTot = (float)($cardItem['quantity'] ?? 0);
+                    $cDisp = (float)($cardItem['dispatchedQty'] ?? 0);
+                    $cRem = (float)($cardItem['remainingQty'] ?? max(0, $cTot - $cDisp));
+                    $cFmt = fn($val) => (floor($val) == $val ? number_format($val, 0) : number_format($val, 2)) . ' kg';
+                    if ($cTot > 0 && $cRem <= 0.001) {
+                      $cItemStLabel = 'DISPATCHED';
+                      $cItemStBg = '#16a34a';
+                    } elseif ($cDisp > 0.001) {
+                      $cItemStLabel = 'PARTIAL DISPATCH';
+                      $cItemStBg = '#f59e0b';
+                    } else {
+                      $cItemStLabel = 'NOT DISPATCHED';
+                      $cItemStBg = '#ef4444';
+                    }
+                  @endphp
+                  <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:5px 10px; font-size:0.8rem;">
+                    <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
+                      <span style="font-weight:700; color:#111827;">{{ $cPName }}</span>
+                      @if($cGName)
+                        <strong style="font-weight:800; color:var(--primary, #D88A00);">{{ $cGName }}</strong>
+                      @endif
+                      <span style="color:#64748b; font-size:0.72rem; font-weight:700;">({{ $cTName }})</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                      <span style="font-size:0.75rem; color:#475569; font-weight:700;">
+                        {{ $cFmt($cDisp) }} / {{ $cFmt($cTot) }}
+                      </span>
+                      <span class="badge product-dispatch-status-badge" style="background:{{ $cItemStBg }}; color:#ffffff !important; font-size:0.66rem; font-weight:800; padding:2px 8px; border-radius:4px; letter-spacing:0.3px; white-space:nowrap;">
+                        {{ $cItemStLabel }}
+                      </span>
+                    </div>
+                  </div>
+                @endforeach
+              </div>
+            @endif
           </div>
 
           <!-- Expandable Products List Drawer -->
@@ -476,6 +538,16 @@
                     $disp = (float)($item['dispatchedQty'] ?? 0);
                     $rem = (float)($item['remainingQty'] ?? 0);
                     $fmtQty = fn($val) => (floor($val) == $val ? number_format($val, 0) : number_format($val, 2)) . ' kg';
+                    if ($tot > 0 && $rem <= 0.001) {
+                      $itemStLabel = 'DISPATCHED';
+                      $itemStBg = '#16a34a';
+                    } elseif ($disp > 0.001) {
+                      $itemStLabel = 'PARTIAL DISPATCH';
+                      $itemStBg = '#f59e0b';
+                    } else {
+                      $itemStLabel = 'NOT DISPATCHED';
+                      $itemStBg = '#ef4444';
+                    }
                   @endphp
                   <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:0.88rem; flex-wrap:wrap; gap:12px;">
                     <div style="flex:1; min-width:200px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
@@ -484,6 +556,7 @@
                         <strong style="font-weight:800; color:var(--primary, #D88A00);">{{ $gName }}</strong>
                       @endif
                       <span style="color:var(--text-muted, #64748b); font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
+                      <span class="badge" style="background:{{ $itemStBg }}; color:#ffffff !important; font-size:0.65rem; font-weight:800; padding:2px 7px; border-radius:4px; letter-spacing:0.3px;">{{ $itemStLabel }}</span>
                     </div>
                     @php
                       $avail = (float)($item['availStock'] ?? 0);
@@ -526,7 +599,10 @@
               <div style="font-size:0.8rem; color:var(--text-muted);">No items details found for this order.</div>
             @endif
 
-            <div style="display:flex; gap:10px; margin-top:12px; justify-content:flex-end;">
+            <div style="display:flex; gap:10px; margin-top:12px; justify-content:flex-end; flex-wrap:wrap;">
+              <a class="btn btn-sm btn-secondary" href="{{ $homePdfUrl }}" target="_blank" onclick="event.stopPropagation();" style="width:auto; padding:0.4rem 1rem; font-size:0.8rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
+                📄 Download PDF
+              </a>
               <a class="btn btn-sm" href="{{ $dispatchActionUrl }}?order_id={{ $o['id'] }}" onclick="localStorage.setItem('auto_dispatch_id', '{{ $o['id'] }}');" style="width:auto; padding:0.4rem 1rem; font-size:0.8rem; text-decoration:none;">
                 📦 Open in Dispatch Action &rarr;
               </a>
@@ -544,7 +620,7 @@
       @forelse($completedOrdersList as $o)
         @php
           $compItemsSearch = collect($o['items'] ?? [])->map(function($it) {
-              return ($it['rawProductName'] ?? '') . ' ' . ($it['productName'] ?? '') . ' ' . ($it['grade'] ?? '') . ' ' . ($it['productType'] ?? '');
+              return ($it['rawProductName'] ?? '') . ' ' . ($it['productName'] ?? '') . ' ' . ($it['grade'] ?? '') . ' ' . ($it['productType'] ?? '') . ' ' . ($it['itemDispatchStatus'] ?? '');
           })->implode(' ');
           $compSearchTokens = strtolower(implode(' ', array_filter([
               $o['id'],
@@ -556,15 +632,19 @@
               $o['rawDueDate'] ?? '',
               $o['notes'] ?? '',
               'COMPLETED',
+              'DISPATCHED',
               $compItemsSearch
           ])));
+          $compPdfUrl = !empty($o['latestDispatchLogId'])
+              ? url($roleSlug . '/dispatch/pdf/' . $o['latestDispatchLogId'])
+              : url($roleSlug . '/order/pdf/' . $o['id']);
         @endphp
-        <div class="card dispatch-order-card dispatch-home-order-card dispatch-completed-card" data-order-id="{{ $o['id'] }}" data-search="{{ $compSearchTokens }}" style="border-left: 4px solid var(--secondary, #16a34a); background:rgba(255,255,255,0.02); margin-bottom: 0; padding:0; overflow:hidden; border-radius:12px; border:1px solid var(--glass-border, rgba(255,255,255,0.06));">
+        <div class="card dispatch-order-card dispatch-home-order-card dispatch-completed-card" data-order-id="{{ $o['id'] }}" data-search="{{ $compSearchTokens }}" style="border-left: 4px solid var(--secondary, #16a34a); background:#ffffff; margin-bottom: 0; padding:0; overflow:hidden; border-radius:12px; border:1px solid #e2e8f0; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
           <div onclick="toggleHomeAccordion('home-acc-comp-{{ $o['id'] }}', this)" style="cursor:pointer; padding:1.1rem; user-select:none;">
             <div class="flex-between mb-1" style="align-items:flex-start; gap:10px;">
               <div>
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                  <span style="font-weight:bold; font-size:1.1rem; color:#fff;">Order #{{ strtoupper((string)$o['id']) }}</span>
+                  <span style="font-weight:bold; font-size:1.1rem; color:var(--text-main, #111827);">Order #{{ strtoupper((string)$o['id']) }}</span>
                   <span class="badge badge-done" style="font-size:0.7rem; padding:4px 8px; background:#16a34a; color:#fff; font-weight:700;">COMPLETED</span>
                 </div>
                 <!-- Expected Delivery Date & Sales Person Highlights -->
@@ -573,10 +653,13 @@
                     EXPECTED DELIVERY DATE: {{ !empty($o['dueDate']) && $o['dueDate'] !== 'Not Specified' ? strtoupper($o['dueDate']) : 'NOT SPECIFIED' }}
                   </span>
                   <span>•</span>
-                  <span><strong>Sales By:</strong> <span style="color:var(--primary-light, #F4B400); font-weight:600;">{{ $o['salesPerson'] ?? 'N/A' }}</span></span>
+                  <span><strong>Sales By:</strong> <span style="color:var(--primary, #D88A00); font-weight:600;">{{ $o['salesPerson'] ?? 'N/A' }}</span></span>
                 </div>
               </div>
               <div style="display:flex; align-items:center; gap:10px;">
+                <a class="btn btn-sm btn-secondary" href="{{ $compPdfUrl }}" target="_blank" onclick="event.stopPropagation();" style="width:auto; padding:4px 10px; font-size:0.76rem; text-decoration:none; white-space:nowrap;">
+                  📄 PDF
+                </a>
                 <div class="acc-chevron" style="transition:transform 0.25s ease; color:var(--text-muted); display:flex; align-items:center;">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="6 9 12 15 18 9"></polyline>
@@ -592,26 +675,75 @@
                 <div style="margin-top:8px; font-style:italic;">Notes: {{ $o['notes'] }}</div>
               @endif
             </div>
+
+            @if(!empty($o['items']) && count($o['items']) > 0)
+              <div class="home-card-product-statuses" style="margin-top:10px; padding-top:10px; border-top:1px dashed #e2e8f0; display:flex; flex-direction:column; gap:6px;">
+                <div style="font-size:0.7rem; font-weight:800; color:var(--text-muted, #64748b); text-transform:uppercase; letter-spacing:0.4px;">Product Dispatch Status</div>
+                @foreach($o['items'] as $cardItem)
+                  @php
+                    $cRawName = $cardItem['rawProductName'] ?? $cardItem['productName'] ?? 'Unknown';
+                    $cPName = trim(preg_replace('/\s*\((FG|SEMI|RAW|FINISHED|PM|PKG)\)$/i', '', $cRawName));
+                    $cGName = ($cardItem['grade'] && $cardItem['grade'] !== 'NONE' && $cardItem['grade'] !== 'N/A') ? trim($cardItem['grade']) : '';
+                    if ($cGName) {
+                      $cPName = trim(preg_replace('/\s+' . preg_quote($cGName, '/') . '$/i', '', $cPName));
+                    }
+                    $cRawType = strtoupper((string)($cardItem['productType'] ?? 'FINISHED'));
+                    $cTName = ($cRawType === 'FINISHED' || $cRawType === 'FG') ? 'FG' : ($cRawType === 'SEMI' ? 'SEMI' : ($cRawType === 'RAW' ? 'RAW' : ($cRawType === 'PACKAGING' ? 'PM' : $cRawType)));
+                    $cTot = (float)($cardItem['quantity'] ?? 0);
+                    $cDisp = (float)($cardItem['dispatchedQty'] ?? 0);
+                    $cRem = (float)($cardItem['remainingQty'] ?? max(0, $cTot - $cDisp));
+                    $cFmt = fn($val) => (floor($val) == $val ? number_format($val, 0) : number_format($val, 2)) . ' kg';
+                    if ($cTot > 0 && $cRem <= 0.001) {
+                      $cItemStLabel = 'DISPATCHED';
+                      $cItemStBg = '#16a34a';
+                    } elseif ($cDisp > 0.001) {
+                      $cItemStLabel = 'PARTIAL DISPATCH';
+                      $cItemStBg = '#f59e0b';
+                    } else {
+                      $cItemStLabel = 'NOT DISPATCHED';
+                      $cItemStBg = '#ef4444';
+                    }
+                  @endphp
+                  <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:5px 10px; font-size:0.8rem;">
+                    <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
+                      <span style="font-weight:700; color:#111827;">{{ $cPName }}</span>
+                      @if($cGName)
+                        <strong style="font-weight:800; color:var(--primary, #D88A00);">{{ $cGName }}</strong>
+                      @endif
+                      <span style="color:#64748b; font-size:0.72rem; font-weight:700;">({{ $cTName }})</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                      <span style="font-size:0.75rem; color:#475569; font-weight:700;">
+                        {{ $cFmt($cDisp) }} / {{ $cFmt($cTot) }}
+                      </span>
+                      <span class="badge product-dispatch-status-badge" style="background:{{ $cItemStBg }}; color:#ffffff !important; font-size:0.66rem; font-weight:800; padding:2px 8px; border-radius:4px; letter-spacing:0.3px; white-space:nowrap;">
+                        {{ $cItemStLabel }}
+                      </span>
+                    </div>
+                  </div>
+                @endforeach
+              </div>
+            @endif
           </div>
 
-          <div id="home-acc-comp-{{ $o['id'] }}" class="home-accordion-content" style="display:none; padding:1.2rem; border-top:1px solid var(--glass-border, rgba(255,255,255,0.06)); background:rgba(0,0,0,0.02);">
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:12px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
+          <div id="home-acc-comp-{{ $o['id'] }}" class="home-accordion-content" style="display:none; padding:1.2rem; border-top:1px solid #e2e8f0; background:#ffffff;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:12px; padding:10px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
               <div style="background:rgba(2, 132, 199, 0.08); padding:8px 12px; border-radius:8px; border:1px solid rgba(2, 132, 199, 0.25);">
                 <div style="font-size:0.72rem; color:#0284c7; text-transform:uppercase; font-weight:800; letter-spacing:0.3px;">Expected Delivery Date</div>
                 <div style="font-size:1.05rem; font-weight:800; color:#0284c7; margin-top:2px;">{{ !empty($o['dueDate']) && $o['dueDate'] !== 'Not Specified' ? strtoupper($o['dueDate']) : 'NOT SPECIFIED' }}</div>
               </div>
               <div>
                 <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Sales By</div>
-                <div style="font-size:0.95rem; font-weight:600; color:var(--primary-light, #F4B400);">{{ $o['salesPerson'] ?? 'N/A' }}</div>
+                <div style="font-size:0.95rem; font-weight:600; color:var(--primary, #D88A00);">{{ $o['salesPerson'] ?? 'N/A' }}</div>
               </div>
               <div>
                 <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Order Date</div>
-                <div style="font-size:0.95rem; font-weight:500;">{{ \Carbon\Carbon::parse($o['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }}</div>
+                <div style="font-size:0.95rem; font-weight:500; color:var(--text-main, #111827);">{{ \Carbon\Carbon::parse($o['date'])->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }}</div>
               </div>
             </div>
 
             @if(!empty($o['items']) && count($o['items']) > 0)
-              <div style="background:rgba(0,0,0,0.15); border-radius:8px; padding:12px; border-left:3px solid var(--secondary, #16a34a);">
+              <div style="background:#ffffff; border-radius:8px; padding:12px; border:1px solid #e2e8f0; border-left:4px solid var(--secondary, #16a34a); box-shadow:0 1px 4px rgba(0,0,0,0.03);">
                 <div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; margin-bottom:8px; font-weight:bold;">Order Items Summary</div>
                 @foreach($o['items'] as $item)
                   @php
@@ -629,18 +761,29 @@
                     $rate = (float)($item['price'] ?? $item['rate'] ?? 0);
                     $fmtQty = fn($val) => (floor($val) == $val ? number_format($val, 0) : number_format($val, 2)) . ' kg';
                     $fmtRate = fn($val) => '₹' . (floor($val) == $val ? number_format($val, 0) : number_format($val, 2));
+                    if ($tot > 0 && $rem <= 0.001) {
+                      $compItemStLabel = 'DISPATCHED';
+                      $compItemStBg = '#16a34a';
+                    } elseif ($disp > 0.001) {
+                      $compItemStLabel = 'PARTIAL DISPATCH';
+                      $compItemStBg = '#f59e0b';
+                    } else {
+                      $compItemStLabel = 'NOT DISPATCHED';
+                      $compItemStBg = '#ef4444';
+                    }
                   @endphp
-                  <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.88rem; flex-wrap:wrap; gap:12px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:0.88rem; flex-wrap:wrap; gap:12px;">
                     <div style="flex:1; min-width:200px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                      <span style="font-weight:600; color:var(--text-main, #fff);">{{ $pName }}</span>
+                      <span style="font-weight:600; color:var(--text-main, #111827);">{{ $pName }}</span>
                       @if($gName)
                         <strong style="font-weight:800; color:var(--primary, #D88A00);">{{ $gName }}</strong>
                       @endif
-                      <span style="color:var(--text-muted, #9ca3af); font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
+                      <span style="color:var(--text-muted, #64748b); font-size:0.78rem; font-weight:700;">({{ $tName }})</span>
+                      <span class="badge" style="background:{{ $compItemStBg }}; color:#ffffff !important; font-size:0.65rem; font-weight:800; padding:2px 7px; border-radius:4px; letter-spacing:0.3px;">{{ $compItemStLabel }}</span>
                     </div>
                     <div class="dispatch-item-badges" style="display:grid; grid-template-columns:{{ $showRate ? '130px 140px 140px 120px' : '130px 140px 140px' }}; gap:8px; align-items:center; flex-shrink:0;">
-                      <span style="background:rgba(255,255,255,0.08); padding:4px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.15); font-weight:600; color:var(--text-main, #fff); width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
-                        <span style="color:var(--text-muted, #9ca3af); font-size:0.72rem; font-weight:700;">ORDER:</span>
+                      <span style="background:#f1f5f9; padding:4px 8px; border-radius:6px; border:1px solid #e2e8f0; font-weight:600; color:#1e293b; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                        <span style="color:#64748b; font-size:0.72rem; font-weight:700;">ORDER:</span>
                         <strong style="color:var(--primary, #D88A00);">{{ $fmtQty($tot) }}</strong>
                       </span>
                       <span style="background:rgba(22,163,74,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(22,163,74,0.3); font-weight:700; color:#16a34a; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
@@ -652,9 +795,9 @@
                         <strong>{{ $fmtQty($rem) }}</strong>
                       </span>
                       @if($showRate)
-                      <span style="background:rgba(59,130,246,0.15); padding:4px 8px; border-radius:6px; border:1px solid rgba(59,130,246,0.3); font-weight:700; color:#60a5fa; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
-                        <span style="color:#94a3b8; font-size:0.72rem; font-weight:700;">RATE:</span>
-                        <strong style="color:#93c5fd;">{{ $fmtRate($rate) }}</strong>
+                      <span style="background:rgba(59,130,246,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(59,130,246,0.3); font-weight:700; color:#1d4ed8; width:100%; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:0.78rem; white-space:nowrap;">
+                        <span style="color:#64748b; font-size:0.72rem; font-weight:700;">RATE:</span>
+                        <strong style="color:#1e40af;">{{ $fmtRate($rate) }}</strong>
                       </span>
                       @endif
                     </div>
