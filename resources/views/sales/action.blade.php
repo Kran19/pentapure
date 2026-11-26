@@ -337,6 +337,319 @@ html.dark-mode .info-preview-box {
 html.dark-mode .info-preview-box .info-label {
   color: #fbbf24 !important;
 }
+
+/* ==========================================================================
+   Responsive Action Tables (Company & Transport)
+   ========================================================================== */
+.sales-action-table-card {
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  background: var(--card-bg, #ffffff);
+  border-radius: 12px;
+  border: 1px solid var(--border-soft, #DDCFAF);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+.sales-action-header-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.sales-action-table-title {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--primary, #D88A00);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sales-action-count-pill {
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: rgba(216, 138, 0, 0.12);
+  color: var(--primary, #D88A00);
+  padding: 2px 9px;
+  border-radius: 12px;
+  border: 1px solid rgba(216, 138, 0, 0.28);
+}
+
+.sales-action-search-box {
+  width: 250px;
+  padding: 0.48rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1.5px solid var(--border-soft, #DDCFAF);
+  background: var(--input-bg, #ffffff);
+  color: var(--text-main, #333333);
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.sales-action-search-box:focus {
+  border-color: var(--primary, #D88A00);
+  box-shadow: 0 0 0 3px rgba(216, 138, 0, 0.15);
+}
+
+.sales-action-btn-add {
+  padding: 0.48rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+  border-radius: 8px;
+  background: var(--primary, #D88A00);
+  color: #ffffff !important;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 4px rgba(216, 138, 0, 0.2);
+  transition: all 0.15s ease;
+}
+
+.sales-action-btn-add:hover {
+  background: var(--primary-dark, #b57400);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(216, 138, 0, 0.3);
+}
+
+.sales-data-table-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border-soft, #DDCFAF);
+  border-radius: 8px;
+  background: var(--card-bg, #ffffff);
+}
+
+.sales-data-table {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+  text-align: left;
+}
+
+.sales-data-table thead tr {
+  background: rgba(216, 138, 0, 0.05);
+  border-bottom: 2px solid var(--border-soft, #DDCFAF);
+}
+
+.sales-data-table th {
+  padding: 12px 14px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted, #78716c);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.sales-data-table tbody tr {
+  border-bottom: 1px solid var(--border-soft, rgba(0, 0, 0, 0.06));
+  transition: background 0.15s ease;
+}
+
+.sales-data-table tbody tr:hover {
+  background: rgba(216, 138, 0, 0.04);
+}
+
+.sales-data-table td {
+  padding: 11px 14px;
+  vertical-align: middle;
+  color: var(--text-main, #1e293b);
+  box-sizing: border-box;
+}
+
+.sales-data-table .col-idx {
+  width: 50px;
+  text-align: center;
+  color: var(--text-muted, #94a3b8);
+  font-weight: 600;
+}
+
+.sales-data-table .col-name {
+  width: 250px;
+  min-width: 200px;
+  font-weight: 700;
+  color: var(--text-main, #0f172a);
+}
+
+.sales-data-table .col-gst {
+  width: 140px;
+  min-width: 130px;
+  font-family: monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--primary-light, #d97706);
+  white-space: nowrap;
+}
+
+.sales-data-table .col-contact {
+  width: 150px;
+  min-width: 140px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sales-data-table .col-vehicles {
+  min-width: 180px;
+  max-width: 260px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.4;
+  font-size: 0.84rem;
+}
+
+.sales-data-table .col-action {
+  width: 170px;
+  min-width: 170px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.sales-action-btn-group {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.sales-btn-edit {
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #f59e0b;
+  color: #000000 !important;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  transition: all 0.15s ease;
+}
+
+.sales-btn-edit:hover {
+  background: #d97706;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+.sales-btn-delete {
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #ef4444;
+  color: #ffffff !important;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  transition: all 0.15s ease;
+}
+
+.sales-btn-delete:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+.sales-btn-delete-disabled {
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.05);
+  color: #94a3b8 !important;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  cursor: not-allowed;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  opacity: 0.75;
+}
+
+.sales-in-use-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 800;
+  background: rgba(216, 138, 0, 0.12);
+  color: var(--primary, #D88A00);
+  border: 1px solid rgba(216, 138, 0, 0.3);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+  letter-spacing: 0.3px;
+}
+
+/* Dark mode overrides */
+html.dark-mode .sales-action-table-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+html.dark-mode .sales-action-search-box {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+html.dark-mode .sales-data-table-container {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+html.dark-mode .sales-data-table thead tr {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+html.dark-mode .sales-data-table th {
+  color: #94a3b8;
+}
+
+html.dark-mode .sales-data-table tbody tr {
+  border-color: #334155;
+}
+
+html.dark-mode .sales-data-table tbody tr:hover {
+  background: rgba(216, 138, 0, 0.08);
+}
+
+html.dark-mode .sales-data-table td {
+  color: #f1f5f9;
+}
+
+html.dark-mode .sales-data-table .col-name {
+  color: #ffffff;
+}
+
+html.dark-mode .sales-btn-delete-disabled {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #64748b !important;
+}
 </style>
 <div class="tabs">
   <button class="tab-btn active" onclick="switchSalesTab('order', this)">Create Order</button>
@@ -425,29 +738,42 @@ html.dark-mode .info-preview-box .info-label {
   <!-- Tab 2: Company -->
   <div id="sales-tab-company" class="sales-tab-content animation-fadeIn" style="display:none;">
     <!-- Registered Companies List Table -->
-    <div class="card" style="padding:1.2rem; margin-bottom:1.5rem;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
-        <div class="card-title" style="margin:0; font-weight:600; font-size:1.1rem; color:var(--primary, #D88A00);">
-          🏢 Registered Companies ({{ count($pageData['companies']) }})
+    <div class="card sales-action-table-card">
+      <div class="sales-action-header-toolbar">
+        <div class="sales-action-table-title">
+          <span>🏢 Registered Companies</span>
+          <span class="sales-action-count-pill">{{ count($pageData['companies']) }}</span>
         </div>
-        <div style="display:flex; align-items:center; gap:10px;">
-          <input type="text" placeholder="Search company, GST, city..." oninput="filterActionCompaniesTable(this)" style="width:220px; padding:0.4rem 0.8rem; font-size:0.85rem; border-radius:6px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <input type="text" class="sales-action-search-box" placeholder="Search company, GST, city..." oninput="filterActionCompaniesTable(this)">
           @if(empty($isReadOnly))
-          <button type="button" class="btn btn-sm" onclick="openCompanyModal()" style="width:auto; padding:0.45rem 0.9rem; font-size:0.85rem; font-weight:700; white-space:nowrap; border-radius:6px;">+ ADD COMPANY</button>
+          <button type="button" class="sales-action-btn-add" onclick="openCompanyModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            ADD COMPANY
+          </button>
           @endif
         </div>
       </div>
-      <div class="table-container" style="overflow-x:auto;">
-        <table style="width:100%; font-size:0.85rem; border-collapse:collapse;">
+      <div class="sales-data-table-container">
+        <table class="sales-data-table">
+          <colgroup>
+            <col class="col-idx">
+            <col style="width:240px; min-width:180px;">
+            <col class="col-gst">
+            <col style="width:100px; min-width:90px;">
+            <col class="col-contact">
+            <col style="min-width:180px;">
+            <col class="col-action">
+          </colgroup>
           <thead>
-            <tr style="border-bottom:1px solid var(--glass-border, rgba(255,255,255,0.08)); text-align:left;">
-              <th style="padding:8px 6px;">#</th>
-              <th style="padding:8px 6px;">Company Name</th>
-              <th style="padding:8px 6px;">GST No.</th>
-              <th style="padding:8px 6px;">Pincode</th>
-              <th style="padding:8px 6px;">Contact</th>
-              <th style="padding:8px 6px;">Address</th>
-              <th style="padding:8px 6px; text-align:center;">Action</th>
+            <tr>
+              <th class="col-idx">#</th>
+              <th>Company Name</th>
+              <th>GST No.</th>
+              <th>Pincode</th>
+              <th>Contact</th>
+              <th>Address</th>
+              <th class="col-action">Action</th>
             </tr>
           </thead>
           <tbody id="action-companies-tbody">
@@ -455,30 +781,30 @@ html.dark-mode .info-preview-box .info-label {
               @php
                 $isCompUsed = !empty($comp['is_used']);
               @endphp
-              <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
-                <td style="padding:8px 6px; color:var(--text-muted);">{{ $idx + 1 }}</td>
-                <td class="action-comp-name" style="padding:8px 6px; font-weight:600; color:var(--text-main);">
+              <tr>
+                <td class="col-idx">{{ $idx + 1 }}</td>
+                <td class="action-comp-name" style="font-weight:700; color:var(--text-main);">
                   {{ $comp['name'] }}
                   @if($isCompUsed)
-                    <span style="font-size:0.68rem; font-weight:700; background:rgba(216, 138, 0, 0.12); color:var(--primary, #D88A00); border:1px solid rgba(216, 138, 0, 0.3); border-radius:4px; padding:1px 5px; margin-left:4px;" title="Linked to existing orders or dispatches">IN USE</span>
+                    <span class="sales-in-use-badge" title="Linked to existing orders or dispatches">IN USE</span>
                   @endif
                 </td>
-                <td style="padding:8px 6px; font-family:monospace; color:var(--primary-light, #f59e0b);">{{ $comp['gst'] ?: 'N/A' }}</td>
-                <td style="padding:8px 6px;">{{ $comp['pincode'] ?: '—' }}</td>
-                <td style="padding:8px 6px;">{{ $comp['contact'] ?: '—' }}</td>
-                <td style="padding:8px 6px; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ $comp['address'] }}">{{ $comp['address'] ?: '—' }}</td>
-                <td style="padding:8px 6px; text-align:center;">
+                <td class="col-gst">{{ $comp['gst'] ?: 'N/A' }}</td>
+                <td style="white-space:nowrap; font-weight:600;">{{ $comp['pincode'] ?: '—' }}</td>
+                <td class="col-contact">{{ $comp['contact'] ?: '—' }}</td>
+                <td style="max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-muted, #64748b);" title="{{ $comp['address'] }}">{{ $comp['address'] ?: '—' }}</td>
+                <td class="col-action">
                   @if(empty($isReadOnly))
-                  <div style="display:flex; justify-content:center; gap:6px;">
-                    <button type="button" class="btn btn-sm" onclick="openCompanyModal({{ json_encode($comp) }})" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; background:var(--warning, #FFA500); color:#000; font-weight:600; border:none; border-radius:4px; cursor:pointer;" title="Edit company details">
+                  <div class="sales-action-btn-group">
+                    <button type="button" class="sales-btn-edit" onclick="openCompanyModal({{ json_encode($comp) }})" title="Edit company details">
                       ✏️ Edit
                     </button>
                     @if($isCompUsed)
-                      <button type="button" class="btn btn-sm" disabled style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; font-weight:600; border:1px solid rgba(255,255,255,0.1); border-radius:4px; background:rgba(255,255,255,0.06); color:var(--text-muted, #94a3b8); cursor:not-allowed; opacity:0.6;" title="Cannot delete: this company is linked to existing orders/dispatches (Only Edit allowed)">
+                      <button type="button" class="sales-btn-delete-disabled" disabled title="Cannot delete: this company is linked to existing orders/dispatches (Only Edit allowed)">
                         🗑️ Delete
                       </button>
                     @else
-                      <button type="button" class="btn btn-sm btn-danger" onclick="deleteCompany({{ $comp['id'] }}, '{{ addslashes($comp['name']) }}')" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; font-weight:600; border:none; border-radius:4px; cursor:pointer;" title="Delete company">
+                      <button type="button" class="sales-btn-delete" onclick="deleteCompany({{ $comp['id'] }}, '{{ addslashes($comp['name']) }}')" title="Delete company">
                         🗑️ Delete
                       </button>
                     @endif
@@ -490,7 +816,7 @@ html.dark-mode .info-preview-box .info-label {
               </tr>
             @empty
               <tr>
-                <td colspan="7" style="text-align:center; padding:1.5rem; color:var(--text-muted);">No companies registered yet.</td>
+                <td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted); font-size:0.9rem;">No companies registered yet.</td>
               </tr>
             @endforelse
           </tbody>
@@ -502,28 +828,40 @@ html.dark-mode .info-preview-box .info-label {
   <!-- Tab 3: Transport -->
   <div id="sales-tab-transport" class="sales-tab-content animation-fadeIn" style="display:none;">
     <!-- Registered Transporters List Table -->
-    <div class="card" style="padding:1.2rem; margin-bottom:1.5rem;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
-        <div class="card-title" style="margin:0; font-weight:600; font-size:1.1rem; color:var(--primary, #D88A00);">
-          🚚 Registered Transporters ({{ count($pageData['transportCompanies']) }})
+    <div class="card sales-action-table-card">
+      <div class="sales-action-header-toolbar">
+        <div class="sales-action-table-title">
+          <span>🚚 Registered Transporters</span>
+          <span class="sales-action-count-pill">{{ count($pageData['transportCompanies']) }}</span>
         </div>
-        <div style="display:flex; align-items:center; gap:10px;">
-          <input type="text" placeholder="Search transporter, GST..." oninput="filterActionTransportersTable(this)" style="width:220px; padding:0.4rem 0.8rem; font-size:0.85rem; border-radius:6px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <input type="text" class="sales-action-search-box" placeholder="Search transporter, GST..." oninput="filterActionTransportersTable(this)">
           @if(empty($isReadOnly))
-          <button type="button" class="btn btn-sm" onclick="app.openAddTransportModal()" style="width:auto; padding:0.45rem 0.9rem; font-size:0.85rem; font-weight:700; white-space:nowrap; border-radius:6px;">+ ADD TRANSPORT</button>
+          <button type="button" class="sales-action-btn-add" onclick="app.openAddTransportModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            ADD TRANSPORT
+          </button>
           @endif
         </div>
       </div>
-      <div class="table-container" style="overflow-x:auto;">
-        <table style="width:100%; font-size:0.85rem; border-collapse:collapse;">
+      <div class="sales-data-table-container">
+        <table class="sales-data-table">
+          <colgroup>
+            <col class="col-idx">
+            <col class="col-name">
+            <col class="col-gst">
+            <col class="col-contact">
+            <col class="col-vehicles">
+            <col class="col-action">
+          </colgroup>
           <thead>
-            <tr style="border-bottom:1px solid var(--glass-border, rgba(255,255,255,0.08)); text-align:left;">
-              <th style="padding:8px 6px;">#</th>
-              <th style="padding:8px 6px;">Transporter Name</th>
-              <th style="padding:8px 6px;">GST No.</th>
-              <th style="padding:8px 6px;">Contact</th>
-              <th style="padding:8px 6px;">Vehicles</th>
-              <th style="padding:8px 6px; text-align:center;">Action</th>
+            <tr>
+              <th class="col-idx">#</th>
+              <th class="col-name">Transporter Name</th>
+              <th class="col-gst">GST No.</th>
+              <th class="col-contact">Contact</th>
+              <th class="col-vehicles">Vehicles</th>
+              <th class="col-action">Action</th>
             </tr>
           </thead>
           <tbody id="action-transporters-tbody">
@@ -531,29 +869,29 @@ html.dark-mode .info-preview-box .info-label {
               @php
                 $isTransUsed = !empty($trans['is_used']);
               @endphp
-              <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
-                <td style="padding:8px 6px; color:var(--text-muted);">{{ $idx + 1 }}</td>
-                <td class="action-trans-name" style="padding:8px 6px; font-weight:600; color:var(--text-main);">
+              <tr>
+                <td class="col-idx">{{ $idx + 1 }}</td>
+                <td class="col-name action-trans-name">
                   {{ $trans['name'] }}
                   @if($isTransUsed)
-                    <span style="font-size:0.68rem; font-weight:700; background:rgba(216, 138, 0, 0.12); color:var(--primary, #D88A00); border:1px solid rgba(216, 138, 0, 0.3); border-radius:4px; padding:1px 5px; margin-left:4px;" title="Linked to existing orders or dispatches">IN USE</span>
+                    <span class="sales-in-use-badge" title="Linked to existing orders or dispatches">IN USE</span>
                   @endif
                 </td>
-                <td style="padding:8px 6px; font-family:monospace; color:var(--primary-light, #f59e0b);">{{ $trans['gst'] ?: 'N/A' }}</td>
-                <td style="padding:8px 6px; white-space:nowrap;">{{ $trans['contact'] ?: '—' }}</td>
-                <td style="padding:8px 6px; word-break:break-word; max-width:240px;">{{ $trans['vehicles'] ?: '—' }}</td>
-                <td style="padding:8px 6px; text-align:center;">
+                <td class="col-gst">{{ $trans['gst'] ?: 'N/A' }}</td>
+                <td class="col-contact">{{ $trans['contact'] ?: '—' }}</td>
+                <td class="col-vehicles">{{ $trans['vehicles'] ?: '—' }}</td>
+                <td class="col-action">
                   @if(empty($isReadOnly))
-                  <div style="display:flex; justify-content:center; gap:6px;">
-                    <button type="button" class="btn btn-sm" onclick="app.editTransporterPrompt({{ json_encode($trans) }})" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; background:var(--warning, #FFA500); color:#000; font-weight:600; border:none; border-radius:4px; cursor:pointer;" title="Edit transporter details">
+                  <div class="sales-action-btn-group">
+                    <button type="button" class="sales-btn-edit" onclick="app.editTransporterPrompt({{ json_encode($trans) }})" title="Edit transporter details">
                       ✏️ Edit
                     </button>
                     @if($isTransUsed)
-                      <button type="button" class="btn btn-sm" disabled style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; font-weight:600; border:1px solid rgba(255,255,255,0.1); border-radius:4px; background:rgba(255,255,255,0.06); color:var(--text-muted, #94a3b8); cursor:not-allowed; opacity:0.6;" title="Cannot delete: this transporter is linked to existing orders/dispatches (Only Edit allowed)">
+                      <button type="button" class="sales-btn-delete-disabled" disabled title="Cannot delete: this transporter is linked to existing orders/dispatches (Only Edit allowed)">
                         🗑️ Delete
                       </button>
                     @else
-                      <button type="button" class="btn btn-sm btn-danger" onclick="deleteTransporter({{ $trans['id'] }}, '{{ addslashes($trans['name']) }}')" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; font-weight:600; border:none; border-radius:4px; cursor:pointer;" title="Delete transporter">
+                      <button type="button" class="sales-btn-delete" onclick="deleteTransporter({{ $trans['id'] }}, '{{ addslashes($trans['name']) }}')" title="Delete transporter">
                         🗑️ Delete
                       </button>
                     @endif
@@ -565,7 +903,7 @@ html.dark-mode .info-preview-box .info-label {
               </tr>
             @empty
               <tr>
-                <td colspan="6" style="text-align:center; padding:1.5rem; color:var(--text-muted);">No transporters registered yet.</td>
+                <td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted); font-size:0.9rem;">No transporters registered yet.</td>
               </tr>
             @endforelse
           </tbody>

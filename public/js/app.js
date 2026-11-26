@@ -1037,21 +1037,20 @@ const app = {
                 if (emptyRow) emptyRow.closest('tr').remove();
                 const newIdx = tbody.querySelectorAll('tr').length + 1;
                 const tr = document.createElement('tr');
-                tr.style.cssText = 'border-bottom:1px solid rgba(255,255,255,0.04);';
                 const safeName = (d.transporter.name || '').replace(/'/g, "\\'");
                 const jsonStr = JSON.stringify(d.transporter).replace(/"/g, '&quot;');
                 tr.innerHTML = `
-                  <td style="padding:8px 6px; color:var(--text-muted);">${newIdx}</td>
-                  <td class="action-trans-name" style="padding:8px 6px; font-weight:600; color:var(--text-main);">${d.transporter.name}</td>
-                  <td style="padding:8px 6px; font-family:monospace; color:var(--primary-light, #f59e0b);">${d.transporter.gst || 'N/A'}</td>
-                  <td style="padding:8px 6px;">${d.transporter.contact || '—'}</td>
-                  <td style="padding:8px 6px;">${d.transporter.vehicles || '—'}</td>
-                  <td style="padding:8px 6px; text-align:center;">
-                    <div style="display:flex; justify-content:center; gap:6px;">
-                      <button type="button" class="btn btn-sm" onclick="app.editTransporterPrompt(${jsonStr})" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; background:var(--warning, #FFA500); color:#000; font-weight:600; border:none; border-radius:4px; cursor:pointer;">
+                  <td class="col-idx">${newIdx}</td>
+                  <td class="col-name action-trans-name">${d.transporter.name}</td>
+                  <td class="col-gst">${d.transporter.gst || 'N/A'}</td>
+                  <td class="col-contact">${d.transporter.contact || '—'}</td>
+                  <td class="col-vehicles">${d.transporter.vehicles || '—'}</td>
+                  <td class="col-action">
+                    <div class="sales-action-btn-group">
+                      <button type="button" class="sales-btn-edit" onclick="app.editTransporterPrompt(${jsonStr})" title="Edit transporter details">
                         ✏️ Edit
                       </button>
-                      <button type="button" class="btn btn-sm btn-danger" onclick="deleteTransporter(${d.transporter.id}, '${safeName}')" style="width:auto; padding:0.25rem 0.6rem; font-size:0.75rem; font-weight:600; border:none; border-radius:4px; cursor:pointer;">
+                      <button type="button" class="sales-btn-delete" onclick="deleteTransporter(${d.transporter.id}, '${safeName}')" title="Delete transporter">
                         🗑️ Delete
                       </button>
                     </div>
