@@ -107,4 +107,54 @@ class CashierSearchPdfExportTest extends TestCase
         $pdfEmpty = $this->withSession($session)->get('/cashier/history/pdf?q=NonExistentFilter999&include_bills=no');
         $pdfEmpty->assertOk();
     }
+
+    public function test_cashier_pdf_exports_with_bills_attached_without_memory_issues(): void
+    {
+        $cashier = User::create([
+            'name'     => 'Raj Cashier',
+            'email'    => 'raj@example.com',
+            'password' => 'secret123',
+            'role'     => 'CASHIER',
+            'status'   => 'ACTIVE',
+            'branch'   => 'FACTORY',
+        ]);
+
+        $tx = Transaction::create([
+            'user_id'     => $cashier->id,
+            'type'        => 'OUT',
+            'amount'      => 450.00,
+            'category'    => 'logistics',
+            'site'        => 'FACTORY',
+            'date'        => '2026-11-25 12:00:00',
+            'note'        => 'Raj Freight payment',
+            'description' => 'Freight delivery charge',
+            'reference'   => 'RAJ-BILL-01',
+        ]);
+
+        \App\Models\TransactionBill::create([
+            'transaction_id' => $tx->id,
+            'file_path'      => 'bills/test_bill.png',
+            'file_type'      => 'image',
+            'original_name'  => 'test_receipt.png',
+            'mime_type'      => 'image/png',
+            'file_size'      => 1024,
+            'sort_order'     => 1,
+        ]);
+
+        $session = [
+            'auth_user' => [
+                'id'     => $cashier->id,
+                'name'   => $cashier->name,
+                'role'   => 'CASHIER',
+                'branch' => 'FACTORY',
+            ],
+        ];
+
+        // Request PDF with search q=raj and include_bills=yes
+        $response = $this->withSession($session)->get('/cashier/history/pdf?q=raj&include_bills=yes');
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringContainsString('SEARCH_RAJ', $response->headers->get('Content-Disposition'));
+        $this->assertNotEmpty($response->getContent());
+    }
 }

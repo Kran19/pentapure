@@ -104,8 +104,8 @@ class LedgerBalanceAccuracyTest extends TestCase
             'branch' => 'MAIN',
         ]);
 
-        // Create 15 transactions
-        for ($i = 1; $i <= 15; $i++) {
+        // Create 25 transactions
+        for ($i = 1; $i <= 25; $i++) {
             Transaction::create([
                 'user_id' => $cashier->id,
                 'type' => ($i % 2 === 0) ? 'OUT' : 'IN',
@@ -127,47 +127,48 @@ class LedgerBalanceAccuracyTest extends TestCase
             ]
         ];
 
-        // 1. Default request should paginate to 10 entries
+        // 1. Default request should paginate to 20 entries
         $response = $this->withSession($session)->get('/cashier/ledger');
         $response->assertStatus(200);
 
-        // Verify page-size dropdown
+        // Verify page-size dropdown has Show 20 selected by default
         $response->assertSee('id="ledger-page-size"', false);
-        $response->assertSee('<option value="10"', false);
-        $response->assertSee('selected>Show 10</option>', false);
-        $response->assertSee('<option value="15"', false);
-        $response->assertSee('Show 15</option>', false);
+        $response->assertSee('<option value="20" selected>Show 20</option>', false);
 
-        // Verify pagination footer and info
+        // Verify table has ledger-table and no-filter to prevent duplicate pagination
+        $response->assertSee('id="ledger-tx-table" class="ledger-table no-filter" data-filterable="false"', false);
+
+        // Verify pagination footer and info (1 to 20 of 25 entries)
         $response->assertSee('id="ledger-pagination-footer"', false);
-        $response->assertSee('Showing 1 to 10 of 15 entries');
+        $response->assertSee('Showing 1 to 20 of 25 entries');
 
-        // Verify newest 10 transactions (15 down to 6) are present in the table body on page 1
+        // Verify newest 20 transactions (25 down to 6) are present in the table body on page 1
         preg_match('/<tbody id="ledger-tx-tbody">([\s\S]*?)<\/tbody>/', $response->getContent(), $m1);
         $tbodyP1 = $m1[1] ?? '';
-        $this->assertStringContainsString('Transaction Note Number 15</div>', $tbodyP1);
+        $this->assertStringContainsString('Transaction Note Number 25</div>', $tbodyP1);
         $this->assertStringContainsString('Transaction Note Number 6</div>', $tbodyP1);
         // Older transactions (5 down to 1) should not be on page 1 table rows
         $this->assertStringNotContainsString('Transaction Note Number 5</div>', $tbodyP1);
         $this->assertStringNotContainsString('Transaction Note Number 1</div>', $tbodyP1);
 
-        // 2. Page 2 with per_page=10
-        $responseP2 = $this->withSession($session)->get('/cashier/ledger?page=2&per_page=10');
+        // 2. Page 2 with per_page=20
+        $responseP2 = $this->withSession($session)->get('/cashier/ledger?page=2&per_page=20');
         $responseP2->assertStatus(200);
-        $responseP2->assertSee('Showing 11 to 15 of 15 entries');
+        $responseP2->assertSee('Showing 21 to 25 of 25 entries');
         preg_match('/<tbody id="ledger-tx-tbody">([\s\S]*?)<\/tbody>/', $responseP2->getContent(), $m2);
         $tbodyP2 = $m2[1] ?? '';
         $this->assertStringContainsString('Transaction Note Number 5</div>', $tbodyP2);
         $this->assertStringContainsString('Transaction Note Number 1</div>', $tbodyP2);
-        $this->assertStringNotContainsString('Transaction Note Number 15</div>', $tbodyP2);
+        $this->assertStringNotContainsString('Transaction Note Number 25</div>', $tbodyP2);
 
-        // 3. Page with per_page=15 (all 15 shown on 1 page)
-        $responseAll = $this->withSession($session)->get('/cashier/ledger?per_page=15');
+        // 3. Page with per_page=all (all 25 shown on 1 page)
+        $responseAll = $this->withSession($session)->get('/cashier/ledger?per_page=all');
         $responseAll->assertStatus(200);
-        $responseAll->assertSee('Showing 1 to 15 of 15 entries');
+        $responseAll->assertSee('Showing 1 to 25 of 25 entries');
         preg_match('/<tbody id="ledger-tx-tbody">([\s\S]*?)<\/tbody>/', $responseAll->getContent(), $m3);
         $tbodyAll = $m3[1] ?? '';
-        $this->assertStringContainsString('Transaction Note Number 15</div>', $tbodyAll);
+        $this->assertStringContainsString('Transaction Note Number 25</div>', $tbodyAll);
+        $this->assertStringContainsString('Transaction Note Number 1</div>', $tbodyAll);
         $this->assertStringContainsString('Transaction Note Number 1</div>', $tbodyAll);
     }
 }

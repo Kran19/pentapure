@@ -127,9 +127,9 @@
     return $tB <=> $tA;
   })->values();
 
-  $perPageParam = request('per_page', '10');
+  $perPageParam = request('per_page', '20');
   $perPage = ($perPageParam === 'all') ? 999999 : (int)$perPageParam;
-  if ($perPage <= 0) $perPage = 10;
+  if ($perPage <= 0) $perPage = 20;
   $page = (int)request('page', 1);
   if ($page <= 0) $page = 1;
   $total = $filtered->count();
@@ -274,7 +274,7 @@
 
   <div id="ledger-table-container" class="table-container ledger-table-container" style="overflow-x:auto; overflow-y:hidden; width:100%; -webkit-overflow-scrolling:touch;">
     <!-- Standard Transaction Table -->
-    <table id="ledger-tx-table" style="display:{{ $activeTab === 'daily' ? 'none' : 'table' }}; font-size:0.85rem; width:100%; min-width:1050px; border-collapse:collapse;">
+    <table id="ledger-tx-table" class="ledger-table no-filter" data-filterable="false" style="display:{{ $activeTab === 'daily' ? 'none' : 'table' }}; font-size:0.85rem; width:100%; min-width:1050px; border-collapse:collapse;">
       <thead>
         <tr style="background:rgba(0,0,0,0.05); border-bottom:1px solid var(--border-soft, #DDCFAF);">
           <th style="padding:12px; text-align:left; width:125px; min-width:125px;">Date</th>
@@ -361,7 +361,7 @@
     </table>
 
     <!-- Daily Summary Table -->
-    <table id="ledger-daily-table" style="display:{{ $activeTab === 'daily' ? 'table' : 'none' }}; font-size:0.85rem; width:100%; min-width:650px; border-collapse:collapse;">
+    <table id="ledger-daily-table" class="ledger-table no-filter" data-filterable="false" style="display:{{ $activeTab === 'daily' ? 'table' : 'none' }}; font-size:0.85rem; width:100%; min-width:650px; border-collapse:collapse;">
       <thead>
         <tr style="background:rgba(0,0,0,0.05); border-bottom:1px solid var(--border-soft, #DDCFAF);">
           <th style="padding:12px; text-align:left; min-width:150px;">Date</th>
@@ -699,8 +699,8 @@
 
     const total = filtered.length;
     const pageSizeSelect = document.getElementById('ledger-page-size');
-    const pageSizeVal = pageSizeSelect ? pageSizeSelect.value : '10';
-    const pageSize = (pageSizeVal === 'all') ? total : (parseInt(pageSizeVal, 10) || 10);
+    const pageSizeVal = pageSizeSelect ? pageSizeSelect.value : '20';
+    const pageSize = (pageSizeVal === 'all') ? total : (parseInt(pageSizeVal, 10) || 20);
     const totalPages = (pageSize <= 0 || pageSize >= total) ? 1 : Math.ceil(total / pageSize);
 
     if (ledgerCurrentPage > totalPages && totalPages > 0) ledgerCurrentPage = totalPages;
@@ -810,7 +810,7 @@
     }
     if (q) params.set('q', q);
     if (ledgerCurrentPage > 1) params.set('page', ledgerCurrentPage);
-    if (pageSizeVal && pageSizeVal !== '10') params.set('per_page', pageSizeVal);
+    if (pageSizeVal && pageSizeVal !== '20') params.set('per_page', pageSizeVal);
 
     const newUrl = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '');
     window.history.replaceState({}, '', newUrl);

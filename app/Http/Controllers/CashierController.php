@@ -655,6 +655,11 @@ class CashierController extends Controller
     // ─── DOWNLOAD PDF (Enhanced) ──────────────────────────────────────────────
     public function downloadPdf(Request $request)
     {
+        @ini_set('memory_limit', '1024M');
+        if (!app()->runningInConsole()) {
+            @set_time_limit(300);
+        }
+
         $user = $this->authUser();
         $cashierId = $request->cashier_id;
         $isAdmin = in_array($user['role'] ?? '', ['ADMIN', 'SUB_ADMIN']);
@@ -726,6 +731,11 @@ class CashierController extends Controller
     // ══════════════════════════════════════════════════════════════════════════
     public function generateCashierPdf(Request $request, int $userId, string $cashierName, $teamUserIds = null)
     {
+        @ini_set('memory_limit', '1024M');
+        if (!app()->runningInConsole()) {
+            @set_time_limit(300);
+        }
+
         if ($request->filled('specific_date') && !$request->filled('from')) {
             $from = Carbon::parse($request->specific_date)->startOfDay();
             $to   = Carbon::parse($request->specific_date)->endOfDay();
@@ -896,7 +906,6 @@ class CashierController extends Controller
             foreach ($tx->bills as $b) {
                 $bPath = $b->absolute_path;
                 $isImg = $b->isImage();
-                $b64 = $isImg ? $b->base64 : null;
 
                 $billInfo = [
                     'id'            => $b->id,
@@ -905,7 +914,7 @@ class CashierController extends Controller
                     'is_pdf'        => $b->isPdf(),
                     'original_name' => $b->original_name,
                     'absolute_path' => $bPath,
-                    'base64_data'   => $b64,
+                    'base64_data'   => null,
                     'mime_type'     => $b->mime_type,
                     'tx_id'         => $tx->id,
                     'tx_date'       => $formattedTxDate,

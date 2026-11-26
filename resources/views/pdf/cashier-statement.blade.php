@@ -212,11 +212,7 @@ table, th, td, div, span, p, a, strong, small {
                 <td style="text-align: center; vertical-align: middle; padding: 3px;">
                     @if(!empty($row['bills']))
                         @foreach($row['bills'] as $b)
-                            @if(!empty($b['base64_data']))
-                                <div style="display: inline-block; margin: 1px;">
-                                    <img src="{{ $b['base64_data'] }}" style="height: 34px; max-width: 50px; object-fit: cover; border: 1px solid #cbd5e1; border-radius: 3px; display: block;" alt="Receipt">
-                                </div>
-                            @elseif(!empty($b['is_pdf']))
+                            @if(!empty($b['is_pdf']))
                                 <span style="font-size: 7px; color: #dc2626; font-weight: bold; display: block;">📄 PDF</span>
                             @else
                                 <span style="font-size: 7px; color: #2563eb; font-weight: bold; display: block;">📎 BILL</span>

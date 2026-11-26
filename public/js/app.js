@@ -4483,6 +4483,12 @@ window.downloadPdfAsync = async function(url, data = {}, btnElement = null) {
     }
   } catch (err) {
     console.error('PDF Export Error:', err);
+    // If fetch failed due to network / CORS / large response stream, provide direct browser download fallback
+    if (url && (err.name === 'TypeError' || err.message?.includes('fetch') || err.message?.includes('network') || err.message?.includes('Failed to fetch'))) {
+      console.warn('downloadPdfAsync fetch failed, falling back to direct location download:', url);
+      window.location.href = url;
+      return;
+    }
     if (window.Swal) {
       Swal.fire({ icon: 'error', title: 'PDF Export Failed', text: err.message || 'Could not generate PDF.' });
     } else {

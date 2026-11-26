@@ -652,6 +652,11 @@ class AdminController extends Controller
 
     public function productsPdf()
     {
+        @ini_set('memory_limit', '1024M');
+        if (!app()->runningInConsole()) {
+            @set_time_limit(300);
+        }
+
         $rawProducts = Product::where('type', 'RAW')
             ->orderBy('name', 'asc')
             ->get();
@@ -1410,6 +1415,11 @@ class AdminController extends Controller
 
     public function downloadStockPdf(Request $request)
     {
+        @ini_set('memory_limit', '1024M');
+        if (!app()->runningInConsole()) {
+            @set_time_limit(300);
+        }
+
         $stages = $request->input('stages', ['RAW', 'SEMI', 'FINISHED', 'PACKAGING']);
         if (!is_array($stages)) {
             $stages = explode(',', $stages);
@@ -3233,6 +3243,11 @@ class AdminController extends Controller
 
     public function overviewPdf(Request $request)
     {
+        @ini_set('memory_limit', '1024M');
+        if (!app()->runningInConsole()) {
+            @set_time_limit(300);
+        }
+
         $baseQuery = \App\Models\Transaction::with('user');
 
         if ($request->filled('cashier_id')) {
