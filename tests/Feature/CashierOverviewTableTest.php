@@ -134,4 +134,62 @@ class CashierOverviewTableTest extends TestCase
         $responseCombined->assertDontSee('Expense Transaction 456');
         $responseCombined->assertDontSee('Other Cashier Income');
     }
+
+    public function test_cashier_overview_renders_bill_thumbnails_and_streams_images(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+
+        $admin = User::factory()->create(['role' => 'ADMIN', 'status' => 'ACTIVE']);
+        $cashier = User::factory()->create(['role' => 'CASHIER', 'status' => 'ACTIVE', 'name' => 'Bill Cashier']);
+
+        $tx = Transaction::create([
+            'user_id' => $cashier->id,
+            'type' => 'OUT',
+            'amount' => 350.00,
+            'category' => 'expense',
+            'note' => 'Payment for supplies',
+            'created_at' => now(),
+        ]);
+
+        // Create a 1x1 transparent PNG
+        $dummyPng = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAA=');
+        \Illuminate\Support\Facades\Storage::disk('public')->put('bills/receipt_001.png', $dummyPng);
+
+        $bill = \App\Models\TransactionBill::create([
+            'transaction_id' => $tx->id,
+            'file_path'      => 'bills/receipt_001.png',
+            'file_type'      => 'image',
+            'original_name'  => 'receipt_001.png',
+            'mime_type'      => 'image/png',
+            'file_size'      => strlen($dummyPng),
+        ]);
+
+        $session = ['auth_user' => ['id' => $admin->id, 'name' => $admin->name, 'role' => 'ADMIN']];
+        $response = $this->withSession($session)->get('/admin/cashier-overview');
+
+        $response->assertStatus(200);
+
+        // Verify the image thumbnail element is rendered in the table
+        $response->assertSee('receipt_001.png');
+        $response->assertSee('<img src="', false);
+        $response->assertSee('/cashier/bill/' . $bill->id . '/view', false);
+        $response->assertSee('onclick="app.viewBill(' . $bill->id . ', \'image\')"', false);
+        $response->assertSee('📥');
+
+        // Test view bill route returns the image inline
+        $viewResponse = $this->withSession($session)->get('/admin/cashier/bill/' . $bill->id . '/view');
+        $viewResponse->assertStatus(200);
+        $this->assertEquals('image/png', $viewResponse->headers->get('Content-Type'));
+        $this->assertStringContainsString('inline', $viewResponse->headers->get('Content-Disposition'));
+
+        // Test download bill route returns attachment disposition
+        $dlResponse = $this->withSession($session)->get('/admin/cashier/bill/' . $bill->id . '/view?download=1');
+        $dlResponse->assertStatus(200);
+        $this->assertStringContainsString('attachment', $dlResponse->headers->get('Content-Disposition'));
+
+        // Test alias route /admin/bill/{id}/view
+        $aliasResponse = $this->withSession($session)->get('/admin/bill/' . $bill->id . '/view');
+        $aliasResponse->assertStatus(200);
+        $this->assertEquals('image/png', $aliasResponse->headers->get('Content-Type'));
+    }
 }

@@ -205,16 +205,55 @@
                         <td style="padding:12px; font-weight:bold; color:{{ $cBal >= 0 ? '#16a34a' : '#dc2626' }}; text-align:right; white-space:nowrap;">
                             ₹{{ number_format($cBal, 2) }}
                         </td>
-                        <td style="padding:12px; text-align:center; min-width:80px;">
+                        <td style="padding:12px; text-align:center; min-width:90px;">
                             @if($tx->bills && $tx->bills->count() > 0)
-                                <div style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:6px;">
+                                <div style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:8px;">
                                 @foreach($tx->bills as $bill)
-                                    <button type="button" onclick="app.viewBill({{ $bill->id }}, '{{ $bill->file_type }}')" title="View {{ $bill->original_name }}" style="background:none; border:none; cursor:pointer; color:var(--primary); padding:2px; font-size:1.1rem; line-height:1;">
-                                        📎
-                                    </button>
-                                    <a href="{{ url(request()->segment(1) . '/cashier/bill/' . $bill->id . '/view') }}?download=1" download="{{ $bill->original_name }}" title="Download {{ $bill->original_name }}" style="color:var(--secondary); font-size:1rem; text-decoration:none; display:inline-flex; align-items:center; line-height:1;">
-                                        📥
-                                    </a>
+                                    @php
+                                        $viewUrl = url(request()->segment(1) . '/cashier/bill/' . $bill->id . '/view');
+                                        $downloadUrl = $viewUrl . '?download=1';
+                                        $isImg = $bill->isImage();
+                                        $isPdf = $bill->isPdf();
+                                    @endphp
+                                    @if($isImg)
+                                        <div style="display:inline-flex; flex-direction:column; align-items:center; gap:2px;">
+                                            <div style="position:relative; width:44px; height:44px; border-radius:6px; overflow:hidden; border:1px solid #cbd5e1; box-shadow:0 1px 3px rgba(0,0,0,0.12); cursor:pointer; background:#f8fafc;"
+                                                 title="Click to preview {{ $bill->original_name }}"
+                                                 onclick="app.viewBill({{ $bill->id }}, 'image')">
+                                                <img src="{{ $viewUrl }}"
+                                                     alt="{{ $bill->original_name }}"
+                                                     loading="lazy"
+                                                     style="width:100%; height:100%; object-fit:cover; display:block; transition:transform 0.15s ease;"
+                                                     onmouseover="this.style.transform='scale(1.15)';"
+                                                     onmouseout="this.style.transform='scale(1)';"
+                                                     onerror="if(this.dataset.triedFallback !== '1'){ this.dataset.triedFallback='1'; this.src='{{ $bill->url ?: '' }}'; } else { this.style.display='none'; this.nextElementSibling.style.display='flex'; }" />
+                                                <div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:1.1rem; background:#f1f5f9; color:#64748b;">
+                                                    🖼️
+                                                </div>
+                                            </div>
+                                            <a href="{{ $downloadUrl }}" download="{{ $bill->original_name }}" title="Download {{ $bill->original_name }}" style="color:var(--secondary, #d97706); font-size:0.8rem; text-decoration:none; line-height:1; margin-top:1px;">
+                                                📥
+                                            </a>
+                                        </div>
+                                    @elseif($isPdf)
+                                        <div style="display:inline-flex; flex-direction:column; align-items:center; gap:2px;">
+                                            <button type="button" onclick="app.viewBill({{ $bill->id }}, 'pdf')" title="View {{ $bill->original_name }}" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; border-radius:4px; padding:3px 6px; font-size:0.75rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:2px; line-height:1.2;">
+                                                📄 PDF
+                                            </button>
+                                            <a href="{{ $downloadUrl }}" download="{{ $bill->original_name }}" title="Download {{ $bill->original_name }}" style="color:var(--secondary, #d97706); font-size:0.8rem; text-decoration:none; line-height:1; margin-top:1px;">
+                                                📥
+                                            </a>
+                                        </div>
+                                    @else
+                                        <div style="display:inline-flex; flex-direction:column; align-items:center; gap:2px;">
+                                            <button type="button" onclick="app.viewBill({{ $bill->id }}, '{{ $bill->file_type }}')" title="View {{ $bill->original_name }}" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; border-radius:4px; padding:3px 6px; font-size:0.75rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:2px; line-height:1.2;">
+                                                📎 Doc
+                                            </button>
+                                            <a href="{{ $downloadUrl }}" download="{{ $bill->original_name }}" title="Download {{ $bill->original_name }}" style="color:var(--secondary, #d97706); font-size:0.8rem; text-decoration:none; line-height:1; margin-top:1px;">
+                                                📥
+                                            </a>
+                                        </div>
+                                    @endif
                                 @endforeach
                                 </div>
                             @else

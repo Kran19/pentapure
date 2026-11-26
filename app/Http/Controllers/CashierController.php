@@ -289,12 +289,21 @@ class CashierController extends Controller
     }
 
     // ── VIEW / STREAM BILL ─────────────────────────────────────────────────
-    public function viewBill($param1, $param2 = null)
+    public function viewBill($param1 = null, $param2 = null)
     {
-        // Handle optional route parameter prefix like {user_slug}
-        $id = ($param2 !== null && !is_object($param2)) ? $param2 : $param1;
-        if (is_object($param1)) {
-            $id = $param2;
+        // Handle optional route parameter prefix like {user_slug} or direct ID
+        $id = request()->route('id');
+        if (!$id) {
+            if ($param2 !== null && !is_object($param2) && is_numeric($param2)) {
+                $id = $param2;
+            } elseif ($param1 !== null && !is_object($param1) && is_numeric($param1)) {
+                $id = $param1;
+            } else {
+                $id = ($param2 !== null && !is_object($param2)) ? $param2 : $param1;
+            }
+        }
+        if (!$id) {
+            $id = request('bill_id') ?? request('id');
         }
 
         // 1. Try finding bill by TransactionBill ID first, then fallback to Transaction ID
@@ -337,24 +346,44 @@ class CashierController extends Controller
             abort(403, 'Unauthorized to view this bill.');
         }
 
-        // Search for file on disk across possible storage locations
-        $path = null;
-        $possiblePaths = [
-            Storage::disk('public')->path($bill->file_path),
-            storage_path('app/public/' . $bill->file_path),
-            storage_path('app/' . $bill->file_path),
-            public_path('storage/' . $bill->file_path),
-            public_path($bill->file_path),
-        ];
+        // Search for file on disk across possible storage locations using resolveDiskPath first
+        $path = TransactionBill::resolveDiskPath($bill->file_path);
+        if (!$path && !empty($bill->absolute_path) && file_exists($bill->absolute_path) && is_file($bill->absolute_path)) {
+            $path = $bill->absolute_path;
+        }
 
-        foreach ($possiblePaths as $p) {
-            if ($p && file_exists($p) && is_file($p)) {
-                $path = $p;
-                break;
+        if (!$path) {
+            $cleanPath = ltrim(preg_replace('/^(public[\/\\\\]|storage[\/\\\\])+/i', '', trim($bill->file_path ?? '')), '/\\');
+            $possiblePaths = [
+                Storage::disk('public')->path($cleanPath),
+                storage_path('app/public/' . $cleanPath),
+                storage_path('app/' . $cleanPath),
+                public_path('storage/' . $cleanPath),
+                public_path($cleanPath),
+                base_path($cleanPath),
+                Storage::disk('public')->path($bill->file_path),
+                storage_path('app/public/' . $bill->file_path),
+                storage_path('app/' . $bill->file_path),
+                public_path('storage/' . $bill->file_path),
+                public_path($bill->file_path),
+            ];
+
+            foreach ($possiblePaths as $p) {
+                if ($p && file_exists($p) && is_file($p)) {
+                    $path = realpath($p) ?: $p;
+                    break;
+                }
             }
         }
 
         if (!$path) {
+            $isImage = $bill->isImage();
+            if ($isImage && !request('download')) {
+                // Return an SVG placeholder so <img> tags don't get broken HTML parse errors
+                $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120" viewBox="0 0 160 120" fill="none"><rect width="160" height="120" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/><path d="M50 75L70 50L85 68L98 52L115 75H50Z" fill="#94a3b8"/><circle cx="65" cy="40" r="8" fill="#cbd5e1"/><text x="80" y="96" font-family="sans-serif" font-size="11" fill="#ef4444" text-anchor="middle" font-weight="bold">Image Missing</text></svg>';
+                return response($svg, 404)->header('Content-Type', 'image/svg+xml');
+            }
+
             $name = e($bill->original_name ?? 'Bill Document');
             $filePath = e($bill->file_path);
             return response("
@@ -369,11 +398,35 @@ class CashierController extends Controller
             ", 404)->header('Content-Type', 'text/html');
         }
 
+        // Determine real MIME type
+        $mime = null;
+        if ($path && file_exists($path)) {
+            $mime = @mime_content_type($path);
+        }
+        if (!$mime || $mime === 'application/octet-stream') {
+            $mime = $bill->mime_type;
+        }
+        if (!$mime || $mime === 'application/octet-stream') {
+            $ext = strtolower(pathinfo($bill->original_name ?: ($bill->file_path ?: ''), PATHINFO_EXTENSION));
+            $mimeMap = [
+                'jpg'  => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'png'  => 'image/png',
+                'webp' => 'image/webp',
+                'gif'  => 'image/gif',
+                'svg'  => 'image/svg+xml',
+                'bmp'  => 'image/bmp',
+                'pdf'  => 'application/pdf',
+            ];
+            $mime = $mimeMap[$ext] ?? 'application/octet-stream';
+        }
+
         $disposition = request('download') ? 'attachment' : 'inline';
-        
+        $fileName = $bill->original_name ?: basename($path);
+
         return response()->file($path, [
-            'Content-Type'        => $bill->mime_type ?? 'application/octet-stream',
-            'Content-Disposition' => $disposition . '; filename="' . $bill->original_name . '"',
+            'Content-Type'        => $mime,
+            'Content-Disposition' => $disposition . '; filename="' . addslashes($fileName) . '"',
         ]);
     }
 

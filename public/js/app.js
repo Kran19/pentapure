@@ -3302,8 +3302,9 @@ const app = {
     }
 
     const ft = String(fileType || '').toLowerCase();
-    const isExplicitImage = (ft.includes('image') || ft.includes('jpg') || ft.includes('jpeg') || ft.includes('png') || ft.includes('webp') || ft.includes('gif')) ||
-                            ['.jpg', '.jpeg', '.png', '.webp', '.gif'].some(ext => targetUrl.toLowerCase().endsWith(ext));
+    const isExplicitImage = (ft.includes('image') || ft.includes('img') || ft.includes('photo') || ft.includes('picture') ||
+                             ft.includes('jpg') || ft.includes('jpeg') || ft.includes('png') || ft.includes('webp') || ft.includes('gif') || ft.includes('svg') || ft.includes('avif')) ||
+                            ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg', '.bmp', '.avif'].some(ext => targetUrl.toLowerCase().split('?')[0].endsWith(ext));
 
     const loaderId = 'bill-loader-' + Math.floor(Math.random() * 10000);
     const loaderHtml = `
@@ -3313,13 +3314,26 @@ const app = {
       </div>
     `;
 
+    const downloadUrl = targetUrl + (targetUrl.includes('?') ? '&' : '?') + 'download=1';
+    const actionButtons = `
+      <div style="display:flex; justify-content:center; align-items:center; gap:12px; margin-top:14px; padding-top:10px; border-top:1px solid #30363d; flex-wrap:wrap;">
+        <a href="${downloadUrl}" download class="btn btn-sm" style="display:inline-flex; align-items:center; gap:6px; background:#2563eb; color:#ffffff; font-weight:600; padding:6px 14px; border-radius:6px; text-decoration:none; font-size:0.85rem;">
+          📥 Download File
+        </a>
+        <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="display:inline-flex; align-items:center; gap:6px; background:#374151; color:#f3f4f6; font-weight:600; padding:6px 14px; border-radius:6px; text-decoration:none; font-size:0.85rem;">
+          🔗 Open in New Tab
+        </a>
+      </div>
+    `;
+
     let htmlContent = '';
     if (isExplicitImage) {
       htmlContent = `
         <div style="position:relative; width:100%; max-height:550px; min-height:250px; display:flex; justify-content:center; align-items:center; overflow:auto; background:#161b22; border-radius:8px;">
           ${loaderHtml}
-          <img src="${targetUrl}" onload="const el=document.getElementById('${loaderId}'); if(el) el.style.display='none';" onerror="const el=document.getElementById('${loaderId}'); if(el) el.innerHTML='<div style=color:#ef4444;padding:20px;>Failed to load bill image</div>';" style="max-width:100%; max-height:500px; object-fit:contain; border-radius:8px; display:block; margin:0 auto;" alt="Bill Image" />
+          <img src="${targetUrl}" onload="const el=document.getElementById('${loaderId}'); if(el) el.style.display='none';" onerror="const el=document.getElementById('${loaderId}'); if(el) el.innerHTML='<div style=color:#ef4444;padding:25px;text-align:center;><div style=font-size:2rem;margin-bottom:8px;>⚠️</div>Failed to load bill image.<br><a href=\\'${targetUrl}\\' target=\\'_blank\\' style=\\'color:#38bdf8;margin-top:8px;display:inline-block;\\'>Try opening directly</a></div>';" style="max-width:100%; max-height:500px; object-fit:contain; border-radius:8px; display:block; margin:0 auto;" alt="Bill Image" />
         </div>
+        ${actionButtons}
       `;
     } else {
       htmlContent = `
@@ -3327,13 +3341,14 @@ const app = {
           ${loaderHtml}
           <iframe src="${targetUrl}" onload="const el=document.getElementById('${loaderId}'); if(el) el.style.display='none';" style="width:100%; height:550px; border:none; border-radius:8px;"></iframe>
         </div>
+        ${actionButtons}
       `;
     }
 
     Swal.fire({
       title: '📄 View Bill',
       html: htmlContent,
-      width: '700px',
+      width: '720px',
       showCloseButton: true,
       showConfirmButton: false,
       background: '#161b22',
