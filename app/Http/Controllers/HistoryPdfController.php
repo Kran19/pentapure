@@ -497,6 +497,16 @@ class HistoryPdfController extends Controller
             ? Carbon::parse($order->created_at)
             : ($order->date ? Carbon::parse($order->date) : now());
 
+        $latestDispatchLog = $order->dispatchLogs ? $order->dispatchLogs->sortByDesc('created_at')->first() : null;
+        $actualDispatchDate = null;
+        if ($latestDispatchLog && $latestDispatchLog->created_at) {
+            $actualDispatchDate = Carbon::parse($latestDispatchLog->created_at)->timezone('Asia/Kolkata')->format('d-m-Y');
+        } elseif ($latestDispatchLog && !empty($latestDispatchLog->date)) {
+            $actualDispatchDate = Carbon::parse($latestDispatchLog->date)->timezone('Asia/Kolkata')->format('d-m-Y');
+        } elseif (in_array($rawSt, ['DONE', 'FULLY-DISPATCHED', 'FULLY DISPATCHED', 'COMPLETED'], true) && $order->updated_at) {
+            $actualDispatchDate = Carbon::parse($order->updated_at)->timezone('Asia/Kolkata')->format('d-m-Y');
+        }
+
         $data = [
             'order' => $order,
             'company' => $order->company,
@@ -506,6 +516,7 @@ class HistoryPdfController extends Controller
             'orderNo' => 'ORD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT),
             'orderDate' => $orderCreatedAt->format('d-m-Y'),
             'dueDate' => $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d-m-Y') : null,
+            'dispatchDate' => $actualDispatchDate,
             'generatedOn' => now()->timezone('Asia/Kolkata')->format('d-m-Y h:i A'),
             'generatedBy' => $this->authUser()['name'] ?? 'System',
             'orderBy' => $order->creator?->name ?? 'N/A',
