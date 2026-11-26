@@ -422,18 +422,20 @@ html.dark-mode .info-preview-box .info-label {
 }
 
 .sales-data-table-container {
-  width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
   border: 1px solid var(--border-soft, #DDCFAF);
   border-radius: 8px;
   background: var(--card-bg, #ffffff);
 }
 
 .sales-data-table {
-  width: 100%;
-  min-width: 920px;
-  border-collapse: collapse;
+  width: 100% !important;
+  min-width: 1020px !important;
+  table-layout: fixed !important;
+  border-collapse: collapse !important;
   font-size: 0.86rem;
   text-align: left;
 }
@@ -444,14 +446,15 @@ html.dark-mode .info-preview-box .info-label {
 }
 
 .sales-data-table th {
-  padding: 12px 14px;
-  font-size: 0.74rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-muted, #78716c);
-  white-space: nowrap;
-  vertical-align: middle;
+  padding: 12px 14px !important;
+  font-size: 0.74rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  color: var(--text-muted, #78716c) !important;
+  white-space: nowrap !important;
+  vertical-align: middle !important;
+  box-sizing: border-box !important;
 }
 
 .sales-data-table tbody tr {
@@ -464,143 +467,209 @@ html.dark-mode .info-preview-box .info-label {
 }
 
 .sales-data-table td {
-  padding: 11px 14px;
-  vertical-align: middle;
+  padding: 11px 14px !important;
+  vertical-align: middle !important;
   color: var(--text-main, #1e293b);
-  box-sizing: border-box;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
 }
 
+/* Transporter table columns */
 .sales-data-table .col-idx {
-  width: 50px;
-  text-align: center;
+  width: 50px !important;
+  text-align: center !important;
   color: var(--text-muted, #94a3b8);
   font-weight: 600;
+  white-space: nowrap !important;
 }
 
-.sales-data-table .col-name {
-  width: 250px;
-  min-width: 200px;
+.sales-data-table .col-name,
+.sales-data-table .action-trans-name {
+  width: 250px !important;
   font-weight: 700;
   color: var(--text-main, #0f172a);
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  line-height: 1.35 !important;
 }
 
 .sales-data-table .col-gst {
-  width: 140px;
-  min-width: 130px;
+  width: 140px !important;
   font-family: monospace;
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--primary-light, #d97706);
-  white-space: nowrap;
+  white-space: nowrap !important;
 }
 
 .sales-data-table .col-contact {
-  width: 150px;
-  min-width: 140px;
+  width: 150px !important;
   font-weight: 600;
-  white-space: nowrap;
+  white-space: nowrap !important;
 }
 
 .sales-data-table .col-vehicles {
-  min-width: 180px;
-  max-width: 260px;
-  word-break: break-word;
-  overflow-wrap: break-word;
-  line-height: 1.4;
-  font-size: 0.84rem;
+  width: 240px !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  line-height: 1.4 !important;
+  font-size: 0.84rem !important;
 }
 
 .sales-data-table .col-action {
-  width: 170px;
-  min-width: 170px;
-  text-align: center;
-  white-space: nowrap;
+  width: 190px !important;
+  min-width: 190px !important;
+  max-width: 190px !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  vertical-align: middle !important;
+}
+
+/* Company table specific columns */
+.sales-data-table .col-comp-name,
+.sales-data-table .action-comp-name {
+  width: 230px !important;
+  font-weight: 700;
+  color: var(--text-main, #0f172a);
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  line-height: 1.35 !important;
+}
+
+.sales-data-table .col-comp-gst {
+  width: 140px !important;
+  font-family: monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--primary-light, #d97706);
+  white-space: nowrap !important;
+}
+
+.sales-data-table .col-comp-pin {
+  width: 90px !important;
+  font-weight: 600;
+  white-space: nowrap !important;
+}
+
+.sales-data-table .col-comp-contact {
+  width: 140px !important;
+  font-weight: 600;
+  white-space: nowrap !important;
+}
+
+.sales-data-table .col-comp-address {
+  width: 230px !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  color: var(--text-muted, #64748b);
+  line-height: 1.35 !important;
+}
+
+.sales-data-table .col-comp-action {
+  width: 190px !important;
+  min-width: 190px !important;
+  max-width: 190px !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  vertical-align: middle !important;
 }
 
 .sales-action-btn-group {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex-wrap: nowrap;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  white-space: nowrap !important;
+  vertical-align: middle !important;
 }
 
 .sales-btn-edit {
-  padding: 5px 12px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  background: #f59e0b;
+  padding: 5px 12px !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  background: #f59e0b !important;
   color: #000000 !important;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
-  transition: all 0.15s ease;
+  border: none !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.3px !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06) !important;
+  transition: all 0.15s ease !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
 }
 
 .sales-btn-edit:hover {
-  background: #d97706;
+  background: #d97706 !important;
   color: #ffffff !important;
-  transform: translateY(-1px);
+  transform: translateY(-1px) !important;
 }
 
 .sales-btn-delete {
-  padding: 5px 12px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  background: #ef4444;
+  padding: 5px 12px !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  background: #ef4444 !important;
   color: #ffffff !important;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
-  transition: all 0.15s ease;
+  border: none !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.3px !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06) !important;
+  transition: all 0.15s ease !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
 }
 
 .sales-btn-delete:hover {
-  background: #dc2626;
-  transform: translateY(-1px);
+  background: #dc2626 !important;
+  transform: translateY(-1px) !important;
 }
 
 .sales-btn-delete-disabled {
-  padding: 5px 12px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  background: rgba(0, 0, 0, 0.05);
+  padding: 5px 12px !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  background: rgba(0, 0, 0, 0.05) !important;
   color: #94a3b8 !important;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 6px;
-  cursor: not-allowed;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  opacity: 0.75;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  border-radius: 6px !important;
+  cursor: not-allowed !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.3px !important;
+  opacity: 0.75 !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
 }
 
 .sales-in-use-badge {
-  display: inline-block;
-  font-size: 0.65rem;
-  font-weight: 800;
-  background: rgba(216, 138, 0, 0.12);
-  color: var(--primary, #D88A00);
-  border: 1px solid rgba(216, 138, 0, 0.3);
-  border-radius: 4px;
-  padding: 1px 6px;
-  margin-left: 6px;
-  vertical-align: middle;
-  letter-spacing: 0.3px;
+  display: inline-block !important;
+  font-size: 0.65rem !important;
+  font-weight: 800 !important;
+  background: rgba(216, 138, 0, 0.12) !important;
+  color: var(--primary, #D88A00) !important;
+  border: 1px solid rgba(216, 138, 0, 0.3) !important;
+  border-radius: 4px !important;
+  padding: 1px 6px !important;
+  margin-left: 6px !important;
+  vertical-align: middle !important;
+  letter-spacing: 0.3px !important;
+  white-space: nowrap !important;
 }
 
 /* Dark mode overrides */
@@ -626,7 +695,7 @@ html.dark-mode .sales-data-table thead tr {
 }
 
 html.dark-mode .sales-data-table th {
-  color: #94a3b8;
+  color: #94a3b8 !important;
 }
 
 html.dark-mode .sales-data-table tbody tr {
@@ -638,16 +707,19 @@ html.dark-mode .sales-data-table tbody tr:hover {
 }
 
 html.dark-mode .sales-data-table td {
-  color: #f1f5f9;
+  color: #f1f5f9 !important;
 }
 
-html.dark-mode .sales-data-table .col-name {
-  color: #ffffff;
+html.dark-mode .sales-data-table .col-name,
+html.dark-mode .sales-data-table .action-trans-name,
+html.dark-mode .sales-data-table .col-comp-name,
+html.dark-mode .sales-data-table .action-comp-name {
+  color: #ffffff !important;
 }
 
 html.dark-mode .sales-btn-delete-disabled {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
   color: #64748b !important;
 }
 </style>
@@ -757,23 +829,23 @@ html.dark-mode .sales-btn-delete-disabled {
       <div class="sales-data-table-container">
         <table class="sales-data-table">
           <colgroup>
-            <col class="col-idx">
-            <col style="width:240px; min-width:180px;">
-            <col class="col-gst">
-            <col style="width:100px; min-width:90px;">
-            <col class="col-contact">
-            <col style="min-width:180px;">
-            <col class="col-action">
+            <col style="width: 50px;">
+            <col style="width: 230px;">
+            <col style="width: 140px;">
+            <col style="width: 90px;">
+            <col style="width: 140px;">
+            <col style="width: 230px;">
+            <col style="width: 190px;">
           </colgroup>
           <thead>
             <tr>
               <th class="col-idx">#</th>
-              <th>Company Name</th>
-              <th>GST No.</th>
-              <th>Pincode</th>
-              <th>Contact</th>
-              <th>Address</th>
-              <th class="col-action">Action</th>
+              <th class="col-comp-name">Company Name</th>
+              <th class="col-comp-gst">GST No.</th>
+              <th class="col-comp-pin">Pincode</th>
+              <th class="col-comp-contact">Contact</th>
+              <th class="col-comp-address">Address</th>
+              <th class="col-comp-action">Action</th>
             </tr>
           </thead>
           <tbody id="action-companies-tbody">
@@ -783,17 +855,17 @@ html.dark-mode .sales-btn-delete-disabled {
               @endphp
               <tr>
                 <td class="col-idx">{{ $idx + 1 }}</td>
-                <td class="action-comp-name" style="font-weight:700; color:var(--text-main);">
+                <td class="col-comp-name action-comp-name">
                   {{ $comp['name'] }}
                   @if($isCompUsed)
                     <span class="sales-in-use-badge" title="Linked to existing orders or dispatches">IN USE</span>
                   @endif
                 </td>
-                <td class="col-gst">{{ $comp['gst'] ?: 'N/A' }}</td>
-                <td style="white-space:nowrap; font-weight:600;">{{ $comp['pincode'] ?: '—' }}</td>
-                <td class="col-contact">{{ $comp['contact'] ?: '—' }}</td>
-                <td style="max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-muted, #64748b);" title="{{ $comp['address'] }}">{{ $comp['address'] ?: '—' }}</td>
-                <td class="col-action">
+                <td class="col-comp-gst">{{ $comp['gst'] ?: 'N/A' }}</td>
+                <td class="col-comp-pin">{{ $comp['pincode'] ?: '—' }}</td>
+                <td class="col-comp-contact">{{ $comp['contact'] ?: '—' }}</td>
+                <td class="col-comp-address" title="{{ $comp['address'] }}">{{ $comp['address'] ?: '—' }}</td>
+                <td class="col-comp-action">
                   @if(empty($isReadOnly))
                   <div class="sales-action-btn-group">
                     <button type="button" class="sales-btn-edit" onclick="openCompanyModal({{ json_encode($comp) }})" title="Edit company details">
@@ -847,12 +919,12 @@ html.dark-mode .sales-btn-delete-disabled {
       <div class="sales-data-table-container">
         <table class="sales-data-table">
           <colgroup>
-            <col class="col-idx">
-            <col class="col-name">
-            <col class="col-gst">
-            <col class="col-contact">
-            <col class="col-vehicles">
-            <col class="col-action">
+            <col style="width: 50px;">
+            <col style="width: 250px;">
+            <col style="width: 140px;">
+            <col style="width: 150px;">
+            <col style="width: 240px;">
+            <col style="width: 190px;">
           </colgroup>
           <thead>
             <tr>
