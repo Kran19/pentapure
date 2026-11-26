@@ -1403,6 +1403,27 @@ const app = {
     const price = prefillData ? prefillData.price : '';
     const itemId = prefillData ? prefillData.id : '';
 
+    const dispatchedQty = prefillData ? (parseFloat(prefillData.dispatched_qty) || 0) : 0;
+    const numQty = prefillData ? (parseFloat(prefillData.quantity) || 0) : 0;
+
+    const editOrder = (window.serverPageData && window.serverPageData.editOrder) || null;
+    const rawDispStatus = editOrder ? String(editOrder.dispatch_status || '').toUpperCase().replace(/_/g, ' ') : '';
+    const isOrderFullyDispatched = ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'CLOSED'].includes(rawDispStatus);
+    const isOrderPartial = ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL PENDING'].includes(rawDispStatus)
+                           || (editOrder && (editOrder.items || []).some(it => (parseFloat(it.dispatched_qty) || 0) > 0));
+
+    // Item-level dispatch status
+    const isItemFullyDispatched = isOrderFullyDispatched || (dispatchedQty >= numQty && numQty > 0.0001);
+    const isItemPartiallyDispatched = !isItemFullyDispatched && (dispatchedQty > 0.0001 || (isOrderPartial && Boolean(itemId)));
+    const isDispatched = dispatchedQty > 0.0001 || isItemFullyDispatched || isItemPartiallyDispatched;
+
+    // Rules:
+    // 1. On edit if partial: do NOT show close or remove product; just product quantity edit
+    // 2. If fully dispatched: do NOT edit quantity
+    const canRemoveProduct = !isOrderPartial && !isItemPartiallyDispatched && !isItemFullyDispatched && !isDispatched && !Boolean(itemId && editOrder);
+    const canEditQuantity = !isItemFullyDispatched;
+    const isProductLocked = isItemPartiallyDispatched || isItemFullyDispatched || isDispatched || (isOrderPartial && Boolean(itemId));
+
     let rowType = 'ALL';
     if (selectedProdId) {
       const allProds = (window.serverPageData && window.serverPageData.products) || [];
@@ -1415,12 +1436,44 @@ const app = {
       }
     }
 
+    let statusPillHtml = '';
+    if (isItemFullyDispatched) {
+      statusPillHtml = `
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <span style="background:rgba(22,163,74,0.12); color:#16a34a; border:1px solid rgba(22,163,74,0.3); font-size:0.75rem; font-weight:700; padding:3px 10px; border-radius:6px; letter-spacing:0.3px; display:inline-flex; align-items:center; gap:5px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            FULLY DISPATCHED (${dispatchedQty} kg) — QUANTITY LOCKED
+          </span>
+        </div>`;
+    } else if (isItemPartiallyDispatched || isDispatched) {
+      statusPillHtml = `
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <span style="background:rgba(245,158,11,0.12); color:#d97706; border:1px solid rgba(245,158,11,0.3); font-size:0.75rem; font-weight:700; padding:3px 10px; border-radius:6px; letter-spacing:0.3px; display:inline-flex; align-items:center; gap:5px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            PARTIAL DISPATCH (${dispatchedQty} kg Dispatched — Edit Quantity: Min ${dispatchedQty} kg)
+          </span>
+        </div>`;
+    }
+
+    const lockedStyle = isProductLocked ? 'pointer-events:none; opacity:0.85; background:var(--input-disabled-bg, rgba(0,0,0,0.04));' : '';
+    const qtyInputHtml = !canEditQuantity
+      ? `<input type="number" class="o-prod-qty no-spinners" value="${qty}" readonly tabindex="-1" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:rgba(0,0,0,0.06); color:var(--text-muted, #64748b); font-size:0.9rem; cursor:not-allowed; font-weight:700;" title="Fully dispatched (${dispatchedQty} kg) - quantity cannot be modified">`
+      : `<input type="number" class="o-prod-qty no-spinners" value="${qty}" step="any" min="${dispatchedQty > 0 ? dispatchedQty : 0.001}" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem; font-weight:600;" title="${dispatchedQty > 0 ? 'Partially dispatched: ' + dispatchedQty + ' kg. Minimum allowed: ' + dispatchedQty + ' kg' : ''}">`;
+
+    const removeBtnHtml = canRemoveProduct
+      ? `<button type="button" class="btn btn-danger btn-remove-prod" onclick="app.removeOrderProductRow(this)" title="Remove Product" style="flex:0 0 42px; width:42px; height:42px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:8px; background:#e11d48; color:#fff; border:none; cursor:pointer;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>`
+      : ``;
+
     div.innerHTML = `
       ${itemId ? `<input type="hidden" class="o-item-id" value="${itemId}">` : ''}
+      ${isProductLocked ? `<input type="hidden" class="o-hidden-prod-id" value="${selectedProdId}"><input type="hidden" class="o-hidden-grade" value="${selectedGrade}">` : ''}
+      ${statusPillHtml}
       <div style="display:flex; gap:10px; width:100%; flex-wrap:wrap;">
         <div style="flex:1; min-width:160px; max-width:220px;">
           <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">ORDER TYPE</label>
-          <select class="o-prod-type" onchange="app.onRowTypeChange(this)" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.85rem; font-weight:600;">
+          <select class="o-prod-type" onchange="app.onRowTypeChange(this)" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.85rem; font-weight:600; ${lockedStyle}" ${isProductLocked ? 'tabindex="-1"' : ''}>
             <option value="ALL" ${rowType === 'ALL' ? 'selected' : ''}>ALL PRODUCTS</option>
             <option value="FINISHED" ${rowType === 'FINISHED' ? 'selected' : ''}>FG SALES</option>
             <option value="SEMI" ${rowType === 'SEMI' ? 'selected' : ''}>SEMI-FINISHED SALES</option>
@@ -1430,28 +1483,26 @@ const app = {
         </div>
         <div style="flex:2; min-width:200px;">
           <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">SELECT PRODUCT</label>
-          <select class="o-prod-id" onchange="app.onOrderProductChange(this)" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem; font-weight:500;">
+          <select class="o-prod-id" onchange="app.onOrderProductChange(this)" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem; font-weight:500; ${lockedStyle}" ${isProductLocked ? 'tabindex="-1"' : ''}>
           </select>
         </div>
       </div>
       <div class="order-product-inputs" style="display:flex; gap:10px; width:100%; align-items:flex-end;">
         <div style="flex:1.2; min-width:110px;">
           <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">GRADE</label>
-          <select class="o-prod-grade" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem;">
+          <select class="o-prod-grade" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem; ${lockedStyle}" ${isProductLocked ? 'tabindex="-1"' : ''}>
             <option value="NA" selected>NA</option>
           </select>
         </div>
         <div style="flex:1; min-width:80px;">
-          <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">QTY</label>
-          <input type="number" class="o-prod-qty no-spinners" value="${qty}" step="any" min="0.001" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem;">
+          <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">QTY ${!canEditQuantity ? '<span style="color:#16a34a; font-size:0.68rem;">(LOCKED)</span>' : ''}</label>
+          ${qtyInputHtml}
         </div>
         <div style="flex:1; min-width:80px;">
           <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">₹/UNIT</label>
-          <input type="number" class="o-prod-price no-spinners" value="${price}" step="any" min="0" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem;">
+          <input type="number" class="o-prod-price no-spinners" value="${price}" step="any" min="0" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem;" ${isProductLocked ? 'readonly tabindex="-1"' : ''}>
         </div>
-        <button type="button" class="btn btn-danger btn-remove-prod" onclick="app.removeOrderProductRow(this)" title="Remove Product" style="flex:0 0 42px; width:42px; height:42px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:8px; background:#e11d48; color:#fff; border:none; cursor:pointer;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-        </button>
+        ${removeBtnHtml}
       </div>
     `;
 
@@ -1461,6 +1512,11 @@ const app = {
     const selEl = div.querySelector('.o-prod-id');
     this.populateProductSelect(selEl, selectedProdId, rowType);
     this.initOrderProductSelect2(selEl);
+    if (isProductLocked && selEl && window.jQuery) {
+      try {
+        jQuery(selEl).next('.select2-container').css({ 'pointer-events': 'none', 'opacity': '0.85' });
+      } catch (e) {}
+    }
     if (selectedProdId) {
       this.onOrderProductChange(selEl, selectedGrade);
     } else {
@@ -1801,8 +1857,8 @@ const app = {
 
     const items = [];
     document.querySelectorAll('#order-products .dynamic-row').forEach(row => {
-      const prodId   = row.querySelector('.o-prod-id')?.value;
-      const grade    = row.querySelector('.o-prod-grade')?.value || 'NONE';
+      const prodId   = row.querySelector('.o-prod-id')?.value || row.querySelector('.o-hidden-prod-id')?.value;
+      const grade    = row.querySelector('.o-prod-grade')?.value || row.querySelector('.o-hidden-grade')?.value || 'NONE';
       const qty      = Number(row.querySelector('.o-prod-qty')?.value);
       const price    = Number(row.querySelector('.o-prod-price')?.value);
       const itemIdEl = row.querySelector('.o-item-id');

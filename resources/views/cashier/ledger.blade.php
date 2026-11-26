@@ -162,7 +162,7 @@
         🗑️ Clear All Ledger Data
       </button>
     @endif
-    <button id="header-export-pdf-btn" class="btn btn-sm" style="width:auto; padding:0.5rem 1.1rem; display:flex; align-items:center; gap:0.4rem; font-weight:600;" onclick="app.downloadCashierPdf()">
+    <button id="header-export-pdf-btn" class="btn btn-sm" style="width:auto; padding:0.5rem 1.1rem; display:flex; align-items:center; gap:0.4rem; font-weight:600;" onclick="const q = (document.getElementById('ledger-search-input')?.value || '').trim(); if (q) { exportSearchPdfDirect(); } else { app.downloadCashierPdf(); }">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       <span class="export-pdf-label">Export PDF</span>
     </button>
@@ -842,7 +842,59 @@
   }
 
   function exportSearchPdfDirect() {
-    app.downloadCashierPdf();
+    const q = (document.getElementById('ledger-search-input')?.value || '').trim();
+    if (!q) {
+      if (typeof app?.downloadCashierPdf === 'function') {
+        app.downloadCashierPdf();
+      }
+      return;
+    }
+
+    const tabVal = document.getElementById('ledger-tab-select')?.value || 'personal';
+    const memberSelect = document.getElementById('team-member-select');
+    const selectedMember = memberSelect ? memberSelect.value : 'all';
+    const rangeVal = document.getElementById('ledger-range-select')?.value || 'all';
+    const specificDate = document.getElementById('ledger-specific-date')?.value || '';
+    const startDate = document.getElementById('ledger-start-date')?.value || '';
+    const endDate = document.getElementById('ledger-end-date')?.value || '';
+
+    // Collect matching transaction IDs currently filtered on screen
+    let txIds = '';
+    if (typeof filtered !== 'undefined' && Array.isArray(filtered) && filtered.length > 0) {
+      txIds = filtered.map(t => t.id).filter(Boolean).join(',');
+    }
+
+    const params = new URLSearchParams();
+    params.set('q', q);
+    params.set('tab', tabVal);
+    if (tabVal === 'team' && selectedMember && selectedMember !== 'all') {
+      params.set('cashier_id', selectedMember);
+      params.set('team_member', selectedMember);
+    }
+    if (specificDate) params.set('specific_date', specificDate);
+    if (rangeVal && rangeVal !== 'all') params.set('range', rangeVal);
+    if (rangeVal === 'custom') {
+      if (startDate) params.set('from', startDate);
+      if (endDate) params.set('to', endDate);
+    }
+    // Only search results table, no heavy bill attachment pages
+    params.set('include_bills', 'no');
+    if (txIds) params.set('tx_ids', txIds);
+
+    const baseUrl = (typeof app?.getBaseUrl === 'function') ? app.getBaseUrl() : window.location.origin;
+    const slug = (typeof app?.getCurrentSlug === 'function') ? app.getCurrentSlug('cashier') : 'cashier';
+    const exportUrl = `${baseUrl}/${slug}/history/pdf?${params.toString()}`;
+
+    const btn = document.getElementById('btn-export-search-pdf') || document.getElementById('header-export-pdf-btn');
+    if (typeof app?.toast === 'function') {
+      app.toast(`Downloading searched results for "${q}"... ⏳`, 'info');
+    }
+
+    if (typeof window.downloadPdfAsync === 'function') {
+      window.downloadPdfAsync(exportUrl, {}, btn);
+    } else {
+      window.location.href = exportUrl;
+    }
   }
 
   function changeLedgerPage(newPage) {

@@ -818,7 +818,12 @@ class CashierController extends Controller
         }
 
         // Search Filter (Search Details, Note, Description, Reference, Amount, Date, Cashier Name)
-        if ($request->filled('q')) {
+        if ($request->filled('tx_ids')) {
+            $txIds = array_values(array_filter(array_map('intval', explode(',', (string)$request->tx_ids))));
+            if (!empty($txIds)) {
+                $query->whereIn('id', $txIds);
+            }
+        } elseif ($request->filled('q')) {
             $searchTerm = trim((string) $request->q);
             $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
             $query->where(function($sq) use ($searchTerm, $isSqlite) {
@@ -881,6 +886,43 @@ class CashierController extends Controller
         }
 
         // Build transaction rows with running balance and process bills
+        $balanceMap = [];
+        $isSearchExport = ($request->filled('q') || $request->filled('tx_ids'));
+
+        if ($isSearchExport) {
+            // Compute true running balance for each transaction so search results display their actual balance
+            $chronQuery = ($teamUserIds !== null && is_array($teamUserIds))
+                ? Transaction::whereIn('user_id', $teamUserIds)
+                : Transaction::where(function($q) use ($userId, $userBranch) {
+                    if (!empty($userBranch)) {
+                        $q->where('site', $userBranch)
+                          ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($userBranch))])
+                          ->orWhere('user_id', $userId);
+                    } else {
+                        $q->where('user_id', $userId);
+                    }
+                });
+            if ($selectedSite && $selectedSite !== 'all') {
+                $chronQuery->where(function($q) use ($selectedSite) {
+                    $q->where('site', $selectedSite)
+                      ->orWhereRaw('LOWER(site) = ?', [strtolower(trim($selectedSite))]);
+                });
+            }
+            $allChron = $chronQuery->orderByRaw('COALESCE(date, created_at) ASC')
+                                   ->orderBy('id', 'asc')
+                                   ->select(['id', 'type', 'amount'])
+                                   ->get();
+            $accum = 0.0;
+            foreach ($allChron as $ac) {
+                if ($ac->type === 'IN') {
+                    $accum += (float)$ac->amount;
+                } else {
+                    $accum -= (float)$ac->amount;
+                }
+                $balanceMap[$ac->id] = $accum;
+            }
+        }
+
         $runningBalance = $openingBalance;
         $rows = [];
         $billPages = [];
@@ -893,6 +935,7 @@ class CashierController extends Controller
             } else {
                 $runningBalance -= $tx->amount;
             }
+            $rowClosingBal = $isSearchExport && isset($balanceMap[$tx->id]) ? $balanceMap[$tx->id] : $runningBalance;
 
             $txDateObj = !empty($tx->date)
                 ? ($tx->date instanceof \DateTimeInterface ? $tx->date : \Carbon\Carbon::parse($tx->date))
@@ -940,7 +983,7 @@ class CashierController extends Controller
                 'type'        => $tx->type,
                 'amount'      => (float) $tx->amount,
                 'opening_bal' => $openBal,
-                'closing_bal' => $runningBalance,
+                'closing_bal' => $rowClosingBal,
                 'bills'       => $txBillsData,
             ];
         }

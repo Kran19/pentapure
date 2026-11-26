@@ -173,10 +173,17 @@ table, th, td, div, span, p, a, strong, small {
     <tr>
         <td colspan="2">SITE: {{ strtoupper($site) }}</td>
     </tr>
+    @if(!empty($searchQuery))
     <tr>
-        <td style="color: #15803d; font-weight: bold;">OPENING BALANCE: {{ number_format($openingBalance, 2) }}</td>
-        <td style="color: #b91c1c; font-weight: bold;">CLOSING BALANCE: {{ number_format($closingBalance, 2) }}</td>
+        <td style="color: #15803d; font-weight: bold;">TOTAL IN: +₹{{ number_format($sumIn, 2) }}</td>
+        <td style="color: #b91c1c; font-weight: bold;">TOTAL OUT: -₹{{ number_format($sumOut, 2) }}</td>
     </tr>
+    @else
+    <tr>
+        <td style="color: #15803d; font-weight: bold;">OPENING BALANCE: ₹{{ number_format($openingBalance, 2) }}</td>
+        <td style="color: #b91c1c; font-weight: bold;">CLOSING BALANCE: ₹{{ number_format($closingBalance, 2) }}</td>
+    </tr>
+    @endif
 </table>
 
 <div class="content">
@@ -243,21 +250,39 @@ table, th, td, div, span, p, a, strong, small {
         </tbody>
     </table>
 
+    @if(!empty($searchQuery))
     <table class="balance-table">
         <tr>
             <td style="width: 55%; font-size: 8.5px; color: #555;">
-                OPENING BALANCE: <strong>{{ number_format($openingBalance, 2) }}</strong>
-                &nbsp;+&nbsp; INCOME: <strong style="color:#15803d;">{{ number_format($sumIn, 2) }}</strong>
-                &nbsp;−&nbsp; EXPENSE: <strong style="color:#b91c1c;">{{ number_format($sumOut, 2) }}</strong>
+                SEARCHED RECORDS: <strong>{{ $totalRecords }}</strong>
+                &nbsp;|&nbsp; TOTAL IN: <strong style="color:#15803d;">+₹{{ number_format($sumIn, 2) }}</strong>
+                &nbsp;|&nbsp; TOTAL OUT: <strong style="color:#b91c1c;">-₹{{ number_format($sumOut, 2) }}</strong>
             </td>
-            <td style="width: 45%;" class="bal-right {{ $closingBalance >= 0 ? 'positive' : 'negative' }}">
-                <div class="bal-label">CLOSING BALANCE</div>
-                <div class="bal-amount {{ $closingBalance >= 0 ? 'color-green' : 'color-red' }}">
-                    {{ number_format(abs($closingBalance), 2) }}
+            <td style="width: 45%;" class="bal-right {{ ($sumIn - $sumOut) >= 0 ? 'positive' : 'negative' }}">
+                <div class="bal-label">NET SEARCH TOTAL</div>
+                <div class="bal-amount {{ ($sumIn - $sumOut) >= 0 ? 'color-green' : 'color-red' }}">
+                    {{ ($sumIn - $sumOut) < 0 ? '-' : '+' }}₹{{ number_format(abs($sumIn - $sumOut), 2) }}
                 </div>
             </td>
         </tr>
     </table>
+    @else
+    <table class="balance-table">
+        <tr>
+            <td style="width: 55%; font-size: 8.5px; color: #555;">
+                OPENING BALANCE: <strong>₹{{ number_format($openingBalance, 2) }}</strong>
+                &nbsp;+&nbsp; INCOME: <strong style="color:#15803d;">₹{{ number_format($sumIn, 2) }}</strong>
+                &nbsp;−&nbsp; EXPENSE: <strong style="color:#b91c1c;">₹{{ number_format($sumOut, 2) }}</strong>
+            </td>
+            <td style="width: 45%;" class="bal-right {{ $closingBalance >= 0 ? 'positive' : 'negative' }}">
+                <div class="bal-label">CLOSING BALANCE</div>
+                <div class="bal-amount {{ $closingBalance >= 0 ? 'color-green' : 'color-red' }}">
+                    ₹{{ number_format(abs($closingBalance), 2) }}
+                </div>
+            </td>
+        </tr>
+    </table>
+    @endif
 
     <table class="footer-table">
         <tr>

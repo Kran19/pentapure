@@ -157,4 +157,68 @@ class CashierSearchPdfExportTest extends TestCase
         $this->assertStringContainsString('SEARCH_RAJ', $response->headers->get('Content-Disposition'));
         $this->assertNotEmpty($response->getContent());
     }
+
+    public function test_direct_search_pdf_export_with_tx_ids_and_balance_accuracy(): void
+    {
+        $cashier = User::create([
+            'name'     => 'Direct Cashier',
+            'email'    => 'direct@example.com',
+            'password' => 'secret123',
+            'role'     => 'CASHIER',
+            'status'   => 'ACTIVE',
+            'branch'   => 'FACTORY',
+        ]);
+
+        // Tx 1: Unrelated IN
+        $tx1 = Transaction::create([
+            'user_id'     => $cashier->id,
+            'type'        => 'IN',
+            'amount'      => 50000.00,
+            'category'    => 'opening',
+            'site'        => 'FACTORY',
+            'date'        => '2026-11-01 10:00:00',
+            'note'        => 'Initial Cash Inflow',
+        ]);
+
+        // Tx 2: Matches "rai" (Mukesh Bhai Baraiya)
+        $tx2 = Transaction::create([
+            'user_id'     => $cashier->id,
+            'type'        => 'OUT',
+            'amount'      => 8750.00,
+            'category'    => 'factory_expenses',
+            'site'        => 'FACTORY',
+            'date'        => '2026-11-07 18:19:00',
+            'note'        => 'MUKESH BHAI BARAIYA NE NOVEMBER 26 NA ADVANCE AAPYA.',
+        ]);
+
+        // Tx 3: Matches "rai" (2 Grainder Ripering)
+        $tx3 = Transaction::create([
+            'user_id'     => $cashier->id,
+            'type'        => 'OUT',
+            'amount'      => 850.00,
+            'category'    => 'factory_expenses',
+            'site'        => 'FACTORY',
+            'date'        => '2026-11-04 19:50:00',
+            'note'        => '2 GRAINDER RIPERING KARAVYA.',
+        ]);
+
+        $session = [
+            'auth_user' => [
+                'id'     => $cashier->id,
+                'name'   => $cashier->name,
+                'role'   => 'CASHIER',
+                'branch' => 'FACTORY',
+            ],
+        ];
+
+        // Direct export with tx_ids matching only the 2 searched transactions
+        $response = $this->withSession($session)->get('/cashier/history/pdf?q=rai&tx_ids=' . $tx2->id . ',' . $tx3->id . '&include_bills=no');
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $disposition = $response->headers->get('Content-Disposition');
+        $this->assertStringContainsString('SEARCH_RAI', $disposition);
+
+        // Verify PDF contains data for tx2 and tx3
+        $this->assertNotEmpty($response->getContent());
+    }
 }

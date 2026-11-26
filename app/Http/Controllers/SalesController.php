@@ -299,6 +299,9 @@ class SalesController extends Controller
         if ($request->edit) {
             $editOrder = Order::with('items.product.grades')->find($request->edit);
             if ($editOrder) {
+                foreach ($editOrder->items as $item) {
+                    $item->syncDispatchedQty();
+                }
                 $existingProdIds = $products->pluck('id')->toArray();
                 foreach ($editOrder->items as $item) {
                     if ($item->product && !in_array($item->product->id, $existingProdIds)) {
@@ -830,11 +833,32 @@ class SalesController extends Controller
         })->toArray();
         $request->merge(['items' => $items]);
 
-        $order = Order::findOrFail($id);
+        $order = Order::with('items')->findOrFail($id);
+
+        $rawDispStatus = strtoupper(trim(str_replace('_', ' ', (string)($order->dispatch_status ?? 'PENDING'))));
+        $isOrderFullyDispatched = in_array($rawDispStatus, ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'CLOSED'], true)
+            || $order->status === 'CLOSED';
+        $isOrderPartial = in_array($rawDispStatus, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL PENDING'], true)
+            || ($order->items->sum('dispatched_qty') > 0 && !$isOrderFullyDispatched);
 
         // Allow editing unless the order is fully dispatched or closed
-        if ($order->status === 'CLOSED' || $order->dispatch_status === 'DONE') {
+        if ($isOrderFullyDispatched) {
             return response()->json(['success' => false, 'message' => 'Fully dispatched or closed orders cannot be edited.'], 422);
+        }
+
+        // If order is partial, disallow removing existing products
+        if ($isOrderPartial) {
+            $existingItemIds = $order->items->pluck('id')->all();
+            $submittedItemIds = collect($request->items)->pluck('id')->filter()->map('intval')->all();
+            foreach ($order->items as $existingItem) {
+                if (!in_array((int)$existingItem->id, $submittedItemIds, true)) {
+                    $prodName = $existingItem->product ? $existingItem->product->formatName($existingItem->grade) : 'Product';
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Cannot remove '{$prodName}'. In a partially dispatched order, products cannot be removed; only quantity can be edited."
+                    ], 422);
+                }
+            }
         }
 
         // Allow NA / empty transporter
@@ -878,17 +902,48 @@ class SalesController extends Controller
             }
         }
 
-        // Validate that quantities don't go below dispatched amounts
+        // Validate that quantities don't go below dispatched amounts and fully dispatched items are not modified
         foreach ($request->items as $item) {
             if (!empty($item['id'])) {
                 $orderItem = OrderItem::find($item['id']);
-                if ($orderItem && $item['quantity'] < $orderItem->dispatched_qty) {
-                    $product = $orderItem->product;
-                    $productName = $product ? $product->formatName($item['grade']) : 'Unknown';
-                    return response()->json([
-                        'success' => false,
-                        'message' => "Cannot reduce {$productName} quantity to {$item['quantity']} kg. Already dispatched: {$orderItem->dispatched_qty} kg. Minimum allowed: {$orderItem->dispatched_qty} kg."
-                    ], 422);
+                if ($orderItem) {
+                    $orderItem->syncDispatchedQty();
+                    $dispQty = (float) $orderItem->dispatched_qty;
+                    $newQty  = (float) $item['quantity'];
+                    $origQty = (float) $orderItem->quantity;
+                    $isItemFullyDispatched = ($dispQty >= $origQty && $origQty > 0.001);
+
+                    // Fully dispatched item: quantity cannot be edited
+                    if ($isItemFullyDispatched && abs($newQty - $origQty) > 0.001) {
+                        $product = $orderItem->product;
+                        $productName = $product ? $product->formatName($orderItem->grade) : 'Product';
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Cannot edit quantity for '{$productName}'. This product is already fully dispatched ({$dispQty} kg)."
+                        ], 422);
+                    }
+
+                    // Partially dispatched item: cannot reduce quantity below dispatched amount
+                    if ($dispQty > 0 && $newQty < $dispQty) {
+                        $product = $orderItem->product;
+                        $productName = $product ? $product->formatName($item['grade']) : 'Unknown';
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Cannot reduce {$productName} quantity to {$newQty} kg. Already dispatched: {$dispQty} kg. Minimum allowed: {$dispQty} kg."
+                        ], 422);
+                    }
+
+                    // Partially or fully dispatched item: cannot change product_id or grade
+                    if ($dispQty > 0) {
+                        if ((int)$item['product_id'] !== (int)$orderItem->product_id || strtoupper(trim((string)$item['grade'])) !== strtoupper(trim((string)$orderItem->grade))) {
+                            $product = $orderItem->product;
+                            $productName = $product ? $product->formatName($orderItem->grade) : 'Product';
+                            return response()->json([
+                                'success' => false,
+                                'message' => "Cannot change product or grade for '{$productName}' because it has already been dispatched ({$dispQty} kg). Just product quantity can be edited."
+                            ], 422);
+                        }
+                    }
                 }
             }
         }

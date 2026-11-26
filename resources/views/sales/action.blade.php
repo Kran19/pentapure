@@ -800,9 +800,35 @@ html.dark-mode .sales-btn-delete-disabled {
 
       <!-- Product Items -->
       <div style="margin-top:1.5rem;">
+        @if(!empty($pageData['editOrder']))
+          @php
+            $rawEditStatus = strtoupper(str_replace('_', ' ', (string)($pageData['editOrder']->dispatch_status ?? 'PENDING')));
+            $isEditOrderFullyDispatched = in_array($rawEditStatus, ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'CLOSED'], true);
+            $isEditOrderPartial = in_array($rawEditStatus, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL PENDING'], true)
+                || ($pageData['editOrder']->items->sum('dispatched_qty') > 0 && !$isEditOrderFullyDispatched);
+          @endphp
+          @if($isEditOrderPartial)
+            <div style="background:rgba(245,158,11,0.12); border:1.5px solid #f59e0b; border-radius:10px; padding:12px 16px; margin-bottom:1rem; display:flex; align-items:center; gap:12px;">
+              <span style="font-size:1.4rem;">⏳</span>
+              <div style="font-size:0.88rem; color:var(--text-main, #333); line-height:1.4;">
+                <strong style="color:#d97706; text-transform:uppercase; font-size:0.92rem;">Order #{{ $pageData['editOrder']->id }} is Partially Dispatched</strong><br>
+                Products cannot be removed. You can only edit the product quantity (minimum allowed: already dispatched quantity).
+              </div>
+            </div>
+          @elseif($isEditOrderFullyDispatched)
+            <div style="background:rgba(22,163,74,0.12); border:1.5px solid #16a34a; border-radius:10px; padding:12px 16px; margin-bottom:1rem; display:flex; align-items:center; gap:12px;">
+              <span style="font-size:1.4rem;">✓</span>
+              <div style="font-size:0.88rem; color:var(--text-main, #333); line-height:1.4;">
+                <strong style="color:#16a34a; text-transform:uppercase; font-size:0.92rem;">Order #{{ $pageData['editOrder']->id }} is Fully Dispatched</strong><br>
+                All products in this order have been completely dispatched. Quantities cannot be modified.
+              </div>
+            </div>
+          @endif
+        @endif
+
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:8px;">
           <h4 style="margin:0;">Products / Goods</h4>
-          @if(empty($isReadOnly))
+          @if(empty($isReadOnly) && (empty($pageData['editOrder']) || empty($isEditOrderFullyDispatched)))
           <button type="button" class="btn btn-sm" onclick="app.addOrderProductRow()" style="width:auto; padding:0.4rem 0.8rem; font-weight:bold;">+ Add Product</button>
           @endif
         </div>
