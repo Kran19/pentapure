@@ -61,18 +61,26 @@ class SalesController extends Controller
         }
     }
 
+    public static function isDispatchNoteVehicle(?string $vehicles): bool
+    {
+        if (empty($vehicles)) {
+            return false;
+        }
+        $upper = strtoupper(trim($vehicles));
+        return str_contains($upper, 'ACTUAL DISPATCH') 
+            || str_contains($upper, 'DUE TO') 
+            || str_contains($upper, 'APP.PROBLEM')
+            || str_contains($upper, 'PROBLEM');
+    }
+
     public static function cleanContaminatedTransporterVehicles(): void
     {
         try {
-            static $alreadyCleaned = false;
-            if (!$alreadyCleaned) {
-                $alreadyCleaned = true;
-                Transporter::where('vehicles', 'LIKE', '%ACTUAL DISPATCH%')
-                    ->orWhere('vehicles', 'LIKE', '%DUE TO%')
-                    ->orWhere('vehicles', 'LIKE', '%APP.PROBLEM%')
-                    ->orWhere('vehicles', 'LIKE', '%PROBLEM%')
-                    ->update(['vehicles' => null]);
-            }
+            Transporter::where('vehicles', 'LIKE', '%ACTUAL DISPATCH%')
+                ->orWhere('vehicles', 'LIKE', '%DUE TO%')
+                ->orWhere('vehicles', 'LIKE', '%APP.PROBLEM%')
+                ->orWhere('vehicles', 'LIKE', '%PROBLEM%')
+                ->update(['vehicles' => null]);
         } catch (\Throwable $e) {}
     }
 
@@ -81,17 +89,24 @@ class SalesController extends Controller
         self::ensureVehicleNoColumnExists();
         self::cleanContaminatedTransporterVehicles();
 
-        return Transporter::withCount(['orders', 'dispatchLogs'])->orderByDesc('id')->get()->map(fn($t)=>[
-            'id'                  => $t->id,
-            'name'                => strtoupper($t->name ?? ''),
-            'gst'                 => $t->gst,
-            'contact'             => $t->contact ?: '—',
-            'vehicles'            => $t->vehicles ?: '—',
-            'date'                => $t->created_at ? $t->created_at->toISOString() : now()->toISOString(),
-            'orders_count'        => (int) $t->orders_count,
-            'dispatch_logs_count' => (int) $t->dispatch_logs_count,
-            'is_used'             => (($t->orders_count + $t->dispatch_logs_count) > 0),
-        ]);
+        return Transporter::withCount(['orders', 'dispatchLogs'])->orderByDesc('id')->get()->map(function ($t) {
+            $vehicles = $t->vehicles;
+            if ($vehicles && self::isDispatchNoteVehicle($vehicles)) {
+                $vehicles = null;
+            }
+
+            return [
+                'id'                  => $t->id,
+                'name'                => strtoupper($t->name ?? ''),
+                'gst'                 => $t->gst,
+                'contact'             => $t->contact ?: '—',
+                'vehicles'            => $vehicles ?: '—',
+                'date'                => $t->created_at ? $t->created_at->toISOString() : now()->toISOString(),
+                'orders_count'        => (int) $t->orders_count,
+                'dispatch_logs_count' => (int) $t->dispatch_logs_count,
+                'is_used'             => (($t->orders_count + $t->dispatch_logs_count) > 0),
+            ];
+        });
     }
 
     private function resolveTransporterId($transporterId): ?int
