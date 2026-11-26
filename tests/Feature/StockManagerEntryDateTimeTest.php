@@ -68,11 +68,39 @@ class StockManagerEntryDateTimeTest extends TestCase
         ])->get('/sub_admin/stock-manager/action');
 
         $response->assertStatus(200);
-        $response->assertSee('ENTRY DATE & TIME *', false);
+        $response->assertSee('ENTRY DATE *', false);
         $response->assertSee('id="sm-entry-date"', false);
-        $response->assertSee('id="sm-entry-time"', false);
+        $response->assertDontSee('id="sm-entry-time"', false);
+        $response->assertDontSee('ENTRY TIME *', false);
         $response->assertSee('Live (Now)');
         $response->assertSee('Yesterday');
+    }
+
+    public function test_backdated_entry_without_entry_time_defaults_to_end_of_day(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 11, 18, 10, 30, 0, 'Asia/Kolkata'));
+
+        $response = $this->withSession([
+            'auth_user' => $this->subAdmin->toArray(),
+        ])->postJson('/sub_admin/stock-manager/action', [
+            'product_id' => $this->product->id,
+            'stage' => 'FINISHED',
+            'grade' => 'ALL',
+            'location_splits' => [
+                ['location' => 'AC ROOM', 'quantity' => 150.0],
+            ],
+            'notes' => 'Yesterday inward without time',
+            'entry_date' => '2026-11-17',
+            'is_live_time' => false,
+        ]);
+
+        $response->assertStatus(200)->assertJson(['success' => true]);
+
+        $stock = Stock::where('notes', 'Yesterday inward without time')->firstOrFail();
+        $this->assertEquals('2026-11-17 23:59:00', $stock->date->timezone('Asia/Kolkata')->format('Y-m-d H:i:s'));
+        $this->assertEquals('2026-11-18 10:30:00', $stock->recorded_at->timezone('Asia/Kolkata')->format('Y-m-d H:i:s'));
+
+        Carbon::setTestNow();
     }
 
     public function test_live_mode_submission_records_current_ist_timestamp(): void

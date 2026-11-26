@@ -68,18 +68,43 @@ class SalesController extends Controller
         }
         $upper = strtoupper(trim($vehicles));
         return str_contains($upper, 'ACTUAL DISPATCH') 
+            || str_contains($upper, 'DISPATCH')
             || str_contains($upper, 'DUE TO') 
             || str_contains($upper, 'APP.PROBLEM')
-            || str_contains($upper, 'PROBLEM');
+            || str_contains($upper, 'APP')
+            || str_contains($upper, 'PROBLEM')
+            || str_contains($upper, 'DELAY')
+            || str_contains($upper, 'PENDING')
+            || str_contains($upper, 'REASON')
+            || str_contains($upper, 'REMARK')
+            || str_contains($upper, 'NOTE')
+            || (bool) preg_match('/\d{2}[\/\-]\d{2}[\/\-]\d{4}/', $upper)
+            || strlen($upper) > 35;
     }
 
     public static function cleanContaminatedTransporterVehicles(): void
     {
         try {
             Transporter::where('vehicles', 'LIKE', '%ACTUAL DISPATCH%')
+                ->orWhere('vehicles', 'LIKE', '%DISPATCH%')
                 ->orWhere('vehicles', 'LIKE', '%DUE TO%')
                 ->orWhere('vehicles', 'LIKE', '%APP.PROBLEM%')
+                ->orWhere('vehicles', 'LIKE', '%APP%')
                 ->orWhere('vehicles', 'LIKE', '%PROBLEM%')
+                ->orWhere('vehicles', 'LIKE', '%DELAY%')
+                ->orWhere('vehicles', 'LIKE', '%PENDING%')
+                ->orWhere('vehicles', 'LIKE', '%REASON%')
+                ->orWhere('vehicles', 'LIKE', '%REMARK%')
+                ->orWhere('vehicles', 'LIKE', '%NOTE%')
+                ->orWhereRaw('LENGTH(vehicles) > 35')
+                ->update(['vehicles' => null]);
+
+            Transporter::where('name', 'LIKE', '%JAI TRANSPORT%')
+                ->where(function ($q) {
+                    $q->where('vehicles', 'LIKE', '%ACTUAL DISPATCH%')
+                      ->orWhere('vehicles', 'LIKE', '%DISPATCH%')
+                      ->orWhere('vehicles', 'LIKE', '%PROBLEM%');
+                })
                 ->update(['vehicles' => null]);
         } catch (\Throwable $e) {}
     }
@@ -552,7 +577,17 @@ class SalesController extends Controller
 
         $request->merge(['contact' => $formattedContact]);
 
-        $transporter = Transporter::create($request->only('name', 'gst', 'contact', 'vehicles'));
+        $vehiclesInput = $request->vehicles;
+        if ($vehiclesInput && self::isDispatchNoteVehicle($vehiclesInput)) {
+            $vehiclesInput = null;
+        }
+
+        $transporter = Transporter::create([
+            'name'     => $request->name,
+            'gst'      => $request->gst,
+            'contact'  => $formattedContact,
+            'vehicles' => $vehiclesInput,
+        ]);
         return response()->json([
             'success' => true, 
             'message' => 'Transporter saved!',
@@ -599,7 +634,17 @@ class SalesController extends Controller
 
         $request->merge(['contact' => $formattedContact]);
 
-        $transporter->update($request->only('name', 'gst', 'contact', 'vehicles'));
+        $vehiclesInput = $request->vehicles;
+        if ($vehiclesInput && self::isDispatchNoteVehicle($vehiclesInput)) {
+            $vehiclesInput = null;
+        }
+
+        $transporter->update([
+            'name'     => $request->name,
+            'gst'      => $request->gst,
+            'contact'  => $formattedContact,
+            'vehicles' => $vehiclesInput,
+        ]);
         return response()->json([
             'success' => true,
             'message' => 'Transporter updated!',

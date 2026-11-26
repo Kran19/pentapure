@@ -433,7 +433,7 @@ html.dark-mode .info-preview-box .info-label {
 
 .sales-data-table {
   width: 100% !important;
-  min-width: 1020px !important;
+  min-width: 1030px !important;
   table-layout: fixed !important;
   border-collapse: collapse !important;
   font-size: 0.86rem;
@@ -472,6 +472,7 @@ html.dark-mode .info-preview-box .info-label {
   color: var(--text-main, #1e293b);
   box-sizing: border-box !important;
   overflow: hidden !important;
+  white-space: normal !important;
 }
 
 /* Transporter table columns */
@@ -504,27 +505,41 @@ html.dark-mode .info-preview-box .info-label {
 }
 
 .sales-data-table .col-contact {
-  width: 150px !important;
+  width: 140px !important;
   font-weight: 600;
   white-space: nowrap !important;
 }
 
-.sales-data-table .col-vehicles {
-  width: 240px !important;
+.sales-data-table .col-vehicles,
+.sales-data-table td.col-vehicles {
+  width: 250px !important;
+  max-width: 250px !important;
   white-space: normal !important;
   word-break: break-word !important;
   overflow-wrap: anywhere !important;
   line-height: 1.4 !important;
   font-size: 0.84rem !important;
+  overflow: hidden !important;
 }
 
-.sales-data-table .col-action {
-  width: 190px !important;
-  min-width: 190px !important;
-  max-width: 190px !important;
+.sales-data-table .col-vehicles *,
+.sales-data-table td.col-vehicles * {
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+}
+
+.sales-data-table .col-action,
+.sales-data-table td.col-action {
+  width: 200px !important;
+  min-width: 200px !important;
+  max-width: 200px !important;
   text-align: center !important;
   white-space: nowrap !important;
   vertical-align: middle !important;
+  position: relative !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
 }
 
 /* Company table specific columns */
@@ -570,12 +585,13 @@ html.dark-mode .info-preview-box .info-label {
 }
 
 .sales-data-table .col-comp-action {
-  width: 190px !important;
-  min-width: 190px !important;
-  max-width: 190px !important;
+  width: 200px !important;
+  min-width: 200px !important;
+  max-width: 200px !important;
   text-align: center !important;
   white-space: nowrap !important;
   vertical-align: middle !important;
+  box-sizing: border-box !important;
 }
 
 .sales-action-btn-group {
@@ -588,7 +604,7 @@ html.dark-mode .info-preview-box .info-label {
 }
 
 .sales-btn-edit {
-  padding: 5px 12px !important;
+  padding: 6px 14px !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   background: #f59e0b !important;
@@ -614,7 +630,7 @@ html.dark-mode .info-preview-box .info-label {
 }
 
 .sales-btn-delete {
-  padding: 5px 12px !important;
+  padding: 6px 14px !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   background: #ef4444 !important;
@@ -639,7 +655,7 @@ html.dark-mode .info-preview-box .info-label {
 }
 
 .sales-btn-delete-disabled {
-  padding: 5px 12px !important;
+  padding: 6px 14px !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   background: rgba(0, 0, 0, 0.05) !important;
@@ -827,7 +843,7 @@ html.dark-mode .sales-btn-delete-disabled {
         </div>
       </div>
       <div class="sales-data-table-container">
-        <table class="sales-data-table">
+        <table class="sales-data-table no-filter" data-filterable="false">
           <colgroup>
             <col style="width: 50px;">
             <col style="width: 230px;">
@@ -835,7 +851,7 @@ html.dark-mode .sales-btn-delete-disabled {
             <col style="width: 90px;">
             <col style="width: 140px;">
             <col style="width: 230px;">
-            <col style="width: 190px;">
+            <col style="width: 200px;">
           </colgroup>
           <thead>
             <tr>
@@ -917,14 +933,14 @@ html.dark-mode .sales-btn-delete-disabled {
         </div>
       </div>
       <div class="sales-data-table-container">
-        <table class="sales-data-table">
+        <table class="sales-data-table no-filter" data-filterable="false">
           <colgroup>
             <col style="width: 50px;">
             <col style="width: 250px;">
             <col style="width: 140px;">
-            <col style="width: 150px;">
-            <col style="width: 240px;">
-            <col style="width: 190px;">
+            <col style="width: 140px;">
+            <col style="width: 250px;">
+            <col style="width: 200px;">
           </colgroup>
           <thead>
             <tr>
@@ -951,7 +967,11 @@ html.dark-mode .sales-btn-delete-disabled {
                 </td>
                 <td class="col-gst">{{ $trans['gst'] ?: 'N/A' }}</td>
                 <td class="col-contact">{{ $trans['contact'] ?: '—' }}</td>
-                <td class="col-vehicles">{{ $trans['vehicles'] ?: '—' }}</td>
+                <td class="col-vehicles">
+                  <div style="max-width:100%; word-break:break-word; overflow-wrap:anywhere; white-space:normal; line-height:1.4;">
+                    {{ $trans['vehicles'] ?: '—' }}
+                  </div>
+                </td>
                 <td class="col-action">
                   @if(empty($isReadOnly))
                   <div class="sales-action-btn-group">

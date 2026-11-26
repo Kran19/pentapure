@@ -3284,6 +3284,22 @@ class AdminController extends Controller
             $baseQuery->where('type', $statusFilter);
         }
 
+        // Search Filter (Note, Description, Reference, Site, Category, Amount, User name)
+        if ($request->filled('q') || $request->filled('search')) {
+            $searchTerm = trim((string)($request->q ?: $request->search));
+            $baseQuery->where(function($sq) use ($searchTerm) {
+                $sq->where('note', 'LIKE', "%{$searchTerm}%")
+                   ->orWhere('description', 'LIKE', "%{$searchTerm}%")
+                   ->orWhere('reference', 'LIKE', "%{$searchTerm}%")
+                   ->orWhere('site', 'LIKE', "%{$searchTerm}%")
+                   ->orWhere('category', 'LIKE', "%{$searchTerm}%")
+                   ->orWhere('amount', 'LIKE', "%{$searchTerm}%")
+                   ->orWhereHas('user', function($uq) use ($searchTerm) {
+                       $uq->where('name', 'LIKE', "%{$searchTerm}%");
+                   });
+            });
+        }
+
         // Chronological order for accurate running statement balance
         $txs = $baseQuery->orderBy('date')->orderBy('created_at')->get();
 

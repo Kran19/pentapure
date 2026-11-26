@@ -123,8 +123,9 @@ class StockManagerController extends Controller
             }
             $entryDateTime = Carbon::parse("{$dateStr} {$timeStr}", 'Asia/Kolkata');
         } else {
-            $entryDateTime = Carbon::parse($dateStr, 'Asia/Kolkata')
-                ->setTime($nowIst->hour, $nowIst->minute, $nowIst->second);
+            $entryDateTime = $parsedDateOnly->isToday()
+                ? $nowIst->copy()
+                : Carbon::parse($dateStr, 'Asia/Kolkata')->setTime(23, 59, 0);
         }
 
         if ($entryDateTime->gt($nowIst->copy()->addMinutes(2))) {

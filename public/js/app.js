@@ -1044,7 +1044,7 @@ const app = {
                   <td class="col-name action-trans-name">${d.transporter.name}</td>
                   <td class="col-gst">${d.transporter.gst || 'N/A'}</td>
                   <td class="col-contact">${d.transporter.contact || '—'}</td>
-                  <td class="col-vehicles">${d.transporter.vehicles || '—'}</td>
+                  <td class="col-vehicles"><div style="max-width:100%; word-break:break-word; overflow-wrap:anywhere; white-space:normal; line-height:1.4;">${d.transporter.vehicles || '—'}</div></td>
                   <td class="col-action">
                     <div class="sales-action-btn-group">
                       <button type="button" class="sales-btn-edit" onclick="app.editTransporterPrompt(${jsonStr})" title="Edit transporter details">
@@ -1074,9 +1074,14 @@ const app = {
     if(trans && div) {
       div.style.display = 'block';
       div.classList.add('animation-fadeIn');
+      const isDispatchNote = (val) => {
+        if (!val) return false;
+        const u = val.toUpperCase();
+        return u.includes('DISPATCH') || u.includes('DUE TO') || u.includes('PROBLEM') || u.includes('ACTUAL') || u.includes('DELAY') || u.includes('PENDING') || u.length > 50;
+      };
       const cleanGst = (trans.gst && !['N/A', 'NA'].includes(trans.gst.toUpperCase().trim())) ? trans.gst : '—';
       const cleanContact = (trans.contact && !['N/A', 'NA'].includes(trans.contact.toUpperCase().trim())) ? trans.contact : '—';
-      const cleanVehicles = (trans.vehicles && !['N/A', 'NA'].includes(trans.vehicles.toUpperCase().trim())) ? trans.vehicles : '—';
+      const cleanVehicles = (trans.vehicles && !['N/A', 'NA'].includes(trans.vehicles.toUpperCase().trim()) && !isDispatchNote(trans.vehicles)) ? trans.vehicles : '—';
       div.innerHTML = `
         <div style="display:grid; grid-template-columns:1fr; gap:3px;">
           <div><span class="info-label">GST:</span> ${cleanGst}</div>
@@ -1694,6 +1699,13 @@ const app = {
   editTransporterPrompt(trans) {
     if (!trans) return;
 
+    const isDispatchNote = (val) => {
+      if (!val) return false;
+      const u = val.toUpperCase();
+      return u.includes('DISPATCH') || u.includes('DUE TO') || u.includes('PROBLEM') || u.includes('ACTUAL') || u.includes('DELAY') || u.includes('PENDING') || u.length > 50;
+    };
+    const cleanVehiclesVal = (trans.vehicles && !isDispatchNote(trans.vehicles) && !['N/A', 'NA', '—'].includes(trans.vehicles.toUpperCase().trim())) ? trans.vehicles : '';
+
     Swal.fire({
       title: '✏️ Edit Transporter',
       html: `
@@ -1712,7 +1724,7 @@ const app = {
           </div>
           <div style="margin-bottom:0.8rem;">
             <label style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:4px;">Vehicle No.</label>
-            <input type="text" id="edit-trans-vehicles" value="${trans.vehicles || ''}" class="swal2-input" style="width:100%; margin:0; box-sizing:border-box;">
+            <input type="text" id="edit-trans-vehicles" value="${cleanVehiclesVal}" class="swal2-input" style="width:100%; margin:0; box-sizing:border-box;">
           </div>
         </div>
       `,
@@ -2970,6 +2982,7 @@ const app = {
     const pageSpecificDate = document.getElementById('ledger-specific-date')?.value || urlParams.get('specific_date') || '';
     const pageStart = document.getElementById('ledger-start-date')?.value || '';
     const pageEnd = document.getElementById('ledger-end-date')?.value || '';
+    const currentSearch = (document.getElementById('ledger-search-input')?.value || urlParams.get('q') || '').trim();
 
     let defaultDateType = 'all';
     let defaultAsOn = today;
@@ -2978,14 +2991,26 @@ const app = {
       defaultAsOn = pageSpecificDate;
     } else if (pageRange === 'custom' && pageStart && pageEnd) {
       defaultDateType = 'custom';
+    } else if (pageRange === 'today') {
+      defaultDateType = 'single_day';
+      defaultAsOn = today;
     } else {
       defaultDateType = 'all';
     }
 
     Swal.fire({
-      title: '📄 Generate Account Statement',
+      title: currentSearch ? `📄 Export Searched Statement` : '📄 Generate Account Statement',
       html: `
         <div style="text-align:left; font-size:0.9rem;">
+          <div style="margin-bottom:0.8rem;">
+            <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Search Query (Export Filter)</label>
+            <div style="display:flex; gap:6px;">
+              <input id="sp-search" type="text" value="${currentSearch.replace(/"/g, '&quot;')}" placeholder="e.g. Note, amount, reference, cashier..." style="flex:1; padding:0.55rem; border-radius:6px; background:#161b22; border:1px solid #30363d; color:#e6edf3;">
+              ${currentSearch ? `<button type="button" onclick="document.getElementById('sp-search').value='';" style="padding:0.4rem 0.6rem; background:#30363d; color:#e6edf3; border:none; border-radius:6px; font-size:0.75rem; cursor:pointer;" title="Clear search filter">Clear</button>` : ''}
+            </div>
+            ${currentSearch ? `<div style="font-size:0.75rem; color:#f59e0b; margin-top:3px; font-weight:600;">🔍 Exporting filtered results matching: "${currentSearch}"</div>` : ''}
+          </div>
+
           ${isTeam ? `
           <div style="margin-bottom:0.8rem;">
             <label style="font-size:0.78rem; color:#8b949e; display:block; margin-bottom:4px; font-weight:600;">Team Member</label>
@@ -3106,6 +3131,7 @@ const app = {
           if (from > to)    { Swal.showValidationMessage('From date must be before To date'); return false; }
         }
         const memberEl = document.getElementById('sp-member');
+        const searchVal = (document.getElementById('sp-search')?.value || '').trim();
         return {
           from, to,
           site: siteVal,
@@ -3113,7 +3139,8 @@ const app = {
           opening_balance: document.getElementById('sp-opening').value || '',
           cashier_id: memberEl ? memberEl.value : (isTeam ? selectedMember : ''),
           tab: activeTab,
-          specific_date: (dateType === 'single_day' ? (document.getElementById('sp-as-on')?.value || pageSpecificDate) : '')
+          specific_date: (dateType === 'single_day' ? (document.getElementById('sp-as-on')?.value || pageSpecificDate) : ''),
+          q: searchVal
         };
       }
     }).then(result => {
@@ -3127,6 +3154,7 @@ const app = {
       if (p.opening_balance) url += `&opening_balance=${encodeURIComponent(p.opening_balance)}`;
       if (p.tab) url += `&tab=${encodeURIComponent(p.tab)}`;
       if (p.cashier_id) url += `&cashier_id=${encodeURIComponent(p.cashier_id)}`;
+      if (p.q) url += `&q=${encodeURIComponent(p.q)}`;
       this.toast('Generating PDF... this may take a moment ⏳', 'info');
       if (typeof window.downloadPdfAsync === 'function') {
         window.downloadPdfAsync(url);

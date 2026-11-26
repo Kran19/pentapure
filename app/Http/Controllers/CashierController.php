@@ -82,7 +82,7 @@ class CashierController extends Controller
                 $normalizedType = ($rawType === 'EXPENSE' || $rawType === 'OUT') ? 'OUT' : 'IN';
                 if (!empty($tData['date'])) {
                     $parsed = \Carbon\Carbon::parse($tData['date'], 'Asia/Kolkata');
-                    $txDate = $parsed->isToday() ? now()->timezone('Asia/Kolkata') : $parsed->copy()->setTime(12, 0, 0);
+                    $txDate = $parsed->isToday() ? now()->timezone('Asia/Kolkata') : $parsed->copy()->setTime(23, 59, 0);
                 } else {
                     $txDate = now()->timezone('Asia/Kolkata');
                 }
@@ -153,7 +153,7 @@ class CashierController extends Controller
             ];
             if ($request->filled('date')) {
                 $parsedDate = \Carbon\Carbon::parse($request->date, 'Asia/Kolkata');
-                $txDate = $parsedDate->isToday() ? now()->timezone('Asia/Kolkata') : $parsedDate->copy()->setTime(12, 0, 0);
+                $txDate = $parsedDate->isToday() ? now()->timezone('Asia/Kolkata') : $parsedDate->copy()->setTime(23, 59, 0);
                 $updatePayload['date'] = $txDate;
                 $updatePayload['created_at'] = $txDate;
             }
@@ -807,6 +807,32 @@ class CashierController extends Controller
             }
         }
 
+        // Search Filter (Search Details, Note, Description, Reference, Amount, Date, Cashier Name)
+        if ($request->filled('q')) {
+            $searchTerm = trim((string) $request->q);
+            $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
+            $query->where(function($sq) use ($searchTerm, $isSqlite) {
+                $sq->where('note', 'LIKE', "%{$searchTerm}%")
+                   ->orWhere('description', 'LIKE', "%{$searchTerm}%")
+                   ->orWhere('reference', 'LIKE', "%{$searchTerm}%")
+                   ->orWhere('site', 'LIKE', "%{$searchTerm}%")
+                   ->orWhere('category', 'LIKE', "%{$searchTerm}%")
+                   ->orWhere('amount', 'LIKE', "%{$searchTerm}%");
+
+                if ($isSqlite) {
+                    $sq->orWhereRaw("strftime('%d-%m-%Y', date) LIKE ?", ["%{$searchTerm}%"])
+                       ->orWhereRaw("strftime('%Y-%m-%d', date) LIKE ?", ["%{$searchTerm}%"]);
+                } else {
+                    $sq->orWhereRaw("DATE_FORMAT(COALESCE(date, created_at), '%d-%m-%Y') LIKE ?", ["%{$searchTerm}%"])
+                       ->orWhereRaw("DATE_FORMAT(COALESCE(date, created_at), '%Y-%m-%d') LIKE ?", ["%{$searchTerm}%"]);
+                }
+
+                $sq->orWhereHas('user', function($uq) use ($searchTerm) {
+                    $uq->where('name', 'LIKE', "%{$searchTerm}%");
+                });
+            });
+        }
+
         $txs = $query->get();
 
         // Opening balance = sum of all transactions BEFORE the from date
@@ -945,6 +971,7 @@ class CashierController extends Controller
             'includeBills'   => $includeBills,
             'showBalance'    => $showBalance,
             'billPages'      => $billPages,
+            'searchQuery'    => $request->filled('q') ? trim($request->q) : '',
         ];
 
         $branchName = $effectiveSite !== 'ALL'
@@ -959,7 +986,13 @@ class CashierController extends Controller
             $dateRangeStr = $formattedFromDate;
         }
 
-        $filename = 'PENTAPURE_' . $branchName . '_' . $dateRangeStr . '.pdf';
+        $searchPrefix = '';
+        if ($request->filled('q')) {
+            $cleanQ = strtoupper(preg_replace('/[^A-Za-z0-9_]/', '_', trim($request->q)));
+            $searchPrefix = '_SEARCH_' . substr($cleanQ, 0, 20);
+        }
+
+        $filename = 'PENTAPURE_' . $branchName . $searchPrefix . '_' . $dateRangeStr . '.pdf';
 
         // 1. Generate the main statement HTML with embedded receipt thumbnails via DomPDF
         $mainPdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.cashier-statement', $data);

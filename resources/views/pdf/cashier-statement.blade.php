@@ -163,6 +163,11 @@ table, th, td, div, span, p, a, strong, small {
                     DURATION: {{ \Carbon\Carbon::parse($fromDate)->format('d-m-Y') }} - {{ \Carbon\Carbon::parse($toDate)->format('d-m-Y') }}
                 @endif
             </span>
+            @if(!empty($searchQuery))
+                <div style="font-size: 8.5px; color: #b45309; font-weight: bold; margin-top: 3px;">
+                    SEARCH QUERY: "{{ strtoupper($searchQuery) }}" ({{ $totalRecords }} MATCHING {{ $totalRecords === 1 ? 'RECORD' : 'RECORDS' }})
+                </div>
+            @endif
         </td>
     </tr>
     <tr>
@@ -231,7 +236,11 @@ table, th, td, div, span, p, a, strong, small {
             @empty
             <tr>
                 <td colspan="5" style="padding:15px; text-align:center; color:#888;">
-                    NO TRANSACTIONS FOUND FOR THIS PERIOD.
+                    @if(!empty($searchQuery))
+                        NO TRANSACTIONS FOUND MATCHING SEARCH "{{ strtoupper($searchQuery) }}".
+                    @else
+                        NO TRANSACTIONS FOUND FOR THIS PERIOD.
+                    @endif
                 </td>
             </tr>
             @endforelse

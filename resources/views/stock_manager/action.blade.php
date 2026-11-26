@@ -181,13 +181,13 @@ input[type=number].no-spinners {
   </div>
 
   <form id="sm-action-form" onsubmit="submitSmAction(event)">
-    <!-- 0. Entry Date & Time * -->
+    <!-- 0. Entry Date * -->
     <div class="sm-datetime-box" style="margin-bottom:1.25rem; padding:14px; background:#f9fafb; border-radius:10px; border:1px solid #e5e7eb;">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-          <span style="font-size:0.86rem; font-weight:700; color:#374151; text-transform:uppercase;">🕒 ENTRY DATE & TIME *</span>
+          <span style="font-size:0.86rem; font-weight:700; color:#374151; text-transform:uppercase;">📅 ENTRY DATE *</span>
           <span id="sm-datetime-mode-badge" style="display:inline-flex; align-items:center; gap:5px; font-size:0.74rem; font-weight:700; padding:2px 9px; border-radius:999px; background:#dcfce7; color:#15803d;">
-            ● Live Current Time
+            ● Live (Today)
           </span>
         </div>
         <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
@@ -200,21 +200,15 @@ input[type=number].no-spinners {
         </div>
       </div>
 
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:0.75rem;">
-        <div>
-          <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.25rem; color:#6b7280; display:block;">ENTRY DATE *</label>
-          <input type="date" id="sm-entry-date" name="entry_date" value="{{ $todayDateIst }}" max="{{ $todayDateIst }}" required onchange="onSmDateTimeManualChange()" style="padding:0.62rem 0.75rem; width:100%; font-size:0.95rem; font-weight:700; cursor:pointer;">
-        </div>
-        <div>
-          <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.25rem; color:#6b7280; display:block;">ENTRY TIME *</label>
-          <input type="time" id="sm-entry-time" name="entry_time" value="{{ $nowTimeIst }}" required oninput="onSmDateTimeManualChange()" onchange="onSmDateTimeManualChange()" style="padding:0.62rem 0.75rem; width:100%; font-size:0.95rem; font-weight:700; cursor:pointer;">
-        </div>
+      <div>
+        <label style="font-size:0.75rem; font-weight:600; margin-bottom:0.25rem; color:#6b7280; display:block;">ENTRY DATE *</label>
+        <input type="date" id="sm-entry-date" name="entry_date" value="{{ $todayDateIst }}" max="{{ $todayDateIst }}" required onchange="onSmDateTimeManualChange()" style="padding:0.62rem 0.75rem; width:100%; font-size:0.95rem; font-weight:700; cursor:pointer; border-radius:8px; border:1px solid #d1d5db; background:#ffffff; box-sizing:border-box;">
       </div>
 
       <div id="sm-backdate-banner" style="display:none; margin-top:10px; padding:8px 12px; border-radius:8px; background:#fffbeb; border:1px solid #fcd34d; color:#92400e; font-size:0.82rem; font-weight:600; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
-        <span id="sm-backdate-banner-text">⚠️ Custom Date/Time Entry</span>
+        <span id="sm-backdate-banner-text">⚠️ Custom Date Entry</span>
         <button type="button" onclick="setSmEntryLiveNow()" style="background:none; border:none; color:#b45309; font-weight:700; font-size:0.78rem; text-decoration:underline; cursor:pointer; padding:0;">
-          Reset to Live Now
+          Reset to Today
         </button>
       </div>
     </div>
@@ -688,41 +682,33 @@ function getIstNowParts(offsetDays = 0) {
   };
 }
 
-function formatSmHumanDateTime(dateStr, timeStr) {
+function formatSmHumanDate(dateStr) {
   if (!dateStr) return '';
   const [y, m, d] = dateStr.split('-');
-  let formattedTime = timeStr || '';
-  if (timeStr && timeStr.includes(':')) {
-    const [hhRaw, mm] = timeStr.split(':');
-    let hh = parseInt(hhRaw, 10);
-    const ampm = hh >= 12 ? 'PM' : 'AM';
-    hh = hh % 12 || 12;
-    formattedTime = `${String(hh).padStart(2, '0')}:${mm} ${ampm}`;
-  }
-  return `${d}-${m}-${y}${formattedTime ? ', ' + formattedTime : ''}`;
+  return `${d}-${m}-${y}`;
 }
 
 function updateSmDateTimeUi() {
   const dateInp = document.getElementById('sm-entry-date');
-  const timeInp = document.getElementById('sm-entry-time');
   const badge = document.getElementById('sm-datetime-mode-badge');
   const banner = document.getElementById('sm-backdate-banner');
   const bannerText = document.getElementById('sm-backdate-banner-text');
   const btnLive = document.getElementById('sm-btn-live-now');
   const btnYesterday = document.getElementById('sm-btn-yesterday');
-  if (!dateInp || !timeInp) return;
+  if (!dateInp) return;
 
   const todayIst = getIstNowParts(0).date;
   const yesterdayIst = getIstNowParts(-1).date;
   dateInp.max = todayIst;
 
-  if (window.smIsLiveTime) {
-    if (btnLive) btnLive.classList.add('is-active');
+  if (window.smIsLiveTime || dateInp.value === todayIst) {
+    window.smIsLiveTime = (dateInp.value === todayIst);
+    if (btnLive) btnLive.classList.toggle('is-active', dateInp.value === todayIst);
     if (btnYesterday) btnYesterday.classList.remove('is-active');
     if (badge) {
       badge.style.background = '#dcfce7';
       badge.style.color = '#15803d';
-      badge.textContent = '● Live Current Time';
+      badge.textContent = '● Live (Today)';
     }
     if (banner) banner.style.display = 'none';
   } else {
@@ -732,17 +718,17 @@ function updateSmDateTimeUi() {
       else btnYesterday.classList.remove('is-active');
     }
     const isPastDay = dateInp.value && dateInp.value < todayIst;
-    const humanStr = formatSmHumanDateTime(dateInp.value, timeInp.value);
+    const humanStr = formatSmHumanDate(dateInp.value);
     if (badge) {
       badge.style.background = '#fef3c7';
       badge.style.color = '#b45309';
-      badge.textContent = isPastDay ? '🕒 Backdated Entry' : '🕒 Custom Time Today';
+      badge.textContent = isPastDay ? '🕒 Backdated Entry' : '📅 Selected Date';
     }
     if (banner && bannerText) {
       banner.style.display = 'flex';
       bannerText.textContent = isPastDay
         ? `⚠️ Backdated Entry: Stock will be recorded for ${humanStr}`
-        : `🕒 Custom Time: Stock will be recorded for Today (${humanStr})`;
+        : `📅 Stock will be recorded for ${humanStr}`;
     }
   }
 }
@@ -750,35 +736,37 @@ function updateSmDateTimeUi() {
 function syncSmLiveClock() {
   if (!window.smIsLiveTime) return;
   const dateInp = document.getElementById('sm-entry-date');
-  const timeInp = document.getElementById('sm-entry-time');
   const nowIst = getIstNowParts(0);
-  if (dateInp) {
+  if (dateInp && !dateInp.value) {
     dateInp.max = nowIst.date;
     dateInp.value = nowIst.date;
-  }
-  if (timeInp) {
-    timeInp.value = nowIst.time;
   }
   updateSmDateTimeUi();
 }
 
 function setSmEntryLiveNow() {
   window.smIsLiveTime = true;
-  syncSmLiveClock();
+  const dateInp = document.getElementById('sm-entry-date');
+  const nowIst = getIstNowParts(0);
+  if (dateInp) {
+    dateInp.max = nowIst.date;
+    dateInp.value = nowIst.date;
+  }
+  updateSmDateTimeUi();
 }
 
 function setSmEntryYesterday() {
   window.smIsLiveTime = false;
   const dateInp = document.getElementById('sm-entry-date');
-  const timeInp = document.getElementById('sm-entry-time');
   const yesterdayIst = getIstNowParts(-1);
   if (dateInp) dateInp.value = yesterdayIst.date;
-  if (timeInp && !timeInp.value) timeInp.value = yesterdayIst.time;
   updateSmDateTimeUi();
 }
 
 function onSmDateTimeManualChange() {
-  window.smIsLiveTime = false;
+  const dateInp = document.getElementById('sm-entry-date');
+  const todayIst = getIstNowParts(0).date;
+  window.smIsLiveTime = (dateInp && dateInp.value === todayIst);
   updateSmDateTimeUi();
 }
 
@@ -792,26 +780,25 @@ function submitSmAction(e) {
   const actionType = document.getElementById('sm-action-type').value;
   const notes = document.getElementById('sm-notes').value;
   const entryDate = document.getElementById('sm-entry-date')?.value || '';
-  const entryTime = document.getElementById('sm-entry-time')?.value || '';
   const btn = document.getElementById('sm-submit-btn');
 
   if (!window.smIsLiveTime) {
-    if (!entryDate || !entryTime) {
-      if (typeof Swal !== 'undefined') Swal.fire('Missing Date/Time', 'Please select both Entry Date and Entry Time.', 'warning');
-      else alert('Please select both Entry Date and Entry Time.');
+    if (!entryDate) {
+      if (typeof Swal !== 'undefined') Swal.fire('Missing Date', 'Please select Entry Date.', 'warning');
+      else alert('Please select Entry Date.');
       return;
     }
     const nowIst = getIstNowParts(0);
-    if (entryDate > nowIst.date || (entryDate === nowIst.date && entryTime > nowIst.time)) {
+    if (entryDate > nowIst.date) {
       if (typeof Swal !== 'undefined') {
         Swal.fire({
           icon: 'warning',
-          title: 'Future Date/Time Not Allowed',
-          text: 'Entry Date & Time cannot be in the future. Please pick a valid past or current time, or click "Live (Now)".',
+          title: 'Future Date Not Allowed',
+          text: 'Entry Date cannot be in the future. Please pick a valid past or today\'s date, or click "Live (Now)".',
           confirmButtonColor: '#f59e0b'
         });
       } else {
-        alert('Entry Date & Time cannot be in the future.');
+        alert('Entry Date cannot be in the future.');
       }
       return;
     }
@@ -930,7 +917,6 @@ function submitSmAction(e) {
       location_splits: locationSplits, 
       notes: notes,
       entry_date: entryDate,
-      entry_time: entryTime,
       is_live_time: Boolean(window.smIsLiveTime)
     })
   })

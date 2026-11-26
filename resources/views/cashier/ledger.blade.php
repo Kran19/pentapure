@@ -127,11 +127,15 @@
     return $tB <=> $tA;
   })->values();
 
-  $page = request('page', 1);
-  $perPage = 50;
+  $perPageParam = request('per_page', '10');
+  $perPage = ($perPageParam === 'all') ? 999999 : (int)$perPageParam;
+  if ($perPage <= 0) $perPage = 10;
+  $page = (int)request('page', 1);
+  if ($page <= 0) $page = 1;
   $total = $filtered->count();
-  $totalPages = ceil($total / $perPage);
-  $paginated = $filtered->slice(($page - 1) * $perPage, $perPage);
+  $totalPages = $perPage >= 999999 ? 1 : max(1, (int)ceil($total / $perPage));
+  if ($page > $totalPages && $totalPages > 0) $page = $totalPages;
+  $paginated = ($perPageParam === 'all') ? $filtered : $filtered->slice(($page - 1) * $perPage, $perPage);
   $paginatedArray = $paginated->values()->toArray();
 
   $summary = [
@@ -158,9 +162,9 @@
         🗑️ Clear All Ledger Data
       </button>
     @endif
-    <button class="btn btn-sm" style="width:auto; padding:0.5rem 1.1rem; display:flex; align-items:center; gap:0.4rem; font-weight:600;" onclick="app.downloadCashierPdf()">
+    <button id="header-export-pdf-btn" class="btn btn-sm" style="width:auto; padding:0.5rem 1.1rem; display:flex; align-items:center; gap:0.4rem; font-weight:600;" onclick="app.downloadCashierPdf()">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Export PDF
+      <span class="export-pdf-label">Export PDF</span>
     </button>
   </div>
 </div>
@@ -196,7 +200,7 @@
     </select>
 
     <!-- Team Member Selector (Shown when tab === 'team') -->
-    <select id="team-member-select" name="team_member" onchange="applyLedgerFilters()" style="display:{{ ($activeTab === 'team' && $hasTeamMembers) ? 'block' : 'none' }}; width:auto; flex:1; min-width:160px; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600;">
+    <select id="team-member-select" name="team_member" onchange="applyLedgerFilters(true)" style="display:{{ ($activeTab === 'team' && $hasTeamMembers) ? 'block' : 'none' }}; width:auto; flex:1; min-width:160px; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-weight:600;">
       <option value="all" {{ $teamMember === 'all' ? 'selected' : '' }}>ALL TEAM MEMBERS</option>
       @foreach($visibleTeamMembers as $tm)
         <option value="{{ $tm['id'] }}" data-branch="{{ $tm['branch'] ?? '' }}" {{ ((string)$teamMember === (string)$tm['id'] || strtolower($teamMember) === strtolower($tm['name'])) ? 'selected' : '' }}>
@@ -206,10 +210,10 @@
     </select>
 
     <!-- Specific Date -->
-    <input type="date" name="specific_date" id="ledger-specific-date" value="{{ request('specific_date') }}" onchange="applyLedgerFilters()" style="width:auto; flex:1; min-width:140px; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);" title="Search by specific date">
+    <input type="date" name="specific_date" id="ledger-specific-date" value="{{ request('specific_date') }}" onchange="applyLedgerFilters(true)" style="width:auto; flex:1; min-width:140px; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);" title="Search by specific date">
 
     <!-- Date Range -->
-    <select name="range" id="ledger-range-select" onchange="toggleCustomDates(this.value); applyLedgerFilters();" style="width:auto; flex:1; min-width:140px; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+    <select name="range" id="ledger-range-select" onchange="toggleCustomDates(this.value); applyLedgerFilters(true);" style="width:auto; flex:1; min-width:140px; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
       <option value="today" {{ $dateRange==='today'?'selected':'' }}>Today</option>
       <option value="this_week" {{ $dateRange==='this_week'?'selected':'' }}>This Week</option>
       <option value="last_week" {{ $dateRange==='last_week'?'selected':'' }}>Last Week</option>
@@ -220,21 +224,38 @@
     </select>
     
     <div id="custom-dates-container" style="display:{{ $dateRange === 'custom' ? 'flex' : 'none' }}; gap:8px;">
-      <input type="date" name="start" id="ledger-start-date" value="{{ $startDate ?? '' }}" onchange="applyLedgerFilters()" style="width:auto; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
-      <input type="date" name="end" id="ledger-end-date" value="{{ $endDate ?? '' }}" onchange="applyLedgerFilters()" style="width:auto; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+      <input type="date" name="start" id="ledger-start-date" value="{{ $startDate ?? '' }}" onchange="applyLedgerFilters(true)" style="width:auto; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+      <input type="date" name="end" id="ledger-end-date" value="{{ $endDate ?? '' }}" onchange="applyLedgerFilters(true)" style="width:auto; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
     </div>
   </div>
 
-  <!-- Filter buttons -->
-  <div id="table-filter-external-container" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-    <div style="display:flex; gap:10px;">
-      <button type="button" onclick="applyLedgerFilters()" class="btn btn-sm" style="padding:0.4rem 1rem; font-weight:600;">Apply</button>
+  <!-- Filter buttons & Page Size -->
+  <div id="table-filter-external-container" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
+    <div style="display:flex; gap:10px; align-items:center;">
+      <button type="button" onclick="applyLedgerFilters(true)" class="btn btn-sm" style="padding:0.4rem 1rem; font-weight:600;">Apply</button>
       <button type="button" onclick="resetLedgerFilters()" class="btn btn-secondary btn-sm" style="padding:0.4rem 1rem; font-weight:600;">Reset</button>
     </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <label for="ledger-page-size" style="font-size:0.82rem; font-weight:600; color:var(--text-muted); text-transform:uppercase;">Show:</label>
+      <select id="ledger-page-size" onchange="onLedgerPageSizeChange(this.value)" style="padding:5px 10px; font-weight:600; border-radius:6px; border:1px solid var(--border-soft, #DDCFAF); background:#ffffff; color:#2a2a2a; font-size:0.85rem; cursor:pointer;">
+        <option value="10" {{ $perPageParam === '10' ? 'selected' : '' }}>Show 10</option>
+        <option value="15" {{ $perPageParam === '15' ? 'selected' : '' }}>Show 15</option>
+        <option value="20" {{ $perPageParam === '20' ? 'selected' : '' }}>Show 20</option>
+        <option value="50" {{ $perPageParam === '50' ? 'selected' : '' }}>Show 50</option>
+        <option value="100" {{ $perPageParam === '100' ? 'selected' : '' }}>Show 100</option>
+        <option value="all" {{ $perPageParam === 'all' ? 'selected' : '' }}>Show All</option>
+      </select>
+    </div>
   </div>
 
-  <div id="ledger-search-container" class="form-group" style="display:{{ $activeTab === 'daily' ? 'none' : 'flex' }}; gap:10px; margin-bottom:1rem;">
-    <input type="text" name="q" id="ledger-search-input" placeholder="Search details or amount..." value="{{ $q }}" oninput="applyLedgerFilters()" style="flex:1; padding:0.65rem 0.9rem; font-size:0.9rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+  <div id="ledger-search-container" class="form-group" style="display:{{ $activeTab === 'daily' ? 'none' : 'flex' }}; gap:10px; margin-bottom:1rem; align-items:center; flex-wrap:wrap;">
+    <div style="flex:1; min-width:240px; display:flex; align-items:center;">
+      <input type="text" name="q" id="ledger-search-input" placeholder="Search details or amount..." value="{{ $q }}" oninput="applyLedgerFilters(true); syncSearchExportButton();" style="width:100%; padding:0.65rem 0.9rem; font-size:0.9rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333);">
+    </div>
+    <button type="button" id="btn-export-search-pdf" class="btn btn-sm" onclick="exportSearchPdfDirect()" style="display:none; padding:0.65rem 1.1rem; font-weight:700; white-space:nowrap; background:#f59e0b; color:#000; border:none; border-radius:8px; align-items:center; gap:6px; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.12);" title="Export searched transactions to PDF">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span id="btn-export-search-pdf-label">Export Search PDF</span>
+    </button>
     <div id="team-visibility-btn-wrapper" style="display:{{ ($activeTab === 'team' && $hasTeamMembers) ? 'block' : 'none' }};">
       <button type="button" class="btn btn-sm" style="background:rgba(59,130,246,0.1); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); padding:0.65rem 12px; border-radius:8px; display:flex; align-items:center; gap:6px; white-space:nowrap; height:100%;" onclick="showVisibilityInfo()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
@@ -306,8 +327,14 @@
               @if(!empty($t['bills']))
                 <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:4px;">
                   @foreach($t['bills'] as $b)
-                    <button onclick="app.viewBill({{ $b['id'] }}, '{{ $b['file_type'] }}')" title="View {{ $b['original_name'] }}" style="background:none; border:none; cursor:pointer; color:var(--primary); padding:2px;">
-                      📎
+                    @php
+                      $bFileType = strtolower((string)($b['file_type'] ?? ''));
+                      $bName = $b['original_name'] ?? 'Bill';
+                      $isImg = in_array($bFileType, ['image', 'img', 'photo', 'picture']) || preg_match('/\.(png|jpe?g|webp|gif|svg)$/i', $bName);
+                      $isPdf = ($bFileType === 'pdf') || str_ends_with(strtolower($bName), '.pdf');
+                    @endphp
+                    <button type="button" onclick="app.viewBill({{ $b['id'] }}, '{{ $isImg ? 'image' : ($isPdf ? 'pdf' : $bFileType) }}')" title="View {{ $bName }}" style="background:none; border:none; cursor:pointer; color:var(--primary); padding:2px; font-size:1.05rem; line-height:1;">
+                      {{ $isImg ? '🖼️' : ($isPdf ? '📄' : '📎') }}
                     </button>
                   @endforeach
                 </div>
@@ -361,10 +388,33 @@
       </tbody>
     </table>
   </div>
+
+  <!-- Pagination Footer -->
+  <div id="ledger-pagination-footer" class="table-pagination-footer flex-between" style="display:{{ $activeTab === 'daily' ? 'none' : 'flex' }}; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; padding:0.85rem 1.2rem; background:rgba(0,0,0,0.02); border-top:1px solid var(--border-soft, #DDCFAF); font-size:0.85rem; color:var(--text-muted);">
+    <div id="ledger-pagination-info" style="font-weight:500;">
+      Showing {{ $total > 0 ? (($page - 1) * $perPage + 1) : 0 }} to {{ min($page * $perPage, $total) }} of {{ $total }} entries
+    </div>
+    <div id="ledger-pagination-controls" style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+      <button type="button" class="btn btn-sm btn-secondary pag-prev" onclick="changeLedgerPage({{ $page - 1 }})" {{ $page <= 1 ? 'disabled style=opacity:0.5;cursor:not-allowed;' : '' }} style="padding:4px 10px; font-size:0.8rem; font-weight:600;">Prev</button>
+      @for($p = 1; $p <= $totalPages; $p++)
+        @if($totalPages > 7 && abs($p - $page) > 2 && $p !== 1 && $p !== $totalPages)
+          @if($p === 2 && $page > 4) <span style="padding:0 4px; color:var(--text-muted);">...</span> @endif
+          @if($p === $totalPages - 1 && $page < $totalPages - 3) <span style="padding:0 4px; color:var(--text-muted);">...</span> @endif
+          @continue
+        @endif
+        @php $isActive = ($p === $page); @endphp
+        <button type="button" class="btn btn-sm pag-page" onclick="changeLedgerPage({{ $p }})" style="padding:4px 10px; font-size:0.8rem; border-radius:6px; min-width:32px; {{ $isActive ? 'background:var(--primary, #d97706); color:#ffffff; font-weight:bold; border:1px solid var(--primary, #d97706);' : 'background:rgba(0,0,0,0.05); color:var(--text-main, #333); border:1px solid var(--border-soft, #DDCFAF);' }}">
+          {{ $p }}
+        </button>
+      @endfor
+      <button type="button" class="btn btn-sm btn-secondary pag-next" onclick="changeLedgerPage({{ $page + 1 }})" {{ $page >= $totalPages ? 'disabled style=opacity:0.5;cursor:not-allowed;' : '' }} style="padding:4px 10px; font-size:0.8rem; font-weight:600;">Next</button>
+    </div>
+  </div>
 </div>
 
 <script>
   window.serverPageData = @json($pageData);
+  let ledgerCurrentPage = {{ (int)$page }};
 
   function toggleCustomDates(val) {
     const container = document.getElementById('custom-dates-container');
@@ -399,12 +449,14 @@
   }
 
   function onLedgerTabChange(tabVal) {
+    ledgerCurrentPage = 1;
     const memberSelect = document.getElementById('team-member-select');
     const visBtn = document.getElementById('team-visibility-btn-wrapper');
     const summaryCards = document.getElementById('ledger-summary-cards');
     const searchContainer = document.getElementById('ledger-search-container');
     const txTable = document.getElementById('ledger-tx-table');
     const dailyTable = document.getElementById('ledger-daily-table');
+    const paginationFooter = document.getElementById('ledger-pagination-footer');
 
     const currentUserId = {{ (int)($authUser['id'] ?? session('auth_user')['id'] ?? 0) }};
     const teamMembers = (window.serverPageData?.teamMembers || []).filter(m => Number(m.id) !== currentUserId);
@@ -417,6 +469,7 @@
       if (searchContainer) searchContainer.style.display = 'flex';
       if (txTable) txTable.style.display = 'table';
       if (dailyTable) dailyTable.style.display = 'none';
+      if (paginationFooter) paginationFooter.style.display = 'flex';
     } else if (tabVal === 'personal' || (tabVal === 'team' && !hasTeam)) {
       if (memberSelect) memberSelect.style.display = 'none';
       if (visBtn) visBtn.style.display = 'none';
@@ -424,6 +477,7 @@
       if (searchContainer) searchContainer.style.display = 'flex';
       if (txTable) txTable.style.display = 'table';
       if (dailyTable) dailyTable.style.display = 'none';
+      if (paginationFooter) paginationFooter.style.display = 'flex';
     } else if (tabVal === 'daily') {
       if (memberSelect) memberSelect.style.display = 'none';
       if (visBtn) visBtn.style.display = 'none';
@@ -431,14 +485,23 @@
       if (searchContainer) searchContainer.style.display = 'none';
       if (txTable) txTable.style.display = 'none';
       if (dailyTable) dailyTable.style.display = 'table';
+      if (paginationFooter) paginationFooter.style.display = 'none';
     }
 
-    applyLedgerFilters();
+    applyLedgerFilters(false);
     setTimeout(syncLedgerScrollbars, 50);
   }
 
-  function applyLedgerFilters() {
+  function applyLedgerFilters(resetPage = false) {
+    if (resetPage) {
+      ledgerCurrentPage = 1;
+    }
+
     const tabVal = document.getElementById('ledger-tab-select').value;
+    const paginationFooter = document.getElementById('ledger-pagination-footer');
+    if (paginationFooter) {
+      paginationFooter.style.display = (tabVal === 'daily') ? 'none' : 'flex';
+    }
     if (tabVal === 'daily') return;
 
     const memberSelect = document.getElementById('team-member-select');
@@ -630,11 +693,24 @@
       balEl.style.color = (balance >= 0) ? '#16a34a' : '#dc2626';
     }
 
-    // Render Table Rows
+    // Render Table Rows with proper pagination
     const tbody = document.getElementById('ledger-tx-tbody');
     if (!tbody) return;
 
-    if (filtered.length === 0) {
+    const total = filtered.length;
+    const pageSizeSelect = document.getElementById('ledger-page-size');
+    const pageSizeVal = pageSizeSelect ? pageSizeSelect.value : '10';
+    const pageSize = (pageSizeVal === 'all') ? total : (parseInt(pageSizeVal, 10) || 10);
+    const totalPages = (pageSize <= 0 || pageSize >= total) ? 1 : Math.ceil(total / pageSize);
+
+    if (ledgerCurrentPage > totalPages && totalPages > 0) ledgerCurrentPage = totalPages;
+    if (ledgerCurrentPage < 1) ledgerCurrentPage = 1;
+
+    const startIdx = (pageSizeVal === 'all' || total === 0) ? 0 : (ledgerCurrentPage - 1) * pageSize;
+    const endIdx = (pageSizeVal === 'all') ? total : Math.min(startIdx + pageSize, total);
+    const pageItems = filtered.slice(startIdx, endIdx);
+
+    if (total === 0) {
       tbody.innerHTML = `
         <tr>
           <td colspan="7" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
@@ -642,10 +718,11 @@
           </td>
         </tr>
       `;
+      renderLedgerPagination(0, 0, 0, 1);
       return;
     }
 
-    tbody.innerHTML = filtered.map(t => {
+    tbody.innerHTML = pageItems.map(t => {
       const d = new Date(t.date);
       const dateFormatted = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
       let hours = d.getHours();
@@ -668,11 +745,16 @@
       if (t.bills && t.bills.length > 0) {
         billsHtml = `
           <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:4px;">
-            ${t.bills.map(b => `
-              <button onclick="app.viewBill(${b.id}, '${b.file_type}')" title="View ${b.original_name || 'Bill'}" style="background:none; border:none; cursor:pointer; color:var(--primary); padding:2px;">
-                📎
+            ${t.bills.map(b => {
+              const bFileType = String(b.file_type || '').toLowerCase();
+              const isImg = bFileType.includes('image') || bFileType.includes('png') || bFileType.includes('jpg') || bFileType.includes('jpeg') || bFileType.includes('webp') || (b.original_name && /\.(png|jpe?g|webp|gif|svg)$/i.test(b.original_name));
+              const icon = isImg ? '🖼️' : (bFileType === 'pdf' ? '📄' : '📎');
+              return `
+              <button type="button" onclick="app.viewBill(${b.id}, '${isImg ? 'image' : (bFileType === 'pdf' ? 'pdf' : bFileType)}')" title="View ${b.original_name || 'Bill'}" style="background:none; border:none; cursor:pointer; color:var(--primary); padding:2px; font-size:1.05rem; line-height:1;">
+                ${icon}
               </button>
-            `).join('')}
+              `;
+            }).join('')}
           </div>
         `;
       }
@@ -712,6 +794,8 @@
         </tr>
       `;
     }).join('');
+
+    renderLedgerPagination(total, startIdx, endIdx, totalPages);
     syncLedgerScrollbars();
 
     // Update browser URL query params without reloading page
@@ -725,9 +809,100 @@
       if (endDate) params.set('end', endDate);
     }
     if (q) params.set('q', q);
+    if (ledgerCurrentPage > 1) params.set('page', ledgerCurrentPage);
+    if (pageSizeVal && pageSizeVal !== '10') params.set('per_page', pageSizeVal);
 
     const newUrl = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '');
     window.history.replaceState({}, '', newUrl);
+
+    syncSearchExportButton();
+  }
+
+  function syncSearchExportButton() {
+    const q = (document.getElementById('ledger-search-input')?.value || '').trim();
+    const searchExportBtn = document.getElementById('btn-export-search-pdf');
+    const searchExportBtnLabel = document.getElementById('btn-export-search-pdf-label');
+    const headerPdfBtn = document.getElementById('header-export-pdf-btn');
+    if (searchExportBtn) {
+      if (q) {
+        searchExportBtn.style.display = 'inline-flex';
+        if (searchExportBtnLabel) {
+          searchExportBtnLabel.innerText = `Export Search PDF ("${q.length > 12 ? q.slice(0, 12) + '...' : q}")`;
+        }
+      } else {
+        searchExportBtn.style.display = 'none';
+      }
+    }
+    if (headerPdfBtn) {
+      const labelSpan = headerPdfBtn.querySelector('.export-pdf-label');
+      if (labelSpan) {
+        labelSpan.innerText = q ? `Export Searched PDF` : `Export PDF`;
+      }
+    }
+  }
+
+  function exportSearchPdfDirect() {
+    app.downloadCashierPdf();
+  }
+
+  function changeLedgerPage(newPage) {
+    ledgerCurrentPage = newPage;
+    applyLedgerFilters(false);
+    const container = document.getElementById('ledger-table-container');
+    if (container) {
+      container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  function onLedgerPageSizeChange(newSize) {
+    ledgerCurrentPage = 1;
+    applyLedgerFilters(false);
+  }
+
+  function renderLedgerPagination(total, startIdx, endIdx, totalPages) {
+    const footer = document.getElementById('ledger-pagination-footer');
+    const infoEl = document.getElementById('ledger-pagination-info');
+    const controlsEl = document.getElementById('ledger-pagination-controls');
+    if (!footer || !infoEl || !controlsEl) return;
+
+    const tabVal = document.getElementById('ledger-tab-select')?.value || 'personal';
+    if (tabVal === 'daily') {
+      footer.style.display = 'none';
+      return;
+    }
+    footer.style.display = 'flex';
+
+    if (total === 0) {
+      infoEl.textContent = 'Showing 0 to 0 of 0 entries';
+      controlsEl.innerHTML = '';
+      return;
+    }
+
+    const showingFrom = startIdx + 1;
+    const showingTo = endIdx;
+    infoEl.textContent = `Showing ${showingFrom} to ${showingTo} of ${total} entries`;
+
+    let html = '';
+    const prevDisabled = ledgerCurrentPage <= 1;
+    html += `<button type="button" class="btn btn-sm btn-secondary pag-prev" onclick="changeLedgerPage(${ledgerCurrentPage - 1})" ${prevDisabled ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} style="padding:4px 10px; font-size:0.8rem; font-weight:600;">Prev</button>`;
+
+    for (let p = 1; p <= totalPages; p++) {
+      if (totalPages > 7 && Math.abs(p - ledgerCurrentPage) > 2 && p !== 1 && p !== totalPages) {
+        if (p === 2 && ledgerCurrentPage > 4) html += `<span style="padding:0 4px; color:var(--text-muted);">...</span>`;
+        if (p === totalPages - 1 && ledgerCurrentPage < totalPages - 3) html += `<span style="padding:0 4px; color:var(--text-muted);">...</span>`;
+        continue;
+      }
+      const isActive = p === ledgerCurrentPage;
+      const btnStyle = isActive
+        ? 'background:var(--primary, #d97706); color:#ffffff; font-weight:bold; border:1px solid var(--primary, #d97706);'
+        : 'background:rgba(0,0,0,0.05); color:var(--text-main, #333); border:1px solid var(--border-soft, #DDCFAF);';
+      html += `<button type="button" class="btn btn-sm pag-page" onclick="changeLedgerPage(${p})" style="padding:4px 10px; font-size:0.8rem; border-radius:6px; min-width:32px; ${btnStyle}">${p}</button>`;
+    }
+
+    const nextDisabled = ledgerCurrentPage >= totalPages;
+    html += `<button type="button" class="btn btn-sm btn-secondary pag-next" onclick="changeLedgerPage(${ledgerCurrentPage + 1})" ${nextDisabled ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} style="padding:4px 10px; font-size:0.8rem; font-weight:600;">Next</button>`;
+
+    controlsEl.innerHTML = html;
   }
 
   function resetLedgerFilters() {
@@ -739,6 +914,9 @@
     document.getElementById('ledger-start-date').value = '';
     document.getElementById('ledger-end-date').value = '';
     document.getElementById('ledger-search-input').value = '';
+    const pageSizeSelect = document.getElementById('ledger-page-size');
+    if (pageSizeSelect) pageSizeSelect.value = '10';
+    ledgerCurrentPage = 1;
     toggleCustomDates('all');
     onLedgerTabChange('personal');
   }
@@ -811,8 +989,8 @@
           }
         }
 
-        // Live update the table and KPI cards with newest data
-        applyLedgerFilters();
+        // Live update the table and KPI cards with newest data without resetting current page
+        applyLedgerFilters(false);
       })
       .catch(() => {});
     }, 4000);
@@ -875,12 +1053,14 @@
   document.addEventListener('DOMContentLoaded', () => {
     initLedgerScrollSync();
     syncLedgerScrollbars();
+    syncSearchExportButton();
     startLedgerAutoSync();
   });
   window.addEventListener('resize', syncLedgerScrollbars);
 
   // Initialize immediately in case DOM is already ready
   initLedgerScrollSync();
+  syncSearchExportButton();
   setTimeout(syncLedgerScrollbars, 100);
 
   function showVisibilityInfo() {
