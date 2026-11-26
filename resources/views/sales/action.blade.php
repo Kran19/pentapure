@@ -540,8 +540,8 @@ html.dark-mode .info-preview-box .info-label {
                   @endif
                 </td>
                 <td style="padding:8px 6px; font-family:monospace; color:var(--primary-light, #f59e0b);">{{ $trans['gst'] ?: 'N/A' }}</td>
-                <td style="padding:8px 6px;">{{ $trans['contact'] ?: '—' }}</td>
-                <td style="padding:8px 6px;">{{ $trans['vehicles'] ?: '—' }}</td>
+                <td style="padding:8px 6px; white-space:nowrap;">{{ $trans['contact'] ?: '—' }}</td>
+                <td style="padding:8px 6px; word-break:break-word; max-width:240px;">{{ $trans['vehicles'] ?: '—' }}</td>
                 <td style="padding:8px 6px; text-align:center;">
                   @if(empty($isReadOnly))
                   <div style="display:flex; justify-content:center; gap:6px;">

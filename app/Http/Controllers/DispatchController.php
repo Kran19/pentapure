@@ -550,13 +550,17 @@ class DispatchController extends Controller
             if ($request->lr_image) {
                 $lrPath = self::saveLrImagePayload($request->lr_image);
             }
-            $dispatchTransporterId = $request->transporter_id ?? $order->transporter_id;
+            $dispatchTransporterId = (!empty($request->transporter_id) && $request->transporter_id != 0) 
+                ? (int) $request->transporter_id 
+                : ($order->transporter_id ? (int) $order->transporter_id : null);
             if (!$dispatchTransporterId) {
                 try {
                     $fallback = \App\Models\Transporter::firstOrCreate(['name' => 'N/A'], ['contact' => '—', 'gst' => '—']);
                     $dispatchTransporterId = $fallback->id;
                 } catch (\Throwable $ignored) {}
             }
+
+            \App\Http\Controllers\SalesController::ensureVehicleNoColumnExists();
 
             $driverNo = $request->driver_no ?? $request->driver_number;
             $vehicleNo = $request->vehicle_number ?? $request->vehicle_no;
@@ -565,12 +569,22 @@ class DispatchController extends Controller
             if ($dispatchTransporterId) {
                 $transporter = \App\Models\Transporter::find($dispatchTransporterId);
                 if ($transporter) {
+                    $invalidVals = ['', '—', '-', 'N/A', 'NA', 'NONE', 'NULL'];
                     $updates = [];
-                    if (!empty($vehicleNo)) {
-                        $updates['vehicles'] = $vehicleNo;
+                    if (!empty($vehicleNo) && !in_array(strtoupper(trim((string)$vehicleNo)), $invalidVals, true)) {
+                        $cleanVeh = trim((string)$vehicleNo);
+                        if (empty($transporter->vehicles) || in_array(strtoupper(trim((string)$transporter->vehicles)), $invalidVals, true)) {
+                            $updates['vehicles'] = $cleanVeh;
+                        } else {
+                            $existingVehs = array_map('trim', explode(',', $transporter->vehicles));
+                            if (!in_array($cleanVeh, $existingVehs, true)) {
+                                $existingVehs[] = $cleanVeh;
+                                $updates['vehicles'] = implode(', ', $existingVehs);
+                            }
+                        }
                     }
-                    if (!empty($driverNo)) {
-                        $updates['contact'] = $driverNo;
+                    if (!empty($driverNo) && !in_array(strtoupper(trim((string)$driverNo)), $invalidVals, true)) {
+                        $updates['contact'] = trim((string)$driverNo);
                     }
                     if (!empty($updates)) {
                         $transporter->update($updates);
@@ -593,12 +607,10 @@ class DispatchController extends Controller
                 'transporter_id' => $dispatchTransporterId,
                 'lr_image_path'  => $lrPath,
                 'driver_no'      => $driverNo,
+                'vehicle_no'     => $vehicleNo,
                 'lr_no'          => $request->lr_no,
                 'notes'          => $request->notes,
             ];
-            if (\Illuminate\Support\Facades\Schema::hasColumn('dispatch_logs', 'vehicle_no')) {
-                $dispatchLogData['vehicle_no'] = $vehicleNo;
-            }
             $dispatchLog = DispatchLog::create($dispatchLogData);
             if ($lrPath) {
                 self::linkLrDbBackupToLog($lrPath, (int) $dispatchLog->id);

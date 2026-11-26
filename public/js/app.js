@@ -2103,6 +2103,24 @@ const app = {
         }
         if (detailsDiv) detailsDiv.style.display = 'block';
 
+        if (orderData.transporter) {
+          const tData = orderData.transporter;
+          if (vehicleInp && !vehicleInp.value && tData.vehicles && tData.vehicles !== '—' && tData.vehicles !== 'N/A') {
+            vehicleInp.value = tData.vehicles;
+          }
+          if (contactInp && !contactInp.value && tData.contact && tData.contact !== '—' && tData.contact !== 'N/A') {
+            const rawC = String(tData.contact).trim();
+            const m = rawC.match(/^(\+\d{1,4})\s*(.*)$/);
+            if (m) {
+              const codeEl = document.getElementById('dispatch-country-code');
+              if (codeEl) codeEl.value = m[1];
+              contactInp.value = m[2].replace(/\D/g, '').slice(0, 10);
+            } else {
+              contactInp.value = rawC.replace(/\D/g, '').slice(0, 10);
+            }
+          }
+        }
+
         const allOrderItems = orderData.items || [];
         const completedItems = allOrderItems.filter(i => {
           const remaining = i.remainingQty ?? (i.quantity - (i.dispatchedQty || 0));

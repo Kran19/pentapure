@@ -45,6 +45,154 @@ class SalesController extends Controller
         }
     }
 
+    public static function ensureVehicleNoColumnExists(): bool
+    {
+        if (Schema::hasColumn('dispatch_logs', 'vehicle_no')) {
+            return true;
+        }
+
+        try {
+            Schema::table('dispatch_logs', function (Blueprint $table) {
+                $table->string('vehicle_no')->nullable()->after('driver_no');
+            });
+            return true;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    public static function resolveTransportCompanies()
+    {
+        self::ensureVehicleNoColumnExists();
+
+        $transporters = Transporter::withCount(['orders', 'dispatchLogs'])->orderByDesc('id')->get();
+        if ($transporters->isEmpty()) {
+            return collect();
+        }
+
+        $transporterIds = $transporters->pluck('id')->filter()->all();
+        $invalidVals = ['', '—', '-', 'N/A', 'NA', 'NONE', 'NULL'];
+
+        $hasVehicleNo = Schema::hasColumn('dispatch_logs', 'vehicle_no');
+        $hasNotes = Schema::hasColumn('dispatch_logs', 'notes');
+
+        $directCols = ['id', 'transporter_id', 'order_id', 'driver_no', 'created_at'];
+        if ($hasVehicleNo) {
+            $directCols[] = 'vehicle_no';
+        }
+        if ($hasNotes) {
+            $directCols[] = 'notes';
+        }
+
+        $directLogs = DB::table('dispatch_logs')
+            ->whereIn('transporter_id', $transporterIds)
+            ->select($directCols)
+            ->orderByDesc('id')
+            ->get();
+
+        $orderCols = [
+            'dispatch_logs.id',
+            'orders.transporter_id',
+            'dispatch_logs.order_id',
+            'dispatch_logs.driver_no',
+            'dispatch_logs.created_at',
+        ];
+        if ($hasVehicleNo) {
+            $orderCols[] = 'dispatch_logs.vehicle_no';
+        }
+        if ($hasNotes) {
+            $orderCols[] = 'dispatch_logs.notes';
+        }
+
+        $orderLogs = DB::table('dispatch_logs')
+            ->join('orders', 'dispatch_logs.order_id', '=', 'orders.id')
+            ->whereIn('orders.transporter_id', $transporterIds)
+            ->select($orderCols)
+            ->orderByDesc('dispatch_logs.id')
+            ->get();
+
+        $allLogsByTransporter = $directLogs->concat($orderLogs)->sortByDesc('id')->groupBy('transporter_id');
+
+        return $transporters->map(function ($t) use ($allLogsByTransporter, $invalidVals, $hasVehicleNo, $hasNotes) {
+            $hasValidContact = !empty($t->contact) && !in_array(strtoupper(trim((string)$t->contact)), $invalidVals, true);
+            $hasValidVehicles = !empty($t->vehicles) && !in_array(strtoupper(trim((string)$t->vehicles)), $invalidVals, true);
+
+            $logs = $allLogsByTransporter->get($t->id, collect());
+
+            $effectiveContact = $hasValidContact ? trim((string)$t->contact) : null;
+            $effectiveVehicles = $hasValidVehicles ? trim((string)$t->vehicles) : null;
+
+            // 1. Resolve contact from dispatch user inputs if not already set on transporter
+            if (!$effectiveContact && $logs->isNotEmpty()) {
+                foreach ($logs as $log) {
+                    if (!empty($log->driver_no) && !in_array(strtoupper(trim((string)$log->driver_no)), $invalidVals, true)) {
+                        $effectiveContact = trim((string)$log->driver_no);
+                        break;
+                    }
+                }
+            }
+
+            // 2. Resolve vehicles from dispatch user inputs (and combine unique vehicles)
+            if ($logs->isNotEmpty()) {
+                $uniqueVehicles = [];
+                if ($effectiveVehicles) {
+                    foreach (explode(',', $effectiveVehicles) as $v) {
+                        $vTrim = trim($v);
+                        if (!empty($vTrim) && !in_array(strtoupper($vTrim), $invalidVals, true)) {
+                            $uniqueVehicles[strtoupper($vTrim)] = $vTrim;
+                        }
+                    }
+                }
+
+                foreach ($logs as $log) {
+                    if ($hasVehicleNo && !empty($log->vehicle_no) && !in_array(strtoupper(trim((string)$log->vehicle_no)), $invalidVals, true)) {
+                        $vTrim = trim((string)$log->vehicle_no);
+                        if (!isset($uniqueVehicles[strtoupper($vTrim)])) {
+                            $uniqueVehicles[strtoupper($vTrim)] = $vTrim;
+                        }
+                    } elseif ($hasNotes && !empty($log->notes)) {
+                        if (preg_match('/\b([A-Z]{2}[-\s]?[0-9]{1,2}[-\s]?[A-Z]{1,3}[-\s]?[0-9]{4})\b/i', (string)$log->notes, $vm)) {
+                            $vTrim = strtoupper(trim($vm[1]));
+                            if (!isset($uniqueVehicles[$vTrim])) {
+                                $uniqueVehicles[$vTrim] = $vTrim;
+                            }
+                        }
+                    }
+                }
+
+                if (!empty($uniqueVehicles)) {
+                    $effectiveVehicles = implode(', ', array_values($uniqueVehicles));
+                }
+            }
+
+            // Non-destructive persistence: backfill transporter row if it previously had empty/— contact or vehicles
+            $updates = [];
+            if (!$hasValidContact && $effectiveContact) {
+                $updates['contact'] = $effectiveContact;
+            }
+            if (!$hasValidVehicles && $effectiveVehicles) {
+                $updates['vehicles'] = $effectiveVehicles;
+            }
+            if (!empty($updates)) {
+                try {
+                    $t->update($updates);
+                } catch (\Throwable $ignored) {}
+            }
+
+            return [
+                'id'                  => $t->id,
+                'name'                => strtoupper($t->name ?? ''),
+                'gst'                 => $t->gst,
+                'contact'             => $effectiveContact ?: '—',
+                'vehicles'            => $effectiveVehicles ?: '—',
+                'date'                => $t->created_at ? $t->created_at->toISOString() : now()->toISOString(),
+                'orders_count'        => (int) $t->orders_count,
+                'dispatch_logs_count' => (int) $t->dispatch_logs_count,
+                'is_used'             => (($t->orders_count + $t->dispatch_logs_count) > 0),
+            ];
+        });
+    }
+
     private function resolveTransporterId($transporterId): ?int
     {
         if (!empty($transporterId) && is_numeric($transporterId)) {
@@ -178,9 +326,7 @@ class SalesController extends Controller
             'companies'          => Company::orderByDesc('id')->get()->map(fn($c)=>[
                 'id'=>$c->id,'name'=>strtoupper($c->name ?? ''),'gst'=>$c->gst,'address'=>$c->address,'pincode'=>$c->pincode,'contact'=>$c->contact,'date'=>$c->created_at->toISOString()
             ]),
-            'transportCompanies' => Transporter::orderByDesc('id')->get()->map(fn($t)=>[
-                'id'=>$t->id,'name'=>strtoupper($t->name ?? ''),'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
-            ]),
+            'transportCompanies' => self::resolveTransportCompanies(),
             'products'           => Product::target()->active()->visibleTo($this->authUser()['role'])->get(['id', 'name', 'unit', 'type'])->map(fn($p) => [
                 'id' => $p->id, 'name' => strtoupper($p->name ?? ''), 'unit' => $p->unit, 'type' => $p->type
             ]),
@@ -201,9 +347,7 @@ class SalesController extends Controller
         $companies = Company::withCount('orders')->orderByDesc('id')->get()->map(fn($c)=>[
             'id'=>$c->id,'name'=>strtoupper($c->name ?? ''),'gst'=>$c->gst,'address'=>$c->address,'pincode'=>$c->pincode,'contact'=>$c->contact,'date'=>$c->created_at ? $c->created_at->toISOString() : now()->toISOString(),'orders_count'=>(int)$c->orders_count,'is_used'=>($c->orders_count > 0)
         ]);
-        $transportCompanies = Transporter::withCount(['orders', 'dispatchLogs'])->orderByDesc('id')->get()->map(fn($t)=>[
-            'id'=>$t->id,'name'=>strtoupper($t->name ?? ''),'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at ? $t->created_at->toISOString() : now()->toISOString(),'orders_count'=>(int)$t->orders_count,'dispatch_logs_count'=>(int)$t->dispatch_logs_count,'is_used'=>(($t->orders_count + $t->dispatch_logs_count) > 0)
-        ]);
+        $transportCompanies = self::resolveTransportCompanies();
         $products = Product::active()->with('grades')->orderBy('name')->get(['id', 'name', 'unit', 'type'])->map(fn($p) => [
             'id' => $p->id, 'name' => strtoupper($p->name ?? ''), 'unit' => $p->unit, 'type' => $p->type,
             'grades' => $p->grades->pluck('name')->map('strtoupper')->toArray()
@@ -709,9 +853,7 @@ class SalesController extends Controller
             'companies'          => $companies->map(fn($c)=>[
                 'id'=>$c->id,'name'=>strtoupper($c->name ?? ''),'gst'=>$c->gst,'contact'=>$c->contact,'address'=>$c->address,'date'=>$c->created_at->toISOString()
             ]),
-            'transportCompanies' => $transporters->map(fn($t)=>[
-                'id'=>$t->id,'name'=>strtoupper($t->name ?? ''),'gst'=>$t->gst,'contact'=>$t->contact,'vehicles'=>$t->vehicles,'date'=>$t->created_at->toISOString()
-            ]),
+            'transportCompanies' => self::resolveTransportCompanies(),
         ];
         return view('sales.history', compact('pageData'));
     }
