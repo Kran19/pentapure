@@ -34,7 +34,7 @@ class DispatchController extends Controller
             };
 
             $rawGrade = strtoupper(trim((string)$ls->grade));
-            $normGrade = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL'], true) ? 'NONE' : $rawGrade;
+            $normGrade = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-'], true) ? 'NONE' : $rawGrade;
 
             $key = $ls->product_id . '_' . $normStage . '_' . $normGrade;
             $stockMap[$key] = ($stockMap[$key] ?? 0) + (float)$ls->net_qty;
@@ -45,13 +45,13 @@ class DispatchController extends Controller
 
     private function getStageStock(array|string $stages)
     {
-        $stages = (array) $stages;
-        $gradeNormExpr = "CASE WHEN stocks.grade IS NULL OR UPPER(TRIM(stocks.grade)) IN ('', 'NONE', 'N/A', 'NA', 'N / A') THEN 'NONE' ELSE UPPER(TRIM(stocks.grade)) END";
+        $stages = array_map(fn($s) => strtoupper(trim((string)$s)), (array) $stages);
+        $gradeNormExpr = "CASE WHEN stocks.grade IS NULL OR UPPER(TRIM(stocks.grade)) IN ('', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-') THEN 'NONE' ELSE UPPER(TRIM(stocks.grade)) END";
 
         return DB::table(function ($query) use ($stages, $gradeNormExpr) {
             $query->from('stocks')
                 ->join('products', 'stocks.product_id', '=', 'products.id')
-                ->whereIn('stocks.stage', $stages)
+                ->whereIn(DB::raw("UPPER(TRIM(stocks.stage))"), $stages)
                 ->selectRaw("
                     stocks.product_id as id,
                     products.name,
@@ -101,7 +101,7 @@ class DispatchController extends Controller
             };
 
             $rawGrade = strtoupper(trim((string)$i->grade));
-            $itemGrade = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL'], true) ? 'NONE' : $rawGrade;
+            $itemGrade = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-'], true) ? 'NONE' : $rawGrade;
 
             $key = $i->product_id . '_' . $itemStage . '_' . $itemGrade;
             $avail = max(0, (float)($stockMap[$key] ?? 0));
@@ -460,7 +460,7 @@ class DispatchController extends Controller
                 $dispatchQty   = (float) $dispatchItem['quantity'];
                 $remaining     = $orderItem->remainingQty();
                 $rawGrade      = strtoupper(trim((string)$orderItem->grade));
-                $itemGrade     = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL'], true) ? 'NONE' : $rawGrade;
+                $itemGrade     = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-'], true) ? 'NONE' : $rawGrade;
                 
                 $rawType       = strtoupper(trim((string)($orderItem->product?->type ?? 'FINISHED')));
                 $itemStages    = match($rawType) {
@@ -504,7 +504,7 @@ class DispatchController extends Controller
                             ->whereIn('stage', $itemStages)
                             ->where(function($q) use ($itemGrade) {
                                 if ($itemGrade === 'NONE') {
-                                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'NULL']);
+                                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-']);
                                 } else {
                                     $q->where('grade', $itemGrade);
                                 }
@@ -527,7 +527,7 @@ class DispatchController extends Controller
                         ->whereIn('stage', $itemStages)
                         ->where(function($q) use ($itemGrade) {
                             if ($itemGrade === 'NONE') {
-                                $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'NULL']);
+                                $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-']);
                             } else {
                                 $q->where('grade', $itemGrade);
                             }
@@ -799,7 +799,7 @@ class DispatchController extends Controller
 
                     // Check stock inventory availability
                     $rawGrade = strtoupper(trim((string)$orderItem->grade));
-                    $itemGrade = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL'], true) ? 'NONE' : $rawGrade;
+                    $itemGrade = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-'], true) ? 'NONE' : $rawGrade;
                     $rawType = strtoupper(trim((string)($orderItem->product?->type ?? 'FINISHED')));
                     $itemStages = match($rawType) {
                         'FG', 'FINISHED' => ['FINISHED', 'FG'],
@@ -814,7 +814,7 @@ class DispatchController extends Controller
                         ->whereIn('stage', $itemStages)
                         ->where(function($q) use ($itemGrade) {
                             if ($itemGrade === 'NONE') {
-                                $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'NULL']);
+                                $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-']);
                             } else {
                                 $q->where('grade', $itemGrade);
                             }

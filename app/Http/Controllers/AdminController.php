@@ -461,10 +461,107 @@ class AdminController extends Controller
 
         $allGradesKeyed = \App\Models\Grade::all()->keyBy(fn($g) => strtoupper(trim($g->name)));
 
-        $attachData = function($p) use ($stockMap, $productGradeStockMap, $allGradesKeyed) {
+        // Pre-fetch in bulk all usages across orders, POs, and production
+        $pendingOrderMap = [];
+        $allOrderMap = [];
+        if (Schema::hasTable('order_items') && Schema::hasTable('orders')) {
+            $orderItems = DB::table('order_items')
+                ->join('orders', 'order_items.order_id', '=', 'orders.id')
+                ->where(function($q) {
+                    $q->whereNull('orders.status')
+                      ->orWhere('orders.status', '!=', 'CANCELLED');
+                })
+                ->select(
+                    'order_items.product_id',
+                    'orders.id as order_id',
+                    'orders.dispatch_status',
+                    'order_items.quantity',
+                    'order_items.dispatched_qty'
+                )
+                ->orderBy('orders.id', 'desc')
+                ->get();
+
+            foreach ($orderItems as $item) {
+                if (!isset($allOrderMap[$item->product_id])) {
+                    $allOrderMap[$item->product_id] = $item->order_id;
+                }
+
+                $dStatus = strtoupper(trim(str_replace('_', ' ', (string)($item->dispatch_status ?? ''))));
+                $isPendingDispatch = !in_array($dStatus, ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'FULLY_DISPATCHED', 'CLOSED'])
+                    || ((float)$item->quantity > (float)($item->dispatched_qty ?? 0));
+
+                if ($isPendingDispatch && !isset($pendingOrderMap[$item->product_id])) {
+                    $pendingOrderMap[$item->product_id] = $item->order_id;
+                }
+            }
+        }
+
+        $pendingPoMap = [];
+        $allPoMap = [];
+        if (Schema::hasTable('purchase_orders')) {
+            $poRows = DB::table('purchase_orders')
+                ->select('product_id', 'id as po_id', 'status')
+                ->orderBy('id', 'desc')
+                ->get();
+
+            foreach ($poRows as $po) {
+                if (!isset($allPoMap[$po->product_id])) {
+                    $allPoMap[$po->product_id] = $po->po_id;
+                }
+                $poStatus = strtoupper(trim((string)$po->status));
+                if (in_array($poStatus, ['PENDING', 'OPEN', 'IN_PROGRESS', 'PROCESSING']) || $poStatus === '') {
+                    if (!isset($pendingPoMap[$po->product_id])) {
+                        $pendingPoMap[$po->product_id] = $po->po_id;
+                    }
+                }
+            }
+        }
+
+        $prodOutputs = [];
+        if (Schema::hasTable('production_logs')) {
+            $prodOutputs = DB::table('production_logs')->pluck('output_product_id', 'output_product_id')->toArray();
+        }
+
+        $prodInputs = [];
+        if (Schema::hasTable('production_log_inputs')) {
+            $prodInputs = DB::table('production_log_inputs')->pluck('input_product_id', 'input_product_id')->toArray();
+        }
+
+        $attachData = function($p) use ($stockMap, $productGradeStockMap, $allGradesKeyed, $pendingOrderMap, $allOrderMap, $pendingPoMap, $allPoMap, $prodOutputs, $prodInputs) {
             $gradeIds = $p->grades->pluck('id')->toArray();
             $gradeNames = $p->grades->pluck('name')->toArray();
-            $p->current_stock = (float)($stockMap[$p->id] ?? 0);
+            $currStock = (float)($stockMap[$p->id] ?? 0);
+            $p->current_stock = $currStock;
+
+            $canDelete = true;
+            $cannotDeleteReason = null;
+
+            if ($currStock > 0.0001) {
+                $canDelete = false;
+                $cannotDeleteReason = "Cannot delete: Product currently has " . number_format($currStock, 2) . " " . ($p->unit ?? 'units') . " in Stock";
+            } elseif (isset($pendingOrderMap[$p->id])) {
+                $canDelete = false;
+                $ordCode = 'ORD-' . str_pad($pendingOrderMap[$p->id], 4, '0', STR_PAD_LEFT);
+                $cannotDeleteReason = "Cannot delete: Product is in use by pending Order #{$ordCode} (Sales / Dispatch)";
+            } elseif (isset($allOrderMap[$p->id])) {
+                $canDelete = false;
+                $ordCode = 'ORD-' . str_pad($allOrderMap[$p->id], 4, '0', STR_PAD_LEFT);
+                $cannotDeleteReason = "Cannot delete: Product is in use in Order #{$ordCode}";
+            } elseif (isset($pendingPoMap[$p->id])) {
+                $canDelete = false;
+                $poCode = 'PO-' . str_pad($pendingPoMap[$p->id], 4, '0', STR_PAD_LEFT);
+                $cannotDeleteReason = "Cannot delete: Product has pending Purchase Order #{$poCode}";
+            } elseif (isset($allPoMap[$p->id])) {
+                $canDelete = false;
+                $poCode = 'PO-' . str_pad($allPoMap[$p->id], 4, '0', STR_PAD_LEFT);
+                $cannotDeleteReason = "Cannot delete: Product is in use in Purchase Order #{$poCode}";
+            } elseif (isset($prodOutputs[$p->id]) || isset($prodInputs[$p->id])) {
+                $canDelete = false;
+                $cannotDeleteReason = "Cannot delete: Product is recorded in Production Logs";
+            }
+
+            $p->can_delete = $canDelete;
+            $p->cannot_delete_reason = $cannotDeleteReason;
 
             $pStock = $productGradeStockMap[$p->id] ?? [];
             $gradeStocks = [];
@@ -795,6 +892,108 @@ class AdminController extends Controller
         }
     }
 
+    public function checkProductDeletionBlock(Product $product): ?string
+    {
+        // 1. Check stock
+        $stockBreakdown = DB::table('stocks')
+            ->where('product_id', $product->id)
+            ->groupBy('stage', 'grade')
+            ->selectRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as qty")
+            ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
+            ->get();
+
+        $totalAvailable = (float) $stockBreakdown->sum('qty');
+        if ($totalAvailable > 0.0001) {
+            return "Cannot delete product: it has " . number_format($totalAvailable, 2) . " " . ($product->unit ?? 'units') . " available in Stock! Please dispatch or adjust stock to 0 first.";
+        }
+
+        // 2. Check pending orders in Sales / Dispatch / Subadmin
+        if (Schema::hasTable('order_items') && Schema::hasTable('orders')) {
+            $pendingItem = DB::table('order_items')
+                ->join('orders', 'order_items.order_id', '=', 'orders.id')
+                ->where('order_items.product_id', $product->id)
+                ->where(function($q) {
+                    $q->whereNull('orders.status')
+                      ->orWhere('orders.status', '!=', 'CANCELLED');
+                })
+                ->where(function($q) {
+                    $q->whereNotIn(DB::raw("UPPER(TRIM(COALESCE(orders.dispatch_status, '')))"), [
+                        'DONE', 'COMPLETED', 'FULLY DISPATCHED', 'FULLY_DISPATCHED', 'CLOSED'
+                    ])
+                    ->orWhereNull('orders.dispatch_status')
+                    ->orWhereRaw("order_items.quantity > COALESCE(order_items.dispatched_qty, 0)");
+                })
+                ->select('orders.id as order_id')
+                ->orderBy('orders.id', 'desc')
+                ->first();
+
+            if ($pendingItem) {
+                $ordCode = 'ORD-' . str_pad($pendingItem->order_id, 4, '0', STR_PAD_LEFT);
+                return "Cannot delete product: in use by pending Order #{$ordCode} (Sales / Dispatch)! Please cancel or complete the order first.";
+            }
+
+            // Check any non-cancelled order history
+            $historyItem = DB::table('order_items')
+                ->join('orders', 'order_items.order_id', '=', 'orders.id')
+                ->where('order_items.product_id', $product->id)
+                ->where(function($q) {
+                    $q->whereNull('orders.status')
+                      ->orWhere('orders.status', '!=', 'CANCELLED');
+                })
+                ->select('orders.id as order_id')
+                ->orderBy('orders.id', 'desc')
+                ->first();
+
+            if ($historyItem) {
+                $ordCode = 'ORD-' . str_pad($historyItem->order_id, 4, '0', STR_PAD_LEFT);
+                return "Cannot delete product: in use in Order #{$ordCode}! Deleting it would corrupt order history.";
+            }
+        }
+
+        // 3. Check purchase orders
+        if (Schema::hasTable('purchase_orders')) {
+            $pendingPo = DB::table('purchase_orders')
+                ->where('product_id', $product->id)
+                ->where(function($q) {
+                    $q->whereIn(DB::raw("UPPER(TRIM(status))"), ['PENDING', 'OPEN', 'IN_PROGRESS', 'PROCESSING'])
+                      ->orWhereNull('status');
+                })
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if ($pendingPo) {
+                $poCode = 'PO-' . str_pad($pendingPo->id, 4, '0', STR_PAD_LEFT);
+                return "Cannot delete product: in use by pending Purchase Order #{$poCode}!";
+            }
+
+            $existingPo = DB::table('purchase_orders')
+                ->where('product_id', $product->id)
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if ($existingPo) {
+                $poCode = 'PO-' . str_pad($existingPo->id, 4, '0', STR_PAD_LEFT);
+                return "Cannot delete product: in use in Purchase Order #{$poCode}!";
+            }
+        }
+
+        // 4. Check production logs
+        if (Schema::hasTable('production_logs')) {
+            $prodLog = DB::table('production_logs')->where('output_product_id', $product->id)->first();
+            if ($prodLog) {
+                return "Cannot delete product: recorded as output in Production Log #{$prodLog->id}!";
+            }
+        }
+        if (Schema::hasTable('production_log_inputs')) {
+            $prodInput = DB::table('production_log_inputs')->where('input_product_id', $product->id)->first();
+            if ($prodInput) {
+                return "Cannot delete product: recorded as input in Production Log #{$prodInput->production_log_id}!";
+            }
+        }
+
+        return null;
+    }
+
     public function destroyProduct($id)
     {
         if (!$this->canModifyProducts()) {
@@ -806,20 +1005,11 @@ class AdminController extends Controller
 
         $product = Product::findOrFail($id);
 
-        // Check if product has available stock in admin/stock (> 0)
-        $stockBreakdown = DB::table('stocks')
-            ->where('product_id', $product->id)
-            ->groupBy('stage', 'grade')
-            ->selectRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as qty")
-            ->havingRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) > 0")
-            ->get();
-
-        $totalAvailable = (float) $stockBreakdown->sum('qty');
-
-        if ($totalAvailable > 0) {
+        $blockReason = $this->checkProductDeletionBlock($product);
+        if ($blockReason !== null) {
             return response()->json([
                 'success' => false,
-                'message' => "Cannot delete product: it has " . number_format($totalAvailable, 2) . " {$product->unit} available in Stock! Please dispatch or adjust stock to 0 first."
+                'message' => $blockReason
             ], 422);
         }
 
@@ -927,14 +1117,9 @@ class AdminController extends Controller
                         ->selectRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE -quantity END) as net")
                         ->value('net');
 
-                    // If primary had no stock, but extra has stock, reassign extra's stock to primary
-                    if ($primaryStock <= 0 && $extraStock > 0) {
-                        DB::table('stocks')->where('product_id', $extra->id)->update(['product_id' => $primary->id]);
-                        $primaryStock = $extraStock;
-                    } else {
-                        // Clean up duplicate stock on the extra product
-                        DB::table('stocks')->where('product_id', $extra->id)->delete();
-                    }
+                    // NEVER delete stock records - always reassign duplicate product's stock to primary to prevent any data loss
+                    DB::table('stocks')->where('product_id', $extra->id)->update(['product_id' => $primary->id]);
+                    $primaryStock += $extraStock;
 
                     // Reassign any orders / order_items from extra to primary
                     DB::table('order_items')->where('product_id', $extra->id)->update(['product_id' => $primary->id]);
@@ -1074,10 +1259,6 @@ class AdminController extends Controller
 
         $allStock = collect();
         foreach ($stockAggMap as $key => $agg) {
-            if ($agg['quantity'] < 0) {
-                continue;
-            }
-
             $product = $products->get($agg['product_id']);
             if (!$product) {
                 continue;
@@ -1147,7 +1328,6 @@ class AdminController extends Controller
                 SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
             ")
             ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade')
-            ->havingRaw("quantity > 0")
             ->get();
 
         $locationMappings = [];
@@ -1182,7 +1362,7 @@ class AdminController extends Controller
                 $qty = (float) $us->quantity;
 
                 foreach (["{$us->product_id}_{$normG}_{$normStage}", "{$us->product_id}__{$normStage}"] as $k) {
-                    $locationMappings[$k][$primaryLocName] = ($locationMappings[$k][$primaryLocName] ?? 0) + $qty;
+                    $locationMappings[$k][$primaryLocName] = max(0, ($locationMappings[$k][$primaryLocName] ?? 0) + $qty);
                 }
             }
         }
@@ -1378,7 +1558,7 @@ class AdminController extends Controller
             ->setOption('isFontSubsettingEnabled', true);
         
         $asOnDate = $date ? \Carbon\Carbon::parse($date)->format('d-m-Y') : now()->format('d-m-Y');
-        $filename = 'PentaPure_Live_Stock_As_On_Date_' . $asOnDate . '.pdf';
+        $filename = 'ppf live stock.pdf';
 
         return $pdf->download($filename);
     }
@@ -1488,7 +1668,7 @@ class AdminController extends Controller
             || str_contains($referer, 'stock_manager');
 
         $asOnDate = $date ? \Carbon\Carbon::parse($date)->format('d-m-Y') : now()->format('d-m-Y');
-        $filename = 'PentaPure_Live_Stock_As_On_Date_' . $asOnDate . '.csv';
+        $filename = 'ppf live stock.csv';
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
@@ -2537,7 +2717,7 @@ class AdminController extends Controller
                 ->selectRaw("SUM(CASE WHEN transaction_type='IN' THEN quantity ELSE -quantity END) as net")
                 ->value('net') ?? 0);
 
-            if ($currentQty > 0) {
+            if (abs($currentQty) > 0.001) {
                 return response()->json([
                     'success' => false,
                     'message' => "Cannot delete stock entry: current quantity is " . number_format($currentQty, 2) . " {$product->unit}. Stock quantity must be 0 to delete."
@@ -3186,7 +3366,7 @@ class AdminController extends Controller
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.cashier_overview_pdf', $data);
         $pdf->setPaper('A4', 'portrait');
-        $filename = 'PENTAPURE_CASHIER_OVERVIEW_' . now()->format('d-m-Y') . '_' . rand(1000, 9999) . '.pdf';
+        $filename = 'ppf cashier report.pdf';
         return $pdf->download($filename);
     }
 
@@ -3438,7 +3618,7 @@ class AdminController extends Controller
         if ($grade) {
             $unassignedStockQuery->where(function($q) use ($grade) {
                 if ($grade === 'NONE') {
-                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'NULL']);
+                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-']);
                 } else {
                     $q->where('grade', $grade);
                 }
@@ -3457,7 +3637,7 @@ class AdminController extends Controller
 
         $breakdown = $locations->map(function($loc) use ($stockCounts, $unassignedStock, $mainLoc) {
             $qty = (float) ($stockCounts[$loc->id] ?? 0);
-            if ($mainLoc && $loc->id === $mainLoc->id && $unassignedStock > 0) {
+            if ($mainLoc && $loc->id === $mainLoc->id && $unassignedStock != 0) {
                 $qty += $unassignedStock;
             }
             return [
@@ -3510,7 +3690,7 @@ class AdminController extends Controller
         };
 
         $rawGrade = strtoupper(trim((string)$request->grade));
-        $grade = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL'], true) ? 'NONE' : $rawGrade;
+        $grade = in_array($rawGrade, ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-'], true) ? 'NONE' : $rawGrade;
 
         // Validate stock availability in the source location
         $available = (float) (DB::table('stocks')
@@ -3518,7 +3698,7 @@ class AdminController extends Controller
             ->whereIn('stage', $stagesList)
             ->where(function($q) use ($grade) {
                 if ($grade === 'NONE') {
-                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'NULL']);
+                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-']);
                 } else {
                     $q->where('grade', $grade);
                 }

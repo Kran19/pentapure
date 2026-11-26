@@ -273,8 +273,8 @@ class StockManagerController extends Controller
 
         if ($grade) {
             $stockQuery->where(function($q) use ($grade) {
-                if (strtoupper($grade) === 'NONE') {
-                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '');
+                if (in_array(strtoupper(trim((string)$grade)), ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-'], true)) {
+                    $q->where('grade', 'NONE')->orWhereNull('grade')->orWhere('grade', '')->orWhereIn(DB::raw("UPPER(TRIM(grade))"), ['NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-']);
                 } else {
                     $q->where('grade', $grade);
                 }
@@ -444,10 +444,6 @@ class StockManagerController extends Controller
 
         $allStock = collect();
         foreach ($stockAggMap as $key => $agg) {
-            if ($agg['quantity'] < 0) {
-                continue;
-            }
-
             $product = $products->get($agg['product_id']);
             if (!$product) {
                 continue;
@@ -517,7 +513,6 @@ class StockManagerController extends Controller
                 SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
             ")
             ->groupBy('stocks.product_id', 'stocks.stage', 'stocks.grade')
-            ->havingRaw("quantity > 0")
             ->get();
 
         $locationMappings = [];
@@ -552,7 +547,7 @@ class StockManagerController extends Controller
                 $qty = (float) $us->quantity;
 
                 foreach (["{$us->product_id}_{$normG}_{$normStage}", "{$us->product_id}__{$normStage}"] as $k) {
-                    $locationMappings[$k][$primaryLocName] = ($locationMappings[$k][$primaryLocName] ?? 0) + $qty;
+                    $locationMappings[$k][$primaryLocName] = max(0, ($locationMappings[$k][$primaryLocName] ?? 0) + $qty);
                 }
             }
         }

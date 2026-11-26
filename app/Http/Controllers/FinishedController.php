@@ -16,21 +16,29 @@ class FinishedController extends Controller
     private function getLiveStock(string $stage): array
     {
         $userRole = $this->authUser()['role'];
+        $rawStage = strtoupper(trim($stage));
+        $stagesList = match($rawStage) {
+            'FINISHED', 'FG' => ['FINISHED', 'FG'],
+            'PACKAGING', 'PKG', 'PM' => ['PACKAGING', 'PKG', 'PM'],
+            default => [$stage],
+        };
+        $gradeNormExpr = "CASE WHEN stocks.grade IS NULL OR UPPER(TRIM(stocks.grade)) IN ('', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-') THEN 'NONE' ELSE UPPER(TRIM(stocks.grade)) END";
+
         return DB::table('stocks')
             ->join('products', 'stocks.product_id', '=', 'products.id')
-            ->where('stocks.stage', $stage)
+            ->whereIn(DB::raw("UPPER(TRIM(stocks.stage))"), $stagesList)
             ->where(function($q) use ($userRole) {
                 if ($userRole === 'ADMIN') return $q;
                 $q->whereNull('products.allowed_roles')
                   ->orWhereJsonContains('products.allowed_roles', $userRole);
             })
-            ->groupBy('stocks.product_id', 'stocks.grade', 'products.name', 'products.unit', 'products.id')
+            ->groupBy('stocks.product_id', DB::raw($gradeNormExpr), 'products.name', 'products.unit', 'products.id')
             ->selectRaw("
                 stocks.product_id as productId,
                 products.id as id,
                 products.name,
                 products.unit,
-                stocks.grade,
+                {$gradeNormExpr} as grade,
                 '{$stage}' as stage,
                 SUM(CASE WHEN stocks.transaction_type = 'IN' THEN stocks.quantity ELSE -stocks.quantity END) as quantity
             ")

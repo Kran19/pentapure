@@ -83,6 +83,35 @@ class Stock extends Model
             
             $remaining -= $deduct;
         }
+
+        // If remaining still > 0 and requested grade wasn't NONE, deduct from available NONE (ungraded) stock in this stage
+        if ($remaining > 0 && $normGrade !== 'NONE') {
+            $fallbackLocations = \Illuminate\Support\Facades\DB::table('stocks')
+                ->select('location_id', 'stage', 'grade', \Illuminate\Support\Facades\DB::raw('SUM(CASE WHEN transaction_type = "IN" THEN quantity ELSE -quantity END) as available'))
+                ->where('product_id', $productId)
+                ->whereIn('stage', $stagesList)
+                ->whereIn(\Illuminate\Support\Facades\DB::raw("UPPER(TRIM(COALESCE(grade, '')))"), ['', 'NONE', 'N/A', 'NA', 'N / A', 'DEFAULT', 'NULL', '-'])
+                ->groupBy('location_id', 'stage', 'grade')
+                ->havingRaw('SUM(CASE WHEN transaction_type = "IN" THEN quantity ELSE -quantity END) > 0')
+                ->get();
+
+            foreach ($fallbackLocations as $fLoc) {
+                if ($remaining <= 0) break;
+                $deduct = min($remaining, $fLoc->available);
+                self::create([
+                    'product_id' => $productId,
+                    'user_id' => $userId,
+                    'stage' => $fLoc->stage ?: $stagesList[0],
+                    'grade' => $fLoc->grade ?? 'NONE',
+                    'location_id' => $fLoc->location_id ?: $firstConfiguredLocId,
+                    'quantity' => $deduct,
+                    'transaction_type' => 'OUT',
+                    'date' => now()->toDateString(),
+                    'notes' => $notes . ' (Deducted from general stock fallback)'
+                ]);
+                $remaining -= $deduct;
+            }
+        }
         
         if ($remaining > 0) {
             $defaultLocId = $firstConfiguredLocId ?: \App\Models\Location::firstOrCreate(['name' => 'Main Warehouse'])->id;

@@ -109,6 +109,7 @@ class PdfGenerationTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringContainsString('ppf live stock.pdf', (string)$response->headers->get('Content-Disposition'));
         $this->assertNotEmpty($response->getContent());
     }
 
@@ -357,6 +358,7 @@ class PdfGenerationTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringContainsString('ppf cashier report.pdf', (string)$response->headers->get('Content-Disposition'));
         $this->assertNotEmpty($response->getContent());
     }
 
