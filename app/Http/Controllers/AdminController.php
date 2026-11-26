@@ -2753,7 +2753,7 @@ class AdminController extends Controller
             ELSE '1970-01-01'
         END";
 
-        $query = Order::with(['company', 'items.product', 'dispatchLog.user', 'dispatchLogs.user', 'transporter', 'creator'])
+        $query = Order::with(['company', 'items.product', 'dispatchLog.user', 'dispatchLogs.user', 'dispatchLogs.transporter', 'transporter', 'creator'])
             ->select('orders.*')
             ->addSelect(['dispatch_logs_count' => DispatchLog::selectRaw('COUNT(*)')
                 ->whereColumn('order_id', 'orders.id')
@@ -2920,7 +2920,7 @@ class AdminController extends Controller
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('HistoryPdfController dispatch download failed: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
 
-            $query = Order::with(['company', 'items.product', 'dispatchLog.user', 'dispatchLogs.user', 'transporter', 'creator'])
+            $query = Order::with(['company', 'items.product', 'dispatchLog.user', 'dispatchLogs.user', 'dispatchLogs.transporter', 'transporter', 'creator'])
                 ->orderByDesc('id');
             if ($request->filled('company_id')) {
                 $query->where('company_id', $request->company_id);

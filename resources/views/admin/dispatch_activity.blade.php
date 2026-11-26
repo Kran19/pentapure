@@ -349,7 +349,14 @@ html.dark-mode .highlight-dispatch-date,
           $orderTotal = (float)($order->total ?: $order->items->sum(fn($i) => (float)$i->quantity * (float)$i->price));
           $companyName = strtoupper($order->company?->name ?? 'N/A');
           $salesPerson = strtoupper($order->creator?->name ?? 'N/A');
-          $transportName = strtoupper($order->transporter?->name ?? 'N/A');
+          $effectiveTransporter = $order->transporter;
+          if (!$effectiveTransporter || in_array(strtoupper(trim($effectiveTransporter->name ?? '')), ['', 'N/A', 'NA', 'NONE', '—', '-'], true)) {
+              $latestLogWithTrans = $order->dispatchLogs ? $order->dispatchLogs->sortByDesc('id')->first(fn($l) => $l->transporter && !in_array(strtoupper(trim($l->transporter->name ?? '')), ['', 'N/A', 'NA', 'NONE', '—', '-'], true)) : null;
+              if ($latestLogWithTrans) {
+                  $effectiveTransporter = $latestLogWithTrans->transporter;
+              }
+          }
+          $transportName = strtoupper($effectiveTransporter?->name ?? 'N/A');
 
           $diffDays = null;
           $dueDaysBadge = '';
@@ -544,6 +551,15 @@ html.dark-mode .highlight-dispatch-date,
                 @endif
                 @if($lastLog->created_at)
                   <span style="color:var(--text-muted);">Dispatch Date & Time: <strong style="color:#16a34a;">{{ $lastLog->created_at->timezone('Asia/Kolkata')->format('d-m-Y, h:i A') }}</strong></span>
+                @endif
+                @if(!empty($lastLog->driver_no) && !in_array(strtoupper(trim($lastLog->driver_no)), ['N/A', 'NA', '—', '-'], true))
+                  <span style="color:var(--text-muted);">Driver: <strong style="color:var(--text-main);">{{ $lastLog->driver_no }}</strong></span>
+                @endif
+                @php
+                  $actDispVehicle = !empty($lastLog->vehicle_no) ? $lastLog->vehicle_no : ($lastLog->transporter?->vehicles ?? null);
+                @endphp
+                @if(!empty($actDispVehicle) && !in_array(strtoupper(trim($actDispVehicle)), ['N/A', 'NA', '—', '-'], true))
+                  <span style="color:var(--text-muted);">Vehicle: <strong style="color:var(--text-main);">{{ $actDispVehicle }}</strong></span>
                 @endif
                 @if($lastLog->lr_image_path)
                   @php

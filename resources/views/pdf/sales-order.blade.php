@@ -146,9 +146,9 @@
                 <div class="section-header">TRANSPORT DETAILS</div>
                 <div class="section-box">
                     <table>
-                        <tr><td class="lbl">Transporter</td><td class="val">: <strong>{{ $transporter->name ?? 'N/A' }}</strong></td></tr>
-                        <tr><td class="lbl">Contact Number</td><td class="val">: {{ $transporter->contact ?? 'N/A' }}</td></tr>
-                        <tr><td class="lbl">Vehicle Number</td><td class="val">: {{ $transporter->vehicles ?? 'N/A' }}</td></tr>
+                        <tr><td class="lbl">Transporter</td><td class="val">: <strong>{{ (!empty($transporterName) && $transporterName !== 'N/A') ? $transporterName : (!empty($transporter->name) && $transporter->name !== 'N/A' ? $transporter->name : 'N/A') }}</strong></td></tr>
+                        <tr><td class="lbl">Contact Number</td><td class="val">: {{ (!empty($driverContact) && $driverContact !== 'N/A') ? $driverContact : (!empty($transporter->contact) && $transporter->contact !== '—' ? $transporter->contact : 'N/A') }}</td></tr>
+                        <tr><td class="lbl">Vehicle Number</td><td class="val">: {{ (!empty($vehicleNumber) && $vehicleNumber !== 'N/A') ? $vehicleNumber : (!empty($transporter->vehicles) && $transporter->vehicles !== '—' ? $transporter->vehicles : 'N/A') }}</td></tr>
                     </table>
                 </div>
             </td>

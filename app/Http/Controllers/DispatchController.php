@@ -566,16 +566,24 @@ class DispatchController extends Controller
                 $transporter = \App\Models\Transporter::find($dispatchTransporterId);
                 if ($transporter) {
                     $updates = [];
-                    if (!empty($vehicleNo) && (empty($transporter->vehicles) || $transporter->vehicles === '—' || $transporter->vehicles === 'N/A')) {
+                    if (!empty($vehicleNo)) {
                         $updates['vehicles'] = $vehicleNo;
                     }
-                    if (!empty($driverNo) && (empty($transporter->contact) || $transporter->contact === '—' || $transporter->contact === 'N/A')) {
+                    if (!empty($driverNo)) {
                         $updates['contact'] = $driverNo;
                     }
                     if (!empty($updates)) {
                         $transporter->update($updates);
                     }
                 }
+            }
+
+            // Also link the order to this transporter if order didn't have one
+            if ($dispatchTransporterId && (empty($order->transporter_id) || $order->transporter?->name === 'N/A')) {
+                try {
+                    $order->transporter_id = $dispatchTransporterId;
+                    $order->saveQuietly();
+                } catch (\Throwable $ignored) {}
             }
 
             // Create dispatch log for this round

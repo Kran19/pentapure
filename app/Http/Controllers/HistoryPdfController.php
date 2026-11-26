@@ -453,6 +453,7 @@ class HistoryPdfController extends Controller
             'items.product',
             'dispatchLogs.dispatchItems.orderItem.product',
             'dispatchLogs.user',
+            'dispatchLogs.transporter',
         ])->findOrFail($id);
 
         foreach ($order->items as $item) {
@@ -498,6 +499,8 @@ class HistoryPdfController extends Controller
             : ($order->date ? Carbon::parse($order->date) : now());
 
         $latestDispatchLog = $order->dispatchLogs ? $order->dispatchLogs->sortByDesc('created_at')->first() : null;
+        $sortedLogsDesc = $order->dispatchLogs ? $order->dispatchLogs->sortByDesc('created_at')->values() : collect();
+
         $actualDispatchDate = null;
         if ($latestDispatchLog && $latestDispatchLog->created_at) {
             $actualDispatchDate = Carbon::parse($latestDispatchLog->created_at)->timezone('Asia/Kolkata')->format('d-m-Y');
@@ -507,10 +510,67 @@ class HistoryPdfController extends Controller
             $actualDispatchDate = Carbon::parse($order->updated_at)->timezone('Asia/Kolkata')->format('d-m-Y');
         }
 
+        // Resolve effective transport details (transporter, driver contact, vehicle number) filled by dispatch user
+        $effectiveTransporter = null;
+        foreach ($sortedLogsDesc as $dl) {
+            if ($dl->transporter && !in_array(strtoupper(trim((string)$dl->transporter->name)), ['', 'N/A', 'NA', 'NONE', '—', '-'], true)) {
+                $effectiveTransporter = $dl->transporter;
+                break;
+            }
+        }
+        if (!$effectiveTransporter && $order->transporter && !in_array(strtoupper(trim((string)$order->transporter->name)), ['', 'N/A', 'NA', 'NONE', '—', '-'], true)) {
+            $effectiveTransporter = $order->transporter;
+        }
+
+        // Link to order if order had no transporter assigned
+        if (empty($order->transporter_id) && $effectiveTransporter && !empty($effectiveTransporter->id)) {
+            try {
+                $order->transporter_id = $effectiveTransporter->id;
+                $order->saveQuietly();
+            } catch (\Throwable $ignored) {}
+        }
+
+        // Resolve Contact / Driver Number
+        $driverContact = null;
+        foreach ($sortedLogsDesc as $dl) {
+            if (!empty($dl->driver_no) && !in_array(strtoupper(trim((string)$dl->driver_no)), ['', 'N/A', 'NA', 'NONE', '—', '-'], true)) {
+                $driverContact = $dl->driver_no;
+                break;
+            }
+        }
+        if (!$driverContact && $effectiveTransporter && !empty($effectiveTransporter->contact) && !in_array(strtoupper(trim((string)$effectiveTransporter->contact)), ['', 'N/A', 'NA', 'NONE', '—', '-'], true)) {
+            $driverContact = $effectiveTransporter->contact;
+        }
+        if (!$driverContact && $order->transporter && !empty($order->transporter->contact) && !in_array(strtoupper(trim((string)$order->transporter->contact)), ['', 'N/A', 'NA', 'NONE', '—', '-'], true)) {
+            $driverContact = $order->transporter->contact;
+        }
+
+        // Resolve Vehicle Number
+        $vehicleNumber = null;
+        foreach ($sortedLogsDesc as $dl) {
+            if (!empty($dl->vehicle_no) && !in_array(strtoupper(trim((string)$dl->vehicle_no)), ['', 'N/A', 'NA', 'NONE', '—', '-'], true)) {
+                $vehicleNumber = $dl->vehicle_no;
+                break;
+            }
+        }
+        if (!$vehicleNumber && $effectiveTransporter && !empty($effectiveTransporter->vehicles) && !in_array(strtoupper(trim((string)$effectiveTransporter->vehicles)), ['', 'N/A', 'NA', 'NONE', '—', '-'], true)) {
+            $vehicleNumber = $effectiveTransporter->vehicles;
+        }
+        if (!$vehicleNumber && $order->transporter && !empty($order->transporter->vehicles) && !in_array(strtoupper(trim((string)$order->transporter->vehicles)), ['', 'N/A', 'NA', 'NONE', '—', '-'], true)) {
+            $vehicleNumber = $order->transporter->vehicles;
+        }
+
+        $transporterName = ($effectiveTransporter && !in_array(strtoupper(trim((string)$effectiveTransporter->name)), ['', 'N/A', 'NA', 'NONE', '—', '-'], true))
+            ? $effectiveTransporter->name
+            : ($order->transporter?->name ?: 'N/A');
+
         $data = [
             'order' => $order,
             'company' => $order->company,
-            'transporter' => $order->transporter ?? (object)[],
+            'transporter' => $effectiveTransporter ?? $order->transporter ?? (object)[],
+            'transporterName' => $transporterName ?: 'N/A',
+            'driverContact' => $driverContact ?: 'N/A',
+            'vehicleNumber' => $vehicleNumber ?: 'N/A',
             'items' => $order->items,
             'dispatchHistory' => $dispatchHistory,
             'orderNo' => 'ORD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT),
