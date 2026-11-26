@@ -31,14 +31,14 @@ class SalesTransporterDispatchSyncTest extends TestCase
         $this->actingAs($this->salesUser);
     }
 
-    public function test_transporter_displays_driver_and_vehicle_added_in_dispatch(): void
+    public function test_dispatch_stores_data_in_dispatch_logs_and_not_in_transporters_master_table(): void
     {
-        // 1. Create a transporter with empty contact and vehicles (represented as — or null)
+        // 1. Create a transporter with no vehicles or contact
         $transporter = Transporter::create([
             'name'     => 'FAST LOGISTICS',
             'gst'      => '24AAAAA0000A1Z5',
-            'contact'  => '—',
-            'vehicles' => '—',
+            'contact'  => null,
+            'vehicles' => null,
         ]);
 
         $company = Company::create([
@@ -56,28 +56,35 @@ class SalesTransporterDispatchSyncTest extends TestCase
             'notes'           => 'Urgent dispatch',
         ]);
 
-        // 2. Dispatch user creates dispatch with driver contact and vehicle number
         SalesController::ensureVehicleNoColumnExists();
 
-        DispatchLog::create([
+        // Dispatch user enters driver contact, vehicle number / note
+        $dispatchLog = DispatchLog::create([
             'user_id'        => $this->salesUser->id,
             'order_id'       => $order->id,
             'transporter_id' => $transporter->id,
             'driver_no'      => '+91 9265666204',
-            'vehicle_no'     => 'GJ04X9145',
+            'vehicle_no'     => 'ACTUAL DISPATCH ON 20-11-2026(DUE TO APP.PROBLEM)',
             'lr_no'          => 'LR-12345',
             'notes'          => 'Dispatched successfully',
         ]);
 
-        // 3. SalesController::resolveTransportCompanies() should resolve contact and vehicle
-        $transportList = SalesController::resolveTransportCompanies();
+        // Dispatch log must have the dispatch entry
+        $this->assertEquals('ACTUAL DISPATCH ON 20-11-2026(DUE TO APP.PROBLEM)', $dispatchLog->vehicle_no);
+        $this->assertEquals('+91 9265666204', $dispatchLog->driver_no);
+
+        // Transporter master record must NOT be polluted
+        $freshTrans = $transporter->fresh();
+        $this->assertNull($freshTrans->vehicles);
+
+        // Transporter list in Sales action must show '—', not dispatch user's note
+        $transportList = SalesController::getTransportCompanies();
         $matched = $transportList->firstWhere('id', $transporter->id);
 
         $this->assertNotNull($matched);
-        $this->assertEquals('+91 9265666204', $matched['contact']);
-        $this->assertEquals('GJ04X9145', $matched['vehicles']);
+        $this->assertEquals('—', $matched['vehicles']);
 
-        // 4. In Sales action page, the table should contain the contact and vehicle
+        // In Sales action page, the table should NOT contain the dispatch note in vehicles
         $session = ['auth_user' => [
             'id' => $this->salesUser->id,
             'name' => $this->salesUser->name,
@@ -85,64 +92,27 @@ class SalesTransporterDispatchSyncTest extends TestCase
         ]];
         $response = $this->withSession($session)->get(route('sales.action'));
         $response->assertOk();
-        $response->assertSee('+91 9265666204');
-        $response->assertSee('GJ04X9145');
+        $response->assertDontSee('ACTUAL DISPATCH ON 20-11-2026(DUE TO APP.PROBLEM)');
     }
 
-    public function test_multiple_dispatches_with_different_vehicles_are_combined(): void
+    public function test_contaminated_transporter_vehicles_are_cleaned_automatically(): void
     {
         $transporter = Transporter::create([
-            'name'     => 'SUPER EXPRESS',
+            'name'     => 'JAI TRANSPORT SERVICE',
             'gst'      => 'N/A',
             'contact'  => null,
-            'vehicles' => null,
+            'vehicles' => 'ACTUAL DISPATCH ON 20-11-2026(DUE TO APP.PROBLEM)',
         ]);
 
-        $company = Company::create(['name' => 'TEST CO']);
-
-        $order1 = Order::create([
-            'created_by'      => $this->salesUser->id,
-            'company_id'      => $company->id,
-            'transporter_id'  => $transporter->id,
-            'total'           => 500,
-            'notes'           => 'Note 1',
-        ]);
-
-        $order2 = Order::create([
-            'created_by'      => $this->salesUser->id,
-            'company_id'      => $company->id,
-            'transporter_id'  => $transporter->id,
-            'total'           => 500,
-            'notes'           => 'Note 2',
-        ]);
-
-        SalesController::ensureVehicleNoColumnExists();
-
-        DispatchLog::create([
-            'user_id'        => $this->salesUser->id,
-            'order_id'       => $order1->id,
-            'transporter_id' => $transporter->id,
-            'driver_no'      => '+91 9825012345',
-            'vehicle_no'     => 'GJ01AB1111',
-        ]);
-
-        DispatchLog::create([
-            'user_id'        => $this->salesUser->id,
-            'order_id'       => $order2->id,
-            'transporter_id' => $transporter->id,
-            'driver_no'      => '+91 9825099999',
-            'vehicle_no'     => 'GJ01CD2222',
-        ]);
-
-        $transportList = SalesController::resolveTransportCompanies();
+        // When loading transport companies, contaminated dispatch notes are cleaned
+        $transportList = SalesController::getTransportCompanies();
         $matched = $transportList->firstWhere('id', $transporter->id);
 
         $this->assertNotNull($matched);
-        // Latest contact
-        $this->assertEquals('+91 9825099999', $matched['contact']);
-        // Contains both vehicles
-        $this->assertStringContainsString('GJ01AB1111', $matched['vehicles']);
-        $this->assertStringContainsString('GJ01CD2222', $matched['vehicles']);
+        $this->assertEquals('—', $matched['vehicles']);
+
+        $fresh = $transporter->fresh();
+        $this->assertNull($fresh->vehicles);
     }
 
     public function test_existing_valid_transporter_data_is_preserved_no_data_loss(): void
@@ -154,7 +124,7 @@ class SalesTransporterDispatchSyncTest extends TestCase
             'vehicles' => 'GJ05XY9999',
         ]);
 
-        $transportList = SalesController::resolveTransportCompanies();
+        $transportList = SalesController::getTransportCompanies();
         $matched = $transportList->firstWhere('id', $transporter->id);
 
         $this->assertNotNull($matched);

@@ -565,33 +565,6 @@ class DispatchController extends Controller
             $driverNo = $request->driver_no ?? $request->driver_number;
             $vehicleNo = $request->vehicle_number ?? $request->vehicle_no;
 
-            // If vehicle or driver contact provided, ensure transporter has it
-            if ($dispatchTransporterId) {
-                $transporter = \App\Models\Transporter::find($dispatchTransporterId);
-                if ($transporter) {
-                    $invalidVals = ['', '—', '-', 'N/A', 'NA', 'NONE', 'NULL'];
-                    $updates = [];
-                    if (!empty($vehicleNo) && !in_array(strtoupper(trim((string)$vehicleNo)), $invalidVals, true)) {
-                        $cleanVeh = trim((string)$vehicleNo);
-                        if (empty($transporter->vehicles) || in_array(strtoupper(trim((string)$transporter->vehicles)), $invalidVals, true)) {
-                            $updates['vehicles'] = $cleanVeh;
-                        } else {
-                            $existingVehs = array_map('trim', explode(',', $transporter->vehicles));
-                            if (!in_array($cleanVeh, $existingVehs, true)) {
-                                $existingVehs[] = $cleanVeh;
-                                $updates['vehicles'] = implode(', ', $existingVehs);
-                            }
-                        }
-                    }
-                    if (!empty($driverNo) && !in_array(strtoupper(trim((string)$driverNo)), $invalidVals, true)) {
-                        $updates['contact'] = trim((string)$driverNo);
-                    }
-                    if (!empty($updates)) {
-                        $transporter->update($updates);
-                    }
-                }
-            }
-
             // Also link the order to this transporter if order didn't have one
             if ($dispatchTransporterId && (empty($order->transporter_id) || $order->transporter?->name === 'N/A')) {
                 try {
