@@ -1200,7 +1200,7 @@ class AttendanceController extends Controller
             'status' => $status,
             'grouped' => $grouped,
             'companyName' => $companyName,
-        ]);
+        ])->setPaper('A4', 'portrait');
         
         $suffix = $status === 'SUBMITTED' ? 'Submitted' : 'Partial';
         $filename = "Attendance_" . Carbon::parse($date)->format('d-m-Y') . "_{$suffix}.pdf";
