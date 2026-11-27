@@ -192,4 +192,48 @@ class CashierOverviewTableTest extends TestCase
         $aliasResponse->assertStatus(200);
         $this->assertEquals('image/png', $aliasResponse->headers->get('Content-Type'));
     }
+
+    public function test_cashier_ledger_renders_bill_thumbnail_without_duplicate_segment_and_views_image(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+
+        $cashier = User::factory()->create(['role' => 'CASHIER', 'status' => 'ACTIVE', 'name' => 'Ledger Cashier']);
+
+        $tx = Transaction::create([
+            'user_id' => $cashier->id,
+            'type' => 'OUT',
+            'amount' => 500.00,
+            'category' => 'expense',
+            'note' => 'Ledger bill test',
+            'created_at' => now(),
+        ]);
+
+        $dummyPng = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAA=');
+        \Illuminate\Support\Facades\Storage::disk('public')->put('bills/ledger_bill_001.png', $dummyPng);
+
+        $bill = \App\Models\TransactionBill::create([
+            'transaction_id' => $tx->id,
+            'file_path'      => 'bills/ledger_bill_001.png',
+            'file_type'      => 'image',
+            'original_name'  => 'ledger_bill_001.png',
+            'mime_type'      => 'image/png',
+            'file_size'      => strlen($dummyPng),
+        ]);
+
+        $session = ['auth_user' => ['id' => $cashier->id, 'name' => $cashier->name, 'role' => 'CASHIER']];
+        $response = $this->withSession($session)->get('/cashier/ledger');
+
+        $response->assertStatus(200);
+
+        // Verify that the thumbnail image src is NOT a duplicate /cashier/cashier/bill
+        $response->assertDontSee('/cashier/cashier/bill/' . $bill->id . '/view', false);
+
+        // Verify that the correct single /cashier/bill/{id}/view is rendered
+        $response->assertSee('/cashier/bill/' . $bill->id . '/view', false);
+
+        // Test cashier can access the bill view endpoint directly
+        $viewResponse = $this->withSession($session)->get('/cashier/bill/' . $bill->id . '/view');
+        $viewResponse->assertStatus(200);
+        $this->assertEquals('image/png', $viewResponse->headers->get('Content-Type'));
+    }
 }

@@ -335,7 +335,11 @@
                       $bName = $b['original_name'] ?? 'Bill';
                       $isImg = in_array($bFileType, ['image', 'img', 'photo', 'picture']) || preg_match('/\.(png|jpe?g|webp|gif|svg)$/i', $bName);
                       $isPdf = ($bFileType === 'pdf') || str_ends_with(strtolower($bName), '.pdf');
-                      $viewUrl = url(request()->segment(1) . '/cashier/bill/' . $b['id'] . '/view');
+                      $seg1 = request()->segment(1);
+                      $viewUrl = ($seg1 === 'cashier' || empty($seg1))
+                          ? url('/cashier/bill/' . $b['id'] . '/view')
+                          : url($seg1 . '/cashier/bill/' . $b['id'] . '/view');
+                      $fallbackUrl = !empty($b['url']) ? $b['url'] : '';
                     @endphp
                     @if($isImg)
                       <div style="position:relative; width:36px; height:36px; border-radius:6px; overflow:hidden; border:1px solid #cbd5e1; box-shadow:0 1px 2px rgba(0,0,0,0.1); cursor:pointer; background:#f8fafc;"
@@ -345,7 +349,7 @@
                              alt="{{ $bName }}"
                              loading="lazy"
                              style="width:100%; height:100%; object-fit:cover; display:block;"
-                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                             onerror="if(this.dataset.triedFallback !== '1' && '{{ $fallbackUrl }}'){ this.dataset.triedFallback='1'; this.src='{{ $fallbackUrl }}'; } else { this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex'; }" />
                         <div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:1rem; background:#f1f5f9; color:#64748b;">
                           🖼️
                         </div>
@@ -773,7 +777,8 @@
               const bFileType = String(b.file_type || '').toLowerCase();
               const isImg = bFileType.includes('image') || bFileType.includes('png') || bFileType.includes('jpg') || bFileType.includes('jpeg') || bFileType.includes('webp') || (b.original_name && /\.(png|jpe?g|webp|gif|svg)$/i.test(b.original_name));
               const isPdf = bFileType === 'pdf' || (b.original_name && b.original_name.toLowerCase().endsWith('.pdf'));
-              const viewUrl = `/${seg}/cashier/bill/${b.id}/view`;
+              const viewUrl = (seg === 'cashier' || !seg) ? `/cashier/bill/${b.id}/view` : `/${seg}/cashier/bill/${b.id}/view`;
+              const fallbackUrl = b.url || '';
               if (isImg) {
                 return `
                 <div style="position:relative; width:36px; height:36px; border-radius:6px; overflow:hidden; border:1px solid #cbd5e1; box-shadow:0 1px 2px rgba(0,0,0,0.1); cursor:pointer; background:#f8fafc;"
@@ -783,7 +788,7 @@
                        alt="${b.original_name || 'Bill'}"
                        loading="lazy"
                        style="width:100%; height:100%; object-fit:cover; display:block;"
-                       onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
+                       onerror="if(this.dataset.triedFallback !== '1' && '${fallbackUrl}'){ this.dataset.triedFallback='1'; this.src='${fallbackUrl}'; } else { this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex'; }" />
                   <div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:1rem; background:#f1f5f9; color:#64748b;">
                     🖼️
                   </div>
@@ -1211,7 +1216,10 @@
           }
         });
 
-        const url = '{{ url(request()->segment(1) . "/cashier/auto-recover-bills") }}';
+        const seg = '{{ request()->segment(1) }}';
+        const url = (seg === 'cashier' || !seg)
+          ? '{{ url("/cashier/auto-recover-bills") }}'
+          : '{{ url(request()->segment(1) . "/cashier/auto-recover-bills") }}';
         fetch(url, {
           method: 'POST',
           headers: {

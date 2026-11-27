@@ -213,7 +213,10 @@
                                 <div style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:8px;">
                                 @foreach($tx->bills as $bill)
                                     @php
-                                        $viewUrl = url(request()->segment(1) . '/cashier/bill/' . $bill->id . '/view');
+                                        $seg1 = request()->segment(1);
+                                        $viewUrl = ($seg1 === 'cashier' || empty($seg1))
+                                            ? url('/cashier/bill/' . $bill->id . '/view')
+                                            : url($seg1 . '/cashier/bill/' . $bill->id . '/view');
                                         $downloadUrl = $viewUrl . '?download=1';
                                         $isImg = $bill->isImage();
                                         $isPdf = $bill->isPdf();
