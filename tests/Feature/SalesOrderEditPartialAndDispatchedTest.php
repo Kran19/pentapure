@@ -290,10 +290,13 @@ class SalesOrderEditPartialAndDispatchedTest extends TestCase
         $viewResponse->assertSee('Order #' . $order->id . ' is Partially Dispatched', false);
         $viewResponse->assertSee('FULLY DISPATCHED (5000', false);
 
-        // Verify that in the HTML, item 1 is rendered with disabled selector and no remove button
+        // Verify that in the HTML, item 1 is rendered with disabled selector and disabled remove button,
+        // while undispatched items (item 2 & 3) have active remove buttons
         $content = $viewResponse->getContent();
         $this->assertStringContainsString('data-selected-id="' . $this->productA->id . '"', $content);
         $this->assertStringContainsString('title="Fully dispatched (5000) - quantity cannot be modified"', $content);
+        $this->assertStringContainsString('title="Partially or fully dispatched — product cannot be removed"', $content);
+        $this->assertStringContainsString('title="Remove Product"', $content);
 
         // Attempting to remove item1 (dispatched item) must fail
         $payloadWithoutItem1 = [
@@ -321,7 +324,7 @@ class SalesOrderEditPartialAndDispatchedTest extends TestCase
 
         $failResp = $this->withSession($session)->postJson('/sales3/action', $payloadWithoutItem1);
         $failResp->assertStatus(422);
-        $this->assertStringContainsString('products cannot be removed', $failResp->json('message'));
+        $this->assertStringContainsString('cannot be removed', $failResp->json('message'));
 
         // Attempting to edit item1 quantity must fail (since it is fully dispatched)
         $payloadEditItem1Qty = [
@@ -396,5 +399,36 @@ class SalesOrderEditPartialAndDispatchedTest extends TestCase
         $this->assertEquals(5000.00, (float) $item1->fresh()->quantity);
         $this->assertEquals(150.00, (float) $item2->fresh()->quantity);
         $this->assertEquals(200.00, (float) $item3->fresh()->quantity);
+
+        // Valid update: Remove item3 (undispatched item: 0kg dispatched) -> MUST SUCCEED
+        $removeUndispatchedItemPayload = [
+            'order_id'       => $order->id,
+            'company_id'     => $this->company->id,
+            'transporter_id' => $this->transporter->id,
+            'notes'          => 'Valid removal of undispatched item 3',
+            'items'          => [
+                [
+                    'id'         => $item1->id,
+                    'product_id' => $this->productA->id,
+                    'grade'      => 'NA',
+                    'quantity'   => 5000.00,
+                    'price'      => 112.00,
+                ],
+                [
+                    'id'         => $item2->id,
+                    'product_id' => $this->productB->id,
+                    'grade'      => 'NA',
+                    'quantity'   => 150.00,
+                    'price'      => 80.00,
+                ],
+            ],
+        ];
+
+        $removeResp = $this->withSession($session)->postJson('/sales3/action', $removeUndispatchedItemPayload);
+        $removeResp->assertOk();
+        $removeResp->assertJson(['success' => true]);
+
+        $this->assertNull(OrderItem::find($item3->id));
+        $this->assertEquals(2, $order->fresh()->items()->count());
     }
 }

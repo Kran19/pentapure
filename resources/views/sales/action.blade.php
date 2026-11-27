@@ -844,7 +844,7 @@ html.dark-mode .sales-btn-delete-disabled {
                 $isItemPartDisp = $isItemDisp && !$isItemFullyDisp;
 
                 $isProductLocked = $isItemDisp || $isItemFullyDisp || $isItemPartDisp;
-                $canRemoveProduct = !$isItemDisp && !$isItemFullyDisp && empty($isEditOrderPartial);
+                $canRemoveProduct = !$isItemDisp && !$isItemFullyDisp;
                 $canEditQuantity = !$isItemFullyDisp;
 
                 $pType = strtoupper(trim((string)($item->product?->type ?? 'FINISHED')));
@@ -928,6 +928,10 @@ html.dark-mode .sales-btn-delete-disabled {
                     </div>
                     @if($canRemoveProduct)
                       <button type="button" class="btn btn-danger btn-remove-prod" onclick="app.removeOrderProductRow(this)" title="Remove Product" style="flex:0 0 42px; width:42px; height:42px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:8px; background:#e11d48; color:#fff; border:none; cursor:pointer;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                      </button>
+                    @else
+                      <button type="button" class="btn btn-secondary btn-remove-prod" disabled title="Partially or fully dispatched — product cannot be removed" style="flex:0 0 42px; width:42px; height:42px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:8px; background:rgba(0,0,0,0.06); color:var(--text-muted, #94a3b8); border:1px solid var(--border-soft, #DDCFAF); cursor:not-allowed; opacity:0.5;">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                       </button>
                     @endif

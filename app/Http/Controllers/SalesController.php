@@ -874,17 +874,21 @@ class SalesController extends Controller
             return response()->json(['success' => false, 'message' => 'Fully dispatched or closed orders cannot be edited.'], 422);
         }
 
-        // If order is partial, disallow removing existing products
-        if ($isOrderPartial) {
+        // If order has any dispatch progress, disallow removing already dispatched products
+        if ($isOrderPartial || $isOrderFullyDispatched) {
             $existingItemIds = $order->items->pluck('id')->all();
             $submittedItemIds = collect($request->items)->pluck('id')->filter()->map('intval')->all();
             foreach ($order->items as $existingItem) {
                 if (!in_array((int)$existingItem->id, $submittedItemIds, true)) {
-                    $prodName = $existingItem->product ? $existingItem->product->formatName($existingItem->grade) : 'Product';
-                    return response()->json([
-                        'success' => false,
-                        'message' => "Cannot remove '{$prodName}'. In a partially dispatched order, products cannot be removed; only quantity can be edited."
-                    ], 422);
+                    $existingItem->syncDispatchedQty();
+                    $dispQty = max((float)$existingItem->dispatched_qty, (float)\App\Models\DispatchLogItem::where('order_item_id', $existingItem->id)->sum('quantity'));
+                    if ($dispQty > 0.0001) {
+                        $prodName = $existingItem->product ? $existingItem->product->formatName($existingItem->grade) : 'Product';
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Cannot remove '{$prodName}'. This product has already been dispatched ({$dispQty} kg) and cannot be removed."
+                        ], 422);
+                    }
                 }
             }
         }
