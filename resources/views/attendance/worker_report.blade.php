@@ -268,18 +268,7 @@
         <tr>
           <td colspan="4" style="border:2px solid #000; padding:8px; text-align:center;">PER LABOUR SALARY</td>
           <td style="border:2px solid #000; padding:8px; text-align:right; width:25%;">
-            @if(empty($isReadOnly))
-            <div style="display:inline-flex; align-items:center; justify-content:flex-end; gap:6px; width:100%;">
-                <span class="pencil-icon">✏️</span>
-                <input type="number" step="0.01" class="salary-amount-input" 
-                       value="{{ number_format($effectiveSalary ?? ($adjustment?->salary_amount ?: $worker->salary_amount), 2, '.', '') }}" 
-                       onchange="quickSaveSalary(this.value)"
-                       style="background:#fffbeb; border:1px solid #fde047; border-radius:12px; padding:3px 10px; font-weight:bold; font-size:0.9rem; text-align:right; width:110px; color:#0f172a; outline:none;"
-                       title="Click to edit per-labour salary for {{ \Carbon\Carbon::parse($month)->format('F Y') }}">
-            </div>
-            @else
             {{ number_format($effectiveSalary ?? ($adjustment?->salary_amount ?: $worker->salary_amount), 2) }}
-            @endif
           </td>
         </tr>
         <tr>
