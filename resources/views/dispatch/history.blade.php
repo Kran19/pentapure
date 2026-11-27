@@ -132,12 +132,17 @@
     return sprintf('%02d_%012d', $priority, 999999999999 - strtotime($d['date']));
   });
 
-  $page = request('page', 1);
-  $perPage = 15;
+  $page = max(1, (int) request('page', 1));
+  $perPage = max(5, min(200, (int) request('per_page', 15)));
   $total = $filtered->count();
-  $totalPages = ceil($total / $perPage);
+  $totalPages = max(1, (int) ceil($total / $perPage));
+  if ($page > $totalPages && $totalPages > 0) {
+      $page = $totalPages;
+  }
   $paginated = $filtered->slice(($page - 1) * $perPage, $perPage);
   $paginatedArray = $paginated->values()->toArray();
+  $startRecord = $total > 0 ? (($page - 1) * $perPage + 1) : 0;
+  $endRecord = min($page * $perPage, $total);
   $fmtQty = fn($val) => (floor($val) == $val ? number_format($val, 0) : number_format($val, 2)) . ' kg';
 @endphp
 
@@ -470,7 +475,7 @@
   </div>
 
   <div style="font-size:0.85rem; color:var(--text-muted); font-weight:600;">
-    Showing <strong>{{ $total }}</strong> {{ $total == 1 ? 'record' : 'records' }}
+    Showing <strong>{{ $total > 0 ? $startRecord : 0 }}</strong> to <strong>{{ $endRecord }}</strong> of <strong>{{ $total }}</strong> {{ $total == 1 ? 'record' : 'records' }}
   </div>
 </div>
 
@@ -804,14 +809,73 @@
   @endforelse
 </div>
 
-@if($totalPages > 1)
-  <div style="display:flex; justify-content:center; gap:8px; margin-top:1.5rem;">
-    @if($page > 1)
-      <a class="btn btn-sm btn-secondary" href="?range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&company_id={{ $companyId }}&status={{ $statusFilter }}&q={{ $q }}&page={{ $page - 1 }}" style="width:auto; text-decoration:none;">&laquo; Prev</a>
-    @endif
-    <span style="align-self:center; color:var(--text-muted);">Page {{ $page }} of {{ $totalPages }}</span>
-    @if($page < $totalPages)
-      <a class="btn btn-sm btn-secondary" href="?range={{ $dateRange }}&start={{ $startDate }}&end={{ $endDate }}&company_id={{ $companyId }}&status={{ $statusFilter }}&q={{ $q }}&page={{ $page + 1 }}" style="width:auto; text-decoration:none;">Next &raquo;</a>
+@if($total > 0)
+  <div class="pagination-wrapper" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-top:2rem; padding:1rem 1.2rem; background:#ffffff; border:1px solid #e5e7eb; border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+    <div style="display:flex; align-items:center; gap:10px; font-size:0.85rem; color:#4b5563;">
+      <span>Showing <strong>{{ $startRecord }}</strong> to <strong>{{ $endRecord }}</strong> of <strong>{{ $total }}</strong> {{ $total == 1 ? 'record' : 'records' }}</span>
+      <span style="color:#d1d5db;">|</span>
+      <label for="history_per_page_select" style="margin:0; font-weight:600; color:#6b7280;">Per page:</label>
+      <select id="history_per_page_select" onchange="window.location.href=this.value" style="padding:4px 8px; border-radius:6px; border:1px solid #d1d5db; background:#f9fafb; font-size:0.82rem; font-weight:600; color:#374151; cursor:pointer;">
+        @foreach([10, 15, 25, 50, 100] as $pp)
+          <option value="{{ request()->fullUrlWithQuery(['per_page' => $pp, 'page' => 1]) }}" {{ $perPage == $pp ? 'selected' : '' }}>{{ $pp }}</option>
+        @endforeach
+      </select>
+    </div>
+
+    @if($totalPages > 1)
+      <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
+        {{-- First Page --}}
+        @if($page > 1)
+          <a href="{{ request()->fullUrlWithQuery(['page' => 1]) }}" class="pagination-btn" title="First Page" style="padding:5px 9px; border-radius:6px; border:1px solid #d1d5db; background:#ffffff; color:#374151; font-size:0.82rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center;">&laquo;</a>
+          <a href="{{ request()->fullUrlWithQuery(['page' => $page - 1]) }}" class="pagination-btn" title="Previous Page" style="padding:5px 10px; border-radius:6px; border:1px solid #d1d5db; background:#ffffff; color:#374151; font-size:0.82rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:3px;">&lsaquo; Prev</a>
+        @else
+          <span class="pagination-btn disabled" style="padding:5px 9px; border-radius:6px; border:1px solid #e5e7eb; background:#f9fafb; color:#9ca3af; font-size:0.82rem; cursor:not-allowed;">&laquo;</span>
+          <span class="pagination-btn disabled" style="padding:5px 10px; border-radius:6px; border:1px solid #e5e7eb; background:#f9fafb; color:#9ca3af; font-size:0.82rem; cursor:not-allowed;">&lsaquo; Prev</span>
+        @endif
+
+        {{-- Page Numbers --}}
+        @php
+          $startPage = max(1, $page - 2);
+          $endPage = min($totalPages, $page + 2);
+          if ($page <= 3) {
+            $endPage = min(5, $totalPages);
+          }
+          if ($page >= $totalPages - 2) {
+            $startPage = max(1, $totalPages - 4);
+          }
+        @endphp
+
+        @if($startPage > 1)
+          <a href="{{ request()->fullUrlWithQuery(['page' => 1]) }}" class="pagination-btn" style="padding:5px 10px; border-radius:6px; border:1px solid #d1d5db; background:#ffffff; color:#374151; font-size:0.82rem; font-weight:600; text-decoration:none;">1</a>
+          @if($startPage > 2)
+            <span style="padding:5px 4px; color:#9ca3af; font-size:0.82rem;">...</span>
+          @endif
+        @endif
+
+        @for($p = $startPage; $p <= $endPage; $p++)
+          @if($p == $page)
+            <span class="pagination-btn active" style="padding:5px 11px; border-radius:6px; border:1px solid var(--primary, #D88A00); background:var(--primary, #D88A00); color:#000000; font-size:0.82rem; font-weight:800;">{{ $p }}</span>
+          @else
+            <a href="{{ request()->fullUrlWithQuery(['page' => $p]) }}" class="pagination-btn" style="padding:5px 10px; border-radius:6px; border:1px solid #d1d5db; background:#ffffff; color:#374151; font-size:0.82rem; font-weight:600; text-decoration:none;">{{ $p }}</a>
+          @endif
+        @endfor
+
+        @if($endPage < $totalPages)
+          @if($endPage < $totalPages - 1)
+            <span style="padding:5px 4px; color:#9ca3af; font-size:0.82rem;">...</span>
+          @endif
+          <a href="{{ request()->fullUrlWithQuery(['page' => $totalPages]) }}" class="pagination-btn" style="padding:5px 10px; border-radius:6px; border:1px solid #d1d5db; background:#ffffff; color:#374151; font-size:0.82rem; font-weight:600; text-decoration:none;">{{ $totalPages }}</a>
+        @endif
+
+        {{-- Next / Last Page --}}
+        @if($page < $totalPages)
+          <a href="{{ request()->fullUrlWithQuery(['page' => $page + 1]) }}" class="pagination-btn" title="Next Page" style="padding:5px 10px; border-radius:6px; border:1px solid #d1d5db; background:#ffffff; color:#374151; font-size:0.82rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:3px;">Next &rsaquo;</a>
+          <a href="{{ request()->fullUrlWithQuery(['page' => $totalPages]) }}" class="pagination-btn" title="Last Page" style="padding:5px 9px; border-radius:6px; border:1px solid #d1d5db; background:#ffffff; color:#374151; font-size:0.82rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center;">&raquo;</a>
+        @else
+          <span class="pagination-btn disabled" style="padding:5px 10px; border-radius:6px; border:1px solid #e5e7eb; background:#f9fafb; color:#9ca3af; font-size:0.82rem; cursor:not-allowed;">Next &rsaquo;</span>
+          <span class="pagination-btn disabled" style="padding:5px 9px; border-radius:6px; border:1px solid #e5e7eb; background:#f9fafb; color:#9ca3af; font-size:0.82rem; cursor:not-allowed;">&raquo;</span>
+        @endif
+      </div>
     @endif
   </div>
 @endif
