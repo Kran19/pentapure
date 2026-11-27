@@ -381,7 +381,7 @@ class CashierController extends Controller
             if ($isImage && !request('download')) {
                 // Return an SVG placeholder so <img> tags don't get broken HTML parse errors
                 $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120" viewBox="0 0 160 120" fill="none"><rect width="160" height="120" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/><path d="M50 75L70 50L85 68L98 52L115 75H50Z" fill="#94a3b8"/><circle cx="65" cy="40" r="8" fill="#cbd5e1"/><text x="80" y="96" font-family="sans-serif" font-size="11" fill="#ef4444" text-anchor="middle" font-weight="bold">Image Missing</text></svg>';
-                return response($svg, 404)->header('Content-Type', 'image/svg+xml');
+                return response($svg, 200)->header('Content-Type', 'image/svg+xml');
             }
 
             $name = e($bill->original_name ?? 'Bill Document');
