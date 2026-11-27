@@ -76,11 +76,36 @@ class TransactionBill extends Model
             public_path('storage/' . $withoutPrefix),
             public_path($clean),
             public_path($withoutPrefix),
+            // Parent public_html locations (Hostinger / cPanel web root)
+            base_path('../public_html/storage/' . $clean),
+            base_path('../public_html/storage/' . $withoutPrefix),
+            base_path('../public_html/' . $clean),
+            base_path('../public_html/' . $withoutPrefix),
+            base_path('../domains/pentapureadmin.in/public_html/storage/' . $clean),
+            base_path('../domains/pentapureadmin.in/public_html/storage/' . $withoutPrefix),
+            base_path('../domains/pentapureadmin.in/public_html/' . $clean),
+            base_path('../domains/pentapureadmin.in/public_html/' . $withoutPrefix),
+            // Absolute hostinger user paths
+            '/home/u192814865/pentapure/storage/app/public/' . $withoutPrefix,
+            '/home/u192814865/public_html/storage/' . $withoutPrefix,
+            '/home/u192814865/public_html/' . $withoutPrefix,
+            '/home/u192814865/domains/pentapureadmin.in/public_html/storage/' . $withoutPrefix,
+            '/home/u192814865/domains/pentapureadmin.in/public_html/' . $withoutPrefix,
             // Project root / Base path
             base_path($clean),
             base_path($withoutPrefix),
             base_path('storage/app/public/' . $withoutPrefix),
         ];
+
+        // Also search by basename across bills directories
+        $basename = basename($clean);
+        if ($basename && $basename !== '.' && $basename !== '..') {
+            $candidates[] = storage_path('app/public/bills/' . $basename);
+            $candidates[] = base_path('../public_html/storage/bills/' . $basename);
+            $candidates[] = base_path('../domains/pentapureadmin.in/public_html/storage/bills/' . $basename);
+            $candidates[] = '/home/u192814865/public_html/storage/bills/' . $basename;
+            $candidates[] = '/home/u192814865/pentapure/storage/app/public/bills/' . $basename;
+        }
 
         try {
             $candidates[] = Storage::disk('public')->path($clean);

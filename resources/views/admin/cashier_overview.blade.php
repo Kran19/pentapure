@@ -255,9 +255,17 @@
                                         </div>
                                     @endif
                                 @endforeach
+                                    <button type="button" onclick="app.uploadBillPrompt({{ $tx->id }})" title="Attach Another Bill" style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:6px; width:44px; height:44px; display:inline-flex; align-items:center; justify-content:center; font-size:1.1rem; cursor:pointer; color:#64748b; line-height:1;" onmouseover="this.style.borderColor='var(--secondary, #d97706)'; this.style.color='var(--secondary, #d97706)';" onmouseout="this.style.borderColor='#cbd5e1'; this.style.color='#64748b';">
+                                        +
+                                    </button>
                                 </div>
                             @else
-                                <span style="color:var(--text-muted); font-size:0.75rem;">No Bills</span>
+                                <div style="display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+                                    <span style="color:var(--text-muted); font-size:0.75rem;">No Bills</span>
+                                    <button type="button" onclick="app.uploadBillPrompt({{ $tx->id }})" title="Attach / Upload Bill" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:4px; padding:2px 7px; font-size:0.75rem; font-weight:600; cursor:pointer; color:#374151; display:inline-flex; align-items:center; gap:3px;" onmouseover="this.style.background='#f1f5f9'; this.style.borderColor='#94a3b8';" onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1';">
+                                        📎 Add
+                                    </button>
+                                </div>
                             @endif
                         </td>
                     </tr>
