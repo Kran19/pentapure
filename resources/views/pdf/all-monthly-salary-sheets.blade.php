@@ -255,12 +255,15 @@
             <tr>
               <td style="border:2px solid #000; padding:6px; text-align:center;">ADD OT / DEDUCT UT</td>
               <td style="border:2px solid #000; padding:6px; text-align:center;">
-                @if(($totalOT ?? 0) > 0 && ($totalUT ?? 0) > 0)
-                  +{{ number_format($totalOT, 1) }} / -{{ number_format($totalUT, 1) }}
-                @elseif(($totalUT ?? 0) > 0)
-                  -{{ number_format($totalUT, 1) }}
+                @php
+                  $netOt = ($totalOT ?? 0) - ($totalUT ?? 0);
+                @endphp
+                @if($netOt > 0)
+                  +{{ number_format($netOt, 1) }}
+                @elseif($netOt < 0)
+                  -{{ number_format(abs($netOt), 1) }}
                 @else
-                  {{ number_format($totalOT ?? 0, 1) }}
+                  0.0
                 @endif
               </td>
               <td style="border:2px solid #000; padding:6px; text-align:center;">PER HOUR</td>
@@ -304,12 +307,15 @@
             <tr>
               <td style="border:2px solid #000; padding:6px; text-align:center;">ADD OT / DEDUCT UT</td>
               <td style="border:2px solid #000; padding:6px; text-align:center;">
-                @if(($totalOT ?? 0) > 0 && ($totalUT ?? 0) > 0)
-                  +{{ number_format($totalOT, 1) }} / -{{ number_format($totalUT, 1) }}
-                @elseif(($totalUT ?? 0) > 0)
-                  -{{ number_format($totalUT, 1) }}
+                @php
+                  $netOt = ($totalOT ?? 0) - ($totalUT ?? 0);
+                @endphp
+                @if($netOt > 0)
+                  +{{ number_format($netOt, 1) }}
+                @elseif($netOt < 0)
+                  -{{ number_format(abs($netOt), 1) }}
                 @else
-                  {{ number_format($totalOT ?? 0, 1) }}
+                  0.0
                 @endif
               </td>
               <td style="border:2px solid #000; padding:6px; text-align:center;">PER HOUR</td>
