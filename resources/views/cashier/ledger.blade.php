@@ -162,6 +162,9 @@
         🗑️ Clear All Ledger Data
       </button>
     @endif
+    <button type="button" class="btn btn-sm" onclick="recoverOldBillsPrompt()" style="width:auto; padding:0.5rem 1rem; background:#2563eb; color:#fff; border:none; border-radius:6px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:0.4rem;" title="Scan server disk and recover old bill images">
+      🔄 Recover Bills
+    </button>
     <button id="header-export-pdf-btn" class="btn btn-sm" style="width:auto; padding:0.5rem 1.1rem; display:flex; align-items:center; gap:0.4rem; font-weight:600;" onclick="const q = (document.getElementById('ledger-search-input')?.value || '').trim(); if (q) { exportSearchPdfDirect(); } else { app.downloadCashierPdf(); }">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       <span class="export-pdf-label">Export PDF</span>
@@ -325,17 +328,37 @@
             </td>
             <td style="padding:12px; text-align:center; min-width:80px;">
               @if(!empty($t['bills']))
-                <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:4px;">
+                <div style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:4px;">
                   @foreach($t['bills'] as $b)
                     @php
                       $bFileType = strtolower((string)($b['file_type'] ?? ''));
                       $bName = $b['original_name'] ?? 'Bill';
                       $isImg = in_array($bFileType, ['image', 'img', 'photo', 'picture']) || preg_match('/\.(png|jpe?g|webp|gif|svg)$/i', $bName);
                       $isPdf = ($bFileType === 'pdf') || str_ends_with(strtolower($bName), '.pdf');
+                      $viewUrl = url(request()->segment(1) . '/cashier/bill/' . $b['id'] . '/view');
                     @endphp
-                    <button type="button" onclick="app.viewBill({{ $b['id'] }}, '{{ $isImg ? 'image' : ($isPdf ? 'pdf' : $bFileType) }}')" title="View {{ $bName }}" style="background:none; border:none; cursor:pointer; color:var(--primary); padding:2px; font-size:1.05rem; line-height:1;">
-                      {{ $isImg ? '🖼️' : ($isPdf ? '📄' : '📎') }}
-                    </button>
+                    @if($isImg)
+                      <div style="position:relative; width:36px; height:36px; border-radius:6px; overflow:hidden; border:1px solid #cbd5e1; box-shadow:0 1px 2px rgba(0,0,0,0.1); cursor:pointer; background:#f8fafc;"
+                           title="Click to view {{ $bName }}"
+                           onclick="app.viewBill({{ $b['id'] }}, 'image')">
+                        <img src="{{ $viewUrl }}"
+                             alt="{{ $bName }}"
+                             loading="lazy"
+                             style="width:100%; height:100%; object-fit:cover; display:block;"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                        <div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:1rem; background:#f1f5f9; color:#64748b;">
+                          🖼️
+                        </div>
+                      </div>
+                    @elseif($isPdf)
+                      <button type="button" onclick="app.viewBill({{ $b['id'] }}, 'pdf')" title="View {{ $bName }}" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; border-radius:4px; padding:3px 6px; font-size:0.75rem; font-weight:600; cursor:pointer; line-height:1.2;">
+                        📄 PDF
+                      </button>
+                    @else
+                      <button type="button" onclick="app.viewBill({{ $b['id'] }}, '{{ $bFileType }}')" title="View {{ $bName }}" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; border-radius:4px; padding:3px 6px; font-size:0.75rem; font-weight:600; cursor:pointer; line-height:1.2;">
+                        📎 Doc
+                      </button>
+                    @endif
                   @endforeach
                 </div>
               @else
@@ -743,17 +766,42 @@
 
       let billsHtml = '<span style="color:var(--text-muted); font-size:0.75rem;">No Bills</span>';
       if (t.bills && t.bills.length > 0) {
+        const seg = '{{ request()->segment(1) }}';
         billsHtml = `
-          <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:4px;">
+          <div style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:4px;">
             ${t.bills.map(b => {
               const bFileType = String(b.file_type || '').toLowerCase();
               const isImg = bFileType.includes('image') || bFileType.includes('png') || bFileType.includes('jpg') || bFileType.includes('jpeg') || bFileType.includes('webp') || (b.original_name && /\.(png|jpe?g|webp|gif|svg)$/i.test(b.original_name));
-              const icon = isImg ? '🖼️' : (bFileType === 'pdf' ? '📄' : '📎');
-              return `
-              <button type="button" onclick="app.viewBill(${b.id}, '${isImg ? 'image' : (bFileType === 'pdf' ? 'pdf' : bFileType)}')" title="View ${b.original_name || 'Bill'}" style="background:none; border:none; cursor:pointer; color:var(--primary); padding:2px; font-size:1.05rem; line-height:1;">
-                ${icon}
-              </button>
-              `;
+              const isPdf = bFileType === 'pdf' || (b.original_name && b.original_name.toLowerCase().endsWith('.pdf'));
+              const viewUrl = `/${seg}/cashier/bill/${b.id}/view`;
+              if (isImg) {
+                return `
+                <div style="position:relative; width:36px; height:36px; border-radius:6px; overflow:hidden; border:1px solid #cbd5e1; box-shadow:0 1px 2px rgba(0,0,0,0.1); cursor:pointer; background:#f8fafc;"
+                     title="Click to view ${b.original_name || 'Bill'}"
+                     onclick="app.viewBill(${b.id}, 'image')">
+                  <img src="${viewUrl}"
+                       alt="${b.original_name || 'Bill'}"
+                       loading="lazy"
+                       style="width:100%; height:100%; object-fit:cover; display:block;"
+                       onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
+                  <div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:1rem; background:#f1f5f9; color:#64748b;">
+                    🖼️
+                  </div>
+                </div>
+                `;
+              } else if (isPdf) {
+                return `
+                <button type="button" onclick="app.viewBill(${b.id}, 'pdf')" title="View ${b.original_name || 'Bill'}" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; border-radius:4px; padding:3px 6px; font-size:0.75rem; font-weight:600; cursor:pointer; line-height:1.2;">
+                  📄 PDF
+                </button>
+                `;
+              } else {
+                return `
+                <button type="button" onclick="app.viewBill(${b.id}, '${bFileType}')" title="View ${b.original_name || 'Bill'}" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; border-radius:4px; padding:3px 6px; font-size:0.75rem; font-weight:600; cursor:pointer; line-height:1.2;">
+                  📎 Doc
+                </button>
+                `;
+              }
             }).join('')}
           </div>
         `;
@@ -1140,6 +1188,97 @@
       html: html,
       confirmButtonText: 'Close',
       confirmButtonColor: '#f59e0b',
+    });
+  }
+
+  function recoverOldBillsPrompt() {
+    Swal.fire({
+      title: 'Scan & Recover Bill Images?',
+      html: 'This will search server directories, backups, and storage locations for your uploaded bill images and restore them automatically.<br><br>Do you want to proceed?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Scan & Recover',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#2563eb'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: 'Scanning Server Disk...',
+          text: 'Searching for bill image files...',
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          }
+        });
+
+        const url = '{{ url(request()->segment(1) . "/cashier/auto-recover-bills") }}';
+        fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json'
+          }
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (!data.success) {
+            Swal.fire({
+              icon: 'error',
+              title: 'Failed',
+              text: data.message || 'Error occurred while recovering bills.'
+            });
+            return;
+          }
+
+          if (data.recovered > 0) {
+            Swal.fire({
+              icon: 'success',
+              title: 'Recovery Successful!',
+              html: `<b>${data.recovered}</b> bill image(s) were restored to storage!<br><br>The page will now reload to display them.`,
+              confirmButtonText: 'Great!'
+            }).then(() => {
+              location.reload();
+            });
+          } else if (data.stillMissing > 0) {
+            Swal.fire({
+              icon: 'info',
+              title: 'Files Need Restoring from Backup',
+              html: `
+                <div style="text-align:left; font-size:0.85rem; line-height:1.5;">
+                  <p>Database has <b>${data.total}</b> bill records, but <b>${data.stillMissing}</b> image file(s) are missing from the server folder (because the home directory was reset).</p>
+                  <hr style="border:0; border-top:1px solid #e2e8f0; margin:10px 0;">
+                  <b>To restore from Hostinger Automated Backups:</b>
+                  <ol style="margin:5px 0 10px 18px; padding:0;">
+                    <li>Log in to <b>Hostinger hPanel</b> &rarr; <b>pentapureadmin.in</b></li>
+                    <li>Go to <b>Files</b> &rarr; <b>Backups</b> &rarr; <b>File Backups</b></li>
+                    <li>Select date <b>25 Nov 2026</b> or <b>26 Nov 2026</b></li>
+                    <li>Select <code>pentapure/storage/app/public/bills</code> and click <b>Restore files</b></li>
+                  </ol>
+                  <p style="margin-bottom:0; color:#64748b; font-size:0.8rem;">After restoring files in Hostinger, click 'Recover Bills' or reload this page and your images will show up instantly!</p>
+                </div>
+              `,
+              confirmButtonText: 'Got It',
+              confirmButtonColor: '#2563eb',
+              width: '550px'
+            });
+          } else {
+            Swal.fire({
+              icon: 'success',
+              title: 'All Good!',
+              text: data.message || 'All bill images are present on disk.',
+              confirmButtonColor: '#2563eb'
+            });
+          }
+        })
+        .catch(err => {
+          Swal.fire({
+            icon: 'error',
+            title: 'Server Error',
+            text: 'Could not communicate with server: ' + err.message
+          });
+        });
+      }
     });
   }
 

@@ -430,6 +430,147 @@ class CashierController extends Controller
         ]);
     }
 
+    /**
+     * Auto-recover old bill images across the server filesystem.
+     */
+    public function autoRecoverBills()
+    {
+        $user = $this->authUser();
+        if (!in_array($user['role'] ?? '', ['ADMIN', 'SUB_ADMIN', 'CASHIER'])) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        }
+
+        $bills = TransactionBill::all();
+        $total = $bills->count();
+
+        if ($total === 0) {
+            return response()->json([
+                'success' => true,
+                'recovered' => 0,
+                'stillMissing' => 0,
+                'total' => 0,
+                'message' => 'No bill records exist in the database to recover.'
+            ]);
+        }
+
+        $searchDirs = [
+            '/home/backup-works',
+            '/home/backup-works/pentapure/storage/app/public/bills',
+            '/home/backup-works/pentapure/storage/app/public',
+            '/home/backup-works/public_html/storage/bills',
+            '/home/backup-works/public_html/storage',
+            '/home/backup-works/bills',
+            '/home/u192814865/pentapure/storage/app/public/bills',
+            '/home/u192814865/pentapure/storage/app/bills',
+            '/home/u192814865/public_html/storage/bills',
+            '/home/u192814865/public_html/bills',
+            '/home/u192814865/storage/bills',
+            '/home/u192814865/domains/pentapureadmin.in/public_html/storage/bills',
+            '/home/u192814865/domains/pentapureadmin.in/public_html/bills',
+            '/home/u192814865/.snapshot',
+            '/home/u192814865/.trash',
+            '/home/u192814865/backup',
+            '/home/u192814865/backups',
+            '/home/u192814865',
+            base_path('..'),
+            base_path('../..'),
+        ];
+
+        $discoveredBillDirs = [];
+        foreach ($searchDirs as $dir) {
+            if (is_dir($dir)) {
+                $discoveredBillDirs[] = $dir;
+                $subdirs = @glob($dir . '/*', GLOB_ONLYDIR) ?: [];
+                foreach ($subdirs as $s) {
+                    if (basename($s) === 'bills' || str_contains($s, 'storage')) {
+                        $discoveredBillDirs[] = $s;
+                    }
+                }
+            }
+        }
+        $discoveredBillDirs = array_unique($discoveredBillDirs);
+
+        $recovered = 0;
+        $alreadyOk = 0;
+        $stillMissing = 0;
+        $recoveredList = [];
+        $missingList = [];
+
+        foreach ($bills as $bill) {
+            $expectedRel = ltrim(preg_replace('/^(public[\/\\\\]|storage[\/\\\\])+/i', '', trim($bill->file_path)), '/\\');
+            $targetDest = storage_path('app/public/' . $expectedRel);
+            $targetDir  = dirname($targetDest);
+            $basename   = basename($expectedRel);
+
+            if (file_exists($targetDest) && is_file($targetDest) && filesize($targetDest) > 0) {
+                $alreadyOk++;
+                continue;
+            }
+
+            $foundSource = null;
+            foreach ($discoveredBillDirs as $bDir) {
+                $checkPath1 = $bDir . '/' . $expectedRel;
+                $checkPath2 = $bDir . '/' . $basename;
+                $checkPath3 = $bDir . '/' . $bill->transaction_id . '/' . $basename;
+
+                if (file_exists($checkPath1) && is_file($checkPath1) && filesize($checkPath1) > 0) {
+                    $foundSource = $checkPath1;
+                    break;
+                }
+                if (file_exists($checkPath2) && is_file($checkPath2) && filesize($checkPath2) > 0) {
+                    $foundSource = $checkPath2;
+                    break;
+                }
+                if (file_exists($checkPath3) && is_file($checkPath3) && filesize($checkPath3) > 0) {
+                    $foundSource = $checkPath3;
+                    break;
+                }
+            }
+
+            if ($foundSource) {
+                if (!is_dir($targetDir)) {
+                    @mkdir($targetDir, 0775, true);
+                }
+                if (@copy($foundSource, $targetDest)) {
+                    @chmod($targetDest, 0664);
+                    $recovered++;
+                    $recoveredList[] = $basename;
+                }
+            } else {
+                $stillMissing++;
+                $missingList[] = [
+                    'id' => $bill->id,
+                    'name' => $bill->original_name ?: $basename,
+                    'file' => $basename,
+                    'tx_id' => $bill->transaction_id,
+                ];
+            }
+        }
+
+        // Ensure storage symlink
+        $publicHtmlStorage = base_path('../public_html/storage');
+        if (!file_exists($publicHtmlStorage) && is_dir(base_path('../public_html'))) {
+            @symlink(storage_path('app/public'), $publicHtmlStorage);
+        }
+
+        $msg = $recovered > 0 
+            ? "Successfully recovered {$recovered} bill image(s) from server disk!"
+            : ($stillMissing > 0 
+                ? "Server disk scan complete: {$stillMissing} files are missing because the folder was cleared. Please restore the bills folder from Hostinger hPanel Backups." 
+                : "All {$alreadyOk} bill image(s) are already present on disk.");
+
+        return response()->json([
+            'success' => true,
+            'recovered' => $recovered,
+            'alreadyOk' => $alreadyOk,
+            'stillMissing' => $stillMissing,
+            'total' => $total,
+            'recoveredList' => $recoveredList,
+            'missingList' => $missingList,
+            'message' => $msg
+        ]);
+    }
+
     // ── HISTORY ────────────────────────────────────────────────────────────
     public function history()
     {

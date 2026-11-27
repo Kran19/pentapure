@@ -90,6 +90,9 @@ Route::middleware('auth.role:ADMIN,SUB_ADMIN,RAW,SEMI,FINISHED,SALES,DISPATCH,CA
     Route::get('/history/cashier/pdf', [\App\Http\Controllers\CashierController::class, 'downloadPdf']);
     Route::get('/cashier/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill'])->name('cashier.bill.view');
     Route::get('/bill/{id}/view', [\App\Http\Controllers\CashierController::class, 'viewBill'])->name('bill.view');
+    Route::post('/cashier/auto-recover-bills', [\App\Http\Controllers\CashierController::class, 'autoRecoverBills']);
+    Route::post('/admin/cashier/auto-recover-bills', [\App\Http\Controllers\CashierController::class, 'autoRecoverBills']);
+    Route::post('/{user_slug}/cashier/auto-recover-bills', [\App\Http\Controllers\CashierController::class, 'autoRecoverBills']);
     Route::get('/api/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
     Route::post('/api/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
     Route::post('/api/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);

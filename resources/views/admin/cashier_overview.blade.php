@@ -4,8 +4,11 @@
 <div style="padding: 1.5rem;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
         <h2 style="margin:0;">💰 Cashier Overview</h2>
-        <div style="display:flex; gap:0.5rem;">
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
             <button class="btn btn-secondary" onclick="location.reload()" style="width:auto; padding:0.6rem 1rem;">🔄 Refresh</button>
+            <button type="button" class="btn btn-sm" onclick="recoverOldBillsPrompt()" style="width:auto; padding:0.6rem 1rem; background:#2563eb; color:#fff; border:none; border-radius:6px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:0.4rem;" title="Scan server disk and recover old bill images">
+                🔄 Recover Bills
+            </button>
             <a href="{{ route(request()->segment(1) . '.cashier.logs') }}" class="btn" style="width:auto; padding:0.6rem 1rem; background-color:#eab308 !important; color:#000000 !important; font-weight:700; text-decoration:none; display:flex; align-items:center; gap:5px; border-radius:12px;" onmouseover="this.style.backgroundColor='#ca8a04'" onmouseout="this.style.backgroundColor='#eab308'">
                 📝 View Edit Logs
             </a>
@@ -282,4 +285,96 @@
     </div>
 </div>
 
+<script>
+function recoverOldBillsPrompt() {
+  Swal.fire({
+    title: 'Scan & Recover Bill Images?',
+    html: 'This will search server directories, backups, and storage locations for your uploaded bill images and restore them automatically.<br><br>Do you want to proceed?',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, Scan & Recover',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#2563eb'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      Swal.fire({
+        title: 'Scanning Server Disk...',
+        text: 'Searching for bill image files...',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      const url = '{{ url(request()->segment(1) . "/cashier/auto-recover-bills") }}';
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': '{{ csrf_token() }}',
+          'Accept': 'application/json'
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (!data.success) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Failed',
+            text: data.message || 'Error occurred while recovering bills.'
+          });
+          return;
+        }
+
+        if (data.recovered > 0) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Recovery Successful!',
+            html: `<b>${data.recovered}</b> bill image(s) were restored to storage!<br><br>The page will now reload to display them.`,
+            confirmButtonText: 'Great!'
+          }).then(() => {
+            location.reload();
+          });
+        } else if (data.stillMissing > 0) {
+          Swal.fire({
+            icon: 'info',
+            title: 'Files Need Restoring from Backup',
+            html: `
+              <div style="text-align:left; font-size:0.85rem; line-height:1.5;">
+                <p>Database has <b>${data.total}</b> bill records, but <b>${data.stillMissing}</b> image file(s) are missing from the server folder (because the home directory was reset).</p>
+                <hr style="border:0; border-top:1px solid #e2e8f0; margin:10px 0;">
+                <b>To restore from Hostinger Automated Backups:</b>
+                <ol style="margin:5px 0 10px 18px; padding:0;">
+                  <li>Log in to <b>Hostinger hPanel</b> &rarr; <b>pentapureadmin.in</b></li>
+                  <li>Go to <b>Files</b> &rarr; <b>Backups</b> &rarr; <b>File Backups</b></li>
+                  <li>Select date <b>25 Nov 2026</b> or <b>26 Nov 2026</b></li>
+                  <li>Select <code>pentapure/storage/app/public/bills</code> and click <b>Restore files</b></li>
+                </ol>
+                <p style="margin-bottom:0; color:#64748b; font-size:0.8rem;">After restoring files in Hostinger, click 'Recover Bills' or reload this page and your images will show up instantly!</p>
+              </div>
+            `,
+            confirmButtonText: 'Got It',
+            confirmButtonColor: '#2563eb',
+            width: '550px'
+          });
+        } else {
+          Swal.fire({
+            icon: 'success',
+            title: 'All Good!',
+            text: data.message || 'All bill images are present on disk.',
+            confirmButtonColor: '#2563eb'
+          });
+        }
+      })
+      .catch(err => {
+        Swal.fire({
+          icon: 'error',
+          title: 'Server Error',
+          text: 'Could not communicate with server: ' + err.message
+        });
+      });
+    }
+  });
+}
+</script>
 @endsection
