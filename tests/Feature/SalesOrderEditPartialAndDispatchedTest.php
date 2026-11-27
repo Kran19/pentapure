@@ -223,4 +223,178 @@ class SalesOrderEditPartialAndDispatchedTest extends TestCase
         $this->assertEquals(120.00, (float) $item1->fresh()->quantity);
         $this->assertEquals(50.00, (float) $item2->fresh()->quantity);
     }
+
+    public function test_order_with_3_products_where_1_is_dispatched_view_and_update(): void
+    {
+        $productC = Product::create([
+            'name'   => 'PVC TEE 20MM',
+            'unit'   => 'KG',
+            'type'   => 'FINISHED',
+            'status' => 'ACTIVE',
+        ]);
+
+        $order = Order::create([
+            'created_by'      => $this->salesUser->id,
+            'company_id'      => $this->company->id,
+            'transporter_id'  => $this->transporter->id,
+            'total'           => 600000.00,
+            'date'            => now(),
+            'due_date'        => now()->addDays(5),
+            'status'          => 'OPEN',
+            'dispatch_status' => 'PARTIAL PENDING',
+            'notes'           => 'Order with 3 products where 1 is already dispatched',
+        ]);
+
+        // Product 1: 5000 kg ordered, 5000 kg already dispatched (MIX MASALA scenario)
+        $item1 = OrderItem::create([
+            'order_id'       => $order->id,
+            'product_id'     => $this->productA->id,
+            'grade'          => 'NA',
+            'quantity'       => 5000.00,
+            'dispatched_qty' => 5000.00,
+            'price'          => 112.00,
+        ]);
+
+        // Product 2: 100 kg ordered, 0 kg dispatched
+        $item2 = OrderItem::create([
+            'order_id'       => $order->id,
+            'product_id'     => $this->productB->id,
+            'grade'          => 'NA',
+            'quantity'       => 100.00,
+            'dispatched_qty' => 0.00,
+            'price'          => 80.00,
+        ]);
+
+        // Product 3: 200 kg ordered, 0 kg dispatched
+        $item3 = OrderItem::create([
+            'order_id'       => $order->id,
+            'product_id'     => $productC->id,
+            'grade'          => 'NA',
+            'quantity'       => 200.00,
+            'dispatched_qty' => 0.00,
+            'price'          => 95.00,
+        ]);
+
+        $session = [
+            'auth_user' => [
+                'id'     => $this->salesUser->id,
+                'name'   => $this->salesUser->name,
+                'role'   => $this->salesUser->role,
+                'branch' => $this->salesUser->branch,
+            ],
+        ];
+
+        // Verify GET view rendering on /sales3/action?edit=...
+        $viewResponse = $this->withSession($session)->get("/sales3/action?edit={$order->id}");
+        $viewResponse->assertOk();
+        $viewResponse->assertSee('Order #' . $order->id . ' is Partially Dispatched', false);
+        $viewResponse->assertSee('FULLY DISPATCHED (5000', false);
+
+        // Verify that in the HTML, item 1 is rendered with disabled selector and no remove button
+        $content = $viewResponse->getContent();
+        $this->assertStringContainsString('data-selected-id="' . $this->productA->id . '"', $content);
+        $this->assertStringContainsString('title="Fully dispatched (5000) - quantity cannot be modified"', $content);
+
+        // Attempting to remove item1 (dispatched item) must fail
+        $payloadWithoutItem1 = [
+            'order_id'       => $order->id,
+            'company_id'     => $this->company->id,
+            'transporter_id' => $this->transporter->id,
+            'notes'          => 'Try to remove dispatched product',
+            'items'          => [
+                [
+                    'id'         => $item2->id,
+                    'product_id' => $this->productB->id,
+                    'grade'      => 'NA',
+                    'quantity'   => 100.00,
+                    'price'      => 80.00,
+                ],
+                [
+                    'id'         => $item3->id,
+                    'product_id' => $productC->id,
+                    'grade'      => 'NA',
+                    'quantity'   => 200.00,
+                    'price'      => 95.00,
+                ],
+            ],
+        ];
+
+        $failResp = $this->withSession($session)->postJson('/sales3/action', $payloadWithoutItem1);
+        $failResp->assertStatus(422);
+        $this->assertStringContainsString('products cannot be removed', $failResp->json('message'));
+
+        // Attempting to edit item1 quantity must fail (since it is fully dispatched)
+        $payloadEditItem1Qty = [
+            'order_id'       => $order->id,
+            'company_id'     => $this->company->id,
+            'transporter_id' => $this->transporter->id,
+            'notes'          => 'Try to edit quantity of fully dispatched item',
+            'items'          => [
+                [
+                    'id'         => $item1->id,
+                    'product_id' => $this->productA->id,
+                    'grade'      => 'NA',
+                    'quantity'   => 6000.00, // Invalid edit on fully dispatched item
+                    'price'      => 112.00,
+                ],
+                [
+                    'id'         => $item2->id,
+                    'product_id' => $this->productB->id,
+                    'grade'      => 'NA',
+                    'quantity'   => 100.00,
+                    'price'      => 80.00,
+                ],
+                [
+                    'id'         => $item3->id,
+                    'product_id' => $productC->id,
+                    'grade'      => 'NA',
+                    'quantity'   => 200.00,
+                    'price'      => 95.00,
+                ],
+            ],
+        ];
+
+        $failResp2 = $this->withSession($session)->postJson('/sales3/action', $payloadEditItem1Qty);
+        $failResp2->assertStatus(422);
+        $this->assertStringContainsString('already fully dispatched', $failResp2->json('message'));
+
+        // Valid update: Keep item1 at 5000, update item2 to 150 kg -> MUST SUCCEED
+        $validPayload = [
+            'order_id'       => $order->id,
+            'company_id'     => $this->company->id,
+            'transporter_id' => $this->transporter->id,
+            'notes'          => 'Valid update keeping dispatched item intact',
+            'items'          => [
+                [
+                    'id'         => $item1->id,
+                    'product_id' => $this->productA->id,
+                    'grade'      => 'NA',
+                    'quantity'   => 5000.00,
+                    'price'      => 112.00,
+                ],
+                [
+                    'id'         => $item2->id,
+                    'product_id' => $this->productB->id,
+                    'grade'      => 'NA',
+                    'quantity'   => 150.00,
+                    'price'      => 80.00,
+                ],
+                [
+                    'id'         => $item3->id,
+                    'product_id' => $productC->id,
+                    'grade'      => 'NA',
+                    'quantity'   => 200.00,
+                    'price'      => 95.00,
+                ],
+            ],
+        ];
+
+        $okResp = $this->withSession($session)->postJson('/sales3/action', $validPayload);
+        $okResp->assertOk();
+        $okResp->assertJson(['success' => true]);
+
+        $this->assertEquals(5000.00, (float) $item1->fresh()->quantity);
+        $this->assertEquals(150.00, (float) $item2->fresh()->quantity);
+        $this->assertEquals(200.00, (float) $item3->fresh()->quantity);
+    }
 }

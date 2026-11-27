@@ -833,7 +833,110 @@ html.dark-mode .sales-btn-delete-disabled {
           @endif
         </div>
 
-        <div id="order-products"></div>
+        <div id="order-products">
+          @if(!empty($pageData['editOrder']) && !empty($pageData['editOrder']->items))
+            @foreach($pageData['editOrder']->items as $idx => $item)
+              @php
+                $dispQty = (float) ($item->dispatched_qty ?? 0);
+                $itemQty = (float) ($item->quantity ?? 0);
+                $isItemFullyDisp = !empty($isEditOrderFullyDispatched) || !empty($item->is_fully_dispatched) || ($dispQty >= $itemQty && $itemQty > 0.0001);
+                $isItemDisp = $dispQty > 0.0001 || !empty($item->is_dispatched) || $isItemFullyDisp;
+                $isItemPartDisp = $isItemDisp && !$isItemFullyDisp;
+
+                $isProductLocked = $isItemDisp || $isItemFullyDisp || $isItemPartDisp;
+                $canRemoveProduct = !$isItemDisp && !$isItemFullyDisp && empty($isEditOrderPartial);
+                $canEditQuantity = !$isItemFullyDisp;
+
+                $pType = strtoupper(trim((string)($item->product?->type ?? 'FINISHED')));
+                $rowType = match($pType) {
+                    'FG', 'FINISHED' => 'FINISHED',
+                    'PKG', 'PM', 'PACKAGING' => 'PACKAGING',
+                    'SEMI' => 'SEMI',
+                    'RAW' => 'RAW',
+                    default => 'ALL'
+                };
+                $lockedStyle = $isProductLocked ? 'pointer-events:none; opacity:0.85; background:var(--input-disabled-bg, rgba(0,0,0,0.04));' : '';
+              @endphp
+              <div class="order-product-wrapper">
+                @if($idx > 0)
+                  <hr class="row-divider" style="border:0; border-top:2px solid var(--primary, #D88A00); margin:1.2rem 0; opacity:0.85;">
+                @endif
+                <div class="dynamic-row order-product-row" style="background:transparent; border:none; padding:0; display:flex; flex-direction:column; gap:10px; margin-bottom:0;">
+                  <input type="hidden" class="o-item-id" value="{{ $item->id }}">
+                  @if($isProductLocked)
+                    <input type="hidden" class="o-hidden-prod-id" value="{{ $item->product_id }}">
+                    <input type="hidden" class="o-hidden-grade" value="{{ $item->grade }}">
+                  @endif
+
+                  @if($isItemFullyDisp)
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                      <span style="background:rgba(22,163,74,0.12); color:#16a34a; border:1px solid rgba(22,163,74,0.3); font-size:0.75rem; font-weight:700; padding:3px 10px; border-radius:6px; letter-spacing:0.3px; display:inline-flex; align-items:center; gap:5px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        FULLY DISPATCHED ({{ $dispQty }} {{ $item->product?->unit ?? 'kg' }}) — QUANTITY LOCKED
+                      </span>
+                    </div>
+                  @elseif($isItemPartDisp || $isItemDisp)
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                      <span style="background:rgba(245,158,11,0.12); color:#d97706; border:1px solid rgba(245,158,11,0.3); font-size:0.75rem; font-weight:700; padding:3px 10px; border-radius:6px; letter-spacing:0.3px; display:inline-flex; align-items:center; gap:5px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        PARTIAL DISPATCH ({{ $dispQty }} {{ $item->product?->unit ?? 'kg' }} Dispatched — Edit Quantity: Min {{ $dispQty }} {{ $item->product?->unit ?? 'kg' }})
+                      </span>
+                    </div>
+                  @endif
+
+                  <div style="display:flex; gap:10px; width:100%; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:160px; max-width:220px;">
+                      <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">ORDER TYPE</label>
+                      <select class="o-prod-type" onchange="app.onRowTypeChange(this)" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.85rem; font-weight:600; {{ $lockedStyle }}" {{ $isProductLocked ? 'disabled tabindex=-1' : '' }}>
+                        <option value="ALL" {{ $rowType === 'ALL' ? 'selected' : '' }}>ALL PRODUCTS</option>
+                        <option value="FINISHED" {{ $rowType === 'FINISHED' ? 'selected' : '' }}>FG SALES</option>
+                        <option value="SEMI" {{ $rowType === 'SEMI' ? 'selected' : '' }}>SEMI-FINISHED SALES</option>
+                        <option value="RAW" {{ $rowType === 'RAW' ? 'selected' : '' }}>RAW MATERIALS</option>
+                        <option value="PACKAGING" {{ $rowType === 'PACKAGING' ? 'selected' : '' }}>PACKAGING</option>
+                      </select>
+                    </div>
+                    <div style="flex:2; min-width:200px;">
+                      <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">SELECT PRODUCT</label>
+                      <select class="o-prod-id" onchange="app.onOrderProductChange(this)" data-selected-id="{{ $item->product_id }}" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem; font-weight:500; {{ $lockedStyle }}" {{ $isProductLocked ? 'disabled tabindex=-1' : '' }}>
+                        @if($item->product)
+                          <option value="{{ $item->product->id }}" selected>{{ strtoupper($item->product->name) }} ({{ strtoupper($item->product->unit ?? '') }})</option>
+                        @endif
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="order-product-inputs" style="display:flex; gap:10px; width:100%; align-items:flex-end;">
+                    <div style="flex:1.2; min-width:110px;">
+                      <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">GRADE</label>
+                      <select class="o-prod-grade" data-selected-grade="{{ $item->grade }}" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem; {{ $lockedStyle }}" {{ $isProductLocked ? 'disabled tabindex=-1' : '' }}>
+                        <option value="{{ $item->grade ?: 'NA' }}" selected>{{ $item->grade ?: 'NA' }}</option>
+                      </select>
+                    </div>
+                    <div style="flex:1; min-width:80px;">
+                      <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">
+                        QTY @if(!$canEditQuantity)<span style="color:#16a34a; font-size:0.68rem;">(LOCKED)</span>@elseif($dispQty > 0)<span style="color:#d97706; font-size:0.68rem;">(MIN {{ $dispQty }})</span>@endif
+                      </label>
+                      @if(!$canEditQuantity)
+                        <input type="number" class="o-prod-qty no-spinners" value="{{ (float)$item->quantity }}" readonly tabindex="-1" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:rgba(0,0,0,0.06); color:var(--text-muted, #64748b); font-size:0.9rem; cursor:not-allowed; font-weight:700;" title="Fully dispatched ({{ $dispQty }}) - quantity cannot be modified">
+                      @else
+                        <input type="number" class="o-prod-qty no-spinners" value="{{ (float)$item->quantity }}" step="any" min="{{ $dispQty > 0 ? $dispQty : 0.001 }}" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem; font-weight:600;" title="{{ $dispQty > 0 ? 'Partially dispatched: ' . $dispQty . '. Minimum allowed: ' . $dispQty : '' }}">
+                      @endif
+                    </div>
+                    <div style="flex:1; min-width:80px;">
+                      <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">₹/UNIT</label>
+                      <input type="number" class="o-prod-price no-spinners" value="{{ (float)$item->price }}" step="any" min="0" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem;" {{ $isProductLocked ? 'readonly tabindex=-1' : '' }}>
+                    </div>
+                    @if($canRemoveProduct)
+                      <button type="button" class="btn btn-danger btn-remove-prod" onclick="app.removeOrderProductRow(this)" title="Remove Product" style="flex:0 0 42px; width:42px; height:42px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:8px; background:#e11d48; color:#fff; border:none; cursor:pointer;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                      </button>
+                    @endif
+                  </div>
+                </div>
+              </div>
+            @endforeach
+          @endif
+        </div>
       </div>
 
       <div class="form-group" style="margin-top:1.5rem;">
@@ -1317,14 +1420,15 @@ html.dark-mode .sales-btn-delete-disabled {
     }
 
     const prodList = document.getElementById('order-products');
-    if (prodList) {
-      prodList.innerHTML = '';
+    if (prodList && prodList.children.length === 0) {
       const editOrder = (window.serverPageData && window.serverPageData.editOrder) || {};
       if (editOrder && editOrder.items) {
         editOrder.items.forEach(item => {
           app.addOrderProductRow(item);
         });
       }
+    } else if (prodList && typeof app.initServerRenderedOrderRows === 'function') {
+      app.initServerRenderedOrderRows();
     }
   });
 </script>

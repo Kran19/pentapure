@@ -1408,21 +1408,33 @@ const app = {
 
     const editOrder = (window.serverPageData && window.serverPageData.editOrder) || null;
     const rawDispStatus = editOrder ? String(editOrder.dispatch_status || '').toUpperCase().replace(/_/g, ' ') : '';
-    const isOrderFullyDispatched = ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'CLOSED'].includes(rawDispStatus);
+    const isOrderFullyDispatched = ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'CLOSED'].includes(rawDispStatus) || Boolean(editOrder && editOrder.is_fully_dispatched);
     const isOrderPartial = ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL PENDING'].includes(rawDispStatus)
-                           || (editOrder && (editOrder.items || []).some(it => (parseFloat(it.dispatched_qty) || 0) > 0));
+                           || Boolean(editOrder && editOrder.is_partial)
+                           || (editOrder && (editOrder.items || []).some(it => (parseFloat(it.dispatched_qty) || 0) > 0.0001));
 
-    // Item-level dispatch status
-    const isItemFullyDispatched = isOrderFullyDispatched || (dispatchedQty >= numQty && numQty > 0.0001);
-    const isItemPartiallyDispatched = !isItemFullyDispatched && (dispatchedQty > 0.0001 || (isOrderPartial && Boolean(itemId)));
-    const isDispatched = dispatchedQty > 0.0001 || isItemFullyDispatched || isItemPartiallyDispatched;
+    // Item-level dispatch flags
+    const isItemDispatched = dispatchedQty > 0.0001
+      || Boolean(prefillData && prefillData.is_dispatched)
+      || Boolean(prefillData && prefillData.is_fully_dispatched)
+      || Boolean(prefillData && prefillData.is_partially_dispatched)
+      || (isOrderFullyDispatched && Boolean(itemId));
+
+    const isItemFullyDispatched = isOrderFullyDispatched
+      || Boolean(prefillData && prefillData.is_fully_dispatched)
+      || (isItemDispatched && dispatchedQty >= numQty && numQty > 0.0001);
+
+    const isItemPartiallyDispatched = isItemDispatched && !isItemFullyDispatched;
 
     // Rules:
-    // 1. On edit if partial: do NOT show close or remove product; just product quantity edit
-    // 2. If fully dispatched: do NOT edit quantity
-    const canRemoveProduct = !isOrderPartial && !isItemPartiallyDispatched && !isItemFullyDispatched && !isDispatched && !Boolean(itemId && editOrder);
+    // 1. If product is already dispatched (or order is partial and item is existing):
+    //    DO NOT show close or remove product button!
+    // 2. If fully dispatched: DO NOT edit quantity (locked).
+    // 3. If partially dispatched: only edit quantity (min = dispatchedQty).
+    // 4. If product is dispatched: disable/lock product, order type, grade, price.
+    const canRemoveProduct = !isItemDispatched && !isItemFullyDispatched && !isOrderPartial && !(itemId && (isOrderPartial || isItemDispatched));
     const canEditQuantity = !isItemFullyDispatched;
-    const isProductLocked = isItemPartiallyDispatched || isItemFullyDispatched || isDispatched || (isOrderPartial && Boolean(itemId));
+    const isProductLocked = isItemDispatched || isItemFullyDispatched || isItemPartiallyDispatched;
 
     let rowType = 'ALL';
     if (selectedProdId) {
@@ -1445,7 +1457,7 @@ const app = {
             FULLY DISPATCHED (${dispatchedQty} kg) — QUANTITY LOCKED
           </span>
         </div>`;
-    } else if (isItemPartiallyDispatched || isDispatched) {
+    } else if (isItemPartiallyDispatched || isItemDispatched) {
       statusPillHtml = `
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
           <span style="background:rgba(245,158,11,0.12); color:#d97706; border:1px solid rgba(245,158,11,0.3); font-size:0.75rem; font-weight:700; padding:3px 10px; border-radius:6px; letter-spacing:0.3px; display:inline-flex; align-items:center; gap:5px;">
@@ -1468,12 +1480,12 @@ const app = {
 
     div.innerHTML = `
       ${itemId ? `<input type="hidden" class="o-item-id" value="${itemId}">` : ''}
-      ${isProductLocked ? `<input type="hidden" class="o-hidden-prod-id" value="${selectedProdId}"><input type="hidden" class="o-hidden-grade" value="${selectedGrade}">` : ''}
+      ${isProductLocked ? `<input type="hidden" class="o-hidden-prod-id" value="${selectedProdId}"><input type="hidden" class="o-hidden-grade" value="${selectedGrade}"><input type="hidden" class="o-hidden-price" value="${price}">` : ''}
       ${statusPillHtml}
       <div style="display:flex; gap:10px; width:100%; flex-wrap:wrap;">
         <div style="flex:1; min-width:160px; max-width:220px;">
           <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">ORDER TYPE</label>
-          <select class="o-prod-type" onchange="app.onRowTypeChange(this)" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.85rem; font-weight:600; ${lockedStyle}" ${isProductLocked ? 'tabindex="-1"' : ''}>
+          <select class="o-prod-type" onchange="app.onRowTypeChange(this)" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.85rem; font-weight:600; ${lockedStyle}" ${isProductLocked ? 'disabled tabindex="-1"' : ''}>
             <option value="ALL" ${rowType === 'ALL' ? 'selected' : ''}>ALL PRODUCTS</option>
             <option value="FINISHED" ${rowType === 'FINISHED' ? 'selected' : ''}>FG SALES</option>
             <option value="SEMI" ${rowType === 'SEMI' ? 'selected' : ''}>SEMI-FINISHED SALES</option>
@@ -1483,19 +1495,19 @@ const app = {
         </div>
         <div style="flex:2; min-width:200px;">
           <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">SELECT PRODUCT</label>
-          <select class="o-prod-id" onchange="app.onOrderProductChange(this)" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem; font-weight:500; ${lockedStyle}" ${isProductLocked ? 'tabindex="-1"' : ''}>
+          <select class="o-prod-id" onchange="app.onOrderProductChange(this)" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem; font-weight:500; ${lockedStyle}" ${isProductLocked ? 'disabled tabindex="-1"' : ''}>
           </select>
         </div>
       </div>
       <div class="order-product-inputs" style="display:flex; gap:10px; width:100%; align-items:flex-end;">
         <div style="flex:1.2; min-width:110px;">
           <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">GRADE</label>
-          <select class="o-prod-grade" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem; ${lockedStyle}" ${isProductLocked ? 'tabindex="-1"' : ''}>
+          <select class="o-prod-grade" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border-soft, #DDCFAF); background:var(--input-bg, transparent); color:var(--text-main, #333); font-size:0.9rem; ${lockedStyle}" ${isProductLocked ? 'disabled tabindex="-1"' : ''}>
             <option value="NA" selected>NA</option>
           </select>
         </div>
         <div style="flex:1; min-width:80px;">
-          <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">QTY ${!canEditQuantity ? '<span style="color:#16a34a; font-size:0.68rem;">(LOCKED)</span>' : ''}</label>
+          <label style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">QTY ${!canEditQuantity ? '<span style="color:#16a34a; font-size:0.68rem;">(LOCKED)</span>' : (isItemPartiallyDispatched ? `<span style="color:#d97706; font-size:0.68rem;">(MIN ${dispatchedQty})</span>` : '')}</label>
           ${qtyInputHtml}
         </div>
         <div style="flex:1; min-width:80px;">
@@ -1514,6 +1526,7 @@ const app = {
     this.initOrderProductSelect2(selEl);
     if (isProductLocked && selEl && window.jQuery) {
       try {
+        jQuery(selEl).prop('disabled', true);
         jQuery(selEl).next('.select2-container').css({ 'pointer-events': 'none', 'opacity': '0.85' });
       } catch (e) {}
     }
@@ -1523,6 +1536,51 @@ const app = {
       const gradeSelect = div.querySelector('.o-prod-grade');
       if (gradeSelect) gradeSelect.innerHTML = '<option value="NA" selected>NA</option>';
     }
+  },
+
+  initServerRenderedOrderRows() {
+    const container = document.getElementById('order-products');
+    if (!container) return;
+
+    container.querySelectorAll('.dynamic-row.order-product-row').forEach(row => {
+      const selEl = row.querySelector('.o-prod-id');
+      const gradeEl = row.querySelector('.o-prod-grade');
+      const rowTypeEl = row.querySelector('.o-prod-type');
+
+      if (selEl) {
+        const selectedId = selEl.getAttribute('data-selected-id') || selEl.value;
+        const rowType = rowTypeEl ? rowTypeEl.value : 'ALL';
+        const isLocked = selEl.hasAttribute('disabled') || selEl.style.pointerEvents === 'none';
+
+        if (selEl.options.length <= 1) {
+          this.populateProductSelect(selEl, selectedId, rowType);
+        }
+
+        this.initOrderProductSelect2(selEl);
+        if (isLocked) {
+          selEl.setAttribute('disabled', 'disabled');
+          if (window.jQuery) {
+            try {
+              jQuery(selEl).prop('disabled', true);
+              jQuery(selEl).next('.select2-container').css({ 'pointer-events': 'none', 'opacity': '0.85' });
+            } catch (e) {}
+          }
+        }
+      }
+
+      if (gradeEl) {
+        const isLocked = gradeEl.hasAttribute('disabled') || gradeEl.style.pointerEvents === 'none';
+        if (isLocked) {
+          gradeEl.setAttribute('disabled', 'disabled');
+        }
+      }
+      if (rowTypeEl) {
+        const isLocked = rowTypeEl.hasAttribute('disabled') || rowTypeEl.style.pointerEvents === 'none';
+        if (isLocked) {
+          rowTypeEl.setAttribute('disabled', 'disabled');
+        }
+      }
+    });
   },
 
   removeOrderProductRow(btn) {

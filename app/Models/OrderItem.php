@@ -71,7 +71,8 @@ class OrderItem extends Model
                     ? $this->order->dispatchLogs->isNotEmpty()
                     : $this->order->dispatchLogs()->exists();
 
-                if (!$hasAnyOrderDispatchLogs && in_array($rawOrderDispStatus, ['', 'PENDING', 'OPEN', 'UNASSIGNED'], true)) {
+                // Only reset to 0 if there are no logs AND the order is not in a dispatched/partial status, AND dispatched_qty wasn't already set
+                if (!$hasAnyOrderDispatchLogs && in_array($rawOrderDispStatus, ['', 'PENDING', 'OPEN', 'UNASSIGNED'], true) && (float)$this->dispatched_qty <= 0) {
                     $actual = 0.0;
                     if (abs((float)$this->dispatched_qty - $actual) > 0.001) {
                         $this->update(['dispatched_qty' => $actual]);

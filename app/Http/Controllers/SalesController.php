@@ -297,11 +297,39 @@ class SalesController extends Controller
 
         $editOrder = null;
         if ($request->edit) {
-            $editOrder = Order::with('items.product.grades')->find($request->edit);
+            $editOrder = Order::with(['items.product.grades', 'dispatchLogs.dispatchItems'])->find($request->edit);
             if ($editOrder) {
                 foreach ($editOrder->items as $item) {
                     $item->syncDispatchedQty();
+                    $dispQty = max((float)$item->dispatched_qty, (float)\App\Models\DispatchLogItem::where('order_item_id', $item->id)->sum('quantity'));
+                    $itemQty = (float) $item->quantity;
+                    $isFullyDisp = ($dispQty >= $itemQty && $itemQty > 0.0001);
+                    $isPartDisp = ($dispQty > 0.0001 && !$isFullyDisp);
+
+                    $item->dispatched_qty = $dispQty;
+                    $item->is_dispatched = ($dispQty > 0.0001);
+                    $item->is_fully_dispatched = $isFullyDisp;
+                    $item->is_partially_dispatched = $isPartDisp;
                 }
+
+                $rawDisp = strtoupper(trim(str_replace('_', ' ', (string)($editOrder->dispatch_status ?? ''))));
+                $allDone = $editOrder->items->isNotEmpty() && $editOrder->items->every(fn($i) => (float)$i->dispatched_qty >= (float)$i->quantity && (float)$i->quantity > 0.0001);
+                $anyDisp = $editOrder->items->contains(fn($i) => (float)$i->dispatched_qty > 0.0001);
+                $hasLogs = $editOrder->dispatchLogs && $editOrder->dispatchLogs->isNotEmpty();
+
+                if ($allDone || in_array($rawDisp, ['DONE', 'COMPLETED', 'FULLY DISPATCHED', 'CLOSED'], true)) {
+                    $editOrder->dispatch_status = 'DONE';
+                    $editOrder->is_fully_dispatched = true;
+                    $editOrder->is_partial = false;
+                } elseif ($anyDisp || $hasLogs || in_array($rawDisp, ['PARTIAL', 'PARTIAL DISPATCH', 'PARTIALLY DISPATCHED', 'PARTIAL PENDING'], true)) {
+                    $editOrder->dispatch_status = 'PARTIAL PENDING';
+                    $editOrder->is_partial = true;
+                    $editOrder->is_fully_dispatched = false;
+                } else {
+                    $editOrder->is_partial = false;
+                    $editOrder->is_fully_dispatched = false;
+                }
+
                 $existingProdIds = $products->pluck('id')->toArray();
                 foreach ($editOrder->items as $item) {
                     if ($item->product && !in_array($item->product->id, $existingProdIds)) {
