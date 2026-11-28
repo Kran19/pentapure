@@ -40,11 +40,9 @@ fi
 php artisan key:generate --force
 chmod -R 775 storage bootstrap/cache
 
-# 5. Setup web root directories (both public_html and domains/pentapureadmin.in/public_html if present)
-TARGET_DIRS=("$HOME_DIR/public_html")
-if [ -d "$HOME_DIR/domains/pentapureadmin.in" ]; then
-    TARGET_DIRS+=("$HOME_DIR/domains/pentapureadmin.in/public_html")
-fi
+# 5. Setup web root directories (both public_html and domains/pentapureadmin.in/public_html)
+mkdir -p "$HOME_DIR/domains/pentapureadmin.in"
+TARGET_DIRS=("$HOME_DIR/public_html" "$HOME_DIR/domains/pentapureadmin.in/public_html")
 
 for TARGET in "${TARGET_DIRS[@]}"; do
     echo "Setting up web root in $TARGET..."
